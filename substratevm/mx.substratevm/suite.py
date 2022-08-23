@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.0.1",
+    "mxversion" : "6.5.5",
     "name": "substratevm",
     "version" : "22.3.0",
     "release" : False,
@@ -217,6 +217,7 @@ suite = {
                 "java.compiler",
                 "java.logging",
                 "java.scripting",
+                "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.unsupported",
@@ -258,6 +259,9 @@ suite = {
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
+                ],
+                "jdk.httpserver@19+": [
+                    "sun.net.httpserver.simpleserver",
                 ],
                 "jdk.jfr": [
                     "jdk.jfr.events",

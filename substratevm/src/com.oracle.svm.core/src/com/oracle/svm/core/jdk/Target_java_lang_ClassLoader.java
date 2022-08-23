@@ -36,6 +36,8 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -48,9 +50,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(className = "jdk.internal.loader.Resource")
 @SuppressWarnings("unused")
@@ -323,8 +322,14 @@ public final class Target_java_lang_ClassLoader {
         // All classes are already linked at runtime.
     }
 
-    @Delete
-    private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
+    /**
+     * TODO: This substitution should be reverted to a @Delete annotation once GR-38801 is fixed.
+     */
+    @Substitute
+    @SuppressWarnings("unused")
+    private static Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source) {
+        throw VMError.unsupportedFeature("Defining classes at runtime is not supported.");
+    }
 
     @Delete
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
@@ -416,14 +421,9 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
 final class Target_java_lang_AssertionStatusDirectives {
 }
 
-class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+class PackageFieldTransformer implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+    public Object transform(Object receiver, Object originalValue) {
         assert receiver instanceof ClassLoader;
 
         /* JDK9+ stores packages in a ConcurrentHashMap, while 8 and before use a HashMap. */

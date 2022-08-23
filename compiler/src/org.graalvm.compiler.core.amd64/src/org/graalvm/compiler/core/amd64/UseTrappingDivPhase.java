@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.amd64;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -34,6 +36,7 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PhiNode;
@@ -74,6 +77,11 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
             return eq.getX() == divisor && eq.getY().isConstant() && eq.getY().asJavaConstant().asLong() == 0L;
         }
         return false;
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
     }
 
     @Override
@@ -173,6 +181,8 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
                 divRemFixed = graph.add(new SignedDivNode(dividend, divisor, null));
             } else if (divRem instanceof SignedRemNode) {
                 divRemFixed = graph.add(new SignedRemNode(dividend, divisor, null));
+            } else {
+                throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem);
             }
             divRemFixed.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
             GraalError.guarantee(divRemFixed.canDeoptimize(), "Fixed representation must deopt since we replaced a 0 check");
@@ -196,6 +206,11 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         @Override
         public void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode) {
 
+        }
+
+        @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
         }
 
         @Override

@@ -354,7 +354,14 @@ public class LocalizationFeature implements Feature {
     }
 
     private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {
-        Object localeCache = access.rescanRoot(cacheFieldField);
+        access.rescanRoot(cacheFieldField);
+
+        Object localeCache;
+        try {
+            localeCache = cacheFieldField.get(null);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
         if (localeCache != null) {
             access.rescanField(localeCache, localeObjectCacheMapField);
         }

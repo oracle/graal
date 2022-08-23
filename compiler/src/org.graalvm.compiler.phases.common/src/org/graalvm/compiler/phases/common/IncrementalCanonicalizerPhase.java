@@ -25,12 +25,14 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.EnumSet;
+import java.util.Optional;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeWorkList;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -59,6 +61,12 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
     @Override
     public boolean checkContract() {
         return false;
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        GraalError.guarantee(!theTool.finalCanonicalization(), "Final canonicalization must not be incremental");
+        return super.canApply(graphState);
     }
 
     @Override

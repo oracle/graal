@@ -53,12 +53,13 @@ public abstract class AbstractLookupNode extends EspressoNode {
         Method result = null;
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
+        boolean skipArityCheck = arity == -1;
         for (Method.MethodVersion m : getMethodArray(klass)) {
             if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
                 int matchArity = m.getMethod().getParameterCount();
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
-                if (matchArity == arity) {
+                if (matchArity == arity || skipArityCheck) {
                     if (result != null) {
                         /*
                          * Multiple methods with the same name and arity (if specified), cannot
@@ -70,7 +71,7 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 }
             }
         }
-        if (result == null && maxOverallArity >= 0) {
+        if (!skipArityCheck && result == null && maxOverallArity >= 0) {
             throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
         return result;

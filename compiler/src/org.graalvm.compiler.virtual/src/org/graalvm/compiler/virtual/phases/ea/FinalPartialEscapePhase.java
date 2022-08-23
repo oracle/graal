@@ -26,8 +26,11 @@ package org.graalvm.compiler.virtual.phases.ea;
 
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -43,13 +46,24 @@ public class FinalPartialEscapePhase extends PartialEscapePhase {
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState));
+    }
+
+    @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
-            graph.setDuringStage(StageFlag.PARTIAL_ESCAPE);
+            graph.getGraphState().setDuringStage(StageFlag.FINAL_PARTIAL_ESCAPE);
 
             super.run(graph, context);
-
-            graph.setAfterStage(StageFlag.PARTIAL_ESCAPE);
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.FINAL_PARTIAL_ESCAPE);
     }
 }

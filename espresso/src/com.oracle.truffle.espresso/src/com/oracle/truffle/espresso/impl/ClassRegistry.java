@@ -39,7 +39,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
@@ -55,7 +54,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public abstract class ClassRegistry extends ContextAccessImpl {
+public abstract class ClassRegistry {
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -111,7 +110,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         public final StaticObject classData;
         public final boolean isHidden;
         public final boolean isStrongHidden;
-        public int klassID = -1;
+        public long klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
@@ -137,7 +136,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
             return flags;
         }
 
-        public void initKlassID(int futureKlassID) {
+        public void initKlassID(long futureKlassID) {
             this.klassID = futureKlassID;
         }
     }
@@ -206,7 +205,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         }
     }
 
-    private final int loaderID;
+    private final long loaderID;
 
     private ModuleEntry unnamed;
     private final PackageTable packages;
@@ -216,7 +215,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         return unnamed;
     }
 
-    public final int getLoaderID() {
+    public final long getLoaderID() {
         return loaderID;
     }
 
@@ -256,13 +255,11 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         }
     }
 
-    protected ClassRegistry(EspressoContext context) {
-        super(context);
-        this.loaderID = context.getNewLoaderId();
+    protected ClassRegistry(long loaderID) {
+        this.loaderID = loaderID;
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         this.packages = new PackageTable(rwLock);
         this.modules = new ModuleTable(rwLock);
-
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
@@ -278,9 +275,10 @@ public abstract class ClassRegistry extends ContextAccessImpl {
      * @return The Klass corresponding to given type
      */
     @SuppressWarnings("try")
-    Klass loadKlass(Symbol<Type> type, StaticObject protectionDomain) {
+    Klass loadKlass(EspressoContext context, Symbol<Type> type, StaticObject protectionDomain) throws EspressoClassLoadingException {
+        ClassLoadingEnv env = context.getClassLoadingEnv();
         if (Types.isArray(type)) {
-            Klass elemental = loadKlass(getTypes().getElementalType(type), protectionDomain);
+            Klass elemental = loadKlass(context, env.getTypes().getElementalType(type), protectionDomain);
             if (elemental == null) {
                 return null;
             }
@@ -291,14 +289,14 @@ public abstract class ClassRegistry extends ContextAccessImpl {
 
         // Double-checked locking on the symbol (globally unique).
         ClassRegistries.RegistryEntry entry;
-        try (DebugCloseable probe = KLASS_PROBE.scope(getContext().getTimers())) {
+        try (DebugCloseable probe = KLASS_PROBE.scope(env.getTimers())) {
             entry = classes.get(type);
         }
         if (entry == null) {
             synchronized (type) {
                 entry = classes.get(type);
                 if (entry == null) {
-                    if (loadKlassImpl(type) == null) {
+                    if (loadKlassImpl(context, type) == null) {
                         return null;
                     }
                     entry = classes.get(type);
@@ -311,12 +309,12 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         assert entry != null;
         StaticObject classLoader = getClassLoader();
         if (!StaticObject.isNull(classLoader)) {
-            entry.checkPackageAccess(getMeta(), classLoader, protectionDomain);
+            entry.checkPackageAccess(env.getMeta(), classLoader, protectionDomain);
         }
         return entry.klass();
     }
 
-    protected abstract Klass loadKlassImpl(Symbol<Type> type);
+    protected abstract Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) throws EspressoClassLoadingException;
 
     protected abstract void loadKlassCountInc();
 
@@ -332,10 +330,10 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         return klasses;
     }
 
-    public Klass findLoadedKlass(Symbol<Type> type) {
+    public Klass findLoadedKlass(ClassLoadingEnv env, Symbol<Type> type) {
         if (Types.isArray(type)) {
-            Symbol<Type> elemental = getContext().getTypes().getElementalType(type);
-            Klass elementalKlass = findLoadedKlass(elemental);
+            Symbol<Type> elemental = env.getTypes().getElementalType(type);
+            Klass elementalKlass = findLoadedKlass(env, elemental);
             if (elementalKlass == null) {
                 return null;
             }
@@ -348,29 +346,29 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         return entry.klass();
     }
 
-    public final ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
-        return defineKlass(typeOrNull, bytes, ClassDefinitionInfo.EMPTY);
+    public final ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes) throws EspressoClassLoadingException {
+        return defineKlass(context, typeOrNull, bytes, ClassDefinitionInfo.EMPTY);
     }
 
     @SuppressWarnings("try")
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
-        Meta meta = getContext().getMeta();
+    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+        ClassLoadingEnv env = context.getClassLoadingEnv();
         ParserKlass parserKlass;
-        try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
-            parserKlass = getParserKlass(bytes, typeOrNull, info);
+        try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
+            parserKlass = parseKlass(env, bytes, typeOrNull, info);
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
         if (info.addedToRegistry()) {
-            Klass maybeLoaded = findLoadedKlass(type);
+            Klass maybeLoaded = findLoadedKlass(env, type);
             if (maybeLoaded != null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+                throw EspressoClassLoadingException.linkageError("Class " + type + " already defined");
             }
         }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
-        ObjectKlass klass = createKlass(meta, parserKlass, type, superKlassType, info);
+        ObjectKlass klass = createKlass(context, parserKlass, type, superKlassType, info);
         if (info.addedToRegistry()) {
             registerKlass(klass, type);
         } else if (info.isStrongHidden()) {
@@ -379,24 +377,19 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         return klass;
     }
 
-    private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
+    private ParserKlass parseKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, getContext(), info);
-        Meta meta = getMeta();
-        if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
+        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
+        if (!env.loaderIsBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
+            throw EspressoClassLoadingException.securityException("Define class in prohibited package name: " + parserKlass.getName());
         }
         return parserKlass;
     }
 
-    public static boolean loaderIsBootOrPlatform(StaticObject loader, Meta meta) {
-        return StaticObject.isNull(loader) ||
-                        (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
-    }
-
     @SuppressWarnings("try")
-    private ObjectKlass createKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType, ClassDefinitionInfo info) {
-        EspressoThreadLocalState threadLocalState = meta.getContext().getLanguage().getThreadLocalState();
+    private ObjectKlass createKlass(EspressoContext context, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+        ClassLoadingEnv env = context.getClassLoadingEnv();
+        EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
         TypeStack chain = threadLocalState.getTypeStack();
 
         ObjectKlass superKlass = null;
@@ -408,9 +401,9 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         try {
             if (superKlassType != null) {
                 if (chain.contains(superKlassType)) {
-                    throw meta.throwException(meta.java_lang_ClassCircularityError);
+                    throw EspressoClassLoadingException.classCircularityError();
                 }
-                superKlass = loadKlassRecursively(meta, superKlassType, true);
+                superKlass = loadKlassRecursively(context, superKlassType, true);
             }
 
             final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
@@ -425,9 +418,9 @@ public abstract class ClassRegistry extends ContextAccessImpl {
 
             for (int i = 0; i < superInterfacesTypes.length; ++i) {
                 if (chain.contains(superInterfacesTypes[i])) {
-                    throw meta.throwException(meta.java_lang_ClassCircularityError);
+                    throw EspressoClassLoadingException.classCircularityError();
                 }
-                ObjectKlass interf = loadKlassRecursively(meta, superInterfacesTypes[i], false);
+                ObjectKlass interf = loadKlassRecursively(context, superInterfacesTypes[i], false);
                 superInterfaces[i] = interf;
                 linkedInterfaces[i] = interf.getLinkedKlass();
             }
@@ -435,37 +428,37 @@ public abstract class ClassRegistry extends ContextAccessImpl {
             chain.pop();
         }
 
-        if (getContext().getJavaVersion().java16OrLater() && superKlass != null) {
+        if (env.getJavaVersion().java16OrLater() && superKlass != null) {
             if (superKlass.isFinalFlagSet()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is a subclass of final class " + superKlassType);
+                throw EspressoClassLoadingException.incompatibleClassChangeError("class " + type + " is a subclass of final class " + superKlassType);
             }
         }
 
         ObjectKlass klass;
 
-        try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
+        try (DebugCloseable define = KLASS_DEFINE.scope(env.getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            ContextDescription description = new ContextDescription(getContext().getLanguage(), getContext().getJavaVersion());
+            ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
             LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-            klass = new ObjectKlass(getContext(), linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
+            klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
         if (superKlass != null) {
             if (!Klass.checkAccess(superKlass, klass)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
+                throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superclass " + superKlassType);
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is not a permitted subclass of class " + superKlassType);
+                throw EspressoClassLoadingException.incompatibleClassChangeError("class " + type + " is not a permitted subclass of class " + superKlassType);
             }
         }
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null) {
                 if (!Klass.checkAccess(interf, klass)) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
+                    throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superinterface " + interf.getType());
                 }
                 if (!interf.permittedSubclassCheck(klass)) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is not a permitted subclass of interface " + superKlassType);
+                    throw EspressoClassLoadingException.incompatibleClassChangeError("class " + type + " is not a permitted subclass of interface " + superKlassType);
                 }
             }
         }
@@ -479,28 +472,23 @@ public abstract class ClassRegistry extends ContextAccessImpl {
 
         EspressoError.guarantee(previous == null, "Class already defined", type);
 
-        getRegistries().recordConstraint(type, klass, getClassLoader());
-        getRegistries().onKlassDefined(klass);
+        klass.getRegistries().recordConstraint(type, klass, getClassLoader());
+        klass.getRegistries().onKlassDefined(klass);
         if (defineKlassListener != null) {
             defineKlassListener.onKlassDefined(klass);
         }
     }
 
-    private ObjectKlass loadKlassRecursively(Meta meta, Symbol<Type> type, boolean notInterface) {
+    private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface) throws EspressoClassLoadingException {
+        ClassLoadingEnv env = context.getClassLoadingEnv();
         Klass klass;
         try {
-            klass = loadKlass(type, StaticObject.NULL);
+            klass = loadKlass(context, type, StaticObject.NULL);
         } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
-                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
-                throw meta.throwException(ncdfe);
-            }
-            throw e;
+            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(env, e);
         }
         if (notInterface == klass.isInterface()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
+            throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
         }
         return (ObjectKlass) klass;
     }
@@ -518,14 +506,15 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         // the old klass instance will be marked as removed and will follow a direct
         // path to ClassRegistries.removeUnloadedKlassConstraint().
 
-        Klass loadedKlass = findLoadedKlass(renamedKlass.getType());
+        ClassLoadingEnv env = renamedKlass.getContext().getClassLoadingEnv();
+        Klass loadedKlass = findLoadedKlass(env, renamedKlass.getType());
         if (loadedKlass != null) {
-            getContext().getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
+            loadedKlass.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
         }
 
         classes.put(renamedKlass.getType(), new ClassRegistries.RegistryEntry(renamedKlass));
         // record the new loading constraint
-        getContext().getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
+        renamedKlass.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {
@@ -533,7 +522,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         ClassRegistries.RegistryEntry removed = classes.remove(type);
         // purge class loader constraint for this type
         if (removed != null && removed.klass() != null) {
-            getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
+            removed.klass().getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
         }
     }
 }

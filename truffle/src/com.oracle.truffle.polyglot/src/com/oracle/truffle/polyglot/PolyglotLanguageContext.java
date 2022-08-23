@@ -471,51 +471,59 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean dispose() {
-        assert Thread.holdsLock(context);
-        Env localEnv = this.env;
-        if (localEnv != null) {
-            if (!lazy.activePolyglotThreads.isEmpty()) {
-                // this should show up as internal error so it does not use PolyglotEngineException
-                throw new IllegalStateException("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
-            }
-            try {
-                for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                    assert threadInfo != PolyglotThreadInfo.NULL;
-                    final Thread thread = threadInfo.getThread();
-                    if (thread == null) {
-                        continue;
+        try {
+            Env localEnv;
+            synchronized (context) {
+                localEnv = this.env;
+                if (localEnv != null) {
+                    if (!lazy.activePolyglotThreads.isEmpty()) {
+                        // this should show up as internal error so it does not use
+                        // PolyglotEngineException
+                        throw new IllegalStateException("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
                     }
-                    assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
-                                    " is still active.";
-                    if (!threadInfo.isCurrent() && threadInfo.isActive() && !context.state.isInvalidOrClosed()) {
-                        /*
-                         * No other thread than the current thread should be active here. However,
-                         * we do this check only for non-invalid contexts for the following reasons.
-                         * enteredCount for a thread can be incremented on the fast-path even though
-                         * the thread is not allowed to enter in the end because the context is
-                         * invalid and so the enter falls back to the slow path which checks the
-                         * invalid flag. threadInfo.isActive() returns true in this case and we
-                         * cannot tell whether it is because the thread is before the fallback to
-                         * the slow path or it is already fully entered (which would be an error)
-                         * without adding further checks to the fast path, and so we don't perform
-                         * the check for invalid contexts. Non-invalid context can have the same
-                         * problem with the enteredCount of one of its threads, but closing
-                         * non-invalid context in that state is an user error.
-                         */
-                        throw PolyglotEngineException.illegalState("Another main thread was started while closing a polyglot context!");
+                    for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                        assert threadInfo != PolyglotThreadInfo.NULL;
+                        final Thread thread = threadInfo.getThread();
+                        if (thread == null) {
+                            continue;
+                        }
+                        assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
+                                        " is still active.";
+                        if (!threadInfo.isCurrent() && threadInfo.isActive() && !context.state.isInvalidOrClosed()) {
+                            /*
+                             * No other thread than the current thread should be active here.
+                             * However, we do this check only for non-invalid contexts for the
+                             * following reasons. enteredCount for a thread can be incremented on
+                             * the fast-path even though the thread is not allowed to enter in the
+                             * end because the context is invalid and so the enter falls back to the
+                             * slow path which checks the invalid flag. threadInfo.isActive()
+                             * returns true in this case and we cannot tell whether it is because
+                             * the thread is before the fallback to the slow path or it is already
+                             * fully entered (which would be an error) without adding further checks
+                             * to the fast path, and so we don't perform the check for invalid
+                             * contexts. Non-invalid context can have the same problem with the
+                             * enteredCount of one of its threads, but closing non-invalid context
+                             * in that state is an user error.
+                             */
+                            throw PolyglotEngineException.illegalState("Another main thread was started while closing a polyglot context!");
+                        }
+                        LANGUAGE.disposeThread(localEnv, thread);
                     }
-                    LANGUAGE.disposeThread(localEnv, thread);
                 }
+            }
+            // Call TruffleLanguage#disposeContext without holding the context lock.
+            if (localEnv != null) {
                 LANGUAGE.dispose(localEnv);
-            } catch (Throwable t) {
-                if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
-                    throw new IllegalStateException("Guest language code was run during language disposal!", t);
-                }
-                throw t;
+                return true;
+            } else {
+                return false;
             }
-            return true;
+        } catch (Throwable t) {
+            if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
+                throw new IllegalStateException("Guest language code was run during language disposal!", t);
+            }
+            throw t;
         }
-        return false;
     }
 
     void notifyDisposed(boolean notifyInstruments) {
@@ -753,10 +761,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
         // Always check context first, as it might be invalidated.
-        context.checkClosed();
-        if (context.disposing) {
-            throw PolyglotEngineException.closedException("The Context is already closed.");
-        }
+        context.checkClosedOrDisposing();
         if (!context.config.isAccessPermitted(accessingLanguage, language)) {
             throw PolyglotEngineException.illegalArgument(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }

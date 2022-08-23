@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,6 +60,11 @@ final class NativeToolchainConfig implements ToolchainConfig {
 
     @Override
     public boolean enableCXX() {
+        return true;
+    }
+
+    @Override
+    public boolean enableCL() {
         return true;
     }
 

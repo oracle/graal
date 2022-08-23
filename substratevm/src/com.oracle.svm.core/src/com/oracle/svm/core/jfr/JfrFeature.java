@@ -117,7 +117,7 @@ public class JfrFeature implements Feature {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
                             "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
         }
-        boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
+        boolean runtimeEnabled = VMInspectionOptions.hasJFRSupport();
         if (HOSTED_ENABLED && !runtimeEnabled) {
             if (allowPrinting) {
                 System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +

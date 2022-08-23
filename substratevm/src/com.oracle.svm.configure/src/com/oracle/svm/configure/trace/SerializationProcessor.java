@@ -25,14 +25,16 @@
  */
 package com.oracle.svm.configure.trace;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
+
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configure.config.SerializationConfiguration;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.SerializationConfiguration;
 
 public class SerializationProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
@@ -42,6 +44,7 @@ public class SerializationProcessor extends AbstractProcessor {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
@@ -51,6 +54,7 @@ public class SerializationProcessor extends AbstractProcessor {
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
         SerializationConfiguration serializationConfiguration = configurationSet.getSerializationConfiguration();
+
         if ("ObjectStreamClass.<init>".equals(function)) {
             expectSize(args, 2);
 
@@ -73,6 +77,18 @@ public class SerializationProcessor extends AbstractProcessor {
             }
 
             serializationConfiguration.registerLambdaCapturingClass(condition, (String) args.get(0));
+        } else if ("ProxyClassSerialization".equals(function)) {
+            expectSize(args, 1);
+
+            List<String> interfaces = (List<String>) args.get(0);
+
+            for (String iface : interfaces) {
+                if (advisor.shouldIgnore(lazyValue(iface), LazyValueUtils.lazyValue(null))) {
+                    return;
+                }
+            }
+
+            serializationConfiguration.registerProxyClass(condition, (List<String>) args.get(0));
         }
     }
 }

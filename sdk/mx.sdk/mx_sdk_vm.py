@@ -546,13 +546,17 @@ def _probe_jvmci_info(jdk, attribute_name):
         mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
         enableJVMCI = False
         enableJVMCIProduct = False
+        supportsJVMCIThreadsPerNativeLibraryRuntime = False
         for line in out.lines:
             if 'EnableJVMCI' in line and 'true' in line:
                 enableJVMCI = True
             if 'EnableJVMCIProduct' in line:
                 enableJVMCIProduct = True
+            if 'JVMCIThreadsPerNativeLibraryRuntime' in line:
+                supportsJVMCIThreadsPerNativeLibraryRuntime = True
         setattr(jdk, '.enables_jvmci_by_default', enableJVMCI)
         setattr(jdk, '.supports_enablejvmciproduct', enableJVMCIProduct)
+        setattr(jdk, '.supports_JVMCIThreadsPerNativeLibraryRuntime', supportsJVMCIThreadsPerNativeLibraryRuntime)
     return getattr(jdk, attribute_name)
 
 def jdk_enables_jvmci_by_default(jdk):
@@ -567,6 +571,12 @@ def jdk_supports_enablejvmciproduct(jdk):
     for some OpenJDK 11u distros.
     """
     return _probe_jvmci_info(jdk, '.supports_enablejvmciproduct')
+
+def jdk_supports_JVMCIThreadsPerNativeLibraryRuntime(jdk):
+    """
+    Determines if the jdk supports flag -XX:JVMCIThreadsPerNativeLibraryRuntime.
+    """
+    return _probe_jvmci_info(jdk, '.supports_JVMCIThreadsPerNativeLibraryRuntime')
 
 def jdk_has_new_jlink_options(jdk):
     """
@@ -747,7 +757,10 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
             if 'jdk.internal.vm.compiler' in non_synthetic_modules:
-                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UnlockExperimentalVMOptions'])
+                if jdk_supports_JVMCIThreadsPerNativeLibraryRuntime(jdk):
+                    vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:JVMCIThreadsPerNativeLibraryRuntime=1', '-XX:-UnlockExperimentalVMOptions'])
+                else:
+                    vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UnlockExperimentalVMOptions'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in

@@ -61,6 +61,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.CallTarget;
@@ -888,8 +889,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @ExportMessage
+        final Object getScope(Frame frame, boolean nodeEnter) {
+            return getScopeSlowPath(frame != null ? frame.materialize() : null, nodeEnter);
+        }
+
         @TruffleBoundary
-        final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        private Object getScopeSlowPath(MaterializedFrame frame, boolean nodeEnter) {
             // Delegates to the default implementation
             if (this instanceof FunctionRootNode) {
                 // has RootTag, is at function root, provide arguments

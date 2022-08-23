@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,14 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
@@ -70,6 +73,11 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private final boolean optional;
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     @Override
     public void run(StructuredGraph graph) {

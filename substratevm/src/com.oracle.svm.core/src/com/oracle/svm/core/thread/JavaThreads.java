@@ -34,13 +34,12 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -85,19 +84,6 @@ public final class JavaThreads {
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_Thread toTarget(Thread thread) {
         return Target_java_lang_Thread.class.cast(thread);
-    }
-
-    public static int getThreadStatus(Thread thread) {
-        return LoomSupport.CompatibilityUtil.getThreadStatus(toTarget(thread));
-    }
-
-    public static void setThreadStatus(Thread thread, int threadStatus) {
-        LoomSupport.CompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
-    }
-
-    /** Safe method to get a thread's internal state since {@link Thread#getState} is not final. */
-    static Thread.State getThreadState(Thread thread) {
-        return Target_jdk_internal_misc_VM.toThreadState(getThreadStatus(thread));
     }
 
     /**
@@ -175,6 +161,7 @@ public final class JavaThreads {
         return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
 
+    @AlwaysInline("Enable constant folding in case of Loom.")
     private static boolean isVirtualDisallowLoom(Thread thread) {
         if (LoomSupport.isEnabled()) {
             assert !isVirtual(thread) : "should not see Loom virtual thread objects here";
@@ -200,7 +187,7 @@ public final class JavaThreads {
     }
 
     static void yieldCurrent() {
-        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
+        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
             VirtualThreads.singleton().yield();
         } else {
             PlatformThreads.singleton().yieldCurrent();
@@ -208,19 +195,18 @@ public final class JavaThreads {
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
-    static StackTraceElement[] getStackTrace(Thread thread) {
-        if (thread == Thread.currentThread()) {
-            /*
-             * We can walk our own stack without a VMOperation. Note that it is intentional that we
-             * read the caller stack pointer in this helper method: The Thread.getStackTrace method
-             * itself needs to be included in the result.
-             */
-            return StackTraceUtils.getStackTrace(false, KnownIntrinsics.readCallerStackPointer());
+    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread) {
+        /*
+         * If our own thread's stack was requested, we can walk it without a VMOperation using a
+         * stack pointer. It is intentional that we use the caller stack pointer: the calling
+         * Thread.getStackTrace method itself needs to be included in the result.
+         */
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+
+        if (supportsVirtual()) { // NOTE: also for platform threads!
+            return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTrace(filterExceptions, thread, callerSP);
         }
-        if (isVirtual(thread)) {
-            return Target_java_lang_Thread.EMPTY_STACK_TRACE;
-        }
-        return PlatformThreads.getStackTrace(thread);
+        return PlatformThreads.getStackTrace(filterExceptions, thread, callerSP);
     }
 
     /** If there is an uncaught exception handler, call it. */
@@ -263,7 +249,7 @@ public final class JavaThreads {
      * <li>No security manager: using the ContextClassLoader of the parent.</li>
      * </ul>
      */
-    @SuppressWarnings({"deprecation"}) // AccessController is deprecated starting JDK 17
+    @SuppressWarnings({"deprecation", "removal"}) // AccessController is deprecated starting JDK 17
     static void initializeNewThread(
                     Target_java_lang_Thread tjlt,
                     ThreadGroup groupArg,
@@ -271,13 +257,14 @@ public final class JavaThreads {
                     String name,
                     long stackSize,
                     AccessControlContext acc,
+                    boolean allowThreadLocals,
                     boolean inheritThreadLocals) {
         if (name == null) {
             throw new NullPointerException("name cannot be null");
         }
         tjlt.name = name;
 
-        final Thread parent = PlatformThreads.currentThread.get();
+        final Thread parent = Thread.currentThread();
         final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
 
         int priority;
@@ -289,28 +276,64 @@ public final class JavaThreads {
             priority = parent.getPriority();
             daemon = parent.isDaemon();
         }
-        LoomSupport.CompatibilityUtil.initThreadFields(tjlt, group, target, stackSize, priority, daemon, ThreadStatus.NEW);
 
-        if (!(LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
-            JavaThreads.toTarget(group).addUnstarted();
+        initThreadFields(tjlt, group, target, stackSize, priority, daemon);
+
+        if (!VirtualThreads.isSupported() || !VirtualThreads.singleton().isVirtual(fromTarget(tjlt))) {
+            PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
+            if (JavaVersionUtil.JAVA_SPEC < 19) {
+                JavaThreads.toTarget(group).addUnstarted();
+            }
         }
-
-        tjlt.contextClassLoader = parent.getContextClassLoader();
 
         tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
 
-        Target_java_lang_Thread targetParent = SubstrateUtil.cast(parent, Target_java_lang_Thread.class);
-        if (inheritThreadLocals && targetParent.inheritableThreadLocals != null) {
-            tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(targetParent.inheritableThreadLocals);
-        }
+        initNewThreadLocalsAndLoader(tjlt, allowThreadLocals, inheritThreadLocals, parent);
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
     }
 
+    static void initThreadFields(Target_java_lang_Thread tjlt, ThreadGroup group, Runnable target, long stackSize, int priority, boolean daemon) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            assert tjlt.holder == null;
+            tjlt.holder = new Target_java_lang_Thread_FieldHolder(group, target, stackSize, priority, daemon);
+        } else {
+            tjlt.group = group;
+            tjlt.priority = priority;
+            tjlt.daemon = daemon;
+            tjlt.target = target;
+            tjlt.setPriority(priority);
+
+            /* Stash the specified stack size in case the VM cares */
+            tjlt.stackSize = stackSize;
+        }
+    }
+
+    static void initNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean allowThreadLocals, boolean inheritThreadLocals, Thread parent) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && !allowThreadLocals) {
+            tjlt.threadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
+            tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
+            tjlt.contextClassLoader = Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER;
+        } else if (inheritThreadLocals) {
+            Target_java_lang_ThreadLocal_ThreadLocalMap parentMap = toTarget(parent).inheritableThreadLocals;
+            if (parentMap != null && (JavaVersionUtil.JAVA_SPEC < 19 || (parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED && parentMap.size() > 0))) {
+                tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
+            }
+            ClassLoader parentLoader = parent.getContextClassLoader();
+            if (JavaVersionUtil.JAVA_SPEC < 19 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
+                tjlt.contextClassLoader = parentLoader;
+            } else {
+                tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();
+            }
+        } else {
+            tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();
+        }
+    }
+
     static void sleep(long millis) throws InterruptedException {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
-        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
+        if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
             VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
@@ -319,7 +342,7 @@ public final class JavaThreads {
     }
 
     static boolean isAlive(Thread thread) {
-        if (supportsVirtual() && isVirtualDisallowLoom(thread)) {
+        if (supportsVirtual() && isVirtualDisallowLoom(thread) && !LoomSupport.isEnabled()) {
             return VirtualThreads.singleton().isAlive(thread);
         }
         return PlatformThreads.isAlive(thread);
@@ -341,5 +364,13 @@ public final class JavaThreads {
             return toTarget(Thread.currentThread()).lockHelper;
         }
         return PlatformThreads.lockHelper.get();
+    }
+
+    public static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        if (supportsVirtual() && isVirtual(Thread.currentThread())) {
+            VirtualThreads.singleton().blockedOn(b);
+        } else {
+            PlatformThreads.blockedOn(b);
+        }
     }
 }

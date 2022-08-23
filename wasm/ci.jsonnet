@@ -8,12 +8,12 @@
   builds: [
     # Gates.
     common.jdk17_gate_linux_eclipse_jdt  + common.gate_graalwasm              + common.amd64   + {environment+: {GATE_TAGS: 'style,fullbuild'}}                       + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
-    common.jdk17_gate_linux_wabt         + common.gate_graalwasm_full         + common.amd64   + {environment+: {GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-linux-amd64'}       + common.wasm_unittest,
-    common.jdk17_gate_linux_wabt_emsdk   + common.gate_graalwasm_emsdk_full   + common.amd64   + {environment+: {GATE_TAGS: 'buildall,wasmextratest'}}                + {name: 'gate-graalwasm-extra-unittest-linux-amd64'} + common.wasm_unittest,
+    common.jdk17_gate_linux_wabt         + common.gate_graalwasm_full         + common.amd64   + {environment+: {GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-linux-amd64'},
+    common.jdk17_gate_linux_wabt_emsdk   + common.gate_graalwasm_emsdk_full   + common.amd64   + {environment+: {GATE_TAGS: 'buildall,wasmextratest'}}                + {name: 'gate-graalwasm-extra-unittest-linux-amd64'},
     common.jdk17_gate_linux_wabt_emsdk   + common.gate_graalwasm_emsdk_full   + common.amd64   + {environment+: {GATE_TAGS: 'buildall,wasmbenchtest'}}                + {name: 'gate-graalwasm-benchtest-linux-amd64'},
-    common.jdk17_gate_windows_wabt       + common.gate_graalwasm_full         + common.amd64   + {environment+: {GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-windows-amd64'} + common.devkits["windows-jdk17"] + common.wasm_unittest,
+    common.jdk17_gate_windows_wabt       + common.gate_graalwasm_full         + common.amd64   + {environment+: {GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-windows-amd64'} + common.devkits["windows-jdk17"],
 
-    common.jdk11_gate_linux_wabt         + common.gate_graalwasm_full         + common.aarch64 + {environment+: {GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-11-linux-aarch64'}  + common.wasm_unittest,
+    common.jdk11_gate_linux_wabt         + common.gate_graalwasm_full         + common.aarch64 + {environment+: {GATE_TAGS: 'build,wasmtest'}}                        + {name: 'gate-graalwasm-unittest-11-linux-aarch64'},
 
     # Benchmark jobs.
     common.jdk17_bench_linux_wabt_emsdk  + common.bench_graalwasm_emsdk_full  + common.amd64 + {

@@ -155,7 +155,7 @@ public class BaseInterop {
                     @CachedLibrary("object") InteropLibrary thisLibrary, @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         object.checkNotForeign();
         if (thisLibrary.hasIdentity(object)) {
-            return VM.JVM_IHashCode(object);
+            return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
         }
         error.enter();
         throw UnsupportedMessageException.create();

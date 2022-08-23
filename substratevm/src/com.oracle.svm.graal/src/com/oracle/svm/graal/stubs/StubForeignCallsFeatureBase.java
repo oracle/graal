@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -52,21 +53,20 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
     static final class StubDescriptor {
 
         private final ForeignCallDescriptor[] foreignCallDescriptors;
-
-        private final Class<?> declaringClass;
         private final boolean isReexecutable;
-        private final Enum<?> minimumRequiredFeature;
+        private final EnumSet<?> minimumRequiredFeatures;
+        private final EnumSet<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
-        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, Class<?> declaringClass, boolean isReexecutable, Enum<?> minimumRequiredFeature) {
-            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, declaringClass, isReexecutable, minimumRequiredFeature);
+        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
         }
 
-        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, Class<?> declaringClass, boolean isReexecutable, Enum<?> minimumRequiredFeature) {
+        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
-            this.declaringClass = declaringClass;
             this.isReexecutable = isReexecutable;
-            this.minimumRequiredFeature = minimumRequiredFeature;
+            this.minimumRequiredFeatures = minimumRequiredFeatures;
+            this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs() {
@@ -78,15 +78,16 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean generateBaseline = minimumRequiredFeature == null || buildtimeCPUFeatures.contains(minimumRequiredFeature);
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(Stubs.getRuntimeCheckedCPUFeatures()) && DeoptimizationSupport.enabled();
+            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures);
+            // Currently we only support AMD64, see CPUFeatureRegionEnterNode.generate
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() && Platform.includedIn(Platform.AMD64.class);
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {
-                    ret.add(SnippetRuntime.findForeignCall(declaringClass, call.getName(), isReexecutable));
+                    ret.add(SnippetRuntime.findForeignCall(SVMIntrinsicStubsGen.class, call.getName(), isReexecutable));
                 }
                 if (generateRuntimeChecked) {
-                    ret.add(SnippetRuntime.findForeignCall(declaringClass, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, isReexecutable));
+                    ret.add(SnippetRuntime.findForeignCall(SVMIntrinsicStubsGen.class, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, isReexecutable));
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);

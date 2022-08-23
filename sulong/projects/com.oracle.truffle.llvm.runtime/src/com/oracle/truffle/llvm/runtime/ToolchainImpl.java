@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,6 +89,11 @@ public final class ToolchainImpl implements Toolchain {
                 return binPrefix;
             case "CC":
                 return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");
+            case "CL":
+                if (!toolchainConfig.enableCL()) {
+                    return null;
+                }
+                return binPrefix.resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang-cl");
             case "CXX":
                 if (!toolchainConfig.enableCXX()) {
                     return null;

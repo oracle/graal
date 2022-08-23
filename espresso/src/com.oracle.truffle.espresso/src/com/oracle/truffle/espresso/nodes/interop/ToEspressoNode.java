@@ -147,7 +147,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
-    @Specialization
+    @Specialization(guards = "!isPrimitiveKlass(klass)")
     Object doEspresso(StaticObject value, Klass klass,
                     @Cached BranchProfile exceptionProfile,
                     @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
@@ -155,7 +155,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return value; // pass through, NULL coercion not needed.
         }
         exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
+        throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", klass.getTypeAsString()));
     }
 
     @Specialization
@@ -189,7 +189,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             // fall-through
         }
         exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
+        throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", interop.toDisplayString(value), " to ", primitiveKlass.getPrimitiveJavaKind().getJavaName()));
     }
 
     @Specialization

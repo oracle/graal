@@ -61,6 +61,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -1195,7 +1196,13 @@ final class BreakpointInterceptor {
                 }
             }
             for (String className : transitiveSerializeTargets) {
-                traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                if (DynamicProxySupport.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
+                    JNIObjectHandle interfaces = Support.callObjectMethod(jni, serializeTargetClass, agent.handles().javaLangClassGetInterfaces);
+                    Object interfaceNames = getClassArrayNames(jni, interfaces);
+                    traceSerializeBreakpoint(jni, "ProxyClassSerialization", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), interfaceNames);
+                } else {
+                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                }
             }
         }
         return true;

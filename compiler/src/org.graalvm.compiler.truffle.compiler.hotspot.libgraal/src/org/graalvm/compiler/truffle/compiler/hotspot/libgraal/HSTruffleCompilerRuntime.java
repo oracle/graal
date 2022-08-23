@@ -32,21 +32,13 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetFrameSlotKindTagForJavaKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetFrameSlotKindTagsCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetInlineKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetJavaKindForFrameSlotKind;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetLoopExplosionKind;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitch;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitchBoundary;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInlineable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSpecializationMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTruffleBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInInterpreter;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTransferToInterpreterMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInliningCutoff;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ReadMethodCache;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callAsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callConsumeOptimizedAssumptionDependency;
@@ -55,43 +47,44 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetFrameSlotKindTagForJavaKind;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetFrameSlotKindTagsCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetInlineKind;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetJavaKindForFrameSlotKind;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetLoopExplosionKind;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsInliningCutoff;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsBytecodeInterpreterSwitch;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsBytecodeInterpreterSwitchBoundary;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsInlineable;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSpecializationMethod;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSuppressedFailure;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsTruffleBoundary;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsValueType;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callLog;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callOnCodeInstallation;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callReadMethodCache;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIMethodScope.scope;
 import static org.graalvm.jniutils.JNIUtil.getInternalName;
 
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
+import org.graalvm.nativebridge.BinaryInput;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -111,10 +104,17 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 @FromLibGraalEntryPointsResolver(value = TruffleFromLibGraal.Id.class, entryPointsClassName = "org.graalvm.compiler.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints")
 final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleCompilerRuntime {
 
+    private static final int MAX_METHOD_CACHE_SIZE = 1_000;
+
     private final ResolvedJavaType classLoaderDelegate;
     private final OptionValues initialOptions;
 
-    private final ConcurrentHashMap<ResolvedJavaMethod, MethodCache> methodCache = new ConcurrentHashMap<>();
+    @SuppressWarnings("serial") private final Map<MethodKey, MethodCache> methodCache = Collections.synchronizedMap(new LinkedHashMap<>() {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<MethodKey, MethodCache> eldest) {
+            return size() > MAX_METHOD_CACHE_SIZE;
+        }
+    });
 
     HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
         super(env, handle);
@@ -123,13 +123,38 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     private MethodCache getMethodCache(ResolvedJavaMethod method) {
-        return methodCache.computeIfAbsent(method, this::createMethodCache);
+        MethodKey key = new MethodKey(method);
+        // It intentionally does not use Map#computeIfAbsent.
+        // Collections.SynchronizedMap#computeIfAbsent implementation blocks readers during the
+        // creation of the MethodCache.
+        MethodCache cache = methodCache.get(key);
+        if (cache == null) {
+            cache = createMethodCache(method);
+            methodCache.putIfAbsent(key, cache);
+        }
+        return cache;
     }
 
+    @TruffleFromLibGraal(ReadMethodCache)
     private MethodCache createMethodCache(ResolvedJavaMethod method) {
-        return new MethodCache(getLoopExplosionKindImpl(method), getInlineKindImpl(method, true), getInlineKindImpl(method, false), isInlineableImpl(method),
-                        isTruffleBoundaryImpl(method), isBytecodeInterpreterSwitchImpl(method), isBytecodeInterpreterSwitchBoundaryImpl(method),
-                        isInInterpreterImpl(method), isTransferToInterpreterMethodImpl(method), callIsInliningCutoffImpl(method));
+        long methodHandle = LibGraal.translate(method);
+        JByteArray hsByteArray = callReadMethodCache(env(), getHandle(), methodHandle);
+        CCharPointer buffer = StackValue.get(19);
+        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 19, buffer);
+        BinaryInput in = BinaryInput.create(buffer, 19);
+        LoopExplosionKind loopExplosionKind = LoopExplosionKind.values()[in.readInt()];
+        InlineKind peInlineKind = InlineKind.values()[in.readInt()];
+        InlineKind inlineKind = InlineKind.values()[in.readInt()];
+        boolean inlineable = in.readBoolean();
+        boolean truffleBoundary = in.readBoolean();
+        boolean bytecodeInterpreterSwitch = in.readBoolean();
+        boolean bytecodeInterpreterSwitchBoundary = in.readBoolean();
+        boolean inInterpreter = in.readBoolean();
+        boolean transferToInterpreterMethod = in.readBoolean();
+        boolean callIsInliningCutoff = in.readBoolean();
+        return new MethodCache(loopExplosionKind, peInlineKind, inlineKind, inlineable,
+                        truffleBoundary, bytecodeInterpreterSwitch, bytecodeInterpreterSwitchBoundary,
+                        inInterpreter, transferToInterpreterMethod, callIsInliningCutoff);
     }
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)
@@ -174,26 +199,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         return LibGraal.unhand(JavaConstant.class, callTargetHandle);
     }
 
-    @TruffleFromLibGraal(IsInlineable)
     @Override
     public boolean isInlineable(ResolvedJavaMethod method) {
         MethodCache cache = getMethodCache(method);
         return cache.isInlineable;
     }
 
-    private boolean isInlineableImpl(ResolvedJavaMethod method) {
-        return callIsInlineable(env(), getHandle(), LibGraal.translate(method));
-    }
-
-    @TruffleFromLibGraal(IsTruffleBoundary)
     @Override
     public boolean isTruffleBoundary(ResolvedJavaMethod method) {
         MethodCache cache = getMethodCache(method);
         return cache.isTruffleBoundary;
-    }
-
-    private boolean isTruffleBoundaryImpl(ResolvedJavaMethod method) {
-        return callIsTruffleBoundary(env(), getHandle(), LibGraal.translate(method));
     }
 
     @TruffleFromLibGraal(IsSpecializationMethod)
@@ -202,7 +217,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         return callIsSpecializationMethod(env(), getHandle(), LibGraal.translate(method));
     }
 
-    @TruffleFromLibGraal(IsBytecodeInterpreterSwitch)
     @Override
     public boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
         if (JNIMethodScope.scope() != null) {
@@ -213,11 +227,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
     }
 
-    private boolean isBytecodeInterpreterSwitchImpl(ResolvedJavaMethod method) {
-        return callIsBytecodeInterpreterSwitch(env(), getHandle(), LibGraal.translate(method));
-    }
-
-    @TruffleFromLibGraal(IsInliningCutoff)
     @Override
     public boolean isInliningCutoff(ResolvedJavaMethod method) {
         if (JNIMethodScope.scope() != null) {
@@ -228,11 +237,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
     }
 
-    private boolean callIsInliningCutoffImpl(ResolvedJavaMethod method) {
-        return callIsInliningCutoff(env(), getHandle(), LibGraal.translate(method));
-    }
-
-    @TruffleFromLibGraal(IsBytecodeInterpreterSwitchBoundary)
     @Override
     public boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
         if (JNIMethodScope.scope() != null) {
@@ -243,11 +247,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
     }
 
-    private boolean isBytecodeInterpreterSwitchBoundaryImpl(ResolvedJavaMethod method) {
-        return callIsBytecodeInterpreterSwitchBoundary(env(), getHandle(), LibGraal.translate(method));
-    }
-
-    @TruffleFromLibGraal(IsInInterpreter)
     @Override
     public boolean isInInterpreter(ResolvedJavaMethod method) {
         if (JNIMethodScope.scope() != null) {
@@ -258,11 +257,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
     }
 
-    private boolean isInInterpreterImpl(ResolvedJavaMethod method) {
-        return HSTruffleCompilerRuntimeGen.callIsInInterpreter(env(), getHandle(), LibGraal.translate(method));
-    }
-
-    @TruffleFromLibGraal(IsTransferToInterpreterMethod)
     @Override
     public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
         if (JNIMethodScope.scope() != null) {
@@ -273,17 +267,12 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
     }
 
-    private boolean isTransferToInterpreterMethodImpl(ResolvedJavaMethod method) {
-        return HSTruffleCompilerRuntimeGen.callIsTransferToInterpreterMethod(env(), getHandle(), LibGraal.translate(method));
-    }
-
     @TruffleFromLibGraal(IsValueType)
     @Override
     public boolean isValueType(ResolvedJavaType type) {
         return callIsValueType(env(), getHandle(), LibGraal.translate(type));
     }
 
-    @TruffleFromLibGraal(GetInlineKind)
     @Override
     public InlineKind getInlineKind(ResolvedJavaMethod method, boolean duringPartialEvaluation) {
         MethodCache cache = getMethodCache(method);
@@ -294,22 +283,9 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
     }
 
-    private InlineKind getInlineKindImpl(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
-        long methodHandle = LibGraal.translate(original);
-        int inlineKindOrdinal = callGetInlineKind(env(), getHandle(), methodHandle, duringPartialEvaluation);
-        return InlineKind.values()[inlineKindOrdinal];
-    }
-
-    @TruffleFromLibGraal(GetLoopExplosionKind)
     @Override
     public LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
         return getMethodCache(method).explosionKind;
-    }
-
-    private LoopExplosionKind getLoopExplosionKindImpl(ResolvedJavaMethod method) {
-        long methodHandle = LibGraal.translate(method);
-        int loopExplosionKindOrdinal = callGetLoopExplosionKind(env(), getHandle(), methodHandle);
-        return LoopExplosionKind.values()[loopExplosionKindOrdinal];
     }
 
     @TruffleFromLibGraal(GetConstantFieldInfo)

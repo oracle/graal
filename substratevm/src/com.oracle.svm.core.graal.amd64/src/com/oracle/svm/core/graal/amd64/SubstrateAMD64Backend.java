@@ -60,6 +60,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
@@ -618,7 +619,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
             Value codeStartField = new AMD64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo), KnownOffsets.singleton().getImageCodeInfoCodeStartOffset());
-            Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null, MemoryExtendKind.DEFAULT);
+            Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
             return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);
         }
 
@@ -804,6 +805,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else {
                 emitMove(result, value);
             }
+        }
+
+        @Override
+        public int getArrayLengthOffset() {
+            return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
         }
     }
 
@@ -1005,14 +1011,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return null;
             }
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target()));
+            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target(), Stubs.getRequiredCPUFeatures(valueNode.getClass())));
         }
 
     }
 
-    private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target) {
+    private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target, EnumSet<?> runtimeCheckedCPUFeatures) {
         EnumSet<?> buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
-        if (buildtimeCPUFeatures.containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64) || !((AMD64) target.arch).getFeatures().containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64)) {
+        if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !((AMD64) target.arch).getFeatures().containsAll(runtimeCheckedCPUFeatures)) {
             return descriptor;
         } else {
             GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");

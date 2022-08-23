@@ -48,6 +48,7 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -64,8 +65,6 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 
@@ -240,15 +239,9 @@ final class Target_java_security_Provider {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ServiceKeyComputer implements RecomputeFieldValue.CustomFieldValueComputer {
-
+class ServiceKeyComputer implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         try {
             Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
             Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
@@ -388,14 +381,9 @@ final class Target_javax_crypto_JceSecurity {
                         "All providers must be registered and verified in the Native Image builder. ");
     }
 
-    private static class VerificationCacheTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+    private static class VerificationCacheTransformer implements FieldValueTransformer {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+        public Object transform(Object receiver, Object originalValue) {
             return SecurityProvidersFilter.instance().cleanVerificationCache(originalValue);
         }
     }
@@ -664,14 +652,9 @@ final class Target_sun_security_jca_Providers {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ProviderListTransformer.class, disableCaching = true)//
     private static ProviderList providerList;
 
-    private static class ProviderListTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+    private static class ProviderListTransformer implements FieldValueTransformer {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+        public Object transform(Object receiver, Object originalValue) {
             ProviderList originalProviderList = (ProviderList) originalValue;
             return SecurityProvidersFilter.instance().cleanUnregisteredProviders(originalProviderList);
         }

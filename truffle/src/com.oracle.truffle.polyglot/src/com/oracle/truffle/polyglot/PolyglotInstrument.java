@@ -201,7 +201,6 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     }
 
     void ensureClosed() {
-        assert Thread.holdsLock(engine.lock);
         if (created && !closed) {
             synchronized (instrumentLock) {
                 if (created && !closed) {

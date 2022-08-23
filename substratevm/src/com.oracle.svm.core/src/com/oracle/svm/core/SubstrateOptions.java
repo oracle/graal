@@ -134,16 +134,6 @@ public class SubstrateOptions {
     @Option(help = "Support continuations (without requiring a Project Loom JDK)") //
     public static final HostedOptionKey<Boolean> SupportContinuations = new HostedOptionKey<>(false);
 
-    @Option(help = "Build with Project Loom JDK") //
-    public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                SupportContinuations.update(values, true);
-            }
-        }
-    };
-
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
     public static final int NoFallback = 0;
@@ -408,6 +398,10 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
+    @APIOption(name = "silent")//
+    @Option(help = "Silence build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
+
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 

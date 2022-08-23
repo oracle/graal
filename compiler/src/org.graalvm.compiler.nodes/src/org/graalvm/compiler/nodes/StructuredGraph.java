@@ -29,7 +29,6 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +54,7 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -82,60 +82,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
-     * The different stages of the compilation of a {@link Graph} regarding the status of
-     * {@link GuardNode}s, {@link DeoptimizingNode}s and {@link FrameState}s. The stage of a graph
-     * progresses monotonously.
-     */
-    public enum GuardsStage {
-        /**
-         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}s
-         * such as {@link GuardNode}s. New {@link DeoptimizingNode}s can be introduced without
-         * constraints. {@link FrameState}s are associated with {@link StateSplit} nodes.
-         */
-        FLOATING_GUARDS,
-        /**
-         * During this stage, all {@link DeoptimizingNode}s must be {@link FixedNode fixed} but new
-         * {@link DeoptimizingNode}s can still be introduced. {@link FrameState}s are still
-         * associated with {@link StateSplit} nodes.
-         */
-        FIXED_DEOPTS,
-        /**
-         * During this stage, all {@link DeoptimizingNode}s must be {@link FixedNode fixed}. New
-         * {@link DeoptimizingNode}s cannot be introduced. {@link FrameState}s are now associated
-         * with {@link DeoptimizingNode}s.
-         */
-        AFTER_FSA;
-
-        public boolean allowsFloatingGuards() {
-            return this == FLOATING_GUARDS;
-        }
-
-        public boolean allowsGuardInsertion() {
-            return this.ordinal() <= FIXED_DEOPTS.ordinal();
-        }
-
-        public boolean areFrameStatesAtDeopts() {
-            return this == AFTER_FSA;
-        }
-
-        public boolean areFrameStatesAtSideEffects() {
-            return !this.areFrameStatesAtDeopts();
-        }
-
-        public boolean areDeoptsFixed() {
-            return this.ordinal() >= FIXED_DEOPTS.ordinal();
-        }
-
-        public boolean requiresValueProxies() {
-            return this != AFTER_FSA;
-        }
-
-        public boolean reachedGuardsStage(GuardsStage stage) {
-            return this.ordinal() >= stage.ordinal();
-        }
-    }
-
-    /**
      * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
      */
     public enum AllowAssumptions {
@@ -149,22 +95,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public static AllowAssumptions ifNonNull(Assumptions assumptions) {
             return assumptions != null ? YES : NO;
         }
-    }
-
-    /**
-     * Different stages of the compilation regarding the status of various graph properties.
-     */
-    public enum StageFlag {
-        PARTIAL_ESCAPE,
-        HIGH_TIER_LOWERING,
-        FLOATING_READS,
-        GUARD_MOVEMENT,
-        VALUE_PROXY_REMOVAL,
-        MID_TIER_LOWERING,
-        LOW_TIER_LOWERING,
-        EXPAND_LOGIC,
-        FIXED_READS,
-        FINAL_CANONICALIZATION
     }
 
     public static class ScheduleResult {
@@ -201,6 +131,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public static class Builder {
         private String name;
         private final Assumptions assumptions;
+        private GraphState graphState;
         private SpeculationLog speculationLog;
         private ResolvedJavaMethod rootMethod;
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
@@ -267,6 +198,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return debug;
         }
 
+        public GraphState getGraphState() {
+            return graphState;
+        }
+
+        public Builder graphState(GraphState state) {
+            this.graphState = state;
+            return this;
+        }
+
         public SpeculationLog getSpeculationLog() {
             return speculationLog;
         }
@@ -330,14 +270,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
+            GraphState newGraphState = graphState == null ? GraphState.defaultGraphState() : graphState;
             List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
             // @formatter:off
             return new StructuredGraph(name,
                             rootMethod,
                             entryBCI,
                             assumptions,
-                            speculationLog,
-                    profileProvider,
+                            profileProvider,
+                            newGraphState.copyWith(isSubstitution, speculationLog),
                             isSubstitution,
                             inlinedMethods,
                             trackNodeSourcePosition,
@@ -358,83 +299,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final long graphId;
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
-    private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
-    private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
-    private StageFlag currentStage = null;
-    private FrameStateVerification frameStateVerification;
-    /** Flag to indicate {@link #clearAllStateAfterForTestingOnly()} was called. */
-    private boolean stateAfterClearedForTesting = false;
-
-    /**
-     * Different node types verified during {@linkplain FrameStateVerification}. See
-     * {@linkplain FrameStateVerification} for details.
-     */
-    public enum FrameStateVerificationFeature {
-        STATE_SPLITS,
-        MERGES,
-        LOOP_BEGINS,
-        LOOP_EXITS
-    }
-
-    /**
-     * The different stages of the compilation of a {@link Graph} regarding the status of
-     * {@linkplain FrameState} verification of {@linkplain AbstractStateSplit} state after.
-     * Verification starts with the mode {@linkplain FrameStateVerification#ALL}, i.e., all state
-     * splits with side-effects, merges and loop exits need a proper state after. The verification
-     * mode progresses monotonously until the {@linkplain FrameStateVerification#NONE} mode is
-     * reached. From there on, no further {@linkplain AbstractStateSplit#stateAfter} verification
-     * happens.
-     */
-    public enum FrameStateVerification {
-        /**
-         * Verify all {@linkplain AbstractStateSplit} nodes that return {@code true} for
-         * {@linkplain AbstractStateSplit#hasSideEffect()} have a
-         * {@linkplain AbstractStateSplit#stateAfter} assigned. Additionally, verify
-         * {@linkplain LoopExitNode} and {@linkplain AbstractMergeNode} have a valid
-         * {@linkplain AbstractStateSplit#stateAfter}. This is necessary to avoid missing
-         * {@linkplain FrameState} after optimizations. See {@link GraphUtil#mayRemoveSplit} for
-         * more details.
-         *
-         * This stage is the initial verification stage for every graph.
-         */
-        ALL(EnumSet.allOf(FrameStateVerificationFeature.class)),
-        /**
-         * Same as {@linkplain #ALL} except that {@linkplain LoopExitNode} nodes are no longer
-         * verified.
-         */
-        ALL_EXCEPT_LOOP_EXIT(EnumSet.complementOf(EnumSet.of(FrameStateVerificationFeature.LOOP_EXITS))),
-        /**
-         * Same as {@linkplain #ALL_EXCEPT_LOOP_EXIT} except that {@linkplain LoopBeginNode} are no
-         * longer verified.
-         */
-        ALL_EXCEPT_LOOPS(EnumSet.complementOf(EnumSet.of(FrameStateVerificationFeature.LOOP_BEGINS, FrameStateVerificationFeature.LOOP_EXITS))),
-        /**
-         * Verification is disabled. Typically used after assigning {@linkplain FrameState} to
-         * {@linkplain DeoptimizeNode} or for {@linkplain Snippet} compilations.
-         */
-        NONE(EnumSet.noneOf(FrameStateVerificationFeature.class));
-
-        private EnumSet<FrameStateVerificationFeature> features;
-
-        FrameStateVerification(EnumSet<FrameStateVerificationFeature> features) {
-            this.features = features;
-        }
-
-        /**
-         * Determines if the current verification mode implies this feature.
-         *
-         * @param feature the other verification feature to check
-         * @return {@code true} if this verification mode implies the feature, {@code false}
-         *         otherwise
-         */
-        boolean implies(FrameStateVerificationFeature feature) {
-            return this.features.contains(feature);
-        }
-
-    }
-
     private final ProfileProvider profileProvider;
-
+    private GraphState graphState;
     private final Cancellable cancellable;
     private final boolean isSubstitution;
 
@@ -442,8 +308,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * The assumptions made while constructing and transforming this graph.
      */
     private final Assumptions assumptions;
-
-    private SpeculationLog speculationLog;
 
     private ScheduleResult lastSchedule;
 
@@ -477,8 +341,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     ResolvedJavaMethod method,
                     int entryBCI,
                     Assumptions assumptions,
-                    SpeculationLog speculationLog,
                     ProfileProvider profileProvider,
+                    GraphState graphState,
                     boolean isSubstitution,
                     List<ResolvedJavaMethod> methods,
                     boolean trackNodeSourcePosition,
@@ -488,6 +352,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     Cancellable cancellable,
                     NodeSourcePosition context) {
         super(name, options, debug, trackNodeSourcePosition);
+        this.graphState = graphState;
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
         this.graphId = uniqueGraphIds.incrementAndGet();
@@ -495,7 +360,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
         this.methods = methods;
-        this.speculationLog = speculationLog;
         assert !isSubstitution || profileProvider == null;
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
@@ -503,7 +367,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.cancellable = cancellable;
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
-        this.frameStateVerification = isSubstitution ? FrameStateVerification.NONE : FrameStateVerification.ALL;
     }
 
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
@@ -625,6 +488,39 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return entryBCI;
     }
 
+    public GraphState getGraphState() {
+        return graphState;
+    }
+
+    /**
+     * Returns the guards stage of this graph. See {@link GraphState#getGuardsStage()}.
+     */
+    public GraphState.GuardsStage getGuardsStage() {
+        return getGraphState().getGuardsStage();
+    }
+
+    /**
+     * Returns the {@link SpeculationLog} for this graph. See
+     * {@link GraphState#getSpeculationLog()}.
+     */
+    public SpeculationLog getSpeculationLog() {
+        return getGraphState().getSpeculationLog();
+    }
+
+    /**
+     * See {@link GraphState#isBeforeStage}.
+     */
+    public boolean isBeforeStage(GraphState.StageFlag stage) {
+        return getGraphState().isBeforeStage(stage);
+    }
+
+    /**
+     * See {@link GraphState#isAfterStage}.
+     */
+    public boolean isAfterStage(GraphState.StageFlag stage) {
+        return getGraphState().isAfterStage(stage);
+    }
+
     public Cancellable getCancellable() {
         return cancellable;
     }
@@ -737,8 +633,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         rootMethodForCopy,
                         entryBCI,
                         assumptions == null ? null : new Assumptions(),
-                        speculationLog,
                         profileProvider,
+                        graphState.copy(),
                         isSubstitution,
                         methods != null ? new ArrayList<>(methods) : null,
                         trackNodeSourcePositionForCopy,
@@ -748,10 +644,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             copy.assumptions.record(assumptions);
         }
         copy.hasUnsafeAccess = hasUnsafeAccess;
-        copy.setGuardsStage(getGuardsStage());
-        copy.stageFlags = EnumSet.copyOf(stageFlags);
-        copy.currentStage = currentStage;
-        copy.trackNodeSourcePosition = trackNodeSourcePositionForCopy;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
@@ -989,9 +881,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void reduceDegenerateLoopBegin(LoopBeginNode begin) {
+        reduceDegenerateLoopBegin(begin, false);
+    }
+
+    public void reduceDegenerateLoopBegin(LoopBeginNode begin, boolean forKillCFG) {
         assert begin.loopEnds().isEmpty() : "Loop begin still has backedges";
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
-            reduceTrivialMerge(begin);
+            reduceTrivialMerge(begin, forKillCFG);
         } else { // convert to merge
             AbstractMergeNode merge = this.add(new MergeNode());
             for (EndNode end : begin.forwardEnds()) {
@@ -1001,8 +897,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    @SuppressWarnings("static-method")
     public void reduceTrivialMerge(AbstractMergeNode merge) {
+        reduceTrivialMerge(merge, false);
+    }
+
+    @SuppressWarnings("static-method")
+    public void reduceTrivialMerge(AbstractMergeNode merge, boolean forKillCFG) {
         assert merge.forwardEndCount() == 1;
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
@@ -1019,7 +919,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
         // remove loop exits
         if (merge instanceof LoopBeginNode) {
-            ((LoopBeginNode) merge).removeExits();
+            ((LoopBeginNode) merge).removeExits(forKillCFG);
         }
         AbstractEndNode singleEnd = merge.forwardEndAt(0);
         FixedNode sux = merge.next();
@@ -1036,47 +936,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         } else {
             singleEnd.replaceAndDelete(sux);
         }
-    }
-
-    public GuardsStage getGuardsStage() {
-        return guardsStage;
-    }
-
-    public void setGuardsStage(GuardsStage guardsStage) {
-        assert guardsStage.ordinal() >= this.guardsStage.ordinal();
-        this.guardsStage = guardsStage;
-    }
-
-    public boolean isBeforeStage(StageFlag stage) {
-        return !isDuringStage(stage) && !isAfterStage(stage);
-    }
-
-    /**
-     * Phases may set this flag to indicate that a stage is in progress. This is optional:
-     * {@link #isAfterStage(StageFlag)} may become true for a stage even if
-     * {@link #isDuringStage(StageFlag)} was never set for that stage.
-     */
-    public boolean isDuringStage(StageFlag stage) {
-        return currentStage == stage;
-    }
-
-    public boolean isAfterStage(StageFlag stage) {
-        return stageFlags.contains(stage);
-    }
-
-    public void setDuringStage(StageFlag stage) {
-        assert isBeforeStage(stage) : "Cannot set during stage " + stage + " since the graph is not before that stage";
-        currentStage = stage;
-    }
-
-    public void setAfterStage(StageFlag stage) {
-        assert !isAfterStage(stage) : "Cannot set after stage " + stage + " since the graph is already after that stage";
-        stageFlags.add(stage);
-        currentStage = null;
-    }
-
-    public EnumSet<StageFlag> getStageFlags() {
-        return stageFlags;
     }
 
     /**
@@ -1244,45 +1103,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return hasUnsafeAccess != UnsafeAccessState.DISABLED;
     }
 
-    public SpeculationLog getSpeculationLog() {
-        return speculationLog;
-    }
-
-    public FrameStateVerification getFrameStateVerification() {
-        return frameStateVerification;
-    }
-
-    public boolean isStateAfterClearedForTesting() {
-        return stateAfterClearedForTesting;
-    }
-
-    public void weakenFrameStateVerification(FrameStateVerification newFrameStateVerification) {
-        if (frameStateVerification == FrameStateVerification.NONE) {
-            return;
-        }
-        if (newFrameStateVerification == FrameStateVerification.NONE) {
-            /*
-             * Unit tests and substitution graphs can disable verification early on in the
-             * compilation pipeline.
-             */
-            frameStateVerification = FrameStateVerification.NONE;
-            return;
-        }
-        assert frameStateVerification.ordinal() < newFrameStateVerification.ordinal() : "Old verification " + frameStateVerification + " must imply new verification " + newFrameStateVerification +
-                        ", i.e., verification can only be relaxed over the course of compilation";
-        frameStateVerification = newFrameStateVerification;
-    }
-
-    public void disableFrameStateVerification() {
-        weakenFrameStateVerification(FrameStateVerification.NONE);
-    }
-
     /**
      * For use in tests to clear all stateAfter frame states.
      */
     public void clearAllStateAfterForTestingOnly() {
-        stateAfterClearedForTesting = true;
-        weakenFrameStateVerification(FrameStateVerification.NONE);
+        graphState.weakenFrameStateVerification(GraphState.FrameStateVerification.NONE);
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {
                 FrameState stateAfter = ((StateSplit) node).stateAfter();
@@ -1296,6 +1121,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                 }
             }
         }
+        graphState.forceDisableFrameStateVerification();
     }
 
     public boolean hasVirtualizableAllocation() {
@@ -1309,7 +1135,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterRegister(Node node) {
-        assert !isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
+        assert !graphState.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
         if (inliningLog != null && node instanceof Invokable) {
             ((Invokable) node).updateInliningLogAfterRegister(this);
         }

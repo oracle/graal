@@ -47,6 +47,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isLatin1;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TSCodeRange {
 
@@ -224,10 +225,6 @@ final class TSCodeRange {
         return 0;
     }
 
-    static int asciiLatinBytesNonAsciiCodeRange(TruffleString.Encoding encoding) {
-        return asciiLatinBytesNonAsciiCodeRange(encoding.id);
-    }
-
     static int asciiLatinBytesNonAsciiCodeRange(int encoding) {
         if (isAscii(encoding)) {
             return TSCodeRange.getBrokenFixedWidth();
@@ -240,10 +237,22 @@ final class TSCodeRange {
         }
     }
 
-    static int getAsciiCodeRange(int encoding) {
+    static int asciiLatinBytesNonAsciiCodeRange(Encoding encoding) {
+        if (isAscii(encoding)) {
+            return TSCodeRange.getBrokenFixedWidth();
+        } else if (isLatin1(encoding)) {
+            return TSCodeRange.get8Bit();
+        } else if (isBytes(encoding)) {
+            return TSCodeRange.getValidFixedWidth();
+        } else {
+            return TSCodeRange.getUnknown();
+        }
+    }
+
+    static int getAsciiCodeRange(Encoding encoding) {
         if (TStringGuards.is7BitCompatible(encoding)) {
             return get7Bit();
-        } else if (JCodings.getInstance().isSingleByte(TruffleString.Encoding.getJCoding(encoding))) {
+        } else if (JCodings.getInstance().isSingleByte(encoding.jCoding)) {
             return getValidFixedWidth();
         } else {
             return getValidMultiByte();

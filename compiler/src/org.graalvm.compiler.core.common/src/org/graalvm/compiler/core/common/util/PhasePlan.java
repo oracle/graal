@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,26 @@ public interface PhasePlan<T> {
     }
 
     /**
+     * Retrieves the changes to the state of the graph caused by the phase at {@code position} in
+     * the phase plan.
+     *
+     * @param position the position of the phase in the plan
+     */
+    default String getGraphStateDiff(int position) {
+        return null;
+    }
+
+    /**
+     * Gets the index of the phase that caused a failure during the execution of this phase plan
+     * (assertion error, compilation bailout, or any other Throwable).
+     *
+     * @return the index of the phase that caused the failure, {@code -1} means no failure occurred.
+     */
+    default int getFailureIndex() {
+        return -1;
+    }
+
+    /**
      * Utility for formatting a plan as a string.
      */
     final class Printer {
@@ -80,16 +100,31 @@ public interface PhasePlan<T> {
 
         @SuppressWarnings("unchecked")
         private <T> Formatter printPlan(String indent, String indentLast, PhasePlan<T> plan, Formatter buf) {
+            int index = 0;
             for (Iterator<T> iter = plan.getPhases().iterator(); iter.hasNext();) {
                 T phase = iter.next();
                 String className = plan.getPhaseName(phase);
                 boolean hasNext = iter.hasNext();
-                buf.format("%s%s%n", hasNext ? indent : indentLast, abbreviate(className));
+                buf.format("%s%s", hasNext ? indent : indentLast, abbreviate(className));
+
+                String graphState = plan.getGraphStateDiff(index);
+                if (graphState != null) {
+                    buf.format(" %s", graphState);
+                }
+
+                if (plan.getFailureIndex() == index) {
+                    buf.format("  /* THE FAILURE OCCURRED DURING THIS PHASE */");
+                }
+
+                buf.format("%n");
+
                 if (phase instanceof PhasePlan) {
                     PhasePlan<T> subPlan = (PhasePlan<T>) phase;
                     String prefix = hasNext ? CONNECTING_INDENT : EMPTY_INDENT;
                     printPlan(prefix + indent, prefix + indentLast, subPlan, buf);
                 }
+
+                index++;
             }
             return buf;
         }

@@ -102,6 +102,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.word.LocationIdentity;
@@ -153,8 +154,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
@@ -690,14 +689,9 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
         VMRuntime.initialize();
     }
 
-    private static final class InjectedManagementComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    private static final class InjectedManagementComputer implements FieldValueTransformer {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             try {
                 Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass("org.graalvm.compiler.hotspot.management.libgraal.LibGraalHotSpotGraalManagement$Factory");
                 Constructor<?> constructor = clazz.getDeclaredConstructor();

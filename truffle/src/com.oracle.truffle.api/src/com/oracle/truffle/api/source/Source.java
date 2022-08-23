@@ -1531,6 +1531,10 @@ public abstract class Source {
             this.embedderSource = b;
         }
 
+        void url(URL url) {
+            this.url = url;
+        }
+
         void path(String path) {
             this.path = path;
         }

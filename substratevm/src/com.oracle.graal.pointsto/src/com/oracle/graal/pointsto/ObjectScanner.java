@@ -180,7 +180,7 @@ public class ObjectScanner {
             }
 
         } catch (UnsupportedFeatureException ex) {
-            unsupportedFeature(field.format("%H.%n"), ex.getMessage(), reason);
+            unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
         }
     }
 
@@ -199,10 +199,10 @@ public class ObjectScanner {
         Object[] arrayObject = (Object[]) valueObj;
         for (int idx = 0; idx < arrayObject.length; idx++) {
             Object e = arrayObject[idx];
-            try {
-                if (e == null) {
-                    scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
-                } else {
+            if (e == null) {
+                scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
+            } else {
+                try {
                     Object element = bb.getUniverse().replaceObject(e);
                     JavaConstant elementConstant = bb.getSnippetReflectionProvider().forObject(element);
                     AnalysisType elementType = analysisType(bb, element);
@@ -214,9 +214,9 @@ public class ObjectScanner {
                      * referenced elements are being scanned.
                      */
                     scanConstant(elementConstant, reason);
+                } catch (UnsupportedFeatureException ex) {
+                    unsupportedFeatureDuringConstantScan(bb, bb.getSnippetReflectionProvider().forObject(e), ex, reason);
                 }
-            } catch (UnsupportedFeatureException ex) {
-                unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason);
             }
         }
     }
@@ -245,7 +245,24 @@ public class ObjectScanner {
         }
     }
 
-    private void unsupportedFeature(String key, String message, ScanReason reason) {
+    /**
+     * Use the constant hashCode as a key for the unsupported feature to register only one error
+     * message if the constant is reachable from multiple places.
+     */
+    public static void unsupportedFeatureDuringConstantScan(BigBang bb, JavaConstant constant, UnsupportedFeatureException e, ScanReason reason) {
+        unsupportedFeature(bb, String.valueOf(constant.hashCode()), e.getMessage(), reason);
+    }
+
+    /**
+     * Use the field format and receiver hashCode as a key for the unsupported feature to register
+     * only one error message if the value is reachable from multiple places. For example both the
+     * heap scanning and the heap verification would scan a field that contains an illegal value.
+     */
+    public static void unsupportedFeatureDuringFieldScan(BigBang bb, AnalysisField field, JavaConstant receiver, UnsupportedFeatureException e, ScanReason reason) {
+        unsupportedFeature(bb, (receiver != null ? receiver.hashCode() + "_" : "") + field.format("%H.%n"), e.getMessage(), reason);
+    }
+
+    public static void unsupportedFeature(BigBang bb, String key, String message, ScanReason reason) {
         StringBuilder objectBacktrace = new StringBuilder();
         AnalysisMethod method = buildObjectBacktrace(bb, reason, objectBacktrace);
         bb.getUnsupportedFeatures().addMessage(key, method, message, objectBacktrace.toString());
@@ -353,7 +370,7 @@ public class ObjectScanner {
                 scanArray(entry.constant, entry.reason);
             }
         } catch (UnsupportedFeatureException ex) {
-            unsupportedFeature("", ex.getMessage(), entry.reason);
+            unsupportedFeatureDuringConstantScan(bb, entry.constant, ex, entry.reason);
         }
     }
 

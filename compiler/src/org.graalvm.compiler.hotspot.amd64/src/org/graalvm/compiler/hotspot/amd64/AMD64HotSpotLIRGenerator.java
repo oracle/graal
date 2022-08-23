@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.DebugContext;
@@ -467,7 +468,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue address = new AMD64AddressValue(wordKind, thread, offset);
-        arithmeticLIRGen.emitStore(v.getValueKind(), address, v, null);
+        arithmeticLIRGen.emitStore(v.getValueKind(), address, v, null, MemoryOrderMode.PLAIN);
     }
 
     @Override
@@ -626,5 +627,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private Value combineLoAndHi(Value lo, Value hi) {
         Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
         return getArithmetic().emitOr(shiftedHi, lo);
+    }
+
+    @Override
+    public int getArrayLengthOffset() {
+        return config.arrayOopDescLengthOffset();
     }
 }

@@ -182,19 +182,16 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
 
     @Override
-    public int maybeAdjustNewParkStatus(int status) {
-        Object blocker = LockSupport.getBlocker(Thread.currentThread());
+    public int getParkedThreadStatus(Thread thread, boolean timed) {
+        Object blocker = LockSupport.getBlocker(thread);
         if (blocker instanceof JavaMonitorConditionObject) {
             // Blocked on one of the condition objects that implement Object.wait()
-            if (status == ThreadStatus.PARKED_TIMED) {
-                return ThreadStatus.IN_OBJECT_WAIT_TIMED;
-            }
-            return ThreadStatus.IN_OBJECT_WAIT;
+            return timed ? ThreadStatus.IN_OBJECT_WAIT_TIMED : ThreadStatus.IN_OBJECT_WAIT;
         } else if (blocker instanceof JavaMonitor) {
             // Blocked directly on the lock
             return ThreadStatus.BLOCKED_ON_MONITOR_ENTER;
         }
-        return status;
+        return timed ? ThreadStatus.PARKED_TIMED : ThreadStatus.PARKED;
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)

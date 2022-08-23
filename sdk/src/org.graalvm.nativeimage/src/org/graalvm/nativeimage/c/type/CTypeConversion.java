@@ -168,6 +168,18 @@ public final class CTypeConversion {
     }
 
     /**
+     * Decodes a UTF-8 encoded, 0 terminated C {@code char*} to a Java string.
+     *
+     * @param utf8String the pointer to a UTF-8 encoded, 0 terminated C string
+     * @return a Java string
+     *
+     * @since 22.3
+     */
+    public static String utf8ToJavaString(CCharPointer utf8String) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).utf8ToJavaString(utf8String);
+    }
+
+    /**
      * Converts a Java boolean into a C int containing boolean values.
      *
      * @param value the Java boolean value

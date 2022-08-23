@@ -383,11 +383,17 @@ public class MethodHandleFeature implements Feature {
         access.rescanRoot(typedAccessors);
     }
 
-    private static void scanBoundMethodHandle(FeatureAccess a, Class<?> bmhSubtype) {
+    private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
-        if (bmhSpeciesField != null) {
-            access.rescanRoot(bmhSpeciesField);
+        access.getBigBang().postTask(unused -> {
+            Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
+            if (bmhSpeciesField != null) {
+                access.rescanRoot(bmhSpeciesField);
+            }
+        });
+
+        if (!access.getBigBang().executorIsStarted()) {
+            access.requireAnalysisIteration();
         }
     }
 }

@@ -103,7 +103,6 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -124,6 +123,8 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotThread.ThreadSpawnRootNode;
+import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
+import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 
 final class EngineAccessor extends Accessor {
 
@@ -225,15 +226,6 @@ final class EngineAccessor extends Accessor {
             PolyglotLanguage language = context.engine.idToLanguage.get(viewLanguage.getId());
             PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
             return languageContext.getLanguageView(value);
-        }
-
-        @TruffleBoundary
-        @Override
-        public Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value) {
-            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(viewLanguage.getId());
-            PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
-            return languageContext.getScopedView(location, frame, value);
         }
 
         @Override
@@ -1730,6 +1722,21 @@ final class EngineAccessor extends Accessor {
         @Override
         public EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
             return PolyglotFastThreadLocals.getEncapsulatingNodeReference(invalidateOnNull);
+        }
+
+        @Override
+        public Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup) {
+            return new InstrumentSystemThread((PolyglotInstrument) polyglotInstrument, runnable, threadGroup);
+        }
+
+        @Override
+        public Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup) {
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            // Ensure that thread is entered in correct context
+            if (PolyglotContextImpl.requireContext() != languageContext.context) {
+                throw new IllegalStateException("Not entered in an Env's context.");
+            }
+            return new LanguageSystemThread(languageContext, runnable, threadGroup);
         }
     }
 

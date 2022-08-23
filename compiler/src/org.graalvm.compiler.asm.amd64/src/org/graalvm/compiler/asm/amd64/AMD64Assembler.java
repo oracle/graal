@@ -1189,6 +1189,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return assertion.supports(arch.getFeatures(), AVXKind.getRegisterSize(kind), false);
         }
 
+        public final boolean isSupported(AMD64 arch, AVXSize size, boolean useZMMRegisters) {
+            return assertion.supports(arch.getFeatures(), size, useZMMRegisters);
+        }
+
         @Override
         public String toString() {
             return opcode;
@@ -4955,6 +4959,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void vzeroupper() {
         emitVEX(L128, P_, M_0F, W0, 0, 0, true);
         emitByte(0x77);
+    }
+
+    public final void aesenc(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESENC.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
+    public final void aesenclast(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESENCLAST.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
+    public final void aesdec(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESDEC.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
+    public final void aesdeclast(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESDECLAST.emit(this, AVXSize.XMM, dst, dst, src);
     }
 
     // Insn: KORTESTD k1, k2

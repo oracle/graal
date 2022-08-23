@@ -26,6 +26,8 @@ package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -36,10 +38,12 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -71,6 +75,7 @@ import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
@@ -118,6 +123,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
+                registerAESPlugins(invocationPlugins, replacements, arch);
             }
         });
     }
@@ -525,7 +531,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
                                 new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, MemoryOrderMode.PLAIN, false));
                 return true;
             }
         });
@@ -616,5 +622,21 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             }
         });
+    }
+
+    private static boolean supports(AMD64 arch, CPUFeature... features) {
+        EnumSet<CPUFeature> supportedFeatures = arch.getFeatures();
+        for (CPUFeature feature : features) {
+            if (!supportedFeatures.contains(feature)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, AMD64 arch) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
+        r.registerConditional(supports(arch, CPUFeature.AVX, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(supports(arch, CPUFeature.AVX, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
     }
 }

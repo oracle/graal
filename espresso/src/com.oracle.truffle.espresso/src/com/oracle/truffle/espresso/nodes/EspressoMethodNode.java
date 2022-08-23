@@ -79,7 +79,7 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.RootTag.class;
+        return tag == StandardTags.RootBodyTag.class;
     }
 
     @TruffleBoundary

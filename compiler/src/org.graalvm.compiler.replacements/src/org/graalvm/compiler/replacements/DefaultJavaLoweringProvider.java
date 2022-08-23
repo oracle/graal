@@ -40,6 +40,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -61,6 +62,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -137,8 +139,6 @@ import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
-import org.graalvm.compiler.nodes.memory.OrderedReadNode;
-import org.graalvm.compiler.nodes.memory.OrderedWriteNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SideEffectFreeWriteNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
@@ -339,6 +339,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             divRemFixed = graph.add(new SignedDivNode(dividend, divisor, divRem.getGuard()));
         } else if (divRem instanceof SignedFloatingIntegerRemNode) {
             divRemFixed = graph.add(new SignedRemNode(dividend, divisor, divRem.getGuard()));
+        } else {
+            throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem);
         }
         divRemFixed.setCanDeopt(false);
         divRem.replaceAtUsagesAndDelete(divRemFixed);
@@ -462,13 +464,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createFieldAddress(graph, object, field);
         assert address != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
-        ReadNode memoryRead;
         BarrierType barrierType = barrierSet.fieldLoadBarrierType(field, getStorageKind(field));
-        if (loadField.ordersMemoryAccesses()) {
-            memoryRead = graph.add(new OrderedReadNode(address, loadStamp, barrierType, loadField.getMemoryOrder()));
-        } else {
-            memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType));
-        }
+        ReadNode memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType, loadField.getMemoryOrder()));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
@@ -484,12 +481,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         assert address != null;
 
         BarrierType barrierType = barrierSet.fieldStoreBarrierType(field, getStorageKind(field));
-        WriteNode memoryWrite;
-        if (storeField.ordersMemoryAccesses()) {
-            memoryWrite = graph.add(new OrderedWriteNode(address, fieldLocationIdentity(field), value, barrierType, storeField.getMemoryOrder()));
-        } else {
-            memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, barrierType));
-        }
+        WriteNode memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, barrierType, storeField.getMemoryOrder()));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
     }
@@ -556,7 +548,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode positiveIndex = createPositiveIndex(graph, index, boundsCheck);
         AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, elementKind, positiveIndex);
 
-        ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
+        ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         memoryRead.setGuard(boundsCheck);
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
 
@@ -612,7 +604,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode positiveIndex = createPositiveIndex(graph, storeIndexed.index(), boundsCheck);
         AddressNode address = createArrayAddress(graph, array, arrayBaseOffset, storageKind, positiveIndex);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(storageKind), implicitStoreConvert(graph, storageKind, value),
-                        barrierType));
+                        barrierType, MemoryOrderMode.PLAIN));
         memoryWrite.setGuard(boundsCheck);
         if (condition != null) {
             tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
@@ -636,7 +628,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = array.graph();
         ValueNode canonicalArray = this.createNullCheckedValue(GraphUtil.skipPiWhileNonNullArray(array), before, tool);
         AddressNode address = createOffsetAddress(graph, canonicalArray, arrayLengthOffset());
-        ReadNode readArrayLength = graph.add(new ReadNode(address, ARRAY_LENGTH_LOCATION, StampFactory.positiveInt(), BarrierType.NONE));
+        ReadNode readArrayLength = graph.add(new ReadNode(address, ARRAY_LENGTH_LOCATION, StampFactory.positiveInt(), BarrierType.NONE, MemoryOrderMode.PLAIN));
         graph.addBeforeFixed(before, readArrayLength);
         return readArrayLength;
     }
@@ -808,13 +800,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind readKind = load.accessKind();
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, compressible);
         AddressNode address = createUnsafeAddress(graph, load.object(), load.offset());
-        ReadNode memoryRead;
-        if (load.ordersMemoryAccesses()) {
-            memoryRead = new OrderedReadNode(address, loadStamp, barrierSet.readBarrierType(load), load.getMemoryOrder());
-        } else {
-            memoryRead = new ReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
-        }
-        memoryRead = graph.add(memoryRead);
+        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load), load.getMemoryOrder()));
         if (guard == null) {
             // An unsafe read must not float otherwise it may float above
             // a test guaranteeing the read is safe.
@@ -832,7 +818,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind readKind = load.getKind();
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(load.getAddress()));
-        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
+        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         // An unsafe read must not float otherwise it may float above
         // a test guaranteeing the read is safe.
         memoryRead.setForceFixed(true);
@@ -856,13 +842,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind valueKind = store.accessKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
         AddressNode address = createUnsafeAddress(graph, store.object(), store.offset());
-        WriteNode write;
-        if (store.ordersMemoryAccesses()) {
-            write = new OrderedWriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store), store.getMemoryOrder());
-        } else {
-            write = new WriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store));
-        }
-        write = graph.add(write);
+        WriteNode write = graph.add(new WriteNode(address, store.getLocationIdentity(), value, barrierSet.storeBarrierType(store), store.getMemoryOrder()));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }
@@ -873,7 +853,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind valueKind = store.getKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.getValue(), false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(store.getAddress()));
-        WriteNode write = graph.add(new WriteNode(address, store.getKilledLocationIdentity(), value, BarrierType.NONE));
+        WriteNode write = graph.add(new WriteNode(address, store.getKilledLocationIdentity(), value, BarrierType.NONE, MemoryOrderMode.PLAIN));
         write.setStateAfter(store.stateAfter());
         graph.replaceFixedWithFixed(store, write);
     }
@@ -883,12 +863,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind valueKind = read.getReadKind();
         Stamp loadStamp = loadStamp(read.stamp(NodeView.DEFAULT), valueKind, read.isCompressible());
 
-        ReadNode memoryRead;
-        if (read.ordersMemoryAccesses()) {
-            memoryRead = graph.add(new OrderedReadNode(read.getAddress(), loadStamp, read.getBarrierType(), read.getMemoryOrder()));
-        } else {
-            memoryRead = graph.add(new ReadNode(read.getAddress(), read.getLocationIdentity(), loadStamp, read.getBarrierType()));
-        }
+        ReadNode memoryRead = graph.add(new ReadNode(read.getAddress(), read.getLocationIdentity(), loadStamp, read.getBarrierType(), read.getMemoryOrder()));
 
         GuardingNode guard = read.getGuard();
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead, read.isCompressible());
@@ -907,11 +882,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = write.graph();
         ValueNode value = implicitStoreConvert(graph, write.getWriteKind(), write.value(), write.isCompressible());
         WriteNode memoryWrite;
-        if (write.ordersMemoryAccesses()) {
-            memoryWrite = graph.add(new OrderedWriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType(), write.getMemoryOrder()));
-        } else if (write.hasSideEffect()) {
-            memoryWrite = graph.add(new WriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType()));
+        if (write.hasSideEffect()) {
+            memoryWrite = graph.add(new WriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType(), write.getMemoryOrder()));
         } else {
+            assert !write.ordersMemoryAccesses();
             memoryWrite = graph.add(new SideEffectFreeWriteNode(write.getAddress(), write.getKilledLocationIdentity(), value, write.getBarrierType()));
         }
         memoryWrite.setStateAfter(write.stateAfter());
@@ -922,7 +896,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
-        if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
             List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
 
             ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
@@ -976,7 +950,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 barrierType = barrierSet.arrayStoreBarrierType(storageKind);
                             }
                             if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType);
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType,
+                                                MemoryOrderMode.PLAIN);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                         }
@@ -1011,7 +986,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                     barrierType = barrierSet.arrayStoreBarrierType(virtual.entryKind(metaAccessExtensionProvider, i));
                                 }
                                 if (address != null) {
-                                    WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
+                                    WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN);
                                     graph.addBeforeFixed(commit, graph.add(write));
                                 }
                             }

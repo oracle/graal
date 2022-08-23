@@ -24,11 +24,21 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -38,6 +48,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.replacements.nodes.PureFunctionStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -52,6 +63,15 @@ import jdk.vm.ci.meta.JavaKind;
 public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrinsicNode {
 
     public static final NodeClass<AMD64CalcStringAttributesNode> TYPE = NodeClass.create(AMD64CalcStringAttributesNode.class);
+
+    private static final EnumSet<AMD64.CPUFeature> MINIMUM_FEATURES_AMD64 = EnumSet.of(
+                    SSE,
+                    SSE2,
+                    SSE3,
+                    SSSE3,
+                    SSE4_1,
+                    SSE4_2,
+                    POPCNT);
 
     private final AMD64CalcStringAttributesOp.Op op;
     private final boolean assumeValid;
@@ -124,6 +144,14 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
         return length;
     }
 
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
+        return MINIMUM_FEATURES_AMD64;
+    }
+
+    public static EnumSet<?> minFeaturesAARCH64() {
+        throw GraalError.shouldNotReachHere("not implemented yet");
+    }
+
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
         return AMD64CalcStringAttributesForeignCalls.getStub(this);
@@ -142,6 +170,9 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
     /* NodeIntrinsic plugins for snippet stubs. */
 
     @NodeIntrinsic
+    @GenerateStub(name = "calcStringAttributesLatin1", parameters = {"LATIN1", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesBMP", parameters = {"BMP", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF32", parameters = {"UTF_32", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native int intReturnValue(Object array, long offset, int length,
                     @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
                     @ConstantNodeParameter boolean assumeValid);
@@ -153,6 +184,10 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
+    @GenerateStub(name = "calcStringAttributesUTF8Valid", parameters = {"UTF_8", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF8Unknown", parameters = {"UTF_8", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF16Valid", parameters = {"UTF_16", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "calcStringAttributesUTF16Unknown", parameters = {"UTF_16", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native long longReturnValue(Object array, long offset, int length,
                     @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
                     @ConstantNodeParameter boolean assumeValid);

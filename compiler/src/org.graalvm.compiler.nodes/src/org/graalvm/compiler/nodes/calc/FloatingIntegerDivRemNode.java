@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,8 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -121,7 +121,8 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
 
     @Override
     public boolean verify() {
-        GraalError.guarantee((!canDivideByZero() && !overflowVisibleSideEffect()) || graph().isAfterStage(StageFlag.FIXED_READS), "Floating irem must never create an exception or trap");
+        GraalError.guarantee((!canDivideByZero() && !overflowVisibleSideEffect()) || graph().isAfterStage(StageFlag.FIXED_READS),
+                        "Floating irem must never create an exception or trap");
         return super.verify();
     }
 }

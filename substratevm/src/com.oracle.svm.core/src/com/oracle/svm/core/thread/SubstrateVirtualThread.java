@@ -35,8 +35,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -46,7 +47,6 @@ import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -156,7 +156,7 @@ final class SubstrateVirtualThread extends Thread {
         try {
             task.run();
         } catch (Throwable exc) {
-            dispatchUncaughtException(exc);
+            dispatchUncaughtThrowable(exc);
         } finally {
             unmount();
             setState(TERMINATED);
@@ -170,13 +170,13 @@ final class SubstrateVirtualThread extends Thread {
         if (JavaThreads.isInterrupted(this)) {
             PlatformThreads.setInterrupt(carrier);
         } else if (JavaThreads.isInterrupted(carrier)) {
-            Object token = switchToCarrierAndAcquireInterruptLock();
+            Object token = acquireInterruptLockMaybeSwitch();
             try {
                 if (!JavaThreads.isInterrupted(this)) {
                     JavaThreads.getAndClearInterruptedFlag(carrier);
                 }
             } finally {
-                releaseInterruptLockAndSwitchBack(token);
+                releaseInterruptLockMaybeSwitchBack(token);
             }
         }
 
@@ -206,7 +206,7 @@ final class SubstrateVirtualThread extends Thread {
 
         unmount();
         try {
-            return cont.yield() == Continuation.YIELD_SUCCESS;
+            return cont.yield() == Continuation.FREEZE_OK;
         } finally {
             mount();
         }
@@ -379,14 +379,14 @@ final class SubstrateVirtualThread extends Thread {
                     submitRunContinuation();
                 }
             } else if (s == PINNED) {
-                Object token = switchToCarrierAndAcquireInterruptLock();
+                Object token = acquireInterruptLockMaybeSwitch();
                 try {
                     Thread carrier = carrierThread;
                     if (carrier != null && state() == PINNED) {
                         Unsafe.getUnsafe().unpark(carrier);
                     }
                 } finally {
-                    releaseInterruptLockAndSwitchBack(token);
+                    releaseInterruptLockMaybeSwitchBack(token);
                 }
             }
         }
@@ -433,49 +433,40 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private Object interruptLock() {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            throw VMError.unsupportedFeature("Loom is not yet supported on JDK 19");
-        }
         return JavaThreads.toTarget(this).blockerLock;
     }
 
-    /** @see #releaseInterruptLockAndSwitchBack */
-    private Object switchToCarrierAndAcquireInterruptLock() {
+    /** @see #releaseInterruptLockMaybeSwitchBack */
+    private Object acquireInterruptLockMaybeSwitch() {
         Object token = null;
-        Thread current = Thread.currentThread();
-        if (current instanceof SubstrateVirtualThread) {
-            SubstrateVirtualThread vthread = (SubstrateVirtualThread) current;
+        if (Thread.currentThread() == this) {
             /*
-             * If we block on the interrupt lock in the virtual thread, we yield, for which we first
-             * unmount. Unmounting also tries to acquire the interrupt lock and we might block
-             * again, this time on the carrier thread. Then, the virtual thread cannot continue to
-             * yield and execute on another thread later, and the carrier thread might not get
-             * unparked, and both threads are stuck.
+             * If we block on our interrupt lock, we yield, for which we first unmount. Unmounting
+             * also tries to acquire our interrupt lock, so we likely block again, this time on the
+             * carrier thread. Then, the virtual thread cannot continue to yield, and the carrier
+             * thread might never get unparked, in which case both threads are stuck.
              */
-            Thread carrier = vthread.carrierThread;
+            Thread carrier = carrierThread;
             PlatformThreads.setCurrentThread(carrier, carrier);
-            token = vthread;
+            token = this;
         }
         MonitorSupport.singleton().monitorEnter(interruptLock());
         return token;
     }
 
-    /** @see #switchToCarrierAndAcquireInterruptLock */
-    private void releaseInterruptLockAndSwitchBack(Object token) {
+    /** @see #acquireInterruptLockMaybeSwitch */
+    private void releaseInterruptLockMaybeSwitchBack(Object token) {
         MonitorSupport.singleton().monitorExit(interruptLock());
         if (token != null) {
-            SubstrateVirtualThread vthread = (SubstrateVirtualThread) token;
-            PlatformThreads.setCurrentThread(vthread.carrierThread, vthread);
+            assert token == this && Thread.currentThread() == carrierThread;
+            PlatformThreads.setCurrentThread(carrierThread, this);
         }
     }
 
     @Override
     public void interrupt() {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            throw VMError.unsupportedFeature("Loom is not yet supported on JDK 19");
-        }
         if (Thread.currentThread() != this) {
-            Object token = switchToCarrierAndAcquireInterruptLock();
+            Object token = acquireInterruptLockMaybeSwitch();
             try {
                 JavaThreads.writeInterruptedFlag(this, true);
                 Target_sun_nio_ch_Interruptible b = JavaThreads.toTarget(this).blocker;
@@ -487,7 +478,7 @@ final class SubstrateVirtualThread extends Thread {
                     PlatformThreads.setInterrupt(carrier);
                 }
             } finally {
-                releaseInterruptLockAndSwitchBack(token);
+                releaseInterruptLockMaybeSwitchBack(token);
             }
         } else {
             JavaThreads.writeInterruptedFlag(this, true);
@@ -496,15 +487,15 @@ final class SubstrateVirtualThread extends Thread {
         unpark();
     }
 
-    boolean getAndClearInterrupt() {
+    boolean getAndClearInterrupted() {
         assert Thread.currentThread() == this;
-        Object token = switchToCarrierAndAcquireInterruptLock();
+        Object token = acquireInterruptLockMaybeSwitch();
         try {
             boolean oldValue = JavaThreads.getAndClearInterruptedFlag(this);
             JavaThreads.getAndClearInterruptedFlag(carrierThread);
             return oldValue;
         } finally {
-            releaseInterruptLockAndSwitchBack(token);
+            releaseInterruptLockMaybeSwitchBack(token);
         }
     }
 
@@ -548,15 +539,15 @@ final class SubstrateVirtualThread extends Thread {
                 return Thread.State.RUNNABLE;
             case RUNNING:
                 // if mounted then return state of carrier thread
-                Object token = switchToCarrierAndAcquireInterruptLock();
+                Object token = acquireInterruptLockMaybeSwitch();
                 try {
                     @SuppressWarnings("hiding")
                     Thread carrierThread = this.carrierThread;
                     if (carrierThread != null) {
-                        return JavaThreads.getThreadState(carrierThread);
+                        return PlatformThreads.getThreadState(carrierThread);
                     }
                 } finally {
-                    releaseInterruptLockAndSwitchBack(token);
+                    releaseInterruptLockMaybeSwitchBack(token);
                 }
                 // runnable, mounted
                 return Thread.State.RUNNABLE;
@@ -588,17 +579,17 @@ final class SubstrateVirtualThread extends Thread {
         Thread carrier = carrierThread;
         if (carrier != null) {
             // include the carrier thread state and name when mounted
-            Object token = switchToCarrierAndAcquireInterruptLock();
+            Object token = acquireInterruptLockMaybeSwitch();
             try {
                 carrier = carrierThread;
                 if (carrier != null) {
-                    String stateAsString = JavaThreads.getThreadState(carrier).toString();
+                    String stateAsString = PlatformThreads.getThreadState(carrier).toString();
                     sb.append(stateAsString.toLowerCase(Locale.ROOT));
                     sb.append('@');
                     sb.append(carrier.getName());
                 }
             } finally {
-                releaseInterruptLockAndSwitchBack(token);
+                releaseInterruptLockMaybeSwitchBack(token);
             }
         }
         // include virtual thread state when not mounted
@@ -661,7 +652,7 @@ final class SubstrateVirtualThread extends Thread {
         U.putObjectRelease(this, CARRIER_THREAD, carrier);
     }
 
-    private void dispatchUncaughtException(Throwable e) {
+    private void dispatchUncaughtThrowable(Throwable e) {
         getUncaughtExceptionHandler().uncaughtException(this, e);
     }
 
@@ -697,6 +688,21 @@ final class SubstrateVirtualThread extends Thread {
                         task -> Target_jdk_internal_misc_InnocuousThread.newThread("VirtualThread-unparker", task));
         dts.setRemoveOnCancelPolicy(true);
         return dts;
+    }
+
+    void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        assert this == Thread.currentThread();
+        Object token = acquireInterruptLockMaybeSwitch();
+        try {
+            JavaThreads.toTarget(this).blocker = b;
+        } finally {
+            releaseInterruptLockMaybeSwitchBack(token);
+        }
+    }
+
+    Pointer getBaseSP() {
+        Continuation c = cont;
+        return (c != null) ? c.getBaseSP() : WordFactory.nullPointer();
     }
 }
 

@@ -129,7 +129,8 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
         Object[] ctxArgs = createArgumentsArray(executableContext);
         onParse(request, executableContext.env, ctxArgs);
         String rootNodeName = getRootName(request, executableContext.env, ctxArgs);
-        SourceSection srcSec = request.getSource().createSection(0, request.getSource().getLength());
+        com.oracle.truffle.api.source.Source source = request.getSource();
+        SourceSection srcSec = source.hasCharacters() ? source.createSection(0, request.getSource().getLength()) : null;
         return new RootNode(this, null) {
             @Child InteropLibrary interopLibrary = interop;
             private final SourceSection sourceSection = srcSec;
@@ -165,7 +166,7 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
 
             @Override
             public SourceSection getSourceSection() {
-                return srcSec;
+                return sourceSection;
             }
         }.getCallTarget();
     }
@@ -182,7 +183,7 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
 
     public static class ExecutableContext {
 
-        final Env env;
+        public final Env env;
         final InteropMapObject scope;
 
         ExecutableContext(Class<? extends AbstractExecutableTestLanguage> clazz, Env env) {

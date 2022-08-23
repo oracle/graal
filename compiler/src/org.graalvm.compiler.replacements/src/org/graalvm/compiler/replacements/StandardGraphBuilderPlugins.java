@@ -27,11 +27,14 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
+import static org.graalvm.compiler.core.common.calc.Condition.LT;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.ACQUIRE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
+import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -123,7 +126,6 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
-import org.graalvm.compiler.nodes.extended.RawOrderedLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
@@ -157,6 +159,8 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
@@ -288,7 +292,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
                                 new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, PLAIN, false));
                 return true;
             }
         });
@@ -307,7 +311,7 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Byte, new JavaReadNode(JavaKind.Byte, new IndexAddressNode(arg1, arg2, JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, PLAIN, false));
                 return true;
             }
         });
@@ -1382,12 +1386,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             // Note that non-ordered raw accesses can be turned into floatable field accesses.
-            UnsafeNodeConstructor unsafeNodeConstructor;
-            if (MemoryOrderMode.ordersMemoryAccesses(memoryOrder)) {
-                unsafeNodeConstructor = (obj, loc) -> new RawOrderedLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
-            } else {
-                unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
-            }
+            UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
             createUnsafeAccess(object, b, unsafeNodeConstructor);
             return true;
         }
@@ -2021,6 +2020,68 @@ public class StandardGraphBuilderPlugins {
                 // fromIndex = max(fromIndex, 0)
                 ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
                 helper.emitFinalReturn(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, nonNullValue, length, fromIndex, ch));
+            }
+            return true;
+        }
+    }
+
+    public abstract static class AESCryptPluginBase extends InvocationPlugin {
+
+        protected final CryptMode mode;
+
+        public AESCryptPluginBase(CryptMode mode, String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+            this.mode = mode;
+        }
+
+        public static ValueNode readFieldArrayStart(GraphBuilderContext b, InvocationPluginHelper helper, ResolvedJavaType klass, String filed, ValueNode receiver, JavaKind arrayKind) {
+            ResolvedJavaField field = helper.getField(klass, filed);
+            ValueNode array = b.nullCheckedValue(helper.loadField(receiver, field));
+            return helper.arrayStart(array, arrayKind);
+        }
+    }
+
+    public static class AESCryptPlugin extends AESCryptPluginBase {
+        /**
+         * The AES block size is a constant 128 bits as defined by the
+         * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf">standard<a/>.
+         */
+        public static final int AES_BLOCK_SIZE_IN_BYTES = 16;
+
+        public AESCryptPlugin(CryptMode mode) {
+            super(mode, mode.isEncrypt() ? "implEncryptBlock" : "implDecryptBlock",
+                            Receiver.class, byte[].class, int.class, byte[].class, int.class);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode out, ValueNode outOffset) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode nonNullReceiver = receiver.get();
+                ValueNode nonNullIn = b.nullCheckedValue(in);
+                ValueNode nonNullOut = b.nullCheckedValue(out);
+
+                ConstantNode zero = ConstantNode.forInt(0);
+                // if (inOffset < 0) then deopt
+                helper.intrinsicRangeCheck(inOffset, LT, zero);
+                // if (in.length - AES_BLOCK_SIZE_IN_BYTES < inOffset) then deopt
+                ValueNode inLength = helper.length(nonNullIn);
+                helper.intrinsicRangeCheck(helper.sub(inLength, ConstantNode.forInt(AES_BLOCK_SIZE_IN_BYTES)), LT, inOffset);
+                // if (outOffset < 0) then deopt
+                helper.intrinsicRangeCheck(outOffset, LT, zero);
+                // if (out.length - AES_BLOCK_SIZE_IN_BYTES < outOffset) then deopt
+                ValueNode outLength = helper.length(nonNullOut);
+                helper.intrinsicRangeCheck(helper.sub(outLength, ConstantNode.forInt(AES_BLOCK_SIZE_IN_BYTES)), LT, outOffset);
+
+                // Compute pointers to the array bodies
+                ValueNode inAddr = helper.arrayElementPointer(nonNullIn, JavaKind.Byte, inOffset);
+                ValueNode outAddr = helper.arrayElementPointer(nonNullOut, JavaKind.Byte, outOffset);
+                ValueNode kAddr = readFieldArrayStart(b, helper, targetMethod.getDeclaringClass(), "K", nonNullReceiver, JavaKind.Int);
+
+                if (mode.isEncrypt()) {
+                    b.add(new AESNode(inAddr, outAddr, kAddr, ENCRYPT));
+                } else {
+                    b.add(new AESNode(inAddr, outAddr, kAddr, DECRYPT));
+                }
             }
             return true;
         }

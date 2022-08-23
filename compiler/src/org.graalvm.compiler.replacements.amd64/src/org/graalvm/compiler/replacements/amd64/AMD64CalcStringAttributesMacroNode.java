@@ -65,7 +65,7 @@ public final class AMD64CalcStringAttributesMacroNode extends MacroNode {
 
     @Override
     public void lower(LoweringTool tool) {
-        if (!((AMD64) tool.getLowerer().getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1)) {
+        if (!((AMD64) tool.getLowerer().getTarget().arch).getFeatures().containsAll(AMD64CalcStringAttributesNode.minFeaturesAMD64())) {
             super.lower(tool);
         } else {
             AMD64CalcStringAttributesNode replacement = graph().addOrUnique(new AMD64CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), op, assumeValid, locationIdentity));

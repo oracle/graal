@@ -219,9 +219,9 @@ public class GraphUtil {
                             loopExit.replaceFirstInput(loopBegin, null);
                         }
                     }
-                    merge.graph().reduceDegenerateLoopBegin(loopBegin);
+                    merge.graph().reduceDegenerateLoopBegin(loopBegin, true);
                 } else {
-                    merge.graph().reduceTrivialMerge(merge);
+                    merge.graph().reduceTrivialMerge(merge, true);
                 }
             } else {
                 assert merge.phiPredecessorCount() > 1 : merge;
@@ -277,12 +277,26 @@ public class GraphUtil {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }
             if (verifyKillCFGUnusedNodes) {
+                EconomicSet<Node> deadControlFLow = EconomicSet.create(Equivalence.IDENTITY);
+                for (Node n : node.graph().getNodes()) {
+                    if (n instanceof FixedNode && !(n instanceof AbstractMergeNode) && n.predecessor() == null) {
+                        deadControlFLow.add(n);
+                    }
+                }
                 EconomicSet<Node> collectedUnusedNodes = unusedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
                     @Override
                     public void changed(Graph.NodeEvent e, Node n) {
                         if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n) && !(n instanceof GuardNode)) {
                             collectedUnusedNodes.add(n);
+                        }
+                        if (e == Graph.NodeEvent.INPUT_CHANGED && n instanceof FixedNode && !(n instanceof AbstractMergeNode) && n.predecessor() == null) {
+                            if (!deadControlFLow.contains(n)) {
+                                collectedUnusedNodes.add(n);
+                            }
+                        }
+                        if (e == Graph.NodeEvent.NODE_REMOVED) {
+                            collectedUnusedNodes.remove(n);
                         }
                     }
                 });
@@ -301,10 +315,18 @@ public class GraphUtil {
                 while (iterator.hasNext()) {
                     Node curNode = iterator.next();
                     if (curNode.isDeleted()) {
-                        iterator.remove();
+                        GraalError.shouldNotReachHere();
+                    } else {
+                        if (curNode instanceof FixedNode && !(curNode instanceof AbstractMergeNode) && curNode.predecessor() != null) {
+                            iterator.remove();
+                        }
+                        if ((curNode instanceof PhiNode)) {
+                            // We seem to skip PhiNodes at the moment but that's mostly ok.
+                            iterator.remove();
+                        }
                     }
                 }
-                assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
+                GraalError.guarantee(unusedNodes.isEmpty(), "New unused nodes: %s", unusedNodes);
             }
         } catch (Throwable t) {
             throw debug.handle(t);

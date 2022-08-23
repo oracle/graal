@@ -229,6 +229,8 @@ public abstract class Accessor {
 
         public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
 
+        public abstract void setURL(SourceBuilder builder, URL url);
+
         public abstract void setPath(SourceBuilder builder, String path);
     }
 
@@ -565,8 +567,6 @@ public abstract class Accessor {
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
-        public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
-
         public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
 
         public abstract RuntimeException engineToLanguageException(Throwable t);
@@ -718,6 +718,10 @@ public abstract class Accessor {
         public abstract Context getPolyglotContextAPI(Object polyglotContextImpl);
 
         public abstract EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull);
+
+        public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
     }
 
     public abstract static class LanguageSupport extends Support {

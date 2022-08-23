@@ -39,7 +39,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -707,15 +706,15 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
             MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
             new GuardLoweringPhase().apply(graph, midContext);
+            new MidTierLoweringPhase(canonicalizer).apply(graph, midContext);
 
             if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                 graph.clearAllStateAfterForTestingOnly();
                 // disable state split verification
-                graph.setGuardsStage(GuardsStage.AFTER_FSA);
+                graph.getGraphState().setAfterFSA();
             }
             debug.dump(DebugContext.BASIC_LEVEL, graph, "after removal of framestates");
 
-            new MidTierLoweringPhase(canonicalizer).apply(graph, midContext);
             LowTierContext lowContext = new LowTierContext(getProviders(), getTargetProvider());
             new LowTierLoweringPhase(canonicalizer).apply(graph, lowContext);
 

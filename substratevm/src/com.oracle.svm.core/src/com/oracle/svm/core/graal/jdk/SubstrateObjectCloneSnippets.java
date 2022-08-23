@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -216,7 +217,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
 
         @Override
         public void lower(SubstrateObjectCloneNode node, LoweringTool tool) {
-            if (node.graph().getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (node.graph().getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
                 return;
             }
 

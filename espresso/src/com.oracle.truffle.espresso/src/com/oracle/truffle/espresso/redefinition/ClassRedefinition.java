@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -206,12 +207,12 @@ public final class ClassRedefinition {
             DetectedChange detectedChange = new DetectedChange();
             StaticObject loader = klass.getDefiningClassLoader();
             Types types = klass.getContext().getTypes();
-            parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()), context);
+            parserKlass = ClassfileParser.parse(context.getClassLoadingEnv(), new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()));
             if (hotSwapInfo.isPatched()) {
                 byte[] patched = hotSwapInfo.getPatchedBytes();
                 newParserKlass = parserKlass;
                 // we detect changes against the patched bytecode
-                parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()), context);
+                parserKlass = ClassfileParser.parse(context.getClassLoadingEnv(), new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()));
             }
             classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
             if (classChange == ClassChange.CLASS_HIERARCHY_CHANGED && detectedChange.getSuperKlass() != null) {
@@ -268,19 +269,19 @@ public final class ClassRedefinition {
                     // otherwise, don't eagerly define the new class
                     Symbol<Symbol.Type> type = context.getTypes().fromName(classInfo.getName());
                     ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
-                    Klass loadedKlass = classRegistry.findLoadedKlass(type);
+                    Klass loadedKlass = classRegistry.findLoadedKlass(context.getClassLoadingEnv(), type);
                     if (loadedKlass != null) {
                         // OK, we have to define the new klass instance and
                         // inject it under the existing JDWP ID
                         classRegistry.onInnerClassRemoved(type);
-                        ObjectKlass newKlass = classRegistry.defineKlass(type, classInfo.getBytes());
-                        assert newKlass != loadedKlass && newKlass == classRegistry.findLoadedKlass(type);
+                        ObjectKlass newKlass = classRegistry.defineKlass(context, type, classInfo.getBytes());
+                        assert newKlass != loadedKlass && newKlass == classRegistry.findLoadedKlass(context.getClassLoadingEnv(), type);
 
                         packet.info.setKlass(newKlass);
                     } else if (classInfo.isNewInnerTestKlass()) {
                         // New inner test classes cannot be loaded because they'll
                         // have a versioned name on disk, so let's define them directly
-                        classRegistry.defineKlass(type, classInfo.getBytes());
+                        classRegistry.defineKlass(context, type, classInfo.getBytes());
                     }
                     return 0;
                 default:
@@ -290,6 +291,8 @@ public final class ClassRedefinition {
             // TODO(Gregersen) - return appropriate error code based on the exception type
             // we get from parsing the class file
             return ErrorCodes.INVALID_CLASS_FORMAT;
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(context.getMeta());
         }
     }
 

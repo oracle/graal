@@ -40,6 +40,7 @@
 #
 
 from __future__ import print_function
+import os
 
 import mx
 import mx_gate
@@ -94,6 +95,12 @@ def javadoc(args):
     extraArgs = build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'SDK')
     mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + extraArgs + args)
 
+def upx(args):
+    """compress binaries using the upx tool"""
+    upx_directory = mx.library("UPX", True).get_path(True)
+    upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
+    upx_cmd = [upx_path] + args
+    mx.run(upx_cmd, mx.TeeOutputCapture(mx.OutputCapture()), mx.TeeOutputCapture(mx.OutputCapture()))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -134,6 +141,7 @@ def mx_post_parse_cmd_line(args):
 
 mx.update_commands(_suite, {
     'javadoc': [javadoc, '[SL args|@VM options]'],
+    'upx': [upx, ''],
 })
 
 

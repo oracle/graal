@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -206,11 +208,14 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements Ca
     }
 
     @NodeIntrinsic
-    public static native boolean equals(Object array1, long offset1, Object array2, long offset2, int length,
+    @GenerateStub(name = "longArraysEquals", parameters = {"Long"})
+    @GenerateStub(name = "floatArraysEquals", parameters = {"Float"})
+    @GenerateStub(name = "doubleArraysEquals", parameters = {"Double"})
+    public static native boolean equals(Pointer array1, long offset1, Pointer array2, long offset2, int length,
                     @ConstantNodeParameter JavaKind kind);
 
     @NodeIntrinsic
-    public static native boolean equals(Object array1, long offset1, Object array2, long offset2, int length,
+    public static native boolean equals(Pointer array1, long offset1, Pointer array2, long offset2, int length,
                     @ConstantNodeParameter JavaKind kind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 

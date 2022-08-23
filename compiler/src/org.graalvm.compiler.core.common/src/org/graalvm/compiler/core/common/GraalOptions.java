@@ -150,6 +150,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> VerifyPhases = new OptionKey<>(false);
 
+    @Option(help = "Verifies that the phase plan respects the phase ordering constraints.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> VerifyPhasePlan = new OptionKey<>(false);
+
     // Debug settings:
     @Option(help = "Start tracing compiled GC barriers after N garbage collections (disabled if N <= 0).", type = OptionType.Debug)
     public static final OptionKey<Integer> GCDebugStartCycle = new OptionKey<>(-1);
@@ -272,8 +275,8 @@ public final class GraalOptions {
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
 
-    @Option(help = "Use Graal-generated stubs for complicated LIR operations instead of embedding all the emitted code.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> UseGraalStubs = new OptionKey<>(true);
+    @Option(help = "Embed all the emitted code for Graal-generated stubs.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> InlineGraalStubs = new OptionKey<>(false);
 
     @Option(help = "If applicable, use bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
     public static final OptionKey<Integer> MinimalBulkZeroingSize = new OptionKey<>(2048);

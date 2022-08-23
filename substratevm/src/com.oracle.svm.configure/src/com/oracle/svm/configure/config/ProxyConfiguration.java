@@ -101,6 +101,10 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     public void printJson(JsonWriter writer) throws IOException {
         List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceLists.size());
         lists.addAll(interfaceLists);
+        printProxyInterfaces(writer, lists);
+    }
+
+    public static void printProxyInterfaces(JsonWriter writer, List<ConditionalElement<List<String>>> lists) throws IOException {
         lists.sort(ConditionalElement.comparator(ProxyConfiguration::compareList));
 
         writer.append('[');
@@ -116,8 +120,8 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
                 writer.append(typePrefix).quote(type);
                 typePrefix = ",";
             }
-            writer.append(']');
-            writer.append('}').unindent().newline();
+            writer.append(']').unindent().newline();
+            writer.append('}');
             prefix = ",";
         }
         writer.unindent().newline();

@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -424,7 +425,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public void onReachable() {
-        notifyReachabilityCallbacks(declaringClass.getUniverse());
+        notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 
     public void setCanBeNull(boolean canBeNull) {

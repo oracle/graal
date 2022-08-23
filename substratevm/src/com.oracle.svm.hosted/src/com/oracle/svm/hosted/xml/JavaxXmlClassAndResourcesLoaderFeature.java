@@ -29,11 +29,12 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.BuiltinSchemaGrammarClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMImplementationRegistryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DatatypeFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SAXParserClasses;
-import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaFactoryClasses;
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaDVFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 
@@ -60,7 +61,10 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
         access.registerReachabilityHandler(new DatatypeFactoryClasses()::registerConfigs,
                         method(access, "javax.xml.datatype.DatatypeFactory", "newInstance"));
 
-        access.registerReachabilityHandler(new SchemaFactoryClasses()::registerConfigs,
-                        method(access, "javax.xml.validation.SchemaFactory", "newSchema"));
+        access.registerReachabilityHandler(new SchemaDVFactoryClasses()::registerConfigs,
+                        method(access, "com.sun.org.apache.xerces.internal.impl.dv.SchemaDVFactory", "getInstance"));
+
+        access.registerReachabilityHandler(new BuiltinSchemaGrammarClasses()::registerConfigs,
+                        constructor(access, "com.sun.org.apache.xerces.internal.impl.xs.SchemaGrammar$BuiltinSchemaGrammar", int.class, short.class));
     }
 }

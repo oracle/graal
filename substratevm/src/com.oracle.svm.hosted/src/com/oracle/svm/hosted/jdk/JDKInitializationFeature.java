@@ -173,8 +173,5 @@ public class JDKInitializationFeature implements Feature {
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             rci.rerunInitialization("sun.nio.ch.Poller", "Contains an InnocuousThread.");
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Not yet supported");
-        }
     }
 }

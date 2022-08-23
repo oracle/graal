@@ -58,6 +58,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
@@ -526,7 +527,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = KnownOffsets.singleton().getImageCodeInfoCodeStartOffset();
             Value codeStartField = AArch64AddressValue.makeAddress(wordKind, size, asAllocatable(codeInfo), codeStartFieldOffset);
-            Value codeStart = getArithmetic().emitLoad(wordKind, codeStartField, null, MemoryExtendKind.DEFAULT);
+            Value codeStart = getArithmetic().emitLoad(wordKind, codeStartField, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
             return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);
         }
 
@@ -629,6 +630,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 emitMove(operand, input);
             }
             append(new AArch64ControlFlow.ReturnOp(operand));
+        }
+
+        @Override
+        public int getArrayLengthOffset() {
+            return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
         }
     }
 

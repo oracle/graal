@@ -25,9 +25,11 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
@@ -37,10 +39,19 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     private final CanonicalizerPhase canonicalizer;
     private final boolean fullSchedule;
+    private final ConditionalEliminationPhase conditionalEliminationPhase;
 
     public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule) {
         this.canonicalizer = canonicalizer;
         this.fullSchedule = fullSchedule;
+        this.conditionalEliminationPhase = new ConditionalEliminationPhase(fullSchedule);
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        conditionalEliminationPhase.canApply(graphState),
+                        canonicalizer.canApply(graphState));
     }
 
     @Override
@@ -53,7 +64,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
         while (true) {
             count++;
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                new ConditionalEliminationPhase(fullSchedule).apply(graph, context);
+                conditionalEliminationPhase.apply(graph, context);
             }
             if (listener.getNodes().isEmpty()) {
                 break;
@@ -75,7 +86,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer);
+        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer, conditionalEliminationPhase);
     }
 
     @Override
@@ -88,8 +99,11 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
             return false;
         }
 
-        IterativeConditionalEliminationPhase phase = (IterativeConditionalEliminationPhase) obj;
+        IterativeConditionalEliminationPhase that = (IterativeConditionalEliminationPhase) obj;
 
-        return this.getClass().equals(phase.getClass()) && this.fullSchedule == phase.fullSchedule && this.canonicalizer.equals(phase.canonicalizer);
+        return this.getClass().equals(that.getClass()) &&
+                        this.fullSchedule == that.fullSchedule &&
+                        this.canonicalizer.equals(that.canonicalizer) &&
+                        this.conditionalEliminationPhase.equals(that.conditionalEliminationPhase);
     }
 }

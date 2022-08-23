@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -108,6 +109,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -118,7 +120,6 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -712,7 +713,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     // values.
                     int methodCompiledEntryOffset = runtime.getVMConfig().methodCompiledEntryOffset;
                     AddressNode address = createOffsetAddress(graph, metaspaceMethod, methodCompiledEntryOffset);
-                    ReadNode compiledEntry = graph.add(new ReadNode(address, any(), StampFactory.forKind(wordKind), BarrierType.NONE));
+                    ReadNode compiledEntry = graph.add(new ReadNode(address, any(), StampFactory.forKind(wordKind), BarrierType.NONE, MemoryOrderMode.PLAIN));
 
                     loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(),
                                     signature, callTarget.targetMethod(),
@@ -793,7 +794,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     private void lowerOSRStartNode(OSRStartNode osrStart) {
         StructuredGraph graph = osrStart.graph();
-        if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
             StartNode newStart = graph.add(new StartNode());
             ParameterNode buffer = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(runtime.getTarget().wordJavaKind))));
             ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(OSR_MIGRATION_END, buffer));
@@ -814,7 +815,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 int size = osrLocal.getStackKind().getSlotCount();
                 int offset = localsOffset - (osrLocal.index() + size - 1) * wordSize;
                 AddressNode address = createOffsetAddress(graph, buffer, offset);
-                ReadNode load = graph.add(new ReadNode(address, any(), osrLocal.stamp(NodeView.DEFAULT), BarrierType.NONE));
+                ReadNode load = graph.add(new ReadNode(address, any(), osrLocal.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
             }
@@ -837,7 +838,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
                 // load the displaced mark from the osr buffer
                 AddressNode addressDisplacedHeader = createOffsetAddress(graph, buffer, offsetDisplacedHeader);
-                ReadNode loadDisplacedHeader = graph.add(new ReadNode(addressDisplacedHeader, any(), lock.stamp(NodeView.DEFAULT), BarrierType.NONE));
+                ReadNode loadDisplacedHeader = graph.add(new ReadNode(addressDisplacedHeader, any(), lock.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
                 graph.addBeforeFixed(migrationEnd, loadDisplacedHeader);
 
                 // we need to initialize the stack slot for the lock
@@ -846,12 +847,12 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
                 // write the displaced mark to the correct stack slot
                 AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockDisplacedHeaderOffset);
-                WriteNode writeStackSlot = graph.add(new WriteNode(addressDisplacedMark, DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE));
+                WriteNode writeStackSlot = graph.add(new WriteNode(addressDisplacedMark, DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE, MemoryOrderMode.PLAIN));
                 graph.addBeforeFixed(migrationEnd, writeStackSlot);
 
                 // load the lock object from the osr buffer
                 AddressNode addressLockObject = createOffsetAddress(graph, buffer, offsetLockObject);
-                ReadNode loadObject = graph.add(new ReadNode(addressLockObject, any(), lock.stamp(NodeView.DEFAULT), BarrierType.NONE));
+                ReadNode loadObject = graph.add(new ReadNode(addressLockObject, any(), lock.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
                 lock.replaceAndDelete(loadObject);
                 graph.addBeforeFixed(migrationEnd, loadObject);
             }
@@ -973,7 +974,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         // entry as HotSpot does not guarantee that this is a final value.
         Stamp methodStamp = MethodPointerStamp.methodNonNull();
         AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-        ReadNode metaspaceMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
+        ReadNode metaspaceMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         return metaspaceMethod;
     }
 
@@ -1008,7 +1009,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         }
 
         AddressNode address = createOffsetAddress(graph, object, runtime.getVMConfig().hubOffset);
-        return graph.add(new WriteNode(address, HUB_WRITE_LOCATION, writeValue, BarrierType.NONE));
+        return graph.add(new WriteNode(address, HUB_WRITE_LOCATION, writeValue, BarrierType.NONE, MemoryOrderMode.PLAIN));
     }
 
     @Override

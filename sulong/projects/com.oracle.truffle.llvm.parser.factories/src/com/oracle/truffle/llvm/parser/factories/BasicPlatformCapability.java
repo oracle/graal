@@ -97,6 +97,8 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
+    public static final String LIBCXX_FILENAME = NativeContextExtension.getNativeLibrary("c++");
+    public static final String LIBCXXABI_FILENAME = NativeContextExtension.getNativeLibrary("c++abi");
     public static final String LIBSULONG_FILENAME = NativeContextExtension.getNativeLibrary("sulong");
     public static final String LIBSULONGXX_FILENAME = NativeContextExtension.getNativeLibrary("sulong++");
 
@@ -122,6 +124,16 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     @Override
     public String getLibsulongFilename() {
         return LIBSULONG_FILENAME;
+    }
+
+    @Override
+    public String getCxxFilename() {
+        return LIBCXX_FILENAME;
+    }
+
+    @Override
+    public String getCxxAbiFilename() {
+        return LIBCXXABI_FILENAME;
     }
 
     @Override

@@ -26,6 +26,7 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -124,6 +126,11 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
     public static final CounterKey earlyGVN = DebugContext.counter("EarlyGVN");
     public static final CounterKey earlyGVNLICM = DebugContext.counter("EarlyGVN_LICM");
     public static final CounterKey earlyGVNAbort = DebugContext.counter("EarlyGVN_AbortProxy");
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {

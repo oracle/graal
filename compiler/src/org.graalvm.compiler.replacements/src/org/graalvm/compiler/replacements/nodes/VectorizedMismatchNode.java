@@ -29,12 +29,14 @@ import java.util.EnumSet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -86,10 +88,11 @@ public class VectorizedMismatchNode extends PureFunctionStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    public static native int vectorizedMismatch(Object arrayA, Object arrayB, int length, int stride);
+    @GenerateStub
+    public static native int vectorizedMismatch(Pointer arrayA, Pointer arrayB, int length, int stride);
 
     @NodeIntrinsic
-    public static native int vectorizedMismatch(Object arrayA, Object arrayB, int length, int stride, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+    public static native int vectorizedMismatch(Pointer arrayA, Pointer arrayB, int length, int stride, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {

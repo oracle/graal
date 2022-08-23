@@ -33,7 +33,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -47,7 +46,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -65,6 +63,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
@@ -138,13 +137,13 @@ public class JavaMainWrapper {
     private static int runCore0() {
         try {
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
-                if (VMInspectionOptions.AllowVMInspection.getValue() && ImageSingletons.contains(HeapDumpSupport.class)) {
+                if (VMInspectionOptions.hasHeapDumpSupport()) {
                     String absoluteHeapDumpPath = new File(SubstrateOptions.Name.getValue() + ".hprof").getAbsolutePath();
                     VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
                     System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
                     return 0;
                 } else {
-                    System.err.println("Unable to dump heap. Heap dumping is only supported for native executables built with `-H:+AllowVMInspection`.");
+                    System.err.println("Unable to dump heap. Heap dumping is only supported for native executables built with `" + VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
                     return 1;
                 }
             }

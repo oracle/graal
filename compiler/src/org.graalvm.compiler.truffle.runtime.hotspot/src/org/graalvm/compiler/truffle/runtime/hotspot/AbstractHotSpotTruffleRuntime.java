@@ -126,7 +126,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
     }
 
-    private volatile boolean traceTransferToInterpreter;
+    private boolean traceTransferToInterpreter;
     private Boolean profilingEnabled;
 
     private volatile Lazy lazy;

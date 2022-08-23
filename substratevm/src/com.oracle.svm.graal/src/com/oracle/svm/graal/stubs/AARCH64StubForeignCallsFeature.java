@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.graal.stubs;
 
+import static com.oracle.svm.core.cpufeature.Stubs.AArch64Features.AES_CPU_FEATURES_AARCH64;
+import static com.oracle.svm.core.cpufeature.Stubs.AArch64Features.EMPTY_CPU_FEATURES_AARCH64;
+
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,7 +40,8 @@ public class AARCH64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
 
     public AARCH64StubForeignCallsFeature() {
         super(new StubDescriptor[]{
-                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, SVMArrayIndexOfForeignCalls.class, true, null)
+                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, true, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(CryptoForeignCalls.STUBS, false, AES_CPU_FEATURES_AARCH64, AES_CPU_FEATURES_AARCH64),
         });
     }
 }

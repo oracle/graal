@@ -101,7 +101,7 @@ def fuzz(args=None, out=None):
                 gen.append((tmp_c, 'autogen.c'))
             timeout = parsed_args.timeout
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
-                mx_sulong.runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
+                mx_sulong.lli(['--llvm.llDebug', '--log.llvm.TraceIR.level=FINER', '--log.llvm.LLDebug.level=OFF', '--experimental-options', '--engine.WarnInterpreterOnly=false', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
             with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
                 try:
                     mx.run([tmp_out], timeout=timeout, out=o, err=e)
@@ -281,7 +281,7 @@ def check_interesting(args=None, out=None):
         except SystemExit:
             _not_interesting("Compiling the input file failed!")
         with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
-            mx_sulong.runLLVM([tmp_out], timeout=10, nonZeroIsFatal=False, out=o, err=e)
+            mx_sulong.lli([tmp_out], timeout=10, nonZeroIsFatal=False, out=o, err=e)
         with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
             try:
                 mx.run([tmp_out], timeout=10, out=o, err=e)
