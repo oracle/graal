@@ -70,8 +70,8 @@ public class PolyglotTypeMappings {
             StaticObject bindingsLoader = context.getBindings().getBindingsLoader();
 
             for (String mapping : interfaceMappings) {
-                Klass parent = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
-                if (parent.isInterface()) {
+                Klass parent = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
+                if (parent != null && parent.isInterface()) {
                     temp.put(mapping, (ObjectKlass) parent);
                 } else {
                     throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
@@ -89,7 +89,7 @@ public class PolyglotTypeMappings {
             Symbol<Symbol.Signature> desc = Symbol.Signature.Object_Object;
 
             // load the GuestTypeConversion interface for type checking
-            Klass conversionInterface = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(GUEST_TYPE_CONVERSION_INTERFACE), bindingsLoader, StaticObject.NULL);
+            Klass conversionInterface = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(GUEST_TYPE_CONVERSION_INTERFACE), bindingsLoader, StaticObject.NULL);
             if (conversionInterface == null) {
                 throw new IllegalStateException("Missing expected guest type conversion interface in polyglot.jar");
             }
@@ -97,12 +97,12 @@ public class PolyglotTypeMappings {
             for (Map.Entry<String, String> entry : converters) {
                 String type = entry.getKey();
                 // make sure the target type class can be found
-                Klass targetKlass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(type), bindingsLoader, StaticObject.NULL);
+                Klass targetKlass = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(type), bindingsLoader, StaticObject.NULL);
                 if (targetKlass == null) {
                     throw new IllegalStateException("Class not found for target type conversion: " + type);
                 }
                 String conversionHandler = entry.getValue();
-                ObjectKlass conversionKlass = (ObjectKlass) context.getRegistries().loadKlass(context.getTypes().fromClassGetName(conversionHandler), bindingsLoader, StaticObject.NULL);
+                ObjectKlass conversionKlass = (ObjectKlass) context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(conversionHandler), bindingsLoader, StaticObject.NULL);
                 if (conversionKlass == null) {
                     throw new IllegalStateException("Class not found for polyglot type conversion handler: " + conversionHandler);
                 }
