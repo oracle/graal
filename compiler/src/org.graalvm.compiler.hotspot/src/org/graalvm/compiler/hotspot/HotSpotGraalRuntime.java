@@ -35,7 +35,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -103,12 +102,6 @@ import jdk.vm.ci.services.Services;
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static final boolean IS_AOT = Boolean.parseBoolean(Services.getSavedProperties().get("com.oracle.graalvm.isaot"));
-
-    /**
-     * A factory for a {@link HotSpotGraalManagementRegistration} injected by
-     * {@code Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}.
-     */
-    private static final Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT = null;
 
     private static boolean checkArrayIndexScaleInvariants(MetaAccessProvider metaAccess) {
         assert metaAccess.getArrayIndexScale(JavaKind.Byte) == 1;
@@ -183,7 +176,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         this.instrumentation = compilerConfigurationFactory.createInstrumentation(options);
 
         if (IS_AOT) {
-            management = AOT_INJECTED_MANAGEMENT == null ? null : AOT_INJECTED_MANAGEMENT.get();
+            management = null;
         } else {
             management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
         }

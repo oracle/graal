@@ -640,54 +640,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.management.libgraal.annotation" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.libgraal.jni.annotation",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal",
-    },
-
-    "org.graalvm.compiler.hotspot.management.libgraal.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.hotspot.management.libgraal.annotation",
-        "org.graalvm.libgraal.jni.processor",
-      ],
-      "requires" : [
-        "java.compiler" # javax.annotation.processing.*
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal",
-    },
-
-    "org.graalvm.compiler.hotspot.management.libgraal" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.libgraal",
-        "org.graalvm.libgraal.jni",
-        "org.graalvm.compiler.hotspot.management",
-        "org.graalvm.compiler.hotspot.management.libgraal.annotation",
-      ],
-      "requires" : [
-        "java.management",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "checkPackagePrefix" : "false",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-        "GRAAL_LIBGRAAL_PROCESSOR",
-      ],
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
     "org.graalvm.compiler.hotspot.aarch64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -2028,7 +1980,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.libgraal.jni.processor",
         "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor",
-        "org.graalvm.compiler.hotspot.management.libgraal.processor"
       ],
       "distDependencies" : ["GRAAL_PROCESSOR"],
       "maven": False,
@@ -2155,22 +2106,6 @@ suite = {
       "maven" : {
         "artifactId" : "compiler-management",
       },
-    },
-
-    "GRAAL_MANAGEMENT_LIBGRAAL": {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.compiler.hotspot.management.libgraal",
-      ],
-      "overlaps" : [
-        "GRAAL_LIBGRAAL_PROCESSOR"
-      ],
-      "distDependencies" : [
-        "GRAAL_MANAGEMENT",
-        "GRAAL",
-      ],
-      "maven": False,
-      "javaCompliance" : "11+",
     },
 
     "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {

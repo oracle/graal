@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -61,7 +60,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
-import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
@@ -102,7 +100,6 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.word.LocationIdentity;
@@ -678,31 +675,10 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true)//
-    private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
-    // Checkstyle: resume
-
     @SuppressWarnings("unused")
     @Substitute
     private static void startupLibGraal(HotSpotGraalRuntime runtime) {
         VMRuntime.initialize();
-    }
-
-    private static final class InjectedManagementComputer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            try {
-                Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass("org.graalvm.compiler.hotspot.management.libgraal.LibGraalHotSpotGraalManagement$Factory");
-                Constructor<?> constructor = clazz.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                return constructor.newInstance();
-            } catch (ClassNotFoundException cnf) {
-                return null;
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     @Substitute
@@ -769,21 +745,6 @@ final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
     private static void notifyLowMemoryPoint(boolean fullGC) {
         Heap.getHeap().getGC().maybeCauseUserRequestedCollection(GCCause.HintedGC, fullGC);
     }
-}
-
-@TargetClass(className = "org.graalvm.compiler.hotspot.management.libgraal.MBeanProxy", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
-
-    @Substitute
-    private static Pointer getDefineClassesStatePointer() {
-        return LibGraalEntryPoints.MANAGEMENT_BARRIER.get();
-    }
-
-    @Substitute
-    private static Pointer getOptionWarningStatePointer() {
-        return LibGraalEntryPoints.MANAGEMENT_OPTION_WARNING.get();
-    }
-
 }
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
