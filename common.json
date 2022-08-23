@@ -30,8 +30,10 @@
   "devkits": {
     "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
     "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }},
+    "windows-jdk19":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
     "linux-jdk11":      { "packages" : { "devkit:gcc7.3.0-OEL6.4+1"  : "==1" }},
-    "linux-jdk17":      { "packages" : { "devkit:gcc10.3.0-OL6.4+1"  : "==0" }}
+    "linux-jdk17":      { "packages" : { "devkit:gcc10.3.0-OL6.4+1"  : "==0" }},
+    "linux-jdk19":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }}
   },
 
   "catch_files" : [
