@@ -94,7 +94,7 @@ import jdk.vm.ci.meta.Signature;
  *
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
-public class GraalObjectReplacer implements Function<Object, Object> {
+public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
     private final AnalysisUniverse aUniverse;
     private final AnalysisMetaAccess aMetaAccess;
@@ -103,7 +103,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
     private final HashMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new HashMap<>();
     private final HashMap<AnalysisType, SubstrateType> types = new HashMap<>();
     private final HashMap<Signature, SubstrateSignature> signatures = new HashMap<>();
-    private final GraalProviderObjectReplacements providerReplacements;
+    private final SubstrateProviders sProviders;
     private SubstrateGraalRuntime sGraalRuntime;
 
     private final HostedStringDeduplication stringTable;
@@ -116,10 +116,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
     private final Field substrateMethodImplementationsField;
     private final Field substrateMethodAnnotationsEncodingField;
 
-    public GraalObjectReplacer(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, GraalProviderObjectReplacements providerReplacements) {
+    public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, SubstrateProviders sProviders) {
         this.aUniverse = aUniverse;
         this.aMetaAccess = aMetaAccess;
-        this.providerReplacements = providerReplacements;
+        this.sProviders = sProviders;
         this.stringTable = HostedStringDeduplication.singleton();
         substrateFieldAnnotationsEncodingField = ReflectionUtil.lookupField(SubstrateField.class, "annotationsEncoding");
         substrateFieldTypeField = ReflectionUtil.lookupField(SubstrateField.class, "type");
@@ -152,7 +152,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             return source;
         }
         if (source instanceof MetaAccessProvider) {
-            dest = providerReplacements.getMetaAccessProvider();
+            dest = sProviders.getMetaAccessProvider();
         } else if (source instanceof HotSpotJVMCIRuntime) {
             throw new UnsupportedFeatureException("HotSpotJVMCIRuntime should not appear in the image: " + source);
         } else if (source instanceof GraalHotSpotVMConfig) {
@@ -166,13 +166,13 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
         } else if (source instanceof AnalysisConstantReflectionProvider) {
-            dest = providerReplacements.getConstantReflectionProvider();
+            dest = sProviders.getConstantReflectionProvider();
         } else if (source instanceof AnalysisConstantFieldProvider) {
-            dest = providerReplacements.getConstantFieldProvider();
+            dest = sProviders.getConstantFieldProvider();
         } else if (source instanceof ForeignCallsProvider) {
-            dest = providerReplacements.getForeignCallsProvider();
+            dest = sProviders.getForeignCallsProvider();
         } else if (source instanceof SnippetReflectionProvider) {
-            dest = providerReplacements.getSnippetReflectionProvider();
+            dest = sProviders.getSnippetReflectionProvider();
 
         } else if (source instanceof MetricKey) {
             /* Ensure lazily initialized name fields are computed. */
