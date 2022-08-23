@@ -353,7 +353,7 @@ public class Linker {
             // https://webassembly.github.io/spec/core/exec/modules.html#limits
             // If no max size is declared, then declaredMaxSize value will be
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
-            assertUnsignedIntLessOrEqual(declaredMinSize, memory.declaredMinSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertUnsignedIntLessOrEqual(declaredMinSize, memory.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, memory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setMemory(memory);
         };
@@ -384,8 +384,8 @@ public class Linker {
                 baseAddress = offsetAddress;
             }
 
-            Assert.assertUnsignedIntLessOrEqual(baseAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
-            Assert.assertUnsignedIntLessOrEqual(baseAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
 
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
@@ -434,16 +434,14 @@ public class Linker {
                                     "Table '" + importedTableName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
                 }
                 final int tableAddress = importedInstance.tableAddress(exportedTableIndex);
-                final int tableDeclaredMinSize = importedModule.tableInitialSize(exportedTableIndex);
-                final int tableDeclaredMaxSize = importedModule.tableMaximumSize(exportedTableIndex);
-                final byte tableElementType = importedModule.tableElementType(exportedTableIndex);
+                final WasmTable importedTable = context.tables().table(tableAddress);
                 // Rules for limits matching:
                 // https://webassembly.github.io/spec/core/exec/modules.html#limits
                 // If no max size is declared, then declaredMaxSize value will be
                 // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
-                assertUnsignedIntLessOrEqual(declaredMinSize, tableDeclaredMinSize, Failure.INCOMPATIBLE_IMPORT_TYPE);
-                assertUnsignedIntGreaterOrEqual(declaredMaxSize, tableDeclaredMaxSize, Failure.INCOMPATIBLE_IMPORT_TYPE);
-                assertByteEqual(elemType, tableElementType, Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertUnsignedIntLessOrEqual(declaredMinSize, importedTable.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertByteEqual(elemType, importedTable.elemType(), Failure.INCOMPATIBLE_IMPORT_TYPE);
                 instance.setTableAddress(tableIndex, tableAddress);
             }
         };
@@ -504,8 +502,8 @@ public class Linker {
             baseAddress = offsetAddress;
         }
 
-        Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
-        Assert.assertUnsignedIntLessOrEqual(baseAddress + elements.length, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+        Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        Assert.assertUnsignedIntLessOrEqual(baseAddress + elements.length, table.size(), Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
 
         for (int index = 0; index != elements.length; ++index) {
             final long element = elements[index];
@@ -1076,7 +1074,7 @@ public class Linker {
             for (Sym sym : resolutions.keySet()) {
                 toposort(sym, marks, sorted, new ArrayList<>());
             }
-            return sorted.toArray(new Resolver[sorted.size()]);
+            return sorted.toArray(new Resolver[0]);
         }
     }
 }

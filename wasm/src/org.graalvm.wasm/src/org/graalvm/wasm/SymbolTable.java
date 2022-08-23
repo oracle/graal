@@ -194,21 +194,21 @@ public abstract class SymbolTable {
 
     /**
      * Encodes the parameter and result types of each function type.
-     *
+     * <p>
      * Given a function type index, the {@link #typeOffsets} array indicates where the encoding for
      * that function type begins in this array.
-     *
+     * <p>
      * For a function type starting at index i, the encoding is the following
-     *
+     * <p>
      * <code>
      *   i     i+1   i+2+0        i+2+na-1  i+2+na+0        i+2+na+nr-1
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
      * | na  |  nr | par 1 | ... | par na | result 1 | ... | result nr |
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
      * </code>
-     *
+     * <p>
      * where `na` is the number of parameters, and `nr` is the number of result values.
-     *
+     * <p>
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
      */
@@ -216,7 +216,7 @@ public abstract class SymbolTable {
 
     /**
      * Stores the offset of each function type into the {@link #typeData} array.
-     *
+     * <p>
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
      */
@@ -224,10 +224,10 @@ public abstract class SymbolTable {
 
     /**
      * Stores the type equivalence class.
-     *
+     * <p>
      * Since multiple types have the same shape, each type is mapped to an equivalence class, so
      * that two types can be quickly compared.
-     *
+     * <p>
      * The equivalence classes are computed globally for all the modules, during linking.
      */
     @CompilationFinal(dimensions = 1) private int[] typeEquivalenceClasses;
@@ -247,7 +247,7 @@ public abstract class SymbolTable {
 
     /**
      * Stores the function objects for a WebAssembly module.
-     *
+     * <p>
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
      */
@@ -277,7 +277,7 @@ public abstract class SymbolTable {
     /**
      * A global type is the value type of the global, followed by its mutability. This is encoded as
      * two bytes -- the lowest (0th) byte is the value type. The 1st byte is organized like this:
-     *
+     * <p>
      * <code>
      * | . | . | . | . | . | initialized flag | exported flag | mutable flag |
      * </code>
@@ -301,7 +301,7 @@ public abstract class SymbolTable {
 
     /**
      * The descriptor of the table of this module.
-     *
+     * <p>
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
      */
@@ -321,7 +321,7 @@ public abstract class SymbolTable {
 
     /**
      * The descriptor of the memory of this module.
-     *
+     * <p>
      * In the current WebAssembly specification, a module can use at most one memory. The value
      * {@code null} denotes that this module uses no memory.
      */
@@ -423,7 +423,7 @@ public abstract class SymbolTable {
     /**
      * Ensure that the {@link #typeData} array has enough space to store {@code index}. If there is
      * no enough space, then a reallocation of the array takes place, doubling its capacity.
-     *
+     * <p>
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
      */
@@ -438,7 +438,7 @@ public abstract class SymbolTable {
      * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have enough
      * space to store the data for the type at {@code index}. If there is not enough space, then a
      * reallocation of the array takes place, doubling its capacity.
-     *
+     * <p>
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
      */
@@ -523,8 +523,7 @@ public abstract class SymbolTable {
 
     WasmFunction declareFunction(int typeIndex) {
         checkNotParsed();
-        final WasmFunction function = allocateFunction(typeIndex, null);
-        return function;
+        return allocateFunction(typeIndex, null);
     }
 
     public WasmFunction declareExportedFunction(int typeIndex, String exportedName) {
@@ -560,8 +559,7 @@ public abstract class SymbolTable {
     }
 
     public WasmFunction function(String exportName) {
-        WasmFunction function = exportedFunctions.get(exportName);
-        return function;
+        return exportedFunctions.get(exportName);
     }
 
     public int functionTypeParamCount(int typeIndex) {
@@ -714,7 +712,7 @@ public abstract class SymbolTable {
 
     void declareExternalGlobal(int index, WasmGlobal global) {
         final byte valueType = global.getValueType().byteValue();
-        final byte mutability = (byte) (global.isMutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT);
+        final byte mutability = global.isMutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
         allocateGlobal(index, valueType, mutability);
         module().addLinkAction((context, instance) -> {
             final GlobalRegistry globals = context.globals();
@@ -911,18 +909,6 @@ public abstract class SymbolTable {
         return table.elemType;
     }
 
-    public int tableInitialSize(int index) {
-        final TableInfo table = tables[index];
-        assert table != null;
-        return table.initialSize;
-    }
-
-    public int tableMaximumSize(int index) {
-        final TableInfo table = tables[index];
-        assert table != null;
-        return table.maximumSize;
-    }
-
     public void allocateMemory(int declaredMinSize, int declaredMaxSize) {
         checkNotParsed();
         validateSingleMemory();
@@ -978,19 +964,6 @@ public abstract class SymbolTable {
         }
         exportedMemoryNames.add(name);
         module().addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, name));
-    }
-
-    static String[] pushString(String[] xs, String x) {
-        if (xs == null || xs.length == 0) {
-            return new String[]{x};
-        }
-        final String[] result = Arrays.copyOf(xs, xs.length + 1);
-        result[result.length - 1] = x;
-        return result;
-    }
-
-    int memoryCount() {
-        return memoryExists() ? 1 : 0;
     }
 
     public ImportDescriptor importedMemory() {

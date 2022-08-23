@@ -40,16 +40,15 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -59,6 +58,8 @@ public class WasmType implements TruffleObject {
     public static final byte VOID_TYPE = 0x40;
     @CompilationFinal(dimensions = 1) public static final byte[] VOID_TYPE_ARRAY = {};
     public static final byte NULL_TYPE = 0x00;
+
+    public static final byte UNKNOWN_TYPE = -1;
 
     /**
      * Number Types.
@@ -110,11 +111,11 @@ public class WasmType implements TruffleObject {
     }
 
     public static boolean isNumberType(byte type) {
-        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE;
+        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE || type == UNKNOWN_TYPE;
     }
 
     public static boolean isReferenceType(byte type) {
-        return type == FUNCREF_TYPE || type == EXTERNREF_TYPE;
+        return type == FUNCREF_TYPE || type == EXTERNREF_TYPE || type == UNKNOWN_TYPE;
     }
 
     private final String name;
@@ -150,7 +151,7 @@ public class WasmType implements TruffleObject {
     }
 
     @ExportMessage
-    final boolean isMetaInstance(Object instance) throws UnsupportedMessageException {
+    final boolean isMetaInstance(Object instance) {
         return instance instanceof WasmConstant;
     }
 

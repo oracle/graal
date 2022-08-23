@@ -101,6 +101,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
             // ensure computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
             byteArrayBuffer.grow(targetByteSize);
+            minSize = size() + extraPageSize;
             invokeGrowCallback();
             return true;
         } else {
@@ -111,6 +112,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public void reset() {
         byteArrayBuffer.reset(declaredMinSize * MEMORY_PAGE_SIZE);
+        minSize = declaredMinSize;
     }
 
     @Override

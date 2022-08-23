@@ -88,10 +88,10 @@ public class EmscriptenModule extends BuiltinModule {
         defineFunction(instance, "__syscall54", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall54", language, instance));
         defineFunction(instance, "__syscall6", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall6", language, instance));
         defineFunction(instance, "setTempRet0", types(I32_TYPE), types(), new UnimplementedNode("setTempRet0", language, instance));
-        defineGlobal(instance, "_table_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(instance, "_memory_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(instance, "DYNAMICTOP_PTR", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(instance, "DYNAMIC_BASE", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "_table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "_memory_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "DYNAMIC_BASE", I32_TYPE, GlobalModifier.CONSTANT, 0);
         defineTable(instance, "table", 0, -1, WasmType.FUNCREF_TYPE);
         return instance;
     }

@@ -1575,14 +1575,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             long valueAndLength = unsignedIntConstantAndLength(data, offset);
                             int offsetDelta = length(valueAndLength);
                             offset += offsetDelta;
-                            final int sourceTableIndex = value(valueAndLength);
+                            final int destinationTableIndex = value(valueAndLength);
                             // endregion
 
                             // region Load LEB128 Unsigned32 -> tableIndex
                             valueAndLength = unsignedIntConstantAndLength(data, offset);
                             offsetDelta = length(valueAndLength);
                             offset += offsetDelta;
-                            final int destinationTableIndex = value(valueAndLength);
+                            final int sourceTableIndex = value(valueAndLength);
                             // endregion
 
                             table_copy(context, frame, stackPointer, sourceTableIndex, destinationTableIndex);
@@ -3026,7 +3026,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final int n = popInt(frame, stackPointer - 1);
         final Object val = popReference(frame, stackPointer - 2);
         final int res = table.grow(n, val);
-        pushInt(frame, stackPointer - 1, res);
+        pushInt(frame, stackPointer - 2, res);
     }
 
     private void table_copy(WasmContext context, VirtualFrame frame, int stackPointer, int sourceTableIndex, int destinationTableIndex) {

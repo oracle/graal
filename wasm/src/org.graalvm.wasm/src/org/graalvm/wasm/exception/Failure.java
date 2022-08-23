@@ -47,7 +47,6 @@ public enum Failure {
     INTEGER_REPRESENTATION_TOO_LONG(Type.MALFORMED, "integer representation too long"),
     INTEGER_TOO_LARGE(Type.MALFORMED, "integer too large"),
     UNEXPECTED_END(Type.MALFORMED, "unexpected end of section or function"),
-    UNEXPECTED_END_OPCODE(Type.MALFORMED, "unexpected end"),
     MALFORMED_VALUE_TYPE(Type.MALFORMED, "malformed value type"),
     INVALID_MAGIC_NUMBER(Type.MALFORMED, "magic header not detected"),
     INVALID_VERSION_NUMBER(Type.MALFORMED, "unknown binary version"),
@@ -117,8 +116,6 @@ public enum Failure {
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
     UNKNOWN_IMPORT(Type.UNLINKABLE, "unknown import"),
     INCOMPATIBLE_IMPORT_TYPE(Type.UNLINKABLE, "incompatible import type"),
-    ELEMENTS_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "elements segment does not fit"),
-    DATA_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "data segment does not fit"),
     // GraalWasm-specific:
     INVALID_WASI_DIRECTORIES_MAPPING(Type.UNLINKABLE, "invalid wasi directories mapping"),
 

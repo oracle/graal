@@ -116,6 +116,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         size = declaredMinSize;
         buffer = allocateBuffer(byteSize());
         startAddress = getBufferAddress(buffer);
+        minSize = declaredMinSize;
     }
 
     @Override
@@ -145,6 +146,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
             buffer = updatedBuffer;
             startAddress = updatedStartAddress;
             size += extraPageSize;
+            minSize = size;
             invokeGrowCallback();
             return true;
         } else {

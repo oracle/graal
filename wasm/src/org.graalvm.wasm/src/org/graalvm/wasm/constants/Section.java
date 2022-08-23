@@ -76,9 +76,9 @@ public final class Section {
     private Section() {
     }
 
-    public static boolean isNextSectionIdValid(int sectionID, int lastSectionID) {
+    public static boolean isNextSectionOrderValid(int sectionID, int lastSectionID) {
         // Undefined section ids and custom section ids are seen as valid and will be handled later
-        return sectionID >= SECTION_ORDER.length || sectionID <= 0 || SECTION_ORDER[sectionID] > SECTION_ORDER[lastSectionID];
+        return Integer.compareUnsigned(sectionID, SECTION_ORDER.length) >= 0 || SECTION_ORDER[sectionID] > SECTION_ORDER[lastSectionID];
     }
 
     public static int LAST_SECTION_ID = SECTION_ORDER.length - 1;

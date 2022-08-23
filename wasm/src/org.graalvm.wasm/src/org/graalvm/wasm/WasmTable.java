@@ -64,6 +64,8 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
 
     private final byte elemType;
 
+    private int minSize;
+
     /**
      * The maximum practical size of this table instance.
      * <p>
@@ -87,6 +89,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
+        this.minSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
         this.elements = new Object[declaredMinSize];
         Arrays.fill(this.elements, WasmConstant.NULL);
@@ -114,6 +117,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     public void reset() {
         elements = new Object[declaredMinSize];
         Arrays.fill(elements, WasmConstant.NULL);
+        minSize = declaredMinSize;
     }
 
     /**
@@ -143,6 +147,10 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      */
     public int declaredMaxSize() {
         return declaredMaxSize;
+    }
+
+    public int minSize() {
+        return minSize;
     }
 
     /**
@@ -203,6 +211,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         final int targetSize = size() + delta;
         if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0) {
             ensureSizeAtLeast(size() + delta);
+            minSize += targetSize;
         } else {
             throw new IllegalArgumentException("Cannot grow table above max limit " + maxAllowedSize);
         }
@@ -211,9 +220,10 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     public int grow(int delta, Object value) {
         final int size = size();
         final int targetSize = size + delta;
-        if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0 && size < targetSize) {
+        if (compareUnsigned(delta, maxAllowedSize) <= 0 && compareUnsigned(targetSize, maxAllowedSize) <= 0) {
             elements = Arrays.copyOf(elements, targetSize);
             Arrays.fill(elements, size, targetSize, value);
+            minSize += targetSize;
             return size;
         }
         return -1;

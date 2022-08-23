@@ -46,8 +46,8 @@ import org.graalvm.wasm.exception.WasmException;
 import com.oracle.truffle.api.CompilerAsserts;
 
 public final class GlobalModifier {
-    public static final int CONSTANT = 0x00;
-    public static final int MUTABLE = 0x01;
+    public static final byte CONSTANT = 0x00;
+    public static final byte MUTABLE = 0x01;
 
     public static String asString(int modifier) {
         CompilerAsserts.neverPartOfCompilation();

@@ -85,6 +85,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      */
     protected final int declaredMaxSize;
 
+    protected int minSize;
     /**
      * The maximum practical size of this memory instance (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
@@ -111,6 +112,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
+        this.minSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
     }
 
@@ -149,6 +151,10 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      */
     public final int declaredMaxSize() {
         return declaredMaxSize;
+    }
+
+    public final int minSize() {
+        return minSize;
     }
 
     public abstract boolean grow(int extraPageSize);
@@ -325,7 +331,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         long[] chunk = view(address, length);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < chunk.length; i++) {
-            sb.append("0x").append(hex(address + i * 8)).append(" | ");
+            sb.append("0x").append(hex(address + i * 8L)).append(" | ");
             for (int j = 0; j < 8; j++) {
                 sb.append(viewByte(address + i * 8 + j)).append(" ");
             }
