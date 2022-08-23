@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -71,12 +72,20 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private Map<ResolvedJavaMethod, MethodEntry> methodsIndex;
     /**
-     * A list recording details of all primary ranges included in this class sorted by ascending
-     * address range.
+     * A list recording details of all normal primary compiled methods included in this class sorted
+     * by ascending address range. Note that the associated address ranges are disjoint and
+     * contiguous.
      */
     private List<PrimaryEntry> primaryEntries;
     /**
-     * An index identifying primary ranges which have already been encountered.
+     * A list recording details of all deopt fallback primary compiled methods included in this
+     * class sorted by ascending address range. Note that the associated address ranges are
+     * disjoint, contiguous and above all ranges for normal primary compiled methods.
+     */
+    private List<PrimaryEntry> deoptPrimaryEntries;
+    /**
+     * An index identifying ranges for primary compiled method which have already been encountered,
+     * whether normal or deopt fallback methods.
      */
     private Map<Range, PrimaryEntry> primaryIndex;
     /**
@@ -95,10 +104,6 @@ public class ClassEntry extends StructureTypeEntry {
      * A list of the same dirs.
      */
     private List<DirEntry> localDirs;
-    /**
-     * This flag is true iff the entry includes methods that are deopt targets.
-     */
-    private boolean includesDeoptTarget;
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
@@ -107,6 +112,8 @@ public class ClassEntry extends StructureTypeEntry {
         this.methods = new ArrayList<>();
         this.methodsIndex = new HashMap<>();
         this.primaryEntries = new ArrayList<>();
+        // deopt methods list is created on demand
+        this.deoptPrimaryEntries = null;
         this.primaryIndex = new HashMap<>();
         this.localFiles = new ArrayList<>();
         this.localFilesIndex = new HashMap<>();
@@ -154,13 +161,16 @@ public class ClassEntry extends StructureTypeEntry {
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
-            primaryEntries.add(primaryEntry);
             primaryIndex.put(primary, primaryEntry);
             if (primary.isDeoptTarget()) {
-                includesDeoptTarget = true;
+                if (deoptPrimaryEntries == null) {
+                    deoptPrimaryEntries = new ArrayList<>();
+                }
+                deoptPrimaryEntries.add(primaryEntry);
             } else {
+                primaryEntries.add(primaryEntry);
                 /* deopt targets should all come after normal methods */
-                assert includesDeoptTarget == false;
+                assert deoptPrimaryEntries == null;
             }
             FileEntry primaryFileEntry = primary.getFileEntry();
             if (primaryFileEntry != null) {
@@ -247,13 +257,41 @@ public class ClassEntry extends StructureTypeEntry {
         return fileEntry;
     }
 
-    public List<PrimaryEntry> getPrimaryEntries() {
-        return primaryEntries;
+    /**
+     * Retrieve a stream of all primary compiled method entries for this class, including both
+     * normal and deopt fallback compiled methods.
+     * 
+     * @return a stream of all primary compiled method entries for this class.
+     */
+    public Stream<PrimaryEntry> primaryEntries() {
+        Stream<PrimaryEntry> stream = primaryEntries.stream();
+        if (deoptPrimaryEntries != null) {
+            stream = Stream.concat(stream, deoptPrimaryEntries.stream());
+        }
+        return stream;
     }
 
-    @SuppressWarnings("unused")
-    public Object primaryIndexFor(Range primaryRange) {
-        return primaryIndex.get(primaryRange);
+    /**
+     * Retrieve a stream of all normal primary compiled method entries for this class, excluding
+     * deopt fallback compiled methods.
+     * 
+     * @return a stream of all normal primary compiled method entries for this class.
+     */
+    public Stream<PrimaryEntry> normalPrimaryEntries() {
+        return primaryEntries.stream();
+    }
+
+    /**
+     * Retrieve a stream of all deopt fallback primary compiled method entries for this class.
+     * 
+     * @return a stream of all deopt fallback primary compiled method entries for this class.
+     */
+    public Stream<PrimaryEntry> deoptPrimaryEntries() {
+        if (includesDeoptTarget()) {
+            return primaryEntries.stream();
+        } else {
+            return Stream.empty();
+        }
     }
 
     public List<DirEntry> getLocalDirs() {
@@ -265,7 +303,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public boolean includesDeoptTarget() {
-        return includesDeoptTarget;
+        return deoptPrimaryEntries != null;
     }
 
     public String getCachePath() {
@@ -371,47 +409,60 @@ public class ClassEntry extends StructureTypeEntry {
         return methods;
     }
 
+    /*
+     * Accessors for lo and hi bounds of this class's compiled method code ranges. See comments in
+     * class DebugInfoBase for an explanation of the layout of compiled method code.
+     */
+
+    /**
+     * Retrieve the lowest code section offset for compiled method code belonging to this class. It
+     * is an error to call this for a class entry which has no compiled methods.
+     * 
+     * @return the lowest code section offset for compiled method code belonging to this class
+     */
     public int lowpc() {
         assert isPrimary();
         return primaryEntries.get(0).getPrimary().getLo();
     }
 
+    /**
+     * Retrieve the lowest code section offset for compiled method code belonging to this class that
+     * belongs to a deoptimization fallback compiled method. It is an error to call this for a class
+     * entry which has no deoptimization fallback compiled methods.
+     * 
+     * @return the lowest code section offset for a deoptimization fallback compiled method
+     *         belonging to this class.
+     */
     public int lowpcDeopt() {
         assert isPrimary();
         assert includesDeoptTarget();
-        int lowpc = -1;
-        for (PrimaryEntry primaryEntry : primaryEntries) {
-            Range primary = primaryEntry.getPrimary();
-            if (primary.isDeoptTarget()) {
-                lowpc = primary.getLo();
-                break;
-            }
-        }
-        assert lowpc >= 0;
-        return lowpc;
+        return deoptPrimaryEntries.get(0).getPrimary().getLo();
     }
 
+    /**
+     * Retrieve the highest code section offset for compiled method code belonging to this class
+     * that does not belong to a deoptimization fallback compiled method. The returned value is the
+     * offset of the first byte that succeeds the code for that method. It is an error to call this
+     * for a class entry which has no compiled methods.
+     * 
+     * @return the highest code section offset for compiled method code belonging to this class
+     */
     public int hipc() {
         assert isPrimary();
-        if (!includesDeoptTarget()) {
-            return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
-        } else {
-            Range lastPrimary = null;
-            for (PrimaryEntry primaryEntry : primaryEntries) {
-                Range primary = primaryEntry.getPrimary();
-                if (primary.isDeoptTarget()) {
-                    break;
-                }
-                lastPrimary = primary;
-            }
-            assert lastPrimary != null;
-            return lastPrimary.getHi();
-        }
+        return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
     }
 
+    /**
+     * Retrieve the highest code section offset for compiled method code belonging to this class
+     * that belongs to a deoptimization fallback compiled method. It is an error to call this for a
+     * class entry which has no deoptimization fallback compiled methods.
+     * 
+     * @return the highest code section offset for a deoptimization fallback compiled method
+     *         belonging to this class.
+     */
     public int hipcDeopt() {
         assert isPrimary();
         assert includesDeoptTarget();
-        return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
+        return deoptPrimaryEntries.get(deoptPrimaryEntries.size() - 1).getPrimary().getHi();
     }
 }

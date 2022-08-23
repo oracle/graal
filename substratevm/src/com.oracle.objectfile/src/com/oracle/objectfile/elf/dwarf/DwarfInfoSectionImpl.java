@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -141,13 +142,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeBuiltInUnit(context, buffer, pos);
 
         /*
-         * Write class units for non-primary classes i.e. ones which don't have associated methods.
+         * Write class units for non-primary instance classes i.e. ones which don't have compiled
+         * methods.
          */
 
         pos = writeNonPrimaryClasses(context, buffer, pos);
 
         /*
-         * Write class units for primary classes in increasing order of method address.
+         * Write class units for primary instance classes i.e. ones which have associated compiled
+         * methods.
          */
 
         pos = writePrimaryClasses(context, buffer, pos);
@@ -363,7 +366,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeAttrStrp(compilationDirectory, buffer, pos);
         /* Non-primary classes have no compiled methods so they have no low or high pc. */
-        /* However, we still generate a statement list in cae they include inlined methods */
+        /* However, we still generate a statement list in case they include inlined methods */
         log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
         pos = writeLineSectionOffset(lineIndex, buffer, pos);
 
@@ -976,18 +979,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodLocations(DebugContext context, ClassEntry classEntry, boolean deoptTargets, byte[] buffer, int p) {
         int pos = p;
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-
         /* The primary file entry should always be first in the local files list. */
         assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
 
-        for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            Range primary = primaryEntry.getPrimary();
-            if (primary.isDeoptTarget() != deoptTargets) {
-                continue;
-            }
-            pos = writeMethodLocation(context, primaryEntry, buffer, pos);
-        }
+        Stream<PrimaryEntry> entries = (deoptTargets ? classEntry.deoptPrimaryEntries() : classEntry.normalPrimaryEntries());
+        pos = entries.reduce(pos,
+                        (p1, entry) -> writeMethodLocation(context, entry, buffer, p1),
+                        (oldPos, newPos) -> newPos);
         return pos;
     }
 
@@ -1042,16 +1040,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private HashSet<MethodEntry> collectInlinedMethods(DebugContext context, ClassEntry classEntry, boolean deoptTargets, int p) {
-        HashSet<MethodEntry> methods = new HashSet<>();
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            Range primary = primaryEntry.getPrimary();
-            if (!primary.isPrimary() || primary.isDeoptTarget() != deoptTargets) {
-                continue;
-            }
-            addInlinedMethods(context, primaryEntry, primary, methods, p);
+        final HashSet<MethodEntry> methods = new HashSet<>();
+        if (!deoptTargets || classEntry.includesDeoptTarget()) {
+            Stream<PrimaryEntry> entries = (deoptTargets ? classEntry.deoptPrimaryEntries() : classEntry.normalPrimaryEntries());
+            entries.forEach(entry -> addInlinedMethods(context, entry, entry.getPrimary(), methods, p));
         }
-
         return methods;
     }
 
@@ -1305,8 +1298,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeDeoptMethodsCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         assert classEntry.includesDeoptTarget();
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        assert !classPrimaryEntries.isEmpty();
         int lineIndex = getLineIndex(classEntry);
         int lo = classEntry.lowpcDeopt();
         int hi = classEntry.hipcDeopt();
@@ -1739,8 +1730,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     /*
      * Attributes of type ref4 which refer to an element in she same CU need to be written as an
      * offset relative to the start of the current CU. This field is updated every time writing of a
-     * CU commences, providing as a section offset for the CU whcih can be subtracted from the
-     * section offset that are used to record element positions.
+     * CU commences, providing a section offset for the CU which can be subtracted from the section
+     * offsets that are used to record element positions.
      */
     private int cuStart;
 

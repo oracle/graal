@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -155,13 +156,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodLocations(DebugContext context, ClassEntry classEntry, boolean isDeopt, byte[] buffer, int p) {
         int pos = p;
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-
-        for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            if (primaryEntry.getPrimary().isDeoptTarget() != isDeopt) {
-                continue;
-            }
-            pos = writePrimaryRangeLocations(context, primaryEntry, buffer, pos);
+        if (!isDeopt || classEntry.includesDeoptTarget()) {
+            Stream<PrimaryEntry> entries = (isDeopt ? classEntry.deoptPrimaryEntries() : classEntry.normalPrimaryEntries());
+            pos = entries.reduce(pos,
+                            (p1, entry) -> writePrimaryRangeLocations(context, entry, buffer, p1),
+                            (oldPos, newPos) -> newPos);
         }
         return pos;
     }

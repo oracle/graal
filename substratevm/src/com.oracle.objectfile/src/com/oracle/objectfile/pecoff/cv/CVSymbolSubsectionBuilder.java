@@ -69,9 +69,7 @@ final class CVSymbolSubsectionBuilder {
      */
     private void build(ClassEntry classEntry) {
         /* Loop over all functions defined in this class. */
-        for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
-            build(primaryEntry);
-        }
+        classEntry.primaryEntries().forEach(primaryEntry -> build(primaryEntry));
     }
 
     /**

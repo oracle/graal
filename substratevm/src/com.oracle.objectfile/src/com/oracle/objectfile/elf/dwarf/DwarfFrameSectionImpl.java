@@ -137,36 +137,35 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeMethodFrame(PrimaryEntry primaryEntry, byte[] buffer, int p) {
+        int pos = p;
+        int lengthPos = pos;
+        Range range = primaryEntry.getPrimary();
+        long lo = range.getLo();
+        long hi = range.getHi();
+        pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
+        pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
+        pos = writePaddingNops(buffer, pos);
+        patchLength(lengthPos, buffer, pos);
+        return pos;
+    }
+
     private int writeMethodFrames(byte[] buffer, int p) {
         int pos = p;
         /* Write frames for normal methods. */
         for (ClassEntry classEntry : getInstanceClasses()) {
-            for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
-                Range range = primaryEntry.getPrimary();
-                if (!range.isDeoptTarget()) {
-                    long lo = range.getLo();
-                    long hi = range.getHi();
-                    int lengthPos = pos;
-                    pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-                    pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
-                    pos = writePaddingNops(buffer, pos);
-                    patchLength(lengthPos, buffer, pos);
-                }
+            if (classEntry.isPrimary()) {
+                pos = classEntry.normalPrimaryEntries().reduce(pos,
+                                (p1, entry) -> writeMethodFrame(entry, buffer, p1),
+                                (oldPos, newPos) -> newPos);
             }
         }
         /* Now write frames for deopt targets. */
         for (ClassEntry classEntry : getInstanceClasses()) {
-            for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
-                Range range = primaryEntry.getPrimary();
-                if (range.isDeoptTarget()) {
-                    long lo = range.getLo();
-                    long hi = range.getHi();
-                    int lengthPos = pos;
-                    pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-                    pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
-                    pos = writePaddingNops(buffer, pos);
-                    patchLength(lengthPos, buffer, pos);
-                }
+            if (classEntry.includesDeoptTarget()) {
+                pos = classEntry.deoptPrimaryEntries().reduce(pos,
+                                (p1, entry) -> writeMethodFrame(entry, buffer, p1),
+                                (oldPos, newPos) -> newPos);
             }
         }
         return pos;

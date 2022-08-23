@@ -354,6 +354,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
                 Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
                 if (filePath == null && hostedType instanceof HostedInstanceClass) {
+                    // conjure up an appropriate, unique file name to keep tools happy
+                    // even though we cannot find a corresponding source
                     filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
                 }
                 fullFilePath = filePath;
