@@ -49,6 +49,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
@@ -63,7 +64,7 @@ public class TestOperationsParserTest {
     private static RootCallTarget parse(OperationParser<TestOperationsGen.Builder> builder) {
         OperationRootNode operationsNode = parseNode(builder);
         System.out.println(operationsNode.dump());
-        return operationsNode.getCallTarget();
+        return ((RootNode) operationsNode).getCallTarget();
     }
 
     private static OperationRootNode parseNode(OperationParser<TestOperationsGen.Builder> builder) {

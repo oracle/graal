@@ -116,7 +116,7 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createWriteOpcode(CodeTree bc, CodeTree bci, CodeTree value) {
-        return CodeTreeBuilder.createBuilder().startStatement().tree(bc).string("[").tree(bci).string("] = (short) (").tree(value).string(")").end().build();
+        return CodeTreeBuilder.createBuilder().startStatement().startCall("unsafeWriteBytecode").tree(bc).tree(bci).tree(value).end(2).build();
     }
 
     public static CodeTree createWriteOpcode(CodeVariableElement bc, CodeVariableElement bci, CodeVariableElement value) {

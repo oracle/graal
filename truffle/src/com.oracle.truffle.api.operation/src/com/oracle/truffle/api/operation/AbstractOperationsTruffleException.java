@@ -42,6 +42,7 @@ package com.oracle.truffle.api.operation;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class AbstractOperationsTruffleException extends AbstractTruffleException {
 
@@ -73,9 +74,28 @@ public abstract class AbstractOperationsTruffleException extends AbstractTruffle
 
     private static Node getLocation(Node location, int bci) {
         if (bci >= 0) {
-            return ((OperationRootNode) location).createLocationNode(bci);
+            return new SourceLocationNode(((OperationRootNode) location).getSourceSectionAtBci(bci));
         } else {
             return location;
         }
+    }
+
+    private static class SourceLocationNode extends Node {
+        private final SourceSection location;
+
+        SourceLocationNode(SourceSection location) {
+            this.location = location;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return location;
+        }
+
+        @Override
+        public SourceSection getEncapsulatingSourceSection() {
+            return location;
+        }
+
     }
 }

@@ -50,10 +50,10 @@ import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
@@ -68,10 +68,10 @@ import com.oracle.truffle.api.operation.Variadic;
 @GenerateUncached
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
-public abstract class TestOperations extends OperationRootNode {
+public abstract class TestOperations extends RootNode implements OperationRootNode {
 
-    protected TestOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
-        super(language, frameDescriptor);
+    protected TestOperations(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
+        super(language, frameDescriptor.build());
     }
 
     protected TestOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

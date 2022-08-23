@@ -76,12 +76,11 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
-
-import sun.misc.Unsafe;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
@@ -121,6 +120,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private static final String DATA_READ_METHOD_PREFIX = "get";
     private static final String DATA_WRITE_METHOD_PREFIX = "write";
 
+    private static final TypeMirror TYPE_UNSAFE = new GeneratedTypeMirror("sun.misc", "Unsafe");
+
     CodeTypeElement createOperationNodes() {
         CodeTypeElement typOperationNodes = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, OPERATION_NODES_IMPL_NAME, types.OperationNodes);
         typOperationNodes.add(GeneratorUtils.createConstructorUsingFields(Set.of(), typOperationNodes));
@@ -131,6 +132,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         mSetSources.addParameter(new CodeVariableElement(arrayOf(types.Source), "sources"));
         mSetSources.createBuilder().statement("this.sources = sources");
         typOperationNodes.add(mSetSources);
+
+        CodeExecutableElement mGetSources = new CodeExecutableElement(arrayOf(types.Source), "getSources");
+        mGetSources.createBuilder().statement("return sources");
+        typOperationNodes.add(mGetSources);
 
         CodeExecutableElement mSetNodes = new CodeExecutableElement(context.getType(void.class), "setNodes");
         mSetNodes.addParameter(new CodeVariableElement(arrayOf(types.OperationRootNode), "nodes"));
@@ -292,9 +297,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private CodeTypeElement createOperationSerNodeImpl() {
         CodeTypeElement typOperationNodeImpl = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "OperationSerNodeImpl", m.getTemplateType().asType());
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "buildOrder")));
-        typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl));
+        for (ExecutableElement el : ElementFilter.constructorsIn(m.getTemplateType().getEnclosedElements())) {
+            typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl, el));
+        }
 
-        for (String methodName : new String[]{"dump", "getSourceInfo", "execute"}) {
+        for (String methodName : new String[]{"dump", "execute", "getSourceSectionAtBci"}) {
             CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationRootNode, methodName);
             met.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end(2);
             typOperationNodeImpl.add(met);
@@ -342,6 +349,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             genCtor.getModifiers().add(Modifier.PRIVATE);
         }
 
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME), "nodes")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(short[].class), "_bc")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(Object[].class), "_consts")));
         typOperationNodeImpl.add(children(new CodeVariableElement(arrayOf(types.Node), "_children")));
@@ -372,7 +380,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 typOperationNodeImpl.add(fldMetadata);
 
-                initBuilder.startStatement().startCall("setMetadataAccessor");
+                initBuilder.startStatement().startCall("OperationRootNode.setMetadataAccessor");
                 initBuilder.staticReference((VariableElement) metadata.getMessageElement());
                 initBuilder.startGroup();
                 // (
@@ -392,14 +400,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "INITIAL_EXECUTE = " + (m.isGenerateUncached() ? "UNCACHED_EXECUTE" : "COMMON_EXECUTE")));
 
         typOperationNodeImpl.add(createNodeImplExecuteAt());
+        typOperationNodeImpl.add(createNodeImplGetSourceSection());
+        typOperationNodeImpl.add(createNodeImplGetSourceSectionAtBci());
+        typOperationNodeImpl.add(createSneakyThrow());
 
-        CodeExecutableElement mExecute = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+        CodeExecutableElement mExecute = createNodeExecute();
         typOperationNodeImpl.add(mExecute);
-        mExecute.createBuilder().startReturn().startCall("executeAt").string("frame, _maxLocals << 16").end(2);
-
-        CodeExecutableElement mGetSourceInfo = GeneratorUtils.overrideImplement(types.OperationRootNode, "getSourceInfo");
-        typOperationNodeImpl.add(mGetSourceInfo);
-        mGetSourceInfo.createBuilder().statement("return sourceInfo");
 
         CodeExecutableElement mDump = GeneratorUtils.overrideImplement(types.OperationRootNode, "dump");
         typOperationNodeImpl.add(mDump);
@@ -458,7 +464,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(typBuilderImpl);
         typOperationNodeImpl.add(createChangeInterpreter(typBytecodeBase));
 
-        // instruction IDs
+        // instruction IDsx
         for (Instruction instr : m.getOperationsContext().instructions) {
             typOperationNodeImpl.addAll(instr.createInstructionFields());
         }
@@ -468,6 +474,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createSetResultBoxedImpl());
         typOperationNodeImpl.add(createCounter());
         typOperationNodeImpl.add(createUnsafeFromBytecode());
+        typOperationNodeImpl.add(createUnsafeWriteBytecode());
         typOperationNodeImpl.add(createConditionProfile());
 
         typOperationNodeImpl.add(createCreateMethod(typBuilderImpl, typBuilderImpl));
@@ -475,6 +482,29 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createSerializeMethod(typBuilderImpl, typBuilderImpl));
 
         return typOperationNodeImpl;
+    }
+
+    private CodeExecutableElement createNodeExecute() {
+        // todo: do not generate the prolog call if not implemented
+        // todo: do not generate the epilog call and the try/catch if not implemented
+        CodeExecutableElement mExecute = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+        CodeTreeBuilder b = mExecute.createBuilder();
+        b.declaration("Object", "returnValue", "null");
+        b.declaration("Throwable", "throwable", "null");
+        b.statement("executeProlog(frame)");
+        b.startTryBlock();
+        b.startAssign("returnValue").startCall("executeAt").string("frame, _maxLocals << 16").end(2);
+        b.startReturn().string("returnValue").end();
+        b.end().startCatchBlock(context.getType(Throwable.class), "th");
+        b.statement("throw sneakyThrow(throwable = th)");
+        b.end().startFinallyBlock();
+        b.startStatement().startCall("executeEpilog");
+        b.string("frame");
+        b.string("returnValue");
+        b.string("throwable");
+        b.end(2);
+        b.end();
+        return mExecute;
     }
 
     private CodeExecutableElement createUnsafeFromBytecode() {
@@ -488,12 +518,38 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startCall("UNSAFE", "getShort");
             b.string("bc");
             b.startGroup();
-            b.staticReference(context.getType(Unsafe.class), "ARRAY_SHORT_BASE_OFFSET");
+            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_BASE_OFFSET");
             b.string(" + ");
-            b.staticReference(context.getType(Unsafe.class), "ARRAY_SHORT_BASE_SCALE");
+            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_INDEX_SCALE");
             b.string(" * index").end(2);
         } else {
             b.string("bc[index]");
+        }
+        b.end();
+
+        return met;
+    }
+
+    private CodeExecutableElement createUnsafeWriteBytecode() {
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "unsafeWriteBytecode");
+        met.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+        met.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+        met.addParameter(new CodeVariableElement(context.getType(short.class), "value"));
+
+        CodeTreeBuilder b = met.createBuilder();
+        b.startStatement();
+        if (OperationGeneratorFlags.USE_UNSAFE) {
+            b.startCall("UNSAFE", "putShort");
+            b.string("bc");
+            b.startGroup();
+            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_BASE_OFFSET");
+            b.string(" + ");
+            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_INDEX_SCALE");
+            b.string(" * index").end();
+            b.string("value");
+            b.end();
+        } else {
+            b.string("bc[index] = value");
         }
         b.end();
 
@@ -543,6 +599,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         b.statement("return result");
+
+        return met;
+    }
+
+    private CodeExecutableElement createSneakyThrow() {
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, null, "<E extends Throwable> RuntimeException sneakyThrow(Throwable e) throws E { //");
+        met.createBuilder().statement("throw (E) e");
+        GeneratorUtils.addSuppressWarnings(context, met, "unchecked");
 
         return met;
     }
@@ -605,6 +669,70 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.startReturn().string("frame.getObject((result >> 16) & 0xffff)").end();
 
         return mExecuteAt;
+    }
+
+    private static final int SOURCE_INFO_BCI_INDEX = 0;
+    private static final int SOURCE_INFO_START = 1;
+    private static final int SOURCE_INFO_LENGTH = 2;
+    private static final int SOURCE_INFO_STRIDE = 3;
+
+    private CodeExecutableElement createNodeImplGetSourceSection() {
+        CodeExecutableElement met = GeneratorUtils.overrideImplement(types.Node, "getSourceSection");
+
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.declaration("int[]", "sourceInfo", "this.sourceInfo");
+
+        b.startIf().string("sourceInfo == null").end().startBlock().returnNull().end();
+
+        b.declaration("int", "i", (CodeTree) null);
+
+        b.startFor().string("i = 0; i < sourceInfo.length; i += " + SOURCE_INFO_STRIDE).end().startBlock();
+        b.startIf().string("sourceInfo[i + " + SOURCE_INFO_START + "] >= 0").end().startBlock();
+        b.statement("int sourceIndex = sourceInfo[i + " + SOURCE_INFO_BCI_INDEX + "] >> 16");
+        b.statement("int sourceStart = sourceInfo[i + " + SOURCE_INFO_START + "]");
+        b.statement("int sourceLength = sourceInfo[i + " + SOURCE_INFO_LENGTH + "]");
+        b.startReturn().string("nodes.getSources()[sourceIndex].createSection(sourceStart, sourceLength)").end();
+        b.end();
+        b.end();
+
+        b.returnNull();
+
+        return met;
+    }
+
+    private CodeExecutableElement createNodeImplGetSourceSectionAtBci() {
+        CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationRootNode, "getSourceSectionAtBci");
+
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.declaration("int[]", "sourceInfo", "this.sourceInfo");
+
+        b.startIf().string("sourceInfo == null").end().startBlock().returnNull().end();
+
+        b.declaration("int", "i", (CodeTree) null);
+
+        b.startFor().string("i = 0; i < sourceInfo.length; i += " + SOURCE_INFO_STRIDE).end().startBlock();
+        b.startIf().string("(sourceInfo[i + " + SOURCE_INFO_BCI_INDEX + "] & 0xffff) > bci").end().startBlock();
+        b.statement("break");
+        b.end();
+        b.end();
+
+        b.startIf().string("i == 0").end().startBlock();
+        b.returnNull();
+        b.end().startElseBlock();
+
+        b.statement("i -= " + SOURCE_INFO_STRIDE);
+        b.statement("int sourceIndex = sourceInfo[i + " + SOURCE_INFO_BCI_INDEX + "] >> 16");
+        b.startIf().string("sourceIndex < 0").end().startBlock().returnNull().end();
+        b.statement("int sourceStart = sourceInfo[i + " + SOURCE_INFO_START + "]");
+        b.startIf().string("sourceStart < 0").end().startBlock().returnNull().end();
+        b.statement("int sourceLength = sourceInfo[i + " + SOURCE_INFO_LENGTH + "]");
+        b.startReturn().string("nodes.getSources()[sourceIndex].createSection(sourceStart, sourceLength)").end();
+
+        b.end();
+
+        return met;
     }
 
     private CodeTypeElement createBuilderImpl(CodeTypeElement typOperationNodeImpl, CodeTypeElement opNodesImpl, CodeTypeElement typExceptionHandler) {

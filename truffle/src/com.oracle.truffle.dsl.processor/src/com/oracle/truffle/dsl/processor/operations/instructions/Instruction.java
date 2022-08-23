@@ -374,7 +374,7 @@ public abstract class Instruction {
         this.internalName = OperationGeneratorUtils.toScreamCase(name);
         this.numPushedValues = numPushedValues;
 
-        this.opcodeIdField = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), context.getType(int.class), "INSTR_" + internalName);
+        this.opcodeIdField = new CodeVariableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), context.getType(short.class), "INSTR_" + internalName);
         opcodeIdField.createInitBuilder().string("" + id);
     }
 

@@ -54,6 +54,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
@@ -114,7 +115,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
         for (OperationRootNode node : nodes.getNodes()) {
             TruffleString name = node.getMetadata(SLOperationRootNode.MethodName);
-            RootCallTarget callTarget = node.getCallTarget();
+            RootCallTarget callTarget = ((RootNode) node).getCallTarget();
             functions.put(name, callTarget);
         }
     }

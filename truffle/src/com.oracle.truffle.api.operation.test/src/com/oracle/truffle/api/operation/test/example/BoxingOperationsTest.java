@@ -53,6 +53,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
@@ -71,7 +72,7 @@ public class BoxingOperationsTest {
 
     private static RootCallTarget parse(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationRootNode node = parseNode(parser);
-        return node.getCallTarget();
+        return ((RootNode) node).getCallTarget();
     }
 
     private static OperationRootNode parseNode(OperationParser<BoxingOperationsGen.Builder> parser) {
@@ -284,7 +285,7 @@ public class BoxingOperationsTest {
             b.publish(LANGUAGE);
         });
 
-        RootCallTarget root = node.getCallTarget();
+        RootCallTarget root = ((RootNode) node).getCallTarget();
 
         for (int i = 0; i < 100; i++) {
             Assert.assertEquals(1L, root.call());
@@ -344,10 +345,10 @@ class BoxingTypeSystem {
 
 @GenerateOperations(languageClass = BoxingLanguage.class, boxingEliminationTypes = {boolean.class, int.class, long.class})
 @SuppressWarnings("unused")
-abstract class BoxingOperations extends OperationRootNode {
+abstract class BoxingOperations extends RootNode implements OperationRootNode {
 
     protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
-        super(language, frameDescriptor);
+        super(language, frameDescriptor.build());
     }
 
     protected BoxingOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

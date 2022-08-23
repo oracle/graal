@@ -40,141 +40,32 @@
  */
 package com.oracle.truffle.api.operation;
 
-import java.lang.reflect.Field;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.source.SourceSection;
 
-import sun.misc.Unsafe;
-
-public abstract class OperationRootNode extends RootNode {
-
-    protected OperationNodes nodes;
-
-    protected static final Unsafe UNSAFE;
-
-    static {
-        Unsafe u;
-        try {
-            u = Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-            try {
-                Field f = Unsafe.class.getDeclaredField("theUnsafe");
-                f.setAccessible(true);
-                u = (Unsafe) f.get(null);
-            } catch (Exception ex) {
-                throw new Error(ex);
-            }
-        }
-        UNSAFE = u;
-    }
-
-    private static final int SOURCE_INFO_BCI_INDEX = 0;
-    private static final int SOURCE_INFO_START = 1;
-    private static final int SOURCE_INFO_LENGTH = 2;
-    private static final int SOURCE_INFO_STRIDE = 3;
-
-    protected OperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-        super(language, frameDescriptor);
-    }
-
-    protected OperationRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
-        this(language, frameDescriptor.build());
-    }
-
-    protected abstract int[] getSourceInfo();
-
-    @Override
-    public abstract Object execute(VirtualFrame frame);
-
-    public final OperationNodes getOperationNodes() {
-        return nodes;
-    }
-
-    public <T> T getMetadata(MetadataKey<T> key) {
+public interface OperationRootNode extends NodeInterface {
+    default <T> T getMetadata(MetadataKey<T> key) {
         return key.getValue(this);
     }
 
-    protected static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationRootNode, T> getter) {
+    static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationRootNode, T> getter) {
         key.setGetter(getter);
     }
 
     // ------------------------------------ sources ------------------------------------
 
-    @Override
-    public final SourceSection getSourceSection() {
-        int[] sourceInfo = getSourceInfo();
-        Source[] sources = nodes.sources;
+    String dump();
 
-        if (sourceInfo == null || sources == null) {
-            return null;
-        }
+    Object execute(VirtualFrame frame);
 
-        for (int i = 0; i < sourceInfo.length; i += SOURCE_INFO_STRIDE) {
-            if (sourceInfo[i + SOURCE_INFO_START] >= 0) {
-                // return the first defined source section - that one should encompass the entire
-                // function
-                return sources[sourceInfo[i + SOURCE_INFO_BCI_INDEX] >> 16].createSection(sourceInfo[i + SOURCE_INFO_START], sourceInfo[i + SOURCE_INFO_LENGTH]);
-            }
-        }
+    SourceSection getSourceSectionAtBci(int bci);
 
-        return null;
+    default void executeProlog(VirtualFrame frame) {
     }
 
-    @ExplodeLoop
-    protected final SourceSection getSourceSectionAtBci(int bci) {
-        int[] sourceInfo = getSourceInfo();
-
-        if (sourceInfo == null) {
-            return null;
-        }
-
-        int i;
-        // find the index of the first greater BCI
-        for (i = 0; i < sourceInfo.length; i += SOURCE_INFO_STRIDE) {
-            if ((sourceInfo[i + SOURCE_INFO_BCI_INDEX] & 0xffff) > bci) {
-                break;
-            }
-        }
-
-        if (i == 0) {
-            return null;
-        } else {
-            i -= SOURCE_INFO_STRIDE;
-            int sourceIndex = sourceInfo[i + SOURCE_INFO_BCI_INDEX] >> 16;
-            if (sourceIndex < 0) {
-                return null;
-            }
-
-            int sourceStart = sourceInfo[i + SOURCE_INFO_START];
-            int sourceLength = sourceInfo[i + SOURCE_INFO_LENGTH];
-            if (sourceStart < 0) {
-                return null;
-            }
-            return nodes.sources[sourceIndex].createSection(sourceStart, sourceLength);
-        }
+    default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
     }
-
-    public final Node createLocationNode(final int bci) {
-        return new Node() {
-            @Override
-            public SourceSection getSourceSection() {
-                return getSourceSectionAtBci(bci);
-            }
-
-            @Override
-            public SourceSection getEncapsulatingSourceSection() {
-                return getSourceSectionAtBci(bci);
-            }
-        };
-    }
-
-    public abstract String dump();
 }

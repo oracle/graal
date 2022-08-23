@@ -64,8 +64,11 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNode;
@@ -105,14 +108,29 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, continueWhen = true)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
-public abstract class SLOperationRootNode extends OperationRootNode {
+public abstract class SLOperationRootNode extends SLRootNode implements OperationRootNode {
 
     protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
-        super(language, frameDescriptor);
+        super((SLLanguage) language, frameDescriptor.build());
+    }
+
+    @Override
+    public SLExpressionNode getBodyNode() {
+        return null;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return getSourceSectionAtBci(0);
+    }
+
+    @Override
+    public TruffleString getTSName() {
+        return getMetadata(MethodName);
     }
 
     protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-        super(language, frameDescriptor);
+        super((SLLanguage) language, frameDescriptor);
     }
 
     @GenerateOperations.Metadata //

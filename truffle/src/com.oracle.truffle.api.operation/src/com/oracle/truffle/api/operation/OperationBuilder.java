@@ -41,8 +41,4 @@
 package com.oracle.truffle.api.operation;
 
 public abstract class OperationBuilder {
-
-    protected static void setNodeNodes(OperationRootNode node, OperationNodes nodes) {
-        node.nodes = nodes;
-    }
 }
