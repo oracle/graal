@@ -45,8 +45,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -86,6 +84,7 @@ import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -97,6 +96,7 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;

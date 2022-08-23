@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -38,9 +41,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @GenerateUncached
 public abstract class LookupProxyKlassNode extends EspressoNode {

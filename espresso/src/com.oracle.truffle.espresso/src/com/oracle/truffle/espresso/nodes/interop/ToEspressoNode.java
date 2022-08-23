@@ -326,10 +326,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isTypeMappingEnabled(klass)"
     })
     Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
-           @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-           @Cached BranchProfile errorProfile,
-           @Cached InitCheck initCheck,
-           @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached BranchProfile errorProfile,
+                    @Cached InitCheck initCheck,
+                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             checkHasAllFieldsOrThrow(value, klass, interop, meta);
         } catch (ClassCastException e) {
@@ -385,10 +385,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isHostObject(getContext(), value)"
     })
     Object doForeignClassProxyNonHost(Object value, ObjectKlass klass,
-            @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-            @Cached BranchProfile errorProfile,
-            @Cached InitCheck initCheck,
-            @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached BranchProfile errorProfile,
+                    @Cached InitCheck initCheck,
+                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             checkHasAllFieldsOrThrow(value, klass, interop, meta);
         } catch (ClassCastException e) {

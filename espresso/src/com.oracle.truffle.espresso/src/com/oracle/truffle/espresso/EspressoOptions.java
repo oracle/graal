@@ -206,13 +206,12 @@ public final class EspressoOptions {
                     usageSyntax = "my.first.MyInterface;my.second.MySecondInterface;...") //
     public static final OptionKey<List<String>> PolyglotInterfaceMappings = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE_SEPARATED_BY_SEMI_COLON);
 
-
     @Option(help = "Option to enable target type conversion by specifying a conversion class.", //
-            category = OptionCategory.USER, //
-            stability = OptionStability.EXPERIMENTAL, //
-            usageSyntax = "java.PolyglotTypeConverters.java.lang.Optional=my.type.conversion.Implementation") //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "java.PolyglotTypeConverters.java.lang.Optional=my.type.conversion.Implementation") //
     public static final OptionKey<OptionMap<String>> PolyglotTypeConverters = OptionKey.mapOf(String.class);
-    
+
     @Option(help = "Enable assertions.", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //

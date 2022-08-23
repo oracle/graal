@@ -27,23 +27,23 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.options.OptionMap;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicMap;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.impl.Klass;
-import org.graalvm.options.OptionMap;
 
 public class PolyglotTypeMappings {
 
-    private final TypeConverter EMPTY_CONVERTER = new TypeConverter(null, null);
+    private final TypeConverter emptyConverter = new TypeConverter(null, null);
 
     private static final String GUEST_TYPE_CONVERSION_INTERFACE = "com.oracle.truffle.espresso.polyglot.GuestTypeConversion";
     private final boolean hasInterfaceMappings;
@@ -136,8 +136,8 @@ public class PolyglotTypeMappings {
             String metaName = ToEspressoNode.getMetaName(metaObject, interop);
             converter = typeConverterFunctions.get(metaName);
             if (converter == null) {
-                identityConverterCache.put(identity, EMPTY_CONVERTER);
-                return EMPTY_CONVERTER;
+                identityConverterCache.put(identity, emptyConverter);
+                return emptyConverter;
             } else {
                 identityConverterCache.put(identity, converter);
             }
@@ -155,7 +155,7 @@ public class PolyglotTypeMappings {
         }
 
         public Object convert(StaticObject foreign) {
-            if (this == EMPTY_CONVERTER) {
+            if (this == emptyConverter) {
                 return foreign;
             }
             return callNode.call(receiver, foreign);
