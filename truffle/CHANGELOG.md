@@ -4,6 +4,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.3.0
 
+* GR-40069 Added additional methods to the static frame API.
+  * Added `copyStatic` to copy a static slot in cases where the underlying type is not known.
+  * Added `clearStatic` to clear a static slot in cases where the underlying type is not known.
+  * Added `swap...Static` to swap slots of known (primitive or object) or unknown underlying type.
 * GR-40103 Potentially breaking: Static frame access is now validated when assertions are enabled. Reading a slot with a different type than written to leads to an `AssertionError`.
 * GR-40163 Deprecated `TruffleLanguage.Env.newContextBuilder()` and replaced it with a new method `TruffleLanguage.Env.newInnerContextBuilder(String...)`. The new method does no longer inherit all privileges from the parent context and does no longer initialize the creator context by default. The new method also allows to set the permitted languages for the inner context similarly as in the polyglot embedding API. 
 * GR-40163 Changed behavior: Inner contexts do no longer inherit application arguments from the outer context. It is now possible to set application arguments explicitly for inner contexts using `TruffleContext.Builder.arguments(String, String[])`.
