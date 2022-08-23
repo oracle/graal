@@ -704,21 +704,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer--;
                     final SymbolTable symtab = instance.symbolTable();
 
-                    // Extract the table index.
-                    // region Load LEB128 Unsigned32 -> tableIndex
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int tableIndex = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endRegion
-
                     // Extract the function type index.
                     // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
-                    valueLength = unsignedIntConstantAndLength(data, offset);
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
                     int expectedFunctionTypeIndex = value(valueLength);
-                    offsetDelta = length(valueLength);
+                    int offsetDelta = length(valueLength);
                     offset += offsetDelta;
                     // endregion
+
+                    // Extract the table index.
+                    // region Load LEB128 Unsigned32 -> tableIndex
+                    valueLength = unsignedIntConstantAndLength(data, offset);
+                    int tableIndex = value(valueLength);
+                    offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endRegion
 
                     int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
 

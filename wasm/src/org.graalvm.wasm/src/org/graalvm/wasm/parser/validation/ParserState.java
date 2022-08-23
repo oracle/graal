@@ -44,6 +44,7 @@ package org.graalvm.wasm.parser.validation;
 import static java.lang.Integer.compareUnsigned;
 
 import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -210,7 +211,7 @@ public class ParserState {
     public void popReferenceTypeChecked() {
         if (availableStackSize() != 0) {
             final byte value = valueStack.popBack();
-            if (value == WasmType.FUNCREF_TYPE || value == WasmType.EXTERNREF_TYPE) {
+            if (WasmType.isReferenceType(value)) {
                 return;
             }
             // Push value back onto the stack and perform a checked pop to get the correct error

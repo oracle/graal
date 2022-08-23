@@ -611,14 +611,12 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
-
-                    final int tableIndex = readTableIndex();
-                    assertByteEqual(FUNCREF_TYPE, module.tableElementType(tableIndex), Failure.TYPE_MISMATCH);
-
                     final int expectedFunctionTypeIndex = readUnsignedInt32();
+                    final int tableIndex = readTableIndex();
                     // Pop the function index to call
                     state.popChecked(I32_TYPE);
                     state.checkFunctionTypeExists(expectedFunctionTypeIndex, module.typeCount());
+                    assertByteEqual(FUNCREF_TYPE, module.tableElementType(tableIndex), Failure.TYPE_MISMATCH);
 
                     // Pop parameters
                     for (int i = module.functionTypeParamCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
@@ -651,7 +649,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.SELECT_T: {
                     final int length = readLength();
-                    assertIntEqual(length, 1, Failure.LENGTH_OUT_OF_BOUNDS);
+                    assertIntEqual(length, 1, Failure.INVALID_RESULT_ARITY);
                     final byte t = readValueType();
                     state.popChecked(I32_TYPE);
                     state.popChecked(t);
