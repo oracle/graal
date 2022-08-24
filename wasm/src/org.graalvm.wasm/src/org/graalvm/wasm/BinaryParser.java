@@ -320,7 +320,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case ImportIdentifier.TABLE: {
                     final byte elemType = readRefType();
                     if (!bulkMemoryAndRefTypes) {
-                        assertIntEqual(elemType, FUNCREF_TYPE, "Invalid element type for table import", Failure.UNSPECIFIED_MALFORMED);
+                        assertByteEqual(elemType, FUNCREF_TYPE, "Invalid element type for table import", Failure.UNSPECIFIED_MALFORMED);
                     }
                     readTableLimits(multiResult);
                     final int tableIndex = module.tableCount();
@@ -363,9 +363,6 @@ public class BinaryParser extends BinaryStreamParser {
         for (int tableIndex = startingTableIndex; tableIndex != startingTableIndex + tableCount; tableIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final byte elemType = readRefType();
-            if (!bulkMemoryAndRefTypes) {
-                assertIntEqual(elemType, FUNCREF_TYPE, "Invalid element type for table", Failure.UNSPECIFIED_MALFORMED);
-            }
             readTableLimits(multiResult);
             module.symbolTable().allocateTable(tableIndex, multiResult[0], multiResult[1], elemType, bulkMemoryAndRefTypes);
         }

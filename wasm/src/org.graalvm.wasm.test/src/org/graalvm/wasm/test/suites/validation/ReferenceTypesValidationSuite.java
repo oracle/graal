@@ -42,14 +42,16 @@ package org.graalvm.wasm.test.suites.validation;
 
 import java.io.IOException;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.test.AbstractBinarySuite;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-public class TableValidationSuite extends AbstractBinarySuite {
+public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
 
     private static AbstractBinarySuite.BinaryBuilder getDefaultTableInitBuilder(String mainHexCode) {
         // (module
@@ -73,7 +75,7 @@ public class TableValidationSuite extends AbstractBinarySuite {
         // ;; main hex code
         // )
         // )
-        return newBuilder().addType(EMPTY_BYTES, new byte[]{WasmType.I32_TYPE}).addTable((byte) 3, (byte) 3).addFunction((byte) 0, EMPTY_BYTES, "41 00 0B").addFunction((byte) 0,
+        return newBuilder().addType(EMPTY_BYTES, new byte[]{WasmType.I32_TYPE}).addTable((byte) 3, (byte) 3, WasmType.FUNCREF_TYPE).addFunction((byte) 0, EMPTY_BYTES, "41 00 0B").addFunction((byte) 0,
                         EMPTY_BYTES, "41 01 0B").addFunction((byte) 0, EMPTY_BYTES, "41 02 0B").addFunction((byte) 0, EMPTY_BYTES, mainHexCode).addFunctionExport(
                                         (byte) 3, "main");
     }
@@ -209,6 +211,38 @@ public class TableValidationSuite extends AbstractBinarySuite {
             Value main = instance.getMember("main");
             Value result = main.execute();
             Assert.assertEquals("Unexpected return value", 2, result.asInt());
+        });
+    }
+
+    @Test
+    public void testTableInitDeclarativeType3() throws IOException {
+        // main:
+        // ref.func 3
+        // drop
+        // i32.const 0
+        //
+        // (elem declare (ref.func 3))
+        final byte[] binary = getDefaultTableInitBuilder("D2 03 1A 41 00 0B").addFunction((byte) 0, EMPTY_BYTES, "41 03 0B").addElements("03 00 01 03").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 0, result.asInt());
+        });
+    }
+
+    @Test
+    public void testTableInitDeclarativeType7() throws IOException {
+        // main
+        // ref.func 3
+        // drop
+        // i32.const 0
+        //
+        // (elem declare (ref.func 3))
+        final byte[] binary = getDefaultTableInitBuilder("D2 03 1A 41 00 0B").addFunction((byte) 0, EMPTY_BYTES, "41 03 0B").addElements("07 70 01 D2 03 0B").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 0, result.asInt());
         });
     }
 
@@ -493,6 +527,383 @@ public class TableValidationSuite extends AbstractBinarySuite {
             } catch (PolyglotException e) {
                 Assert.assertTrue("Expect unknown element segment error", e.getMessage().contains("unknown elem segment"));
             }
+        });
+    }
+
+    @Test
+    public void testMultipleTables() throws IOException {
+        // (table 1 1 funcref)
+        // (table 1 1 externref)
+        final byte[] binary = newBuilder().addTable((byte) 1, (byte) 1, WasmType.FUNCREF_TYPE).addTable((byte) 1, (byte) 1, WasmType.EXTERNREF_TYPE).build();
+        runParserTest(binary, Context::eval);
+    }
+
+    @Test
+    public void testTableInvalidElemType() throws IOException {
+        // (table 1 1 i32)
+        final byte[] binary = newBuilder().addTable((byte) 1, (byte) 1, WasmType.I32_TYPE).build();
+        runParserTest(binary, (context, source) -> {
+            try {
+                context.eval(source);
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected invalid reference type", e.getMessage().contains("Unexpected reference type"));
+            }
+        });
+    }
+
+    private static AbstractBinarySuite.BinaryBuilder getDefaultMemoryInitBuilder(String mainHexCode) {
+        // (module
+        // (type (;0;) (func (result i32)))
+        //
+        // (memory 1 1)
+        //
+        // (func (export "main") (type 0)
+        // ;; main hex code
+        // )
+        // )
+        return newBuilder().addType(EMPTY_BYTES, new byte[]{WasmType.I32_TYPE}).addMemory((byte) 1, (byte) 1).addFunction((byte) 0, EMPTY_BYTES, mainHexCode).addFunctionExport((byte) 0, "main");
+    }
+
+    @Test
+    public void testMemoryInitActiveType0() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data (memory 0) (offset i32.const 0) "\01\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 28 00 00 0B").addData("00 41 00 0B 04 01 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 1, result.asInt());
+        });
+    }
+
+    @Test
+    public void testMemoryInitActiveType2() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data (memory 0) (offset i32.const 0) "\02\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 28 00 00 0B").addData("02 00 41 00 0B 04 02 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 2, result.asInt());
+        });
+    }
+
+    @Test
+    public void testMemoryInitActiveType2InvalidMemoryIndex() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data (memory 5) (offset i32.const 0) "\02\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 28 00 00 0B").addData("02 05 41 00 0B 04 02 00 00 00").build();
+        runParserTest(binary, ((context, source) -> {
+            try {
+                context.eval(source);
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected unknown memory", e.getMessage().contains("unknown memory: 5 should = 0"));
+            }
+        }));
+    }
+
+    @Test
+    public void testMemoryInitPassiveType1() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 4
+        // memory.init 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 00 41 04 FC 08 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected return value", 3, result.asInt());
+        });
+    }
+
+    @Test
+    public void testMemoryInitInvalidLength() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 5
+        // memory.init 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 00 41 05 FC 08 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryInitInvalidSourceOffset() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 2
+        // i32.const 4
+        // memory.init 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 02 41 04 FC 08 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryInitInvalidDestinationOffset() throws IOException {
+        // main:
+        // i32.const 65535
+        // i32.const 0
+        // i32.const 4
+        // memory.init 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 FF FF 03 41 00 41 04 FC 08 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryInitDataIndexDoesNotExist() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 4
+        // memory.init 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 00 41 04 FC 08 01 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runParserTest(binary, (context, source) -> {
+            try {
+                context.eval(source);
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected unknown data segment error", e.getMessage().contains("unknown data segment"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryCopyInvalidLength() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 0
+        // i32.const 65537
+        // memory.copy 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 00 41 81 80 04 FC 0A 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryCopyInvalidSourceOffset() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 65535
+        // i32.const 4
+        // memory.copy 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 FF FF 03 41 04 FC 0A 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryCopyInvalidDestinationOffset() throws IOException {
+        // main:
+        // i32.const 65535
+        // i32.const 0
+        // i32.const 4
+        // memory.copy 0
+        // i32.const 0
+        // i32.load offset=0
+        //
+        // (data "\03\00\00\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("41 FF FF 03 41 00 41 04 FC 0A 00 00 41 00 28 00 00 0B").addData("01 04 03 00 00 00").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testDataDropDataIndexDoesNotExist() throws IOException {
+        // main:
+        // data.drop 1
+        //
+        // (data "\00")
+        final byte[] binary = getDefaultMemoryInitBuilder("FC 09 01").addData("01 01 00").build();
+        runParserTest(binary, (context, source) -> {
+            try {
+                context.eval(source);
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected unknown data segment error", e.getMessage().contains("unknown data segment"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryFillInvalidLength() throws IOException {
+        // main:
+        // i32.const 0
+        // i32.const 1
+        // i32.const 65537
+        // memory.fill
+        // i32.const 0
+        // i32.load offset=0
+        final byte[] binary = getDefaultMemoryInitBuilder("41 00 41 00 41 81 80 04 FC 0B 00 41 00 28 00 00 0B").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryFillInvalidDestinationOffset() throws IOException {
+        // main:
+        // i32.const 65537
+        // i32.const 1
+        // i32.const 1
+        // memory.fill
+        // i32.const 0
+        // i32.load offset=0
+        final byte[] binary = getDefaultMemoryInitBuilder("41 81 80 04 41 01 41 01 FC 0B 00 41 00 28 00 00 0B").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            try {
+                main.execute();
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+            }
+        });
+    }
+
+    @Test
+    public void testRefFuncWithNoReference() throws IOException {
+        // main:
+        // ref.func 0
+        // i32.const 0
+        final byte[] binary = getDefaultTableInitBuilder("D2 00 41 00 0B").build();
+        runParserTest(binary, (context, source) -> {
+            try {
+                context.eval(source);
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected undeclared function reference", e.getMessage().contains("undeclared function reference"));
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWithNull() throws IOException {
+        // (global externref (ref.null))
+        // (type (func (result externref)))
+        // (func (export "main") (type 0)
+        // global.get 0
+        // )
+        final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.EXTERNREF_TYPE, "D0 6F 0B").addType(EMPTY_BYTES, new byte[]{WasmType.EXTERNREF_TYPE}).addFunction((byte) 0,
+                        EMPTY_BYTES, "23 00 0B").addFunctionExport((byte) 0, "main").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertTrue("Unexpected result value", result.isNull());
+        });
+    }
+
+    @Test
+    public void testGlobalWithFunction() throws IOException {
+        // (global funcref (ref.func 0))
+        // (table 1 1 funcref)
+        // (type (func (result i32)))
+        // (func (type 0)
+        // i32.const 1
+        // )
+        // (func (export "main") (type 0)
+        // i32.const 0
+        // global.get 0
+        // table.set 0
+        // i32.const 0
+        // call_indirect 0 (type 0)
+        // )
+        final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.FUNCREF_TYPE, "D2 00 0B").addTable((byte) 1, (byte) 1, WasmType.FUNCREF_TYPE).addType(EMPTY_BYTES,
+                        new byte[]{WasmType.I32_TYPE}).addFunction((byte) 0, EMPTY_BYTES, "41 01 0B").addFunction((byte) 0, EMPTY_BYTES, "41 00 23 00 26 00 41 00 11 00 00 0B").addFunctionExport(
+                                        (byte) 1, "main").build();
+        runRuntimeTest(binary, instance -> {
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertEquals("Unexpected result value", 1, result.asInt());
         });
     }
 }

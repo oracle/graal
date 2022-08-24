@@ -55,9 +55,8 @@ import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
-import org.graalvm.wasm.test.suites.validation.MemoryValidationSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
-import org.graalvm.wasm.test.suites.validation.TableValidationSuite;
+import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
 import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
@@ -92,8 +91,7 @@ import org.junit.runners.Suite;
                 WasmJsApiSuite.class,
                 ValidationSuite.class,
                 MultiValueValidationSuite.class,
-                MemoryValidationSuite.class,
-                TableValidationSuite.class,
+                ReferenceTypesValidationSuite.class,
                 WasmLateLinkingSuite.class,
                 WasmImplementationLimitationsSuite.class,
                 ExtraDataSuite.class
