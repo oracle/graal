@@ -505,29 +505,31 @@ public class Linker {
         Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         Assert.assertUnsignedIntLessOrEqual(baseAddress + elements.length, table.size(), Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
 
+        final Object[] elemSegment = new Object[elements.length];
         for (int index = 0; index != elements.length; ++index) {
             final long element = elements[index];
             final int initType = (int) (element >> 32);
             switch (initType) {
                 case WasmType.NULL_TYPE:
-                    table.initialize(baseAddress + index, WasmConstant.NULL);
+                    elemSegment[index] = WasmConstant.NULL;
                     break;
                 case WasmType.FUNCREF_TYPE:
                     final int functionIndex = (int) element;
                     final WasmFunction function = instance.module().function(functionIndex);
-                    table.initialize(baseAddress + index, instance.functionInstance(function));
+                    elemSegment[index] = instance.functionInstance(function);
                     break;
                 case WasmType.I32_TYPE:
                     final int globalIndex = (int) element;
                     final int globalAddress = instance.globalAddress(globalIndex);
-                    table.initialize(baseAddress + index, context.globals().loadAsReference(globalAddress));
+                    elemSegment[index] = context.globals().loadAsReference(globalAddress);
                     break;
             }
         }
+        table.initialize(elemSegment, 0, baseAddress, elements.length);
     }
 
-    void resolvePassiveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, byte elemType, long[] elements) {
-        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(context, instance, elemSegmentId, elemType, elements);
+    void resolvePassiveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, long[] elements) {
+        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(context, instance, elemSegmentId, elements);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (elemSegmentId > 0) {
             dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
@@ -552,7 +554,7 @@ public class Linker {
 
     }
 
-    void immediatelyResolvePassiveElementSegment(WasmContext context, WasmInstance instance, int elemSegmentId, byte elemType, long[] elements) {
+    void immediatelyResolvePassiveElementSegment(WasmContext context, WasmInstance instance, int elemSegmentId, long[] elements) {
         final Object[] initialValues = new Object[elements.length];
         for (int index = 0; index != elements.length; index++) {
             final long element = elements[index];
@@ -574,7 +576,7 @@ public class Linker {
 
             }
         }
-        instance.setElementInstance(elemSegmentId, elemType, initialValues);
+        instance.setElemInstance(elemSegmentId, initialValues);
     }
 
     static class ResolutionDag {

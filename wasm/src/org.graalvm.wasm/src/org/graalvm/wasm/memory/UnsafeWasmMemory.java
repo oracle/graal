@@ -116,7 +116,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         size = declaredMinSize;
         buffer = allocateBuffer(byteSize());
         startAddress = getBufferAddress(buffer);
-        minSize = declaredMinSize;
+        currentMinSize = declaredMinSize;
     }
 
     @Override
@@ -146,7 +146,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
             buffer = updatedBuffer;
             startAddress = updatedStartAddress;
             size += extraPageSize;
-            minSize = size;
+            currentMinSize = size;
             invokeGrowCallback();
             return true;
         } else {
@@ -309,16 +309,16 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void initialize(byte[] source, int sourceOffset, int destinationOffset, int length) {
+    public void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
         buffer.position(destinationOffset);
-        buffer.put(source, sourceOffset, length);
+        buffer.put(dataInstance, sourceOffset, length);
     }
 
     @Override
-    public void fill(int destinationOffset, int length, byte value) {
-        assert destinationOffset + length <= byteSize();
-        unsafe.setMemory(startAddress + destinationOffset, length, value);
+    public void fill(int offset, int length, byte value) {
+        assert offset + length <= byteSize();
+        unsafe.setMemory(startAddress + offset, length, value);
     }
 
     @Override

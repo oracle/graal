@@ -289,7 +289,7 @@ public abstract class BinaryStreamParser {
      * @param result The array used for returning the result.
      *
      */
-    protected void readBlockType(int[] result) {
+    protected void readBlockType(int[] result, boolean allowRefTypes) {
         byte type = peek1(data, offset);
         switch (type) {
             case WasmType.VOID_TYPE:
@@ -297,8 +297,13 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
+                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
                 offset++;
                 result[0] = type;
                 result[1] = SINGLE_RESULT_VALUE;
@@ -312,15 +317,17 @@ public abstract class BinaryStreamParser {
         }
     }
 
-    protected static byte peekValueType(byte[] data, int offset) {
+    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes) {
         byte b = peek1(data, offset);
         switch (b) {
             case WasmType.I32_TYPE:
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+                break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
+                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
                 break;
             default:
                 Assert.fail(Failure.MALFORMED_VALUE_TYPE, String.format("Invalid value type: 0x%02X", b));
@@ -328,8 +335,8 @@ public abstract class BinaryStreamParser {
         return b;
     }
 
-    protected byte readValueType() {
-        byte b = peekValueType(data, offset);
+    protected byte readValueType(boolean allowRefTypes) {
+        byte b = peekValueType(data, offset, allowRefTypes);
         offset++;
         return b;
     }

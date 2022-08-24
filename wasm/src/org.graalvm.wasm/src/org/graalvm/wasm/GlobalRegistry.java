@@ -67,9 +67,13 @@ public class GlobalRegistry {
     private int globalCount;
     private int externalGlobalCount;
 
-    public GlobalRegistry() {
+    public GlobalRegistry(boolean useReferenceTypes) {
         this.globals = new long[INITIAL_GLOBALS_SIZE];
-        this.globalReferences = new Object[INITIAL_GLOBALS_SIZE];
+        if (useReferenceTypes) {
+            this.globalReferences = new Object[INITIAL_GLOBALS_SIZE];
+        } else {
+            this.globalReferences = null;
+        }
         this.externalGlobals = new WasmGlobal[INITIAL_GLOBALS_SIZE];
         this.globalCount = 0;
         this.externalGlobalCount = 0;
@@ -82,11 +86,13 @@ public class GlobalRegistry {
     private void ensureGlobalCapacity() {
         if (globalCount == globals.length) {
             final long[] nGlobals = new long[globals.length * 2];
-            final Object[] nGlobalReferences = new Object[globalReferences.length * 2];
             System.arraycopy(globals, 0, nGlobals, 0, globals.length);
-            System.arraycopy(globalReferences, 0, nGlobalReferences, 0, globalReferences.length);
             globals = nGlobals;
-            globalReferences = nGlobalReferences;
+            if (globalReferences != null) {
+                final Object[] nGlobalReferences = new Object[globalReferences.length * 2];
+                System.arraycopy(globalReferences, 0, nGlobalReferences, 0, globalReferences.length);
+                globalReferences = nGlobalReferences;
+            }
         }
     }
 
@@ -101,7 +107,9 @@ public class GlobalRegistry {
     public int allocateGlobal() {
         ensureGlobalCapacity();
         globals[globalCount] = 0;
-        globalReferences[globalCount] = null;
+        if (globalReferences != null) {
+            globalReferences[globalCount] = null;
+        }
         int idx = globalCount;
         globalCount++;
         return idx;
@@ -128,6 +136,7 @@ public class GlobalRegistry {
     }
 
     public Object loadAsReference(int address) {
+        assert globalReferences != null;
         if (address < 0) {
             final WasmGlobal global = externalGlobals[-address - 1];
             return global.loadAsReference();
@@ -149,6 +158,7 @@ public class GlobalRegistry {
     }
 
     public void storeReference(int address, Object value) {
+        assert globalReferences != null;
         if (address < 0) {
             final WasmGlobal global = externalGlobals[-address - 1];
             global.storeReference(value);
@@ -157,8 +167,8 @@ public class GlobalRegistry {
         }
     }
 
-    public GlobalRegistry duplicate() {
-        final GlobalRegistry other = new GlobalRegistry();
+    public GlobalRegistry duplicate(boolean useReferenceTypes) {
+        final GlobalRegistry other = new GlobalRegistry(useReferenceTypes);
         for (int i = 0; i < globalCount; i++) {
             final int address = other.allocateGlobal();
             final long value = this.loadAsLong(address);

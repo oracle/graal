@@ -55,9 +55,9 @@ import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
-import org.graalvm.wasm.test.suites.memory.MemoryInitializationSuite;
+import org.graalvm.wasm.test.suites.validation.MemoryValidationSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
-import org.graalvm.wasm.test.suites.table.TableInitializationSuite;
+import org.graalvm.wasm.test.suites.validation.TableValidationSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
 import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
@@ -74,13 +74,14 @@ import org.junit.runners.Suite;
                 Integer64Suite.class,
                 Float32Suite.class,
                 Float64Suite.class,
+                ReferenceTypeSuite.class,
                 SimpleBlockSuite.class,
                 BlockWithLocalsSuite.class,
                 BranchBlockSuite.class,
                 LoopBlockSuite.class,
                 IfThenElseSuite.class,
-                MemoryInitializationSuite.class,
                 MemorySuite.class,
+                TableSuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
                 MultiValueSuite.class,
@@ -91,13 +92,13 @@ import org.junit.runners.Suite;
                 WasmJsApiSuite.class,
                 ValidationSuite.class,
                 MultiValueValidationSuite.class,
+                MemoryValidationSuite.class,
+                TableValidationSuite.class,
                 WasmLateLinkingSuite.class,
                 WasmImplementationLimitationsSuite.class,
-                ExtraDataSuite.class,
-                TableInitializationSuite.class,
-                TableSuite.class,
-                ReferenceTypeSuite.class
+                ExtraDataSuite.class
 })
+
 public class WasmTestSuite {
     @Test
     public void test() {

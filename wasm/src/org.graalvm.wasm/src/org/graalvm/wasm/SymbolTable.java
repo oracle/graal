@@ -343,10 +343,19 @@ public abstract class SymbolTable {
     private final List<WasmCustomSection> customSections;
 
     @CompilationFinal private int elemSegmentCount;
+
+    /**
+     * The types of the elem segments ({@link WasmType#FUNCREF_TYPE} or
+     * {@link WasmType#EXTERNREF_TYPE}).
+     */
     @CompilationFinal(dimensions = 1) private byte[] elemSegmentTypes;
     @CompilationFinal private boolean dataCountExists;
     @CompilationFinal private int dataSegmentCount;
 
+    /**
+     * All function indices that can be references via
+     * {@link org.graalvm.wasm.constants.Instructions#REF_FUNC}.
+     */
     @CompilationFinal private final EconomicSet<Integer> functionReferences;
 
     SymbolTable() {
@@ -1016,6 +1025,10 @@ public abstract class SymbolTable {
         this.dataCountExists = true;
     }
 
+    /**
+     * Checks whether the actual number of data segments corresponds with the number defied in the
+     * data count section.
+     */
     public void checkDataSegmentCount(int numberOfDataSegments) {
         if (dataCountExists) {
             assertIntEqual(numberOfDataSegments, this.dataSegmentCount, Failure.DATA_COUNT_MISMATCH);

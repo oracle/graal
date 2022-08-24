@@ -64,37 +64,38 @@ public class DefaultWasmGlobal extends WasmGlobal {
 
     @Override
     public int loadAsInt() {
-        assert getValueType() == ValueType.i32 || getValueType() == ValueType.f32;
+        assert ValueType.isNumberType(getValueType());
         return (int) globalValue;
     }
 
     @Override
     public long loadAsLong() {
-        assert getValueType() == ValueType.i64 || getValueType() == ValueType.f64;
+        assert ValueType.isNumberType(getValueType());
         return globalValue;
     }
 
     @Override
     public Object loadAsReference() {
-        assert getValueType() == ValueType.anyfunc || getValueType() == ValueType.externref;
+        assert globalReferenceValue != null;
+        assert ValueType.isReferenceType(getValueType());
         return globalReferenceValue;
     }
 
     @Override
     public void storeInt(int value) {
-        assert getValueType() == ValueType.i32 || getValueType() == ValueType.f32;
+        assert ValueType.isNumberType(getValueType());
         this.globalValue = value;
     }
 
     @Override
     public void storeLong(long value) {
-        assert getValueType() == ValueType.i64 || getValueType() == ValueType.f64;
+        assert ValueType.isNumberType(getValueType());
         this.globalValue = value;
     }
 
     @Override
     public void storeReference(Object value) {
-        assert getValueType() == ValueType.anyfunc || getValueType() == ValueType.externref;
+        assert ValueType.isReferenceType(getValueType());
         this.globalReferenceValue = value;
     }
 }

@@ -203,7 +203,7 @@ public class WasmJsApiSuite {
                                             "defaultTable", table
                             }),
             });
-            WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
+            wasm.tableWrite(table, 0, new WasmFunctionInstance(context, null,
                             new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -239,7 +239,7 @@ public class WasmJsApiSuite {
     private static void checkInstantiateWithImportGlobal(byte[] binaryWithGlobalImport, String globalType, Object globalValue) throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = WebAssembly.globalAlloc(ValueType.valueOf(globalType), false, globalValue);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.valueOf(globalType), false, globalValue);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
@@ -286,7 +286,7 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmInstance exportInstance = moduleInstantiate(wasm, binaryWithExports, null);
             final Object func = WebAssembly.instanceExport(exportInstance, "main");
-            final WasmGlobal global = WebAssembly.globalAlloc(ValueType.anyfunc, false, func);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.anyfunc, false, func);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
@@ -717,7 +717,7 @@ public class WasmJsApiSuite {
             try {
                 final Object table = WebAssembly.instanceExport(instance, "t");
                 final Object grow = wasm.readMember("table_grow");
-                lib.execute(grow, table, 9999999);
+                lib.execute(grow, table, 9999999, WasmConstant.NULL);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -726,7 +726,7 @@ public class WasmJsApiSuite {
             try {
                 final Object table = WebAssembly.instanceExport(instance, "t");
                 final Object grow = wasm.readMember("table_grow");
-                lib.execute(grow, table, 1);
+                lib.execute(grow, table, 1, WasmConstant.NULL);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -1016,7 +1016,7 @@ public class WasmJsApiSuite {
                 InteropLibrary interop = InteropLibrary.getUncached(funcType);
                 Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fn));
                 // set + get should not break func_type()
-                WebAssembly.tableWrite(table, 0, fn);
+                wasm.tableWrite(table, 0, fn);
                 final Object fnAgain = WebAssembly.tableRead(table, 0);
                 Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fnAgain));
             } catch (InteropException e) {
@@ -1131,7 +1131,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             try {
                 WasmTable table = WebAssembly.tableAlloc(1, 1, TableKind.anyfunc);
-                WebAssembly.tableGrow(table, 1);
+                WebAssembly.tableGrow(table, 1, WasmConstant.NULL);
                 Assert.fail("Should have failed - try to grow table beyond max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1162,7 +1162,8 @@ public class WasmJsApiSuite {
     @Test
     public void testGlobalEmbedderData() throws IOException {
         runTest(context -> {
-            WasmGlobal global = WebAssembly.globalAlloc(ValueType.i32, false, 0);
+            WebAssembly wasm = new WebAssembly(context);
+            WasmGlobal global = wasm.globalAlloc(ValueType.i32, false, 0);
             checkEmbedderData(global);
         });
     }
@@ -1594,15 +1595,15 @@ public class WasmJsApiSuite {
             WebAssembly wasm = new WebAssembly(context);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "globals", Dictionary.create(new Object[]{
-                                            "global0", WebAssembly.globalAlloc(ValueType.i32, false, 1),
-                                            "global1", WebAssembly.globalAlloc(ValueType.i32, false, 2),
-                                            "global2", WebAssembly.globalAlloc(ValueType.i32, false, 3),
-                                            "global3", WebAssembly.globalAlloc(ValueType.i32, false, 4),
-                                            "global4", WebAssembly.globalAlloc(ValueType.i32, false, 5),
-                                            "global5", WebAssembly.globalAlloc(ValueType.i32, false, 6),
-                                            "global6", WebAssembly.globalAlloc(ValueType.i32, false, 7),
-                                            "global7", WebAssembly.globalAlloc(ValueType.i32, false, 8),
-                                            "global8", WebAssembly.globalAlloc(ValueType.i32, false, 9),
+                                            "global0", wasm.globalAlloc(ValueType.i32, false, 1),
+                                            "global1", wasm.globalAlloc(ValueType.i32, false, 2),
+                                            "global2", wasm.globalAlloc(ValueType.i32, false, 3),
+                                            "global3", wasm.globalAlloc(ValueType.i32, false, 4),
+                                            "global4", wasm.globalAlloc(ValueType.i32, false, 5),
+                                            "global5", wasm.globalAlloc(ValueType.i32, false, 6),
+                                            "global6", wasm.globalAlloc(ValueType.i32, false, 7),
+                                            "global7", wasm.globalAlloc(ValueType.i32, false, 8),
+                                            "global8", wasm.globalAlloc(ValueType.i32, false, 9),
                             }),
             });
             WasmInstance instance = moduleInstantiate(wasm, importManyGlobalsBytes, importObject);

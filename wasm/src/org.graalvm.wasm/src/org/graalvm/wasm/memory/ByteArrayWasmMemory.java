@@ -101,7 +101,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
             // ensure computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
             byteArrayBuffer.grow(targetByteSize);
-            minSize = size() + extraPageSize;
+            currentMinSize = size() + extraPageSize;
             invokeGrowCallback();
             return true;
         } else {
@@ -112,7 +112,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public void reset() {
         byteArrayBuffer.reset(declaredMinSize * MEMORY_PAGE_SIZE);
-        minSize = declaredMinSize;
+        currentMinSize = declaredMinSize;
     }
 
     @Override
@@ -324,15 +324,15 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void initialize(byte[] source, int sourceOffset, int destinationOffset, int length) {
+    public void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        System.arraycopy(source, sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
+        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
     }
 
     @Override
-    public void fill(int destinationOffset, int length, byte value) {
-        assert destinationOffset + length <= byteSize();
-        Arrays.fill(byteArrayBuffer.buffer(), destinationOffset, destinationOffset + length, value);
+    public void fill(int offset, int length, byte value) {
+        assert offset + length <= byteSize();
+        Arrays.fill(byteArrayBuffer.buffer(), offset, offset + length, value);
     }
 
     @Override

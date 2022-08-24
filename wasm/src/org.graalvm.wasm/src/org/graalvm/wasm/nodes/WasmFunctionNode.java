@@ -1597,7 +1597,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int elementIndex = value(valueAndLength);
                             // endregion
 
-                            instance.dropElementInstance(elementIndex);
+                            instance.dropElemInstance(elementIndex);
                             break;
                         }
                         case TABLE_SIZE: {
@@ -2974,7 +2974,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private void table_init(WasmContext context, VirtualFrame frame, int stackPointer, int tableIndex, int elementIndex) {
         final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
-        final Object[] elementInstance = instance.elementInstance(elementIndex);
+        final Object[] elementInstance = instance.elemInstance(elementIndex);
         final int elementInstanceLength;
         if (elementInstance == null) {
             elementInstanceLength = 0;
@@ -3062,12 +3062,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private void memory_init(VirtualFrame frame, int stackPointer, int dataIndex) {
         final WasmMemory memory = instance.memory();
-        final byte[] data = instance.dataInstance(dataIndex);
+        final byte[] dataInstance = instance.dataInstance(dataIndex);
         final int dataLength;
-        if (data == null) {
+        if (dataInstance == null) {
             dataLength = 0;
         } else {
-            dataLength = data.length;
+            dataLength = dataInstance.length;
         }
         final int n = popInt(frame, stackPointer - 1);
         final int src = popInt(frame, stackPointer - 2);
@@ -3079,7 +3079,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         if (n == 0) {
             return;
         }
-        memory.initialize(data, src, dst, n);
+        memory.initialize(dataInstance, src, dst, n);
     }
 
     private void memory_fill(VirtualFrame frame, int stackPointer) {

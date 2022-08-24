@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test.suites.memory;
+package org.graalvm.wasm.test.suites.validation;
 
 import java.io.IOException;
 
@@ -49,7 +49,7 @@ import org.graalvm.wasm.test.AbstractBinarySuite;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-public class MemoryInitializationSuite extends AbstractBinarySuite {
+public class MemoryValidationSuite extends AbstractBinarySuite {
 
     private static AbstractBinarySuite.BinaryBuilder getDefaultMemoryInitBuilder(String mainHexCode) {
         // (module

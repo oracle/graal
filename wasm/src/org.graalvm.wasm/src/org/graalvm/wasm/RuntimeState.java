@@ -64,8 +64,8 @@ public class RuntimeState {
 
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th global in
-     * this module. The value at the index i denotes the address of the global in the memory space
-     * for all the globals from all the modules (see {@link GlobalRegistry}).
+     * this module. The value at index i denotes the address of the global in the memory space for
+     * all the globals from all the modules (see {@link GlobalRegistry}).
      * <p>
      * This separation of global indices is done because the index spaces of the globals are
      * module-specific, and the globals can be imported across modules. Thus, the address-space of
@@ -74,10 +74,13 @@ public class RuntimeState {
     @CompilationFinal(dimensions = 1) private int[] globalAddresses;
 
     /**
-     * The table from the context-specific table space, which this module is using.
+     * This array is monotonically populated from the left. An index i denotes the i-th table in
+     * this module. The value at index i denotes the address of the table in the memory space for
+     * all the tables from all the module (see {@link TableRegistry}).
      * <p>
-     * In the current WebAssembly specification, a module can use at most one table. The value
-     * {@code null} denotes that this module uses no table.
+     * The separation of table instances is done because the index spaces of the tables are
+     * module-specific, and the tables can be imported across modules. Thus, the address-space of
+     * the tables is not the same as the module-specific index-space.
      */
     @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
@@ -89,10 +92,19 @@ public class RuntimeState {
      */
     @CompilationFinal private WasmMemory memory;
 
-    @CompilationFinal(dimensions = 1) private byte[] elementInstanceTypes;
-    @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
+    /**
+     * The passive elem instances that can be used to lazily initialize tables. They can potentially
+     * be dropped after using them. They can be set to null even in compiled code, therefore they
+     * cannot be compilation final.
+     */
+    private Object[][] elemInstances;
 
-    @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
+    /**
+     * The passive data instances that can be used to lazily initialize memory. They can potentially
+     * be dropped after using them. They can be set to null even in compiled code, therefore they
+     * cannot be compilation final.
+     */
+    private byte[][] dataInstances;
 
     @CompilationFinal private Linker.LinkState linkState;
 
@@ -120,8 +132,7 @@ public class RuntimeState {
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
-        this.elementInstanceTypes = null;
-        this.elementInstances = null;
+        this.elemInstances = null;
         this.dataInstances = null;
     }
 
@@ -185,10 +196,6 @@ public class RuntimeState {
         return module;
     }
 
-    public int targetCount() {
-        return symbolTable().numFunctions();
-    }
-
     public CallTarget target(int index) {
         return targets[index];
     }
@@ -249,45 +256,33 @@ public class RuntimeState {
         functionInstances[index] = functionInstance;
     }
 
-    private void ensureElementInstanceCapacity(int index) {
-        if (elementInstances == null) {
-            final int size = Math.max(Integer.highestOneBit(index) << 1, 2);
-            elementInstanceTypes = new byte[size];
-            elementInstances = new Object[size][];
-        } else if (index >= elementInstances.length) {
-            final int size = Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length);
-            final byte[] nElementInstanceTypes = new byte[size];
-            final Object[][] nElementInstances = new Object[size][];
-            System.arraycopy(elementInstanceTypes, 0, nElementInstanceTypes, 0, elementInstanceTypes.length);
-            System.arraycopy(elementInstances, 0, nElementInstances, 0, elementInstances.length);
-            elementInstanceTypes = nElementInstanceTypes;
-            elementInstances = nElementInstances;
+    private void ensureElemInstanceCapacity(int index) {
+        if (elemInstances == null) {
+            elemInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+        } else if (index >= elemInstances.length) {
+            final Object[][] nElementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elemInstances.length)][];
+            System.arraycopy(elemInstances, 0, nElementInstances, 0, elemInstances.length);
+            elemInstances = nElementInstances;
         }
     }
 
-    void setElementInstance(int index, byte type, Object[] elements) {
-        assert elements != null;
-        ensureElementInstanceCapacity(index);
-        elementInstanceTypes[index] = type;
-        elementInstances[index] = elements;
+    void setElemInstance(int index, Object[] elemInstance) {
+        assert elemInstance != null;
+        ensureElemInstanceCapacity(index);
+        elemInstances[index] = elemInstance;
     }
 
-    public void dropElementInstance(int index) {
-        assert index < elementInstances.length;
-        elementInstances[index] = null;
+    public void dropElemInstance(int index) {
+        assert index < elemInstances.length;
+        elemInstances[index] = null;
     }
 
-    public byte elementInstanceType(int index) {
-        assert index < elementInstanceTypes.length;
-        return elementInstanceTypes[index];
-    }
-
-    public Object[] elementInstance(int index) {
-        if (elementInstances == null) {
+    public Object[] elemInstance(int index) {
+        if (elemInstances == null) {
             return null;
         }
-        assert index < elementInstances.length;
-        return elementInstances[index];
+        assert index < elemInstances.length;
+        return elemInstances[index];
     }
 
     private void ensureDataInstanceCapacity(int index) {
@@ -300,10 +295,10 @@ public class RuntimeState {
         }
     }
 
-    void setDataInstance(int index, byte[] data) {
-        assert data != null;
+    void setDataInstance(int index, byte[] dataInstance) {
+        assert dataInstance != null;
         ensureDataInstanceCapacity(index);
-        dataInstances[index] = data;
+        dataInstances[index] = dataInstance;
     }
 
     public void dropDataInstance(int index) {

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test.suites.table;
+package org.graalvm.wasm.test.suites.validation;
 
 import java.io.IOException;
 
@@ -49,7 +49,7 @@ import org.graalvm.wasm.test.AbstractBinarySuite;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-public class TableInitializationSuite extends AbstractBinarySuite {
+public class TableValidationSuite extends AbstractBinarySuite {
 
     private static AbstractBinarySuite.BinaryBuilder getDefaultTableInitBuilder(String mainHexCode) {
         // (module
@@ -121,7 +121,7 @@ public class TableInitializationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected unknown table", e.getMessage().contains("unknown table: 2 should = 0"));
+                Assert.assertTrue("Expected unknown table", e.getMessage().contains("unknown table"));
             }
         });
     }
@@ -169,7 +169,7 @@ public class TableInitializationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected unknown table", e.getMessage().contains("unknown table: 2 should = 0"));
+                Assert.assertTrue("Expected unknown table", e.getMessage().contains("unknown table"));
             }
         }));
     }
@@ -230,7 +230,7 @@ public class TableInitializationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected null reference error", e.getMessage().contains("Table element at index 1 is null"));
+                Assert.assertTrue("Expected null reference error", e.getMessage().contains("Table element at index 1 is uninitialized"));
             }
         });
     }
@@ -274,7 +274,7 @@ public class TableInitializationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected type mismatch error", e.getMessage().contains("Invalid instruction for table elem expression:"));
+                Assert.assertTrue("Expected type mismatch error", e.getMessage().contains("Invalid constant expression for table elem expression:"));
             }
         });
     }
@@ -387,7 +387,7 @@ public class TableInitializationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expect unknown element segment error", e.getMessage().contains("unknown elem"));
+                Assert.assertTrue("Expect unknown element segment error", e.getMessage().contains("unknown elem segment"));
             }
         });
     }
@@ -491,7 +491,7 @@ public class TableInitializationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expect unknown element segment error", e.getMessage().contains("unknown elem"));
+                Assert.assertTrue("Expect unknown element segment error", e.getMessage().contains("unknown elem segment"));
             }
         });
     }

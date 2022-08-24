@@ -56,6 +56,7 @@ public final class Section {
     public static final int DATA_COUNT = 12;
 
     private static final int[] SECTION_ORDER = new int[13];
+    public static final int LAST_SECTION_ID = SECTION_ORDER.length - 1;
 
     static {
         SECTION_ORDER[CUSTOM] = 0;
@@ -80,6 +81,4 @@ public final class Section {
         // Undefined section ids and custom section ids are seen as valid and will be handled later
         return Integer.compareUnsigned(sectionID, SECTION_ORDER.length) >= 0 || SECTION_ORDER[sectionID] > SECTION_ORDER[lastSectionID];
     }
-
-    public static int LAST_SECTION_ID = SECTION_ORDER.length - 1;
 }

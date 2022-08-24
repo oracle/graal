@@ -61,11 +61,6 @@ public enum ValueType {
         this.byteValue = byteValue;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static ValueType parse(String name) {
-        return valueOf(name);
-    }
-
     public static ValueType fromByteValue(byte value) {
         CompilerAsserts.neverPartOfCompilation();
         switch (value) {
@@ -88,5 +83,13 @@ public enum ValueType {
 
     public byte byteValue() {
         return byteValue;
+    }
+
+    public static boolean isNumberType(ValueType valueType) {
+        return valueType == i32 || valueType == i64 || valueType == f32 || valueType == f64;
+    }
+
+    public static boolean isReferenceType(ValueType valueType) {
+        return valueType == anyfunc || valueType == externref;
     }
 }

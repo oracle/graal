@@ -43,6 +43,8 @@
         i32.const 0
     )
 
+    (elem declare funcref (ref.func $test))
+
     (func (export "_main") (result i32)
         ref.func $test
         ref.is_null

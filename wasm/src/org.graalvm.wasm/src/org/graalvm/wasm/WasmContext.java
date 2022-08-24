@@ -70,16 +70,16 @@ public final class WasmContext {
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
+        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         this.equivalenceClasses = new HashMap<>();
         this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-        this.globals = new GlobalRegistry();
+        this.globals = new GlobalRegistry(contextOptions.supportBulkMemoryAndRefTypes());
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
-        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         instantiateBuiltinInstances();
     }
 

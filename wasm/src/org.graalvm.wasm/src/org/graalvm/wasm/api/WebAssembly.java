@@ -65,6 +65,7 @@ import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -89,36 +90,36 @@ public class WebAssembly extends Dictionary {
 
     public WebAssembly(WasmContext currentContext) {
         this.currentContext = currentContext;
-        addMember("module_decode", new Executable(args -> moduleDecode(args)));
-        addMember("module_instantiate", new Executable(args -> moduleInstantiate(args)));
-        addMember("module_validate", new Executable(args -> moduleValidate(args)));
+        addMember("module_decode", new Executable(this::moduleDecode));
+        addMember("module_instantiate", new Executable(this::moduleInstantiate));
+        addMember("module_validate", new Executable(this::moduleValidate));
 
-        addMember("table_alloc", new Executable(args -> tableAlloc(args)));
-        addMember("table_grow", new Executable(args -> tableGrow(args)));
-        addMember("table_read", new Executable(args -> tableRead(args)));
-        addMember("table_write", new Executable(args -> tableWrite(args)));
-        addMember("table_size", new Executable(args -> tableSize(args)));
+        addMember("table_alloc", new Executable(WebAssembly::tableAlloc));
+        addMember("table_grow", new Executable(this::tableGrow));
+        addMember("table_read", new Executable(WebAssembly::tableRead));
+        addMember("table_write", new Executable(this::tableWrite));
+        addMember("table_size", new Executable(WebAssembly::tableSize));
 
-        addMember("func_type", new Executable(args -> funcType(args)));
+        addMember("func_type", new Executable(WebAssembly::funcType));
 
-        addMember("mem_alloc", new Executable(args -> memAlloc(args)));
-        addMember("mem_grow", new Executable(args -> memGrow(args)));
-        addMember("mem_set_grow_callback", new Executable(args -> memSetGrowCallback(args)));
-        addMember("mem_as_byte_buffer", new Executable(args -> memAsByteBuffer(args)));
+        addMember("mem_alloc", new Executable(WebAssembly::memAlloc));
+        addMember("mem_grow", new Executable(WebAssembly::memGrow));
+        addMember("mem_set_grow_callback", new Executable(WebAssembly::memSetGrowCallback));
+        addMember("mem_as_byte_buffer", new Executable(WebAssembly::memAsByteBuffer));
 
-        addMember("global_alloc", new Executable(args -> globalAlloc(args)));
-        addMember("global_read", new Executable(args -> globalRead(args)));
-        addMember("global_write", new Executable(args -> globalWrite(args)));
+        addMember("global_alloc", new Executable(this::globalAlloc));
+        addMember("global_read", new Executable(WebAssembly::globalRead));
+        addMember("global_write", new Executable(WebAssembly::globalWrite));
 
-        addMember("module_imports", new Executable(args -> moduleImports(args)));
-        addMember("module_exports", new Executable(args -> moduleExports(args)));
+        addMember("module_imports", new Executable(WebAssembly::moduleImports));
+        addMember("module_exports", new Executable(WebAssembly::moduleExports));
 
-        addMember("custom_sections", new Executable(args -> customSections(args)));
+        addMember("custom_sections", new Executable(WebAssembly::customSections));
 
-        addMember("instance_export", new Executable(args -> instanceExport(args)));
+        addMember("instance_export", new Executable(WebAssembly::instanceExport));
 
-        addMember("embedder_data_get", new Executable(args -> embedderDataGet(args)));
-        addMember("embedder_data_set", new Executable(args -> embedderDataSet(args)));
+        addMember("embedder_data_get", new Executable(WebAssembly::embedderDataGet));
+        addMember("embedder_data_set", new Executable(WebAssembly::embedderDataSet));
     }
 
     private Object moduleInstantiate(Object[] args) {
@@ -467,8 +468,13 @@ public class WebAssembly extends Dictionary {
         return new WasmTable(initial, maximum, maxAllowedSize, elemKind.byteValue());
     }
 
-    private static Object tableGrow(Object[] args) {
-        checkArgumentCount(args, 2);
+    private Object tableGrow(Object[] args) {
+        final boolean refTypes = currentContext.getContextOptions().supportBulkMemoryAndRefTypes();
+        if (refTypes) {
+            checkArgumentCount(args, 3);
+        } else {
+            checkArgumentCount(args, 2);
+        }
         if (!(args[0] instanceof WasmTable)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
@@ -477,17 +483,21 @@ public class WebAssembly extends Dictionary {
         }
         WasmTable table = (WasmTable) args[0];
         int delta = (Integer) args[1];
-        return tableGrow(table, delta);
+        if (refTypes) {
+            if (InteropLibrary.getUncached().isNull(args[2])) {
+                return tableGrow(table, delta, WasmConstant.NULL);
+            }
+            return tableGrow(table, delta, args[2]);
+        }
+        return tableGrow(table, delta, WasmConstant.NULL);
     }
 
-    public static int tableGrow(WasmTable table, int delta) {
-        final int size = table.size();
-        try {
-            table.grow(delta);
-        } catch (IllegalArgumentException e) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, e.getMessage());
+    public static int tableGrow(WasmTable table, int delta, Object ref) {
+        final int result = table.grow(delta, ref);
+        if (result == -1) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow table above max limit");
         }
-        return size;
+        return result;
     }
 
     private static Object tableRead(Object[] args) {
@@ -512,7 +522,7 @@ public class WebAssembly extends Dictionary {
         }
     }
 
-    private static Object tableWrite(Object[] args) {
+    private Object tableWrite(Object[] args) {
         checkArgumentCount(args, 3);
         if (!(args[0] instanceof WasmTable)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
@@ -525,18 +535,24 @@ public class WebAssembly extends Dictionary {
         return tableWrite(table, index, args[2]);
     }
 
-    public static Object tableWrite(WasmTable table, int index, Object element) {
-        final Object functionInstance;
+    public Object tableWrite(WasmTable table, int index, Object element) {
+        final Object elem;
         if (element instanceof WasmFunctionInstance) {
-            functionInstance = element;
+            elem = element;
         } else if (InteropLibrary.getUncached(element).isNull(element)) {
-            functionInstance = WasmConstant.NULL;
+            elem = WasmConstant.NULL;
         } else {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+            if (!currentContext.getContextOptions().supportBulkMemoryAndRefTypes()) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+            }
+            if (table.elemType() == WasmType.FUNCREF_TYPE) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+            }
+            elem = element;
         }
 
         try {
-            table.set(index, functionInstance);
+            table.set(index, elem);
         } catch (ArrayIndexOutOfBoundsException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
@@ -674,7 +690,7 @@ public class WebAssembly extends Dictionary {
         return WasmConstant.VOID;
     }
 
-    private static Object globalAlloc(Object[] args) {
+    private Object globalAlloc(Object[] args) {
         checkArgumentCount(args, 3);
 
         ValueType valueType;
@@ -697,7 +713,7 @@ public class WebAssembly extends Dictionary {
         return globalAlloc(valueType, mutable, args[2]);
     }
 
-    public static WasmGlobal globalAlloc(ValueType valueType, boolean mutable, Object value) {
+    public WasmGlobal globalAlloc(ValueType valueType, boolean mutable, Object value) {
         InteropLibrary valueInterop = InteropLibrary.getUncached(value);
         try {
             switch (valueType) {
@@ -710,17 +726,22 @@ public class WebAssembly extends Dictionary {
                 case f64:
                     return new DefaultWasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
                 case anyfunc:
-                    if (valueInterop.isNull(value)) {
-                        return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
-                    } else if (value instanceof WasmFunctionInstance) {
-                        return new DefaultWasmGlobal(valueType, mutable, value);
+                    if (currentContext.getContextOptions().supportBulkMemoryAndRefTypes()) {
+                        if (valueInterop.isNull(value)) {
+                            return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
+                        } else if (value instanceof WasmFunctionInstance) {
+                            return new DefaultWasmGlobal(valueType, mutable, value);
+                        }
                     }
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
                 case externref:
-                    if (valueInterop.isNull(value)) {
-                        return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
+                    if (currentContext.getContextOptions().supportBulkMemoryAndRefTypes()) {
+                        if (valueInterop.isNull(value)) {
+                            return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
+                        }
+                        return new DefaultWasmGlobal(valueType, mutable, value);
                     }
-                    return new DefaultWasmGlobal(valueType, mutable, value);
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
                 default:
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
             }

@@ -90,7 +90,7 @@ public class ValidationSuite extends WasmFileSuite {
 
                         binaryCase(
                                         "Duplicated sections",
-                                        "Duplicated section 6",
+                                        "unexpected content after last section",
                                         // (global (export "g1") i32 (i32.const 1))
                                         // (global (export "g2") i64 (i64.const 0)) but with each
                                         // export/global using its own export/global section
@@ -881,7 +881,7 @@ public class ValidationSuite extends WasmFileSuite {
 
                         // Indirect call with missing table
                         binaryCase("Call_indirect - missing table",
-                                        "Missing table.",
+                                        "unknown table",
                                         // (module
                                         // (type (func))
                                         // (func
@@ -961,7 +961,7 @@ public class ValidationSuite extends WasmFileSuite {
 
     protected void addContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option("wasm.MultiValue", "false");
-        contextBuilder.option("wasm.ReferenceTypes", "false");
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "false");
     }
 
     @Override
@@ -970,7 +970,8 @@ public class ValidationSuite extends WasmFileSuite {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         addContextOptions(contextBuilder);
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
-        try (final Context context = contextBuilder.build()) {
+        final Context context = contextBuilder.build();
+        try {
             context.eval(source).getMember("_main").execute();
         } catch (final PolyglotException e) {
             final Value actualFailureObject = e.getGuestObject();
@@ -986,6 +987,8 @@ public class ValidationSuite extends WasmFileSuite {
             final String failureType = actualFailureObject.getMember("failureType").asString();
             Assert.assertEquals("unexpected failure type", expectedFailureType.name, failureType);
             return;
+        } finally {
+            context.close();
         }
         if (expectedFailureType != null) {
             throw new AssertionError("expected to be invalid");
