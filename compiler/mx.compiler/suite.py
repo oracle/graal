@@ -606,23 +606,6 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.management" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.hotspot",
-      ],
-      "requires" : [
-        "java.management",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
     "org.graalvm.compiler.management" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -2013,7 +1996,6 @@ suite = {
           "org.graalvm.compiler.debug.DebugHandlersFactory",
           "org.graalvm.compiler.debug.TTYStreamProvider",
           "org.graalvm.compiler.debug.PathUtilitiesProvider",
-          "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
           "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
           "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
           "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
@@ -2091,7 +2073,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.management",
-        "org.graalvm.compiler.hotspot.management",
       ],
       "distDependencies" : [
         "GRAAL",
