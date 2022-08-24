@@ -36,10 +36,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -95,7 +97,7 @@ public class LocalizationSupport {
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         if (bundle instanceof PropertyResourceBundle) {
             String withLocale = control.toBundleName(bundleName, locale);
-            RuntimeResourceAccess.includeResources(withLocale.replace('.', '/') + "\\.properties");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), withLocale.replace('.', '/') + "\\.properties");
         } else {
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());

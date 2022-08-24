@@ -49,13 +49,14 @@ public class NativeImageResourceUtils {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             // Remove leading / for the resource patterns
-            RuntimeResourceAccess.includeResources(RESOURCE_DIR.substring(1));
-            RuntimeResourceAccess.includeResources(RESOURCE_FILE_1.substring(1));
-            RuntimeResourceAccess.includeResources(RESOURCE_FILE_2.substring(1));
+            Module resourceModule = TestFeature.class.getModule();
+            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR.substring(1));
+            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_1.substring(1));
+            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_2.substring(1));
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {
-                RuntimeResourceAccess.includeResources(module.getName() + ":" + "module-info.class");
+                RuntimeResourceAccess.addResource(module, "module-info.class");
             }
         }
     }

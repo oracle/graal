@@ -27,14 +27,13 @@ package com.oracle.svm.core.configure;
 import java.util.Collection;
 import java.util.Locale;
 
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 public interface ResourcesRegistry extends RuntimeResourceSupport {
 
     /**
-     * @deprecated Use {@link RuntimeResourceAccess#includeResources(String)} instead.
+     * @deprecated Use {@link RuntimeResourceSupport#addResources(ConfigurationCondition, String)} instead.
      */
     @Deprecated
     default void addResources(String pattern) {
@@ -42,7 +41,7 @@ public interface ResourcesRegistry extends RuntimeResourceSupport {
     }
 
     /**
-     * @deprecated Use {@link RuntimeResourceAccess#excludeResources(String)} instead.
+     * @deprecated Use {@link RuntimeResourceSupport#ignoreResources(ConfigurationCondition, String)} instead.
      */
     @Deprecated
     default void ignoreResources(String pattern) {
@@ -50,7 +49,7 @@ public interface ResourcesRegistry extends RuntimeResourceSupport {
     }
 
     /**
-     * @deprecated Use {@link RuntimeResourceAccess#addResourceBundles(String, Locale...)} instead.
+     * @deprecated Use {@link RuntimeResourceSupport#addResourceBundles(ConfigurationCondition, String)} instead.
      */
     @Deprecated
     default void addResourceBundles(String name) {

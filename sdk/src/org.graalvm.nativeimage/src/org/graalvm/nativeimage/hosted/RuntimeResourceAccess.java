@@ -42,6 +42,8 @@ package org.graalvm.nativeimage.hosted;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -59,49 +61,45 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 public final class RuntimeResourceAccess {
 
     /**
-     * Make Java resources that are matched by a {@code pattern} available at run time. If the given
-     * {@code pattern} starts with {@code <module-name>:} then the pattern that follows will only
-     * match resources from Java module named {@code <module-name>}.
+     * Make Java resource {@code resourcePath} from {@code module} available at run time. If the
+     * given {@code module} is unnamed, the resource is looked up on the classpath instead.
      *
      * @since 22.3
      */
-    public static void includeResources(String pattern) {
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), pattern);
+    public static void addResource(Module module, String resourcePath) {
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
+                        withModuleName(module, Pattern.quote(resourcePath)));
     }
 
     /**
-     * Ensure Java resources that are matched by a {@code pattern} will never be available at run
-     * time. If the given {@code pattern} starts with {@code <module-name>:} then the pattern that
-     * follows will only match resources from Java module named {@code <module-name>}.
+     * Make Java ResourceBundle that is specified by a {@code baseBundleName} and {@code locales}
+     * from module {@code module} available at run time. If the given {@code module} is unnamed, the
+     * ResourceBundle is looked up on the classpath instead.
      *
      * @since 22.3
      */
-    public static void excludeResources(String pattern) {
-        ImageSingletons.lookup(RuntimeResourceSupport.class).ignoreResources(ConfigurationCondition.alwaysTrue(), pattern);
+    public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
+        Objects.requireNonNull(locales);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(),
+                        withModuleName(module, baseBundleName), Arrays.asList(locales));
     }
 
     /**
-     * Make Java ResourceBundles that are specified by a {@code baseBundleName} and {@code locales}
-     * available at run time. If the given {@code baseBundleName} starts with {@code <module-name>:}
-     * then only the ResourceBundles from Java module named {@code <module-name>} will be added
-     * (i.e. ResourceBundles with the same name from other modules will not be added).
+     * Make Java ResourceBundle that is specified by a {@code bundleName} from module {@code module}
+     * available at run time. If the given {@code module} is unnamed, the ResourceBundle is looked
+     * up on the classpath instead.
      *
      * @since 22.3
      */
-    public static void addResourceBundles(String baseBundleName, Locale[] locales) {
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), baseBundleName, Arrays.asList(locales));
+    public static void addResourceBundle(Module module, String bundleName) {
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(),
+                        withModuleName(module, bundleName));
     }
 
-    /**
-     * Make Java ResourceBundles that are specified by a {@code bundleName} available at run time.
-     * If the given {@code bundleName} starts with {@code <module-name>:} then only the
-     * ResourceBundles from Java module named {@code <module-name>} will be added (i.e.
-     * ResourceBundles with the same name from other modules will not be added).
-     *
-     * @since 22.3
-     */
-    public static void addResourceBundles(String bundleName) {
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), bundleName);
+    private static String withModuleName(Module module, String str) {
+        Objects.requireNonNull(module);
+        Objects.requireNonNull(str);
+        return (module.isNamed() ? module.getName() : "ALL-UNNAMED") + ":" + str;
     }
 
     private RuntimeResourceAccess() {
