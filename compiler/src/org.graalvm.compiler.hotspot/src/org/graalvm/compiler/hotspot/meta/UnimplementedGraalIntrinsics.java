@@ -302,6 +302,9 @@ public final class UnimplementedGraalIntrinsics {
         if (config.sha3ImplCompress == 0L) {
             add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
         }
+        if (config.contDoYield == 0L) {
+            add(ignore, "jdk/internal/vm/Continuation.doYield()I");
+        }
 
         if (isJDK16OrHigher()) {
             // JDK-8258558
@@ -397,7 +400,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setCurrentThread(Ljava/lang/Thread;)V",
                             "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V",
-                            "jdk/internal/vm/Continuation.doYield()I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V",
                             "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;" +
