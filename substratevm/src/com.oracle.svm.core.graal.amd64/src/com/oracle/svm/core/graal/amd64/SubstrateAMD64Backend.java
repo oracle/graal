@@ -910,6 +910,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
+            verifyCallTarget(callTarget);
             if (callTarget instanceof ComputedIndirectCallTargetNode) {
                 emitComputedIndirectCall((ComputedIndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
             } else {
