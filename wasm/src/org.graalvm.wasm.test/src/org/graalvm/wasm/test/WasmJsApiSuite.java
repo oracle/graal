@@ -74,6 +74,7 @@ import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
@@ -95,6 +96,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
+    private static final String REF_TYPES_OPTION = "wasm.BulkMemoryAndRefTypes";
+
     @Test
     public void testCompile() throws IOException {
         runTest(context -> {
@@ -197,7 +200,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmTable table = WebAssembly.tableAlloc(4, 8, TableKind.anyfunc);
+            final WasmTable table = wasm.tableAlloc(4, 8, TableKind.anyfunc);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
@@ -311,6 +314,193 @@ public class WasmJsApiSuite {
     @Test
     public void testInstantiateWithImportGlobalExternref() throws IOException {
         checkInstantiateWithImportGlobal(binaryWithGlobalImportExternref, "externref", "foo");
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, false, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateExternrefGlobalRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.externref, false, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateI32GlobalWithNull() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.i32, true, WasmConstant.NULL);
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalWithZero() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, true, 0);
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalWithObject() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, true, "foo");
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalWithOrdinaryFunction() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, true, new Executable(args -> 0));
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateRefTypeGlobalWithNull() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            wasm.globalAlloc(ValueType.externref, true, WasmConstant.NULL);
+        });
+    }
+
+    @Test
+    public void testGlobalWriteAnyfuncToI32() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
+            try {
+                wasm.globalWrite(global, new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return 0;
+                    }
+                }.getCallTarget()));
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteExternrefToI32() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
+            try {
+                wasm.globalWrite(global, "foo");
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteObjectToAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, "foo");
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteOrdinaryFuncToAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, new Executable(args -> 0));
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteNull() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal anyfunc = wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            final WasmGlobal externref = wasm.globalAlloc(ValueType.externref, true, WasmConstant.NULL);
+            wasm.globalWrite(anyfunc, WasmConstant.NULL);
+            wasm.globalWrite(externref, WasmConstant.NULL);
+        });
+    }
+
+    @Test
+    public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = new DefaultWasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = new DefaultWasmGlobal(ValueType.externref, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
     }
 
     @Test
@@ -1104,9 +1294,10 @@ public class WasmJsApiSuite {
     @Test
     public void testInitialTableSizeOutOfBounds() throws IOException {
         runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
             try {
                 // Negative numbers represent unsigned values
-                WebAssembly.tableAlloc(-10, -8, TableKind.anyfunc);
+                wasm.tableAlloc(-10, -8, TableKind.anyfunc);
                 Assert.fail("Should have failed - initial table size exceeds implementation limit");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1117,8 +1308,9 @@ public class WasmJsApiSuite {
     @Test
     public void testMinTableSizeExceedsMaxSize() throws IOException {
         runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
             try {
-                WebAssembly.tableAlloc(2, 1, TableKind.anyfunc);
+                wasm.tableAlloc(2, 1, TableKind.anyfunc);
                 Assert.fail("Should have failed - min table size bigger than max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1129,12 +1321,107 @@ public class WasmJsApiSuite {
     @Test
     public void testTableGrowLimit() throws IOException {
         runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
             try {
-                WasmTable table = WebAssembly.tableAlloc(1, 1, TableKind.anyfunc);
+                WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc);
                 WebAssembly.tableGrow(table, 1, WasmConstant.NULL);
                 Assert.fail("Should have failed - try to grow table beyond max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableGrow2Args() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final WasmTable table = wasm.tableAlloc(1, 2, TableKind.anyfunc);
+            try {
+                final Object tableGrow = wasm.readMember("table_grow");
+                lib.execute(tableGrow, table, 1);
+                Assert.fail("Should have failed - invalid number of arguments");
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInitAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, "anyfunc", 1, 1);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableInitExternref() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, "externref", 1, 1);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableInitRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, 1, 1);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableInit3ArgsRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, "anyfunc", 1, 1);
+                Assert.fail("Should have failed - 3 arguments, 2 allowed");
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInit2Args() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, 1, 1);
+                Assert.fail("Should have failed - invalid arguments");
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
             }
         });
     }
@@ -1179,7 +1466,8 @@ public class WasmJsApiSuite {
     @Test
     public void testTableEmbedderData() throws IOException {
         runTest(context -> {
-            WasmTable table = WebAssembly.tableAlloc(1, 1, TableKind.anyfunc);
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc);
             checkEmbedderData(table);
         });
     }
@@ -1681,15 +1969,15 @@ public class WasmJsApiSuite {
             WebAssembly wasm = new WebAssembly(context);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "tables", Dictionary.create(new Object[]{
-                                            "table0", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table1", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table2", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table3", WebAssembly.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table4", WebAssembly.tableAlloc(1, 1, TableKind.externref),
-                                            "table5", WebAssembly.tableAlloc(1, 1, TableKind.externref),
-                                            "table6", WebAssembly.tableAlloc(1, 1, TableKind.externref),
-                                            "table7", WebAssembly.tableAlloc(1, 1, TableKind.externref),
-                                            "table8", WebAssembly.tableAlloc(1, 1, TableKind.externref),
+                                            "table0", wasm.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table1", wasm.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table2", wasm.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table3", wasm.tableAlloc(1, 1, TableKind.anyfunc),
+                                            "table4", wasm.tableAlloc(1, 1, TableKind.externref),
+                                            "table5", wasm.tableAlloc(1, 1, TableKind.externref),
+                                            "table6", wasm.tableAlloc(1, 1, TableKind.externref),
+                                            "table7", wasm.tableAlloc(1, 1, TableKind.externref),
+                                            "table8", wasm.tableAlloc(1, 1, TableKind.externref),
                             })
             });
             WasmInstance instance = moduleInstantiate(wasm, importManyTablesBytes, importObject);
@@ -1708,7 +1996,14 @@ public class WasmJsApiSuite {
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
+        runTest(null, testCase);
+    }
+
+    private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        if (options != null) {
+            options.accept(contextBuilder);
+        }
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
@@ -1718,6 +2013,7 @@ public class WasmJsApiSuite {
         main.execute();
         Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
         run.execute(new GuestCode(testCase));
+        context.close();
     }
 
     private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
