@@ -686,7 +686,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 return;
             }
             currentSingleCallNode = callerCallTarget.singleCallNode;
-        } while (++depth < engine.propagateCallAndLoopCountMaxDepth &&
+            depth++;
+        } while (depth < engine.propagateCallAndLoopCountMaxDepth &&
                         currentSingleCallNode != NO_CALL &&
                         currentSingleCallNode != MULTIPLE_CALLS);
     }
@@ -812,7 +813,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
-                    propagateCallAndLoopCount();
+                    if (lastTier) {
+                        propagateCallAndLoopCount();
+                    }
                     if (!wasExecuted() && !engine.backgroundCompilation) {
                         prepareForAOTImpl();
                     }
