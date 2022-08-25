@@ -25,11 +25,13 @@
 package com.oracle.svm.core.jvmstat;
 
 import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataSamplingInterval;
-import static com.oracle.svm.core.jvmstat.PerfManager.Options.UsePerfData;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
@@ -39,10 +41,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -107,26 +108,21 @@ public class PerfManager {
         return result;
     }
 
+    public static boolean usePerfData() {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UsePerfData);
+        return VMInspectionOptions.hasJvmstatSupport() && IsolateArgumentParser.getBooleanOptionValue(optionIndex);
+    }
+
     /** Returns a pointer into the image heap. */
     public CLongPointer getLongPerfEntry(String name) {
-        VMError.guarantee(UsePerfData.getValue(), "Performance data support must be enabled, see option UsePerfData.");
-        // No need to wait for the initialization because the data lives in the image heap.
+        waitForInitialization();
         PerfLong entry = longEntries.get(name);
         assert Heap.getHeap().isInImageHeap(entry);
         return (CLongPointer) Word.objectToUntrackedPointer(entry).add(WordFactory.unsigned(PerfLong.VALUE_OFFSET));
     }
 
-    public RuntimeSupport.Hook startupHook() {
-        return isFirstIsolate -> {
-            if (isFirstIsolate && UsePerfData.getValue()) {
-                startTime = System.nanoTime();
-                perfDataThread.start();
-            }
-        };
-    }
-
     public void waitForInitialization() {
-        if (!Isolates.isCurrentFirst() || !PerfManager.Options.UsePerfData.getValue() || !perfDataThread.waitForInitialization()) {
+        if (!usePerfData() || !perfDataThread.waitForInitialization()) {
             throw new IllegalArgumentException("Performance data support is disabled.");
         }
     }
@@ -141,9 +137,18 @@ public class PerfManager {
         return System.nanoTime() - startTime;
     }
 
-    public RuntimeSupport.Hook shutdownHook() {
+    public RuntimeSupport.Hook initializationHook() {
         return isFirstIsolate -> {
-            if (isFirstIsolate && UsePerfData.getValue()) {
+            if (usePerfData()) {
+                startTime = System.nanoTime();
+                perfDataThread.start();
+            }
+        };
+    }
+
+    public RuntimeSupport.Hook teardownHook() {
+        return isFirstIsolate -> {
+            if (usePerfData()) {
                 perfDataThread.shutdown();
 
                 PerfMemory memory = ImageSingletons.lookup(PerfMemory.class);
@@ -173,12 +178,9 @@ public class PerfManager {
 
         @Override
         public void run() {
-            initialize();
+            initializeMemory();
 
             try {
-                // Allocate the data, write values to the shared memory and mark the shared memory
-                // as accessible.
-                manager.allocate();
                 sampleData();
                 ImageSingletons.lookup(PerfMemory.class).setAccessible();
 
@@ -188,16 +190,20 @@ public class PerfManager {
                     sampleData();
                 }
             } catch (InterruptedException e) {
-                // the normal way how this thread exits
+                // The normal way how this thread exits.
             }
         }
 
-        private void initialize() {
+        private void initializeMemory() {
             initializationMutex.lock();
             try {
                 PerfMemory memory = ImageSingletons.lookup(PerfMemory.class);
                 boolean success = memory.initialize();
                 VMError.guarantee(success, ERROR_DURING_INITIALIZATION);
+
+                // Allocate the data, write values to the shared memory and mark the shared memory
+                // as accessible.
+                manager.allocate();
 
                 initialized = true;
                 initializationCondition.broadcast();
@@ -266,17 +272,16 @@ public class PerfManager {
     }
 
     public static class Options {
-        @DuplicatedInNativeCode //
-        @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
-        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
+        @Option(help = "Determines if the collected performance data should be written to a memory-mapped file so that it can be accessed by external tools.")//
+        public static final HostedOptionKey<Boolean> PerfDataMemoryMappedFile = new HostedOptionKey<>(true);
 
         @Option(help = "Size of performance data memory region. Will be rounded up to a multiple of the native os page size.")//
-        public static final RuntimeOptionKey<Integer> PerfDataMemorySize = new RuntimeOptionKey<>(32 * 1024);
+        public static final RuntimeOptionKey<Integer> PerfDataMemorySize = new RuntimeOptionKey<>(32 * 1024, Immutable);
 
         @Option(help = "Jvmstat instrumentation sampling interval (in milliseconds)")//
         public static final RuntimeOptionKey<Integer> PerfDataSamplingInterval = new RuntimeOptionKey<>(200);
 
         @Option(help = "Maximum PerfStringConstant string length before truncation")//
-        public static final RuntimeOptionKey<Integer> PerfMaxStringConstLength = new RuntimeOptionKey<>(1024);
+        public static final RuntimeOptionKey<Integer> PerfMaxStringConstLength = new RuntimeOptionKey<>(1024, Immutable);
     }
 }
