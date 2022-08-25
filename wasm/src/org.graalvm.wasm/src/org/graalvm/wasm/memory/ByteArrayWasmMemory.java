@@ -330,6 +330,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
+    @TruffleBoundary
     public void fill(int offset, int length, byte value) {
         assert offset + length <= byteSize();
         Arrays.fill(byteArrayBuffer.buffer(), offset, offset + length, value);

@@ -46,6 +46,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.constants.Sizes;
 
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -84,6 +85,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
 
     private Object[] elements;
 
+    @TruffleBoundary
     private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, byte elemType) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
@@ -94,8 +96,8 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
-        this.currentMinSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
+        this.currentMinSize = declaredMinSize;
         this.elements = new Object[declaredMinSize];
         Arrays.fill(this.elements, WasmConstant.NULL);
         this.elemType = elemType;
@@ -112,6 +114,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * Note: this does not restore content from elements section. For this, use
      * {@link org.graalvm.wasm.BinaryParser#resetTableState}.
      */
+    @TruffleBoundary
     public void reset() {
         elements = new Object[declaredMinSize];
         Arrays.fill(elements, WasmConstant.NULL);
@@ -207,6 +210,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * @param length The number of elements that should be filled
      * @param value The value that should be used for filling the table
      */
+    @TruffleBoundary
     public void fill(int offset, int length, Object value) {
         assert offset + length <= size();
         Arrays.fill(elements, offset, offset + length, value);
@@ -231,6 +235,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * @param value The value of the newly added elements
      * @return The previous size if the growing succeeded, -1 otherwise.
      */
+    @TruffleBoundary
     public int grow(int delta, Object value) {
         final int size = size();
         final int targetSize = size + delta;
