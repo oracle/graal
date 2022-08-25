@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -115,7 +114,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final Instrumentation instrumentation;
 
-    private AtomicReference<OptionValues> optionsRef = new AtomicReference<>();
+    private final OptionValues options;
 
     private final DiagnosticsOutputDirectory outputDirectory;
     private final Map<ExceptionAction, Integer> compilationProblemsPerAction;
@@ -135,11 +134,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
         if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && config.printInlining) {
-            optionsRef.set(new OptionValues(initialOptions, HotSpotPrintInlining, true));
+            options = new OptionValues(initialOptions, HotSpotPrintInlining, true);
         } else {
-            optionsRef.set(initialOptions);
+            options = initialOptions;
         }
-        OptionValues options = optionsRef.get();
 
         garbageCollector = getSelectedGC();
 
@@ -342,7 +340,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     @Override
     public OptionValues getOptions() {
-        return optionsRef.get();
+        return options;
     }
 
     @Override
@@ -366,7 +364,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
         } else if (clazz == OptionValues.class) {
-            return (T) optionsRef.get();
+            return (T) options;
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
@@ -425,7 +423,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
      * @param phase the execution phase being entered
      */
     void phaseTransition(String phase) {
-        if (Options.UseCompilationStatistics.getValue(optionsRef.get())) {
+        if (Options.UseCompilationStatistics.getValue(options)) {
             CompilationStatistics.clear(phase);
         }
     }
@@ -453,7 +451,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
         }
 
-        metricValues.print(optionsRef.get());
+        metricValues.print(options);
 
         phaseTransition("final");
 
@@ -462,7 +460,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 TTY.out().out().println(group);
             }
         }
-        BenchmarkCounters.shutdown(runtime(), optionsRef.get(), runtimeStartTime);
+        BenchmarkCounters.shutdown(runtime(), options, runtimeStartTime);
 
         outputDirectory.close();
 

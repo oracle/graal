@@ -5,7 +5,7 @@ This changelog summarizes newly introduced optimizations that may be relevant to
 ## Version 22.3.0
 * (GR-32382): Added a dedicated Native Image GC policy for libgraal that will adjust the eden space aggressively to
 minimize RSS memory usage.
-* (GR-38950): Removed deprecated JMX `HotSpotGraalRuntime` management bean in both `libgraal` and `jargraal` compiler.
+* (GR-38950): Removed deprecated JMX `HotSpotGraalRuntime` management bean from both `libgraal` and `jargraal`.
 
 ## Version 22.2.0
 * (GR-23737): New global value numbering optimization for fixed nodes early in the compilation pipeline.
