@@ -161,14 +161,18 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
                         this.constantPool,
                         this.handlers,
                         this.compilationInfo.getDeoptOrigin(),
-                        this.name,
-                        this.uniqueShortName + System.identityHashCode(context),
+                        duplicateName(this.name, context),
+                        duplicateName(this.uniqueShortName, context),
                         createLocalVariableTable(universe, this.wrapped));
         duplicate.compilationInfo.setGraph(compilationInfo.getCompilationGraph());
         duplicate.compilationInfo.setCompileOptions(compilationInfo.getCompileOptions());
         duplicate.staticAnalysisResults = new StaticAnalysisResults(staticAnalysisResults);
         duplicate.specializationReason = SpecializationReason.create(context);
         return duplicate;
+    }
+
+    private static String duplicateName(String name, List<Pair<HostedMethod, Integer>> context) {
+        return name + "<" + System.identityHashCode(context) + ">";
     }
 
     @Override
