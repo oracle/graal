@@ -284,6 +284,41 @@ final class CodeBuilder {
         return this;
     }
 
+    CodeBuilder forLoop(List<? extends CharSequence> init, CharSequence termination, List<? extends CharSequence> increment) {
+        write("for(");
+        boolean firstStm = true;
+        for (CharSequence initStm : init) {
+            if (firstStm) {
+                firstStm = false;
+            } else {
+                write(",");
+                space();
+            }
+            write(initStm);
+        }
+        write(";");
+        if (termination != null) {
+            space();
+            write(termination);
+        }
+        write(";");
+        firstStm = true;
+        for (CharSequence incrementStm : increment) {
+            if (firstStm) {
+                firstStm = false;
+            } else {
+                write(",");
+            }
+            space();
+            write(incrementStm);
+        }
+        return write(")");
+    }
+
+    CodeBuilder arrayElement(CharSequence array, CharSequence index) {
+        return write(array).write("[").write(index).write("]");
+    }
+
     CodeBuilder writeAnnotationAttributeValue(Object value) {
         if (value.getClass() == String.class) {
             write('"' + (String) value + '"');

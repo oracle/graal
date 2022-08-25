@@ -167,7 +167,7 @@ abstract class AbstractBridgeGenerator {
                     return cache.jObject;
                 }
             case ARRAY:
-                TypeMirror componentType = ((ArrayType) erasedType).getComponentType();
+                TypeMirror componentType = types.erasure(((ArrayType) erasedType).getComponentType());
                 switch (componentType.getKind()) {
                     case BOOLEAN:
                         return cache.jBooleanArray;
@@ -185,6 +185,8 @@ abstract class AbstractBridgeGenerator {
                         return cache.jFloatArray;
                     case DOUBLE:
                         return cache.jDoubleArray;
+                    case DECLARED:
+                        return cache.jObjectArray;
                     default:
                         throw new UnsupportedOperationException("Not supported for array of " + componentType.getKind());
                 }
@@ -360,9 +362,8 @@ abstract class AbstractBridgeGenerator {
 
         final CharSequence unmarshallNativeToHotSpotProxyInNative(CodeBuilder builder, CharSequence parameterName, CharSequence jniEnvFieldName) {
             List<CharSequence> args = Arrays.asList(jniEnvFieldName, parameterName);
-            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
             boolean isHSObject = types.isSubtype(marshallerData.forType, cache.hSObject);
-            if (hasGeneratedFactory && !isHSObject) {
+            if (marshallerData.hasGeneratedFactory && !isHSObject) {
                 DeclaredType receiverType = (DeclaredType) marshallerData.nonDefaultReceiver.asType();
                 List<CharSequence> newArgs = new ArrayList<>();
                 newArgs.add(new CodeBuilder(builder).newInstance(receiverType, args.toArray(new CharSequence[0])).build());
@@ -383,9 +384,8 @@ abstract class AbstractBridgeGenerator {
 
         final CharSequence unmarshallHotSpotToNativeProxyInHotSpot(CodeBuilder builder, CharSequence parameterName, CharSequence currentIsolateSnippet) {
             List<CharSequence> args = Arrays.asList(currentIsolateSnippet, parameterName);
-            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
             boolean isNativeObject = types.isSubtype(marshallerData.forType, cache.nativeObject);
-            if (hasGeneratedFactory && !isNativeObject) {
+            if (marshallerData.hasGeneratedFactory && !isNativeObject) {
                 args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[0])).build());
             }
             CharSequence proxy = createProxy(builder, NativeToNativeBridgeGenerator.COMMON_START_POINT_FACTORY_NAME, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME,
@@ -413,8 +413,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         private CharSequence createProxy(CodeBuilder builder, CharSequence commonFactoryMethod, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
-            boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
-            if (hasGeneratedFactory) {
+            if (marshallerData.hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
                 CodeBuilder newInstanceBuilder = new CodeBuilder(builder);
                 boolean hasJNI = hasJNIFactory(marshallerData);
