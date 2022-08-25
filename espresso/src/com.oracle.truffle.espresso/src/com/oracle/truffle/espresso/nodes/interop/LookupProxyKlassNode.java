@@ -52,8 +52,9 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     public abstract ObjectKlass execute(Object metaObject, int metaIdentity, Klass targetType) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"metaIdentity == cachedIdentity", "targetType == cachedTargetType"}, limit = "LIMIT")
+    @Specialization(guards = {"targetType == cachedTargetType", "metaIdentity == cachedIdentity", "interop.isIdentical(metaObject, cachedMetaObject, interop)"}, limit = "LIMIT")
     ObjectKlass doCached(Object metaObject, int metaIdentity, Klass targetType,
+                    @Cached("metaObject") Object cachedMetaObject,
                     @Cached("targetType") Klass cachedTargetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached("metaIdentity") int cachedIdentity,

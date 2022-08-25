@@ -40,9 +40,10 @@ public abstract class LookupTypeConverterNode extends EspressoNode {
     public abstract PolyglotTypeMappings.TypeConverter execute(Object metaObject, int metaIdentity) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"metaIdentity == cachedMetaIdentity"}, limit = "LIMIT")
+    @Specialization(guards = {"metaIdentity == cachedMetaIdentity", "interop.isIdentical(metaObject, cachedMetaObject, interop)"}, limit = "LIMIT")
     PolyglotTypeMappings.TypeConverter doCached(Object metaObject, int metaIdentity,
                     @Cached("metaIdentity") int cachedMetaIdentity,
+                    @Cached("metaObject") Object cachedMetaObject,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached("doUncached(metaObject, metaIdentity, interop)") PolyglotTypeMappings.TypeConverter converter) throws ClassCastException {
         assert converter == doUncached(metaObject, metaIdentity, interop);
