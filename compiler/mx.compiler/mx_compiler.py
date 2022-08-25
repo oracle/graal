@@ -346,9 +346,9 @@ class GraalTags:
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
     ctweconomy = ['ctweconomy', 'economy', 'fulltest']
-    ctwfuzzing = ['ctwfuzzing']
+    ctwphaseplanfuzzing = ['ctwphaseplanfuzzing']
     doc = ['javadoc']
-    fuzz_jtt_tests = ['fuzz-jtt-tests']
+    phaseplan_fuzz_jtt_tests = ['phaseplan-fuzz-jtt-tests']
 
 def _remove_empty_entries(a):
     """Removes empty entries. Return value is always a list."""
@@ -500,7 +500,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true', '-Dgraal.VerifyPhasePlan=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
-    ctw_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Dgraal.PrintGraphStateDiff=true']
+    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Dgraal.PrintGraphStateDiff=true']
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
         if t:
             ctw(ctw_flags, _remove_empty_entries(extraVMarguments))
@@ -510,9 +510,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             ctw(ctw_flags + _graalEconomyFlags, _remove_empty_entries(extraVMarguments))
 
-    with Task('CTWFuzzing:hosted', tasks, tags=GraalTags.ctwfuzzing, report=True) as t:
+    with Task('CTWPhaseplanFuzzing:hosted', tasks, tags=GraalTags.ctwphaseplanfuzzing, report=True) as t:
         if t:
-            ctw(ctw_flags + ctw_fuzzing_flags, _remove_empty_entries(extraVMarguments))
+            ctw(ctw_flags + ctw_phaseplan_fuzzing_flags, _remove_empty_entries(extraVMarguments))
 
     # bootstrap tests
     for b in bootstrap_tests:
@@ -526,9 +526,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
             # metadata package was deprecated, exclude it
             if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
-    with Task('JTTFuzzing', tasks, tags=GraalTags.fuzz_jtt_tests, report=True) as t:
+    with Task('JTTPhaseplanFuzzing', tasks, tags=GraalTags.phaseplan_fuzz_jtt_tests, report=True) as t:
         if t:
-            fuzz_jtt_tests([], extraVMarguments=_remove_empty_entries(extraVMarguments), extraUnitTestArguments=_remove_empty_entries(extraUnitTestArguments))
+            phaseplan_fuzz_jtt_tests([], extraVMarguments=_remove_empty_entries(extraVMarguments), extraUnitTestArguments=_remove_empty_entries(extraUnitTestArguments))
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # run DaCapo benchmarks #
@@ -1191,10 +1191,10 @@ def javadoc(args):
         args.append('com.oracle.truffle.api.metadata')
     mx.javadoc(args, quietForNoPackages=True)
 
-def fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments=None):
+def phaseplan_fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments=None):
     """runs JTT unit tests with fuzzed compilation plans"""
 
-    parser = ArgumentParser(prog='mx fuzz-jtt-tests', description='Run JTT unit tests with fuzzed phase plans')
+    parser = ArgumentParser(prog='mx phaseplan-fuzz-jtt-tests', description='Run JTT unit tests with fuzzed phase plans')
     parser.add_argument('--seed', metavar='<seed>', help='Seed to initialize random instance')
     parser.add_argument('--minimal', action='store_true',
         help='Force the use of a minimal fuzzed compilation plan')
@@ -1208,7 +1208,7 @@ def fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments=None):
         help='Determine the odds of skipping the insertion of a phase in low tier')
 
     args, parsed_args = parse_split_args(args, parser, "--")
-    vm_args = _remove_empty_entries(extraVMarguments) + ['-Dtest.graal.compilationplan.fuzzing=true', '-Dgraal.PrintGraphStateDiff=true']
+    vm_args = _remove_empty_entries(extraVMarguments) + ['-Dtest.graal.compilationplan.fuzzing=true', '-Dgraal.PrintGraphStateDiff=true', '--verbose']
 
     if parsed_args.seed:
         vm_args.append('-Dtest.graal.compilationplan.fuzzing.seed=' + parsed_args.seed)
@@ -1226,13 +1226,13 @@ def fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments=None):
     target_tests = []
     for arg in args:
         if not arg.startswith('-'):
-                target_tests.append(arg)
-                args.remove(arg)
+            target_tests.append(arg)
+            args.remove(arg)
     if not target_tests:
         target_tests = ['org.graalvm.compiler.jtt.']
 
     for test in target_tests:
-        UnitTestRun("Fuzz phase plan for tests matching substring " + test, [], tags=GraalTags.unittest + GraalTags.fuzz_jtt_tests).\
+        UnitTestRun("Fuzz phase plan for tests matching substring " + test, [], tags=GraalTags.unittest + GraalTags.phaseplan_fuzz_jtt_tests).\
             run(['compiler'], [], ['-XX:-UseJVMCICompiler'] + vm_args, _remove_empty_entries(extraUnitTestArguments) + args + [test])
 
 
@@ -1394,7 +1394,7 @@ mx.update_commands(_suite, {
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
     'graaljdk-home': [print_graaljdk_home, '[options]'],
     'graaljdk-show': [print_graaljdk_config, '[options]'],
-    'fuzz-jtt-tests': [fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
+    'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
 })
 
 def mx_post_parse_cmd_line(opts):

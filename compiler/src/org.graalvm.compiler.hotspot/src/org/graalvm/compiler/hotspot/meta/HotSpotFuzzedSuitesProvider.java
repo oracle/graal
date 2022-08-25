@@ -43,15 +43,17 @@ public class HotSpotFuzzedSuitesProvider extends HotSpotSuitesProvider {
     private static ThreadLocal<Long> lastSeed = new ThreadLocal<>();
 
     private final HotSpotSuitesProvider provider;
+    private final Random random;
 
     public HotSpotFuzzedSuitesProvider(HotSpotSuitesProvider provider) {
         super(provider.defaultSuitesCreator, provider.config, provider.runtime);
         this.provider = provider;
+        this.random = new Random();
     }
 
     @Override
     public Suites getDefaultSuites(OptionValues options, Architecture arch) {
-        long seed = new Random().nextLong();
+        long seed = random.nextLong();
         lastSeed.set(seed);
         return createSuites(options, seed);
     }

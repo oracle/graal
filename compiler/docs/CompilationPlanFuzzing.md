@@ -5,7 +5,7 @@ The following design can be found in the package `org.graalvm.compiler.core.phas
 ### Diagram
 ```
                                                                              Suites  >  FuzzedSuites
-                                                                                              |        
+                                                                                              |
              AbstractCompilationPlan       >       MinimalFuzzedCompilationPlan  >  FullFuzzedCompilationPlan
             /           |           \                         3x|                           3x|
 AbstractTierPlan AbstractTierPlan AbstractTierPlan  >  MinimalFuzzedTierPlan    >   FullFuzzedTierPlan
@@ -118,17 +118,16 @@ The `FullFuzzedCompilationPlan` is created by constructing three `FullFuzzedTier
 ### JTT tests
 #### Create new fuzzed compilation plans
 You can create fuzzed compilation plans for JTT tests. For this, use one of the following equivalent commands:
-- `mx fuzz-jtt-tests`
-- `mx gate --tags fuzz-jtt-tests`
-- `mx unittest -Dtest.graal.compilationplan.fuzzing=true`
+- `mx phaseplan-fuzz-jtt-tests`
+- `mx gate --tags phaseplan-fuzz-jtt-tests`
 
 It is possible to fix some parameters of the creation of fuzzed compilation plans:
 - To test only the minimal fuzzed compilation plan:
-  * `mx fuzz-jtt-tests --minimal`
-  * `mx gate --extra-unittest-argument='--minimal' --tags fuzz-jtt-tests`
-  * `mx fuzz-jtt-tests -Dtest.graal.compilationplan.fuzzing.minimal=true`
-  * `mx gate --extra-unittest-argument='-Dtest.graal.compilationplan.fuzzing.minimal=true' --tags fuzz-jtt-tests`
-  * `mx gate --extra-vm-argument='-Dtest.graal.compilationplan.fuzzing.minimal=true' --tags fuzz-jtt-tests`
+  * `mx phaseplan-fuzz-jtt-tests --minimal`
+  * `mx gate --extra-unittest-argument='--minimal' --tags phaseplan-fuzz-jtt-tests`
+  * `mx phaseplan-fuzz-jtt-tests -Dtest.graal.compilationplan.fuzzing.minimal=true`
+  * `mx gate --extra-unittest-argument='-Dtest.graal.compilationplan.fuzzing.minimal=true' --tags phaseplan-fuzz-jtt-tests`
+  * `mx gate --extra-vm-argument='-Dtest.graal.compilationplan.fuzzing.minimal=true' --tags phaseplan-fuzz-jtt-tests`
 - You can choose the seed to be used to create `Random` instances. The option is `-Dtest.graal.compilationplan.fuzzing.seed=<seed>` and the short version is `--seed=<seed>`. It can be used like the option for the minimal fuzzed compilation plan.
 - To regulate the probability that a phase will be inserted at each position in the suite, you can use:
   *  `-Dtest.graal.skip.phase.insertion.odds=<number>` or `--skip-phase-odds=<number>`.
@@ -143,8 +142,8 @@ It is possible to fix some parameters of the creation of fuzzed compilation plan
   * `-Dtest.graal.skip.phase.insertion.odds.low.tier=<number>` or `--low-tier-skip-phase=<number>`
     - This will determine the probability for the insertion in low tier.
 - You can specify which test you want to run like this:
-  * `mx fuzz-jtt-tests HP_life`
-  * `mx gate --extra-unittest-argument='HP_life' --tags fuzz-jtt-tests`
+  * `mx phaseplan-fuzz-jtt-tests HP_life`
+  * `mx gate --extra-unittest-argument='HP_life' --tags phaseplan-fuzz-jtt-tests`
 - If you want to use the phases of a specific compiler configuration and respect its requirements, you should use:
   * `-Dgraal.CompilerConfiguration=<config>`
 
@@ -158,7 +157,7 @@ mx unittest -Dtest.graal.phaseplan.file="/path/to/phaseplan"
 #### Create new fuzzed compilation plans
 You can use fuzzed plans for `CompileTheWorld`'s compilations by using the following commands:
 ```
-mx gate --tags ctwfuzzing
+mx gate --tags ctwphaseplanfuzzing
 ```
 or
 ```

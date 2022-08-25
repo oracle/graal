@@ -96,7 +96,7 @@ import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.MetricKey;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.CompilationTask;
-import org.graalvm.compiler.hotspot.CompileTheWorldFuzzedCompilationTask;
+import org.graalvm.compiler.hotspot.CompileTheWorldFuzzedSuitesCompilationTask;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
@@ -758,7 +758,6 @@ public final class CompileTheWorld {
      * The worklist of methods to be compiled as well as statistics gathered during
      * {@linkplain Compilations#compile(LibGraalParams) compilation}.
      */
-
     public class Compilations {
 
         class Compilation {
@@ -1377,7 +1376,7 @@ public final class CompileTheWorld {
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
                 CompilationTask task;
                 if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
-                    task = new CompileTheWorldFuzzedCompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+                    task = new CompileTheWorldFuzzedSuitesCompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
                 } else {
                     task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
                 }

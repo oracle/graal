@@ -71,6 +71,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class JTTTest extends GraalCompilerTest {
 
+    /**
+     * Contains the fuzzed {@link Suites} to use for the compilation if
+     * {@link #COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY} is {@code true}.
+     */
+    private Suites fuzzedSuites;
+
     public static final class DummyTestClass {
     }
 
@@ -143,7 +149,7 @@ public class JTTTest extends GraalCompilerTest {
     /**
      * System property to indicate the compilation plan should be created by fuzzing.
      */
-    protected static final String FUZZING_SYSTEM_PROPERTY = "test.graal.compilationplan.fuzzing";
+    protected static final String COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY = "test.graal.compilationplan.fuzzing";
     /**
      * System property to provide {@link MinimalFuzzedCompilationPlan#getRandomSeed()}.
      */
@@ -171,13 +177,13 @@ public class JTTTest extends GraalCompilerTest {
     private static final String LOW_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY = "test.graal.skip.phase.insertion.odds.low.tier";
 
     /**
-     * Uses a fuzzed compilation plan for the test if the {@link #FUZZING_SYSTEM_PROPERTY} is set to
-     * {@code true}. Otherwise, resumes to the usual compilation using
-     * {@link GraalCompilerTest#testAgainstExpected}.
+     * Uses a fuzzed compilation plan for the test if the
+     * {@link #COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY} is set to {@code true}. Otherwise, resumes
+     * to the usual compilation using {@link GraalCompilerTest#testAgainstExpected}.
      */
     @Override
     protected void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        if (Boolean.getBoolean(FUZZING_SYSTEM_PROPERTY)) {
+        if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
             testAgainstExpectedWithFuzzedCompilationPlan(options, method, expect, shouldNotDeopt, receiver, args);
         } else {
             super.testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
@@ -286,7 +292,7 @@ public class JTTTest extends GraalCompilerTest {
         failureInfoBuf.format("Command to retry:%n");
         RuntimeProvider runtime = Graal.getRequiredCapability(RuntimeProvider.class);
         if (plan instanceof FullFuzzedCompilationPlan) {
-            failureInfoBuf.format("mx fuzz-jtt-tests -D%s=%s -D%s=%s -D%s=%s -D%s=%s -Dgraal.CompilerConfiguration=%s %s%n",
+            failureInfoBuf.format("mx phaseplan-fuzz-jtt-tests -D%s=%s -D%s=%s -D%s=%s -D%s=%s -Dgraal.CompilerConfiguration=%s %s%n",
                             SEED_SYSTEM_PROPERTY, plan.getRandomSeed(),
                             HIGH_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, ((FullFuzzedTierPlan<HighTierContext>) plan.getHighTier()).getPhaseSkipOdds(),
                             MID_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, ((FullFuzzedTierPlan<MidTierContext>) plan.getMidTier()).getPhaseSkipOdds(),
@@ -294,7 +300,7 @@ public class JTTTest extends GraalCompilerTest {
                             runtime.getCompilerConfigurationName(),
                             testName);
         } else {
-            failureInfoBuf.format("mx fuzz-jtt-tests -D%s=%s -D%s=true -Dgraal.CompilerConfiguration=%s %s%n",
+            failureInfoBuf.format("mx phaseplan-fuzz-jtt-tests -D%s=%s -D%s=true -Dgraal.CompilerConfiguration=%s %s%n",
                             SEED_SYSTEM_PROPERTY, plan.getRandomSeed(),
                             MINIMAL_PLAN_SYSTEM_PROPERTY,
                             runtime.getCompilerConfigurationName(),
@@ -345,19 +351,13 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     /**
-     * Contains the fuzzed {@link Suites} to use for the compilation if
-     * {@link #FUZZING_SYSTEM_PROPERTY} is {@code true}.
-     */
-    private Suites fuzzedSuites;
-
-    /**
      * @return {@link #fuzzedSuites} with a graph verification ({@link StructuredGraph#verify}) at
-     *         the end of each tier if {@link #FUZZING_SYSTEM_PROPERTY} is {@code true}. Otherwise,
-     *         returns {@link GraalCompilerTest#createSuites}.
+     *         the end of each tier if {@link #COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY} is
+     *         {@code true}. Otherwise, returns {@link GraalCompilerTest#createSuites}.
      */
     @Override
     protected Suites createSuites(OptionValues opts) {
-        if (!Boolean.getBoolean(FUZZING_SYSTEM_PROPERTY)) {
+        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
             return super.createSuites(opts);
         }
         fuzzedSuites.getHighTier().appendPhase(new TestPhase() {

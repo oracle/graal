@@ -45,14 +45,14 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * instead of the normal phase plan. This handles the dumping of the fuzzed phase plan in case of a
  * failure.
  */
-public class CompileTheWorldFuzzedCompilationTask extends CompilationTask {
+public class CompileTheWorldFuzzedSuitesCompilationTask extends CompilationTask {
 
-    public CompileTheWorldFuzzedCompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo,
+    public CompileTheWorldFuzzedSuitesCompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo,
                     boolean installAsDefault) {
         super(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
     }
 
-    public CompileTheWorldFuzzedCompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo,
+    public CompileTheWorldFuzzedSuitesCompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
                     boolean installAsDefault) {
         super(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, installAsDefault);

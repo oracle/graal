@@ -51,8 +51,8 @@ public class NestedLoop_EA extends JTTTest {
         CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
 
         // This test needs an InliningPhase before PEA to pass the test in checkHighTierGraph.
-        boolean fuzzing = Boolean.parseBoolean(System.getProperty(FUZZING_SYSTEM_PROPERTY));
-        if (fuzzing) {
+        boolean fuzzedPhasePlan = Boolean.parseBoolean(System.getProperty(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY));
+        if (fuzzedPhasePlan) {
             position.previous();
             position.add(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
             position.next();

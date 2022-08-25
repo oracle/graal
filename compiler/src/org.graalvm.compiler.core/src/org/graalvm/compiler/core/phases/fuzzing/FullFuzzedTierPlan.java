@@ -40,7 +40,7 @@ import org.graalvm.compiler.phases.PhaseSuite;
  *
  * See {@code compiler/docs/CompilationPlanFuzzing.md} for more details.
  */
-public class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
+public final class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
     /**
      * Represents the {@link MinimalFuzzedTierPlan} in which optional phases will be inserted to
      * create this full fuzzed tier plan.
@@ -120,7 +120,7 @@ public class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
      * }
      * </pre>
      *
-     * The probability of not being skipped is equal to 1/{@link #phaseSkipOdds}.</li>
+     * The probability of skipping insertion at any point is equal to 1/{@link #phaseSkipOdds}.</li>
      *
      * <li>Insert optional phases that can be applied multiple times (see
      * {@link #getMultiApplyPhases()}). Each phase is inserted by following the logic described by
@@ -139,7 +139,7 @@ public class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
      * }
      * </pre>
      *
-     * The probability of not being skipped is equal to 1/{@link #phaseSkipOdds}.</li>
+     * The probability of skipping insertion at any point is equal to 1/{@link #phaseSkipOdds}.</li>
      *
      * <li>Insert all the phases that {@link BasePhase#mustApply} after applying the tier plan
      * resulting from the last step. See
