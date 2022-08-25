@@ -6,6 +6,7 @@ local common_json = composable(import '../../common.json');
 local devkits = common_json.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
+local utils = import '../../common-utils.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),
@@ -107,5 +108,6 @@ local g = vm.compiler_gate;
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result
     then
-      all_builds
+      local conf = repo_config.vm.libgraal_predicate_conf;
+      [utils.add_gate_predicate(b, suites=conf.suites, extra_excludes=conf.extra_excludes) for b in all_builds]
 }
