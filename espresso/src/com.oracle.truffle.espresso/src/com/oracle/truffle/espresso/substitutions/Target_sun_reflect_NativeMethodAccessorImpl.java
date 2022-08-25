@@ -37,7 +37,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
@@ -237,8 +236,8 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         @Inject EspressoLanguage language,
                         @Inject Meta meta);
 
-        @Specialization(guards = "isForeignArgs(args)")
-        public @JavaType(Object.class) StaticObject executeForeign(
+        @Specialization()
+        public @JavaType(Object.class) StaticObject invoke(
                         @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object[].class) StaticObject args,
@@ -246,20 +245,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         @Inject Meta meta,
                         @Cached ToEspressoNode toEspressoNode) {
             return invoke0(guestMethod, receiver, args, language, meta, toEspressoNode);
-        }
-
-        @Specialization(guards = "!isForeignArgs(args)")
-        public @JavaType(Object.class) StaticObject executeEspresso(
-                        @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
-                        @JavaType(Object.class) StaticObject receiver,
-                        @JavaType(Object[].class) StaticObject args,
-                        @Inject EspressoLanguage language,
-                        @Inject Meta meta) {
-            return invoke0(guestMethod, receiver, args, language, meta, null);
-        }
-
-        protected static boolean isForeignArgs(StaticObject args) {
-            return args != null && args.isForeignObject();
         }
     }
 
@@ -392,19 +377,36 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         for (int i = 0; i < argsLen; ++i) {
             StaticObject paramTypeMirror = parameterTypes.get(language, i);
             Klass paramKlass = paramTypeMirror.getMirrorKlass(meta);
-            StaticObject arg;
+            Object arg;
             if (isForeignArray) {
                 try {
                     adjustedArgs[i] = toEspressoNode.execute(interop.readArrayElement(rawForeign, i), paramKlass);
                 } catch (UnsupportedTypeException | UnsupportedMessageException | InvalidArrayIndexException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere();
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unable to read argument from foreign object!");
                 }
             } else {
                 arg = args.get(language, i);
-                // Throws guest IllegallArgumentException if the parameter cannot be casted or
-                // widened.
-                adjustedArgs[i] = checkAndWiden(meta, arg, paramKlass);
+                if (arg instanceof StaticObject) {
+                    // Throws guest IllegalArgumentException if the
+                    // parameter cannot be casted or widened.
+                    adjustedArgs[i] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
+                } else {
+                    // primitive or foreign
+                    try {
+                        Object espressoObject = toEspressoNode.execute(arg, paramKlass);
+                        if (espressoObject instanceof StaticObject) {
+                            // Throws guest IllegalArgumentException if the
+                            // parameter cannot be casted or widened.
+                            adjustedArgs[i] = checkAndWiden(meta, (StaticObject) espressoObject, paramKlass);
+                        } else {
+                            adjustedArgs[i] = espressoObject;
+                        }
+                    } catch (UnsupportedTypeException e) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unable to read argument from foreign object!");
+                    }
+                }
             }
         }
 
