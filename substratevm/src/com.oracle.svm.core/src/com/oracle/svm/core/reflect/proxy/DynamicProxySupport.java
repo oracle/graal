@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -112,6 +113,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                      * according to the runtime class loader hierarchy.
                      */
                     PredefinedClassesSupport.registerClass(clazz);
+                    RuntimeClassInitialization.initializeAtRunTime(clazz);
                 }
 
                 /*
