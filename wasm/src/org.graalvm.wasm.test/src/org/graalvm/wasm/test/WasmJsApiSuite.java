@@ -1255,6 +1255,48 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testMultiValueReferencePassThrough() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module " +
+                        "(type (func (result funcref externref)))" +
+                        "(import \"m\" \"f\" (func (type 0)))" +
+                        "(func (export \"main\") (type 0)" +
+                        "call 0" +
+                        "))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmFunctionInstance func = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 0;
+                }
+            }.getCallTarget());
+            final WasmFunctionInstance f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] result = new Object[2];
+                    result[0] = func;
+                    result[1] = "foo";
+                    return InteropArray.create(result);
+                }
+            }.getCallTarget());
+            final Dictionary importObject = Dictionary.create(new Object[]{"m", Dictionary.create(new Object[]{"f", f})});
+            final WasmInstance instance = moduleInstantiate(wasm, source, importObject);
+            final Object main = WebAssembly.instanceExport(instance, "main");
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                Object result = lib.execute(main);
+                Assert.assertTrue("Multi value must be array", lib.hasArrayElements(result));
+                Object resultFunc = lib.readArrayElement(result, 0);
+                Object foo = lib.readArrayElement(result, 1);
+                Assert.assertEquals("First value must be function", func, resultFunc);
+                Assert.assertEquals("Second value must be string", "foo", foo);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testInitialMemorySizeOutOfBounds() throws IOException {
         runTest(context -> {
             try {

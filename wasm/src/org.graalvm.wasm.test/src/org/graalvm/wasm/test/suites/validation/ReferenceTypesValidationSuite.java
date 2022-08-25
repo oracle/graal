@@ -906,4 +906,55 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
             Assert.assertEquals("Unexpected result value", 1, result.asInt());
         });
     }
+
+    @Test
+    public void testMultiValueWithReferenceTypes() throws IOException {
+        // (table 2 2 funcref)
+        // (table 2 2 externref)
+        // (type (;0;) (func (result i32)))
+        // (type (;1;) (func (param i32 funcref) (result externref funcref)))
+        // (type (;2;) (func (result externref funcref)))
+        // (type (;3;) (func (param i32 externref)))
+        // (func (;0;) (type 0)
+        // i32.const 1
+        // )
+        // (func (;1;) (type 0)
+        // i32.const 2
+        // )
+        // (func (;2;) (type 1)
+        // local.get 0
+        // table.get 1
+        // local.get 1
+        // )
+        // (func (;3;) (export "main") (type 2)
+        // i32.const 1
+        // i32.const 0
+        // table.get 0
+        // call 2
+        // )
+        // (func (;4;) (export "setRef") (type 3)
+        // local.get 0
+        // local.get 1
+        // table.set 1
+        // )
+        // (elem (table 0) (ref.func 0) (ref.func 1))
+        final byte[] binary = newBuilder().addTable((byte) 2, (byte) 2, WasmType.FUNCREF_TYPE).addTable((byte) 2, (byte) 2, WasmType.EXTERNREF_TYPE).addType(EMPTY_BYTES,
+                        new byte[]{WasmType.I32_TYPE}).addType(new byte[]{WasmType.I32_TYPE, WasmType.FUNCREF_TYPE}, new byte[]{WasmType.EXTERNREF_TYPE, WasmType.FUNCREF_TYPE}).addType(EMPTY_BYTES,
+                                        new byte[]{WasmType.EXTERNREF_TYPE, WasmType.FUNCREF_TYPE}).addType(new byte[]{WasmType.I32_TYPE, WasmType.EXTERNREF_TYPE}, EMPTY_BYTES).addFunction((byte) 0,
+                                                        EMPTY_BYTES, "41 01 0B").addFunction((byte) 0, EMPTY_BYTES, "41 02 0B").addFunction((byte) 1, EMPTY_BYTES, "20 00 25 01 20 01 0B").addFunction(
+                                                                        (byte) 2, EMPTY_BYTES, "41 01 41 00 25 00 10 02 0B").addFunction((byte) 3, EMPTY_BYTES,
+                                                                                        "20 00 20 01 26 01 0B").addFunctionExport((byte) 3,
+                                                                                                        "main").addFunctionExport((byte) 4, "setRef").addElements("00 41 00 0B 02 00 01").build();
+        runRuntimeTest(binary, instance -> {
+            Value setRef = instance.getMember("setRef");
+            setRef.execute(0, "foo");
+            setRef.execute(1, "bar");
+            Value main = instance.getMember("main");
+            Value result = main.execute();
+            Assert.assertTrue("Result must be multi-value", result.hasArrayElements());
+            Assert.assertEquals("Unexpected result value", "bar", result.getArrayElement(0).asString());
+            Value f = result.getArrayElement(1);
+            Assert.assertEquals("Unexpected result value", 1, f.execute().asInt());
+        });
+    }
 }

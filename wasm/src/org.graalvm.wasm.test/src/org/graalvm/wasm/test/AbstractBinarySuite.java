@@ -397,8 +397,7 @@ public abstract class AbstractBinarySuite {
             final byte[] codeSection = binaryFunctions.generateCodeSection();
             final byte[] dataSection = binaryDatas.generateDataSection();
             final int totalLength = preamble.length + typeSection.length + functionSection.length + tableSection.length + memorySection.length + globalSection.length + exportSection.length +
-                            elementSection.length +
-                            dataCountSection.length + codeSection.length + dataSection.length;
+                            elementSection.length + dataCountSection.length + codeSection.length + dataSection.length;
             final byte[] binary = new byte[totalLength];
             int length = 0;
             System.arraycopy(preamble, 0, binary, length, preamble.length);
