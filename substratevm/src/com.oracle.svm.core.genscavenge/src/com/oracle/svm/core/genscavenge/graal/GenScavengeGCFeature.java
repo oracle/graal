@@ -45,6 +45,8 @@ import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.PinnedObjectImpl.PinnedObjectSupportImpl;
+import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
+import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -61,6 +63,9 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jvmstat.PerfDataFeature;
+import com.oracle.svm.core.jvmstat.PerfDataHolder;
+import com.oracle.svm.core.jvmstat.PerfManager;
 
 @AutomaticFeature
 class GenScavengeGCFeature implements InternalFeature {
@@ -71,7 +76,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, AllocationFeature.class);
+        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
     }
 
     @Override
@@ -92,6 +97,9 @@ class GenScavengeGCFeature implements InternalFeature {
         managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
 
         ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
+        if (ImageSingletons.contains(PerfManager.class)) {
+            ImageSingletons.lookup(PerfManager.class).register(createPerfData());
+        }
     }
 
     @Override
@@ -146,6 +154,15 @@ class GenScavengeGCFeature implements InternalFeature {
             return new CardTableBasedRememberedSet();
         } else {
             return new NoRememberedSet();
+        }
+    }
+
+    private static PerfDataHolder createPerfData() {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
+            return new SerialGCPerfData();
+        } else {
+            assert SubstrateOptions.UseEpsilonGC.getValue();
+            return new EpsilonGCPerfData();
         }
     }
 }

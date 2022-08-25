@@ -396,7 +396,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                         } else {
                             throw GraalError.shouldNotReachHere("Unknown memory kill " + n);
                         }
-                    } else if (n instanceof MemoryAccess && !(n instanceof MemoryMapNode)) {
+                    } else if (n instanceof MemoryAccess) {
                         // lowered to a memory access, verify high level node accesses same
                         // locations
                         MemoryAccess access = (MemoryAccess) n;

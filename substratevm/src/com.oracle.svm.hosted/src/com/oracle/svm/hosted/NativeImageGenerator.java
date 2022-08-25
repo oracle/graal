@@ -57,11 +57,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.reachability.DirectMethodProcessingHandler;
-import com.oracle.graal.reachability.MethodSummaryBasedHandler;
-import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
-import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -164,9 +162,13 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.graal.reachability.DirectMethodProcessingHandler;
+import com.oracle.graal.reachability.MethodSummaryBasedHandler;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
+import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
+import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -297,6 +299,7 @@ import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationExtracter;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -602,7 +605,7 @@ public class NativeImageGenerator {
                                 hMetaAccess, hUniverse,
                                 nativeLibraries, loader, ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(),
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
-                                classInitializationSupport, ConfigurationValues.getTarget());
+                                ConfigurationValues.getTarget());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
                     printTypes();
@@ -1049,7 +1052,7 @@ public class NativeImageGenerator {
             bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable();
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
-                            bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bb.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
+                            bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget());
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
             Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
@@ -1159,9 +1162,11 @@ public class NativeImageGenerator {
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
         private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
+        private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
         SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
             this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
+            this.missingIntrinsicMetrics = null;
         }
 
         @Override
@@ -1174,11 +1179,51 @@ public class NativeImageGenerator {
             }
             super.register(targetClass, plugin, allowOverwrite);
         }
+
+        @Override
+        public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
+            if (Options.WarnMissingIntrinsic.getValue(options)) {
+                for (Class<?> annotationType : GuardedAnnotationAccess.getAnnotationTypes(targetMethod)) {
+                    if (ClassUtil.getUnqualifiedName(annotationType).contains("IntrinsicCandidate")) {
+                        String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
+                                        targetMethod.getSignature().toMethodDescriptor());
+                        synchronized (this) {
+                            if (missingIntrinsicMetrics == null) {
+                                missingIntrinsicMetrics = EconomicMap.create();
+                                try {
+                                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                                        if (missingIntrinsicMetrics.size() > 0) {
+                                            System.out.format("[Warning] Missing intrinsics found: %d\n", missingIntrinsicMetrics.size());
+                                            List<Pair<String, Integer>> data = new ArrayList<>();
+                                            final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();
+                                            while (cursor.advance()) {
+                                                data.add(Pair.create(cursor.getKey(), cursor.getValue()));
+                                            }
+                                            data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder()))
+                                                            .forEach(pair -> System.out.format("        - %d occurrences during parsing: %s\n", pair.getRight(), pair.getLeft()));
+                                        }
+                                    }));
+                                } catch (IllegalStateException e) {
+                                    // shutdown in progress, no need to register the hook
+                                }
+                            }
+                            if (missingIntrinsicMetrics.containsKey(method)) {
+                                missingIntrinsicMetrics.put(method, missingIntrinsicMetrics.get(method) + 1);
+                            } else {
+                                System.out.format("[Warning] Missing intrinsic %s found during parsing.\n", method);
+                                missingIntrinsicMetrics.put(method, 1);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
                     AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason,
-                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin, ClassInitializationSupport classInitializationSupport,
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin,
                     TargetDescription target) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
@@ -1197,7 +1242,7 @@ public class NativeImageGenerator {
             ((AnalysisField) field).registerAsAccessed();
         }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
-        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(classInitializationSupport));
+        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 

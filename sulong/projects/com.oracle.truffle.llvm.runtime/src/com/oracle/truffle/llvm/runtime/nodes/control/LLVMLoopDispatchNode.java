@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -91,12 +91,6 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
         outer: while (true) {
             CompilerAsserts.partialEvaluationConstant(basicBlockIndex);
             LLVMBasicBlockNode bb = bodyNodes[indexMapping[basicBlockIndex]];
-
-            // lazily insert the basic block into the AST
-            bb.initialize();
-
-            // the newly inserted block may have been instrumented
-            bb = bodyNodes[indexMapping[basicBlockIndex]];
 
             // execute all statements
             bb.execute(frame);

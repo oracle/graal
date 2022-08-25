@@ -4961,6 +4961,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x77);
     }
 
+    public final void aesenc(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESENC.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
+    public final void aesenclast(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESENCLAST.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
+    public final void aesdec(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESDEC.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
+    public final void aesdeclast(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        VexAESOp.VAESDECLAST.emit(this, AVXSize.XMM, dst, dst, src);
+    }
+
     // Insn: KORTESTD k1, k2
 
     // This instruction produces ZF or CF flags

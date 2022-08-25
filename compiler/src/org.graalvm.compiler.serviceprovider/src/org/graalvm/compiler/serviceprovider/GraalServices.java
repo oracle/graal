@@ -31,6 +31,7 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,7 +47,9 @@ import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
@@ -63,6 +66,7 @@ public final class GraalServices {
     private static final Map<Class<?>, List<?>> servicesCache = IS_BUILDING_NATIVE_IMAGE ? new HashMap<>() : null;
 
     private static final Constructor<? extends SpeculationReason> encodedSpeculationReasonConstructor;
+    private static final Method constantPoolLookupMethodWithCaller;
     private static final Method constantPoolLookupReferencedType;
     private static final Method virtualObjectGet;
     private static final Constructor<? extends Infopoint> implicitExceptionDispatchConstructor;
@@ -70,6 +74,7 @@ public final class GraalServices {
     static {
         Method get = null;
         Method lookupReferencedType = null;
+        Method lookupMethodWithCaller = null;
         Constructor<? extends SpeculationReason> esrConstructor = null;
         Constructor<? extends Infopoint> iedConstructor = null;
 
@@ -86,7 +91,12 @@ public final class GraalServices {
             get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
             lookupReferencedType = ConstantPool.class.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE);
         } catch (NoSuchMethodException e) {
-            // VirtualObject.get that understands autobox isn't available
+        }
+
+        try {
+            get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
+            lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
+        } catch (NoSuchMethodException e) {
         }
 
         try {
@@ -100,6 +110,7 @@ public final class GraalServices {
         encodedSpeculationReasonConstructor = esrConstructor;
         virtualObjectGet = get;
         constantPoolLookupReferencedType = lookupReferencedType;
+        constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
         implicitExceptionDispatchConstructor = iedConstructor;
     }
 
@@ -532,6 +543,34 @@ public final class GraalServices {
      */
     public static boolean hasLookupReferencedType() {
         return constantPoolLookupReferencedType != null;
+    }
+
+    /**
+     * Calls {@code ConstantPool#lookupMethod(int, int, ResolvedJavaMethod)}.
+     */
+    public static JavaMethod lookupMethodWithCaller(ConstantPool constantPool, int cpi, int opcode, ResolvedJavaMethod caller) {
+        if (constantPoolLookupMethodWithCaller != null) {
+            try {
+                try {
+                    return (JavaMethod) constantPoolLookupMethodWithCaller.invoke(constantPool, cpi, opcode, caller);
+                } catch (InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
+    }
+
+    /**
+     * Returns true if JVMCI supports the
+     * {@code ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)} API.
+     */
+    public static boolean hasLookupMethodWithCaller() {
+        return constantPoolLookupMethodWithCaller != null;
     }
 
     /**

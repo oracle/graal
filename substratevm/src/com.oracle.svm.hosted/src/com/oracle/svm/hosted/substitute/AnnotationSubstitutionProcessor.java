@@ -47,7 +47,7 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import com.oracle.svm.util.GuardedAnnotationAccess;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -75,6 +75,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -115,7 +116,21 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         typeSubstitutions = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         polymorphicMethodSubstitutions = new HashMap<>();
-        fieldSubstitutions = new HashMap<>();
+        fieldSubstitutions = new ConcurrentHashMap<>();
+    }
+
+    public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
+        ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
+        boolean isFinal = field.isFinal();
+        ComputedValueField computedValueField = new ComputedValueField(field, field, Kind.Custom, reflectionField.getType(), transformer, null, null, isFinal, false);
+        ResolvedJavaField existingSubstitution = fieldSubstitutions.put(field, computedValueField);
+
+        if (existingSubstitution != null) {
+            String reason = existingSubstitution.equals(field)
+                            ? "The field was already accessed by the static analysis. The transformer must be registered earlier, before the static analysis sees a reference to the field for the first time."
+                            : "A field value transformer is already registered for this field.";
+            throw UserError.abort("Cannot register a field value transformer for field %s: %s", field, reason);
+        }
     }
 
     @Override
@@ -184,11 +199,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (deleteAnnotation != null) {
             throw new DeletedElementException(deleteErrorMessage(field, deleteAnnotation, true));
         }
-        ResolvedJavaField substitution = fieldSubstitutions.get(field);
-        if (substitution != null) {
-            return substitution;
-        }
-        return field;
+
+        /*
+         * If there is no substitution registered yet, put in the field itself as a marker that the
+         * field was used in a lookup. Registering a substitution after a lookup was done is not
+         * allowed because that means the substitution was missed in the prior lookup.
+         */
+        ResolvedJavaField existing = fieldSubstitutions.putIfAbsent(field, field);
+        return existing != null ? existing : field;
     }
 
     public boolean isDeleted(Field field) {
@@ -930,7 +948,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal, disableCaching);
+        Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
+
+        return new ComputedValueField(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
     }
 
     private void reinitializeField(Field annotatedField) {

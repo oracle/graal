@@ -390,7 +390,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                                 }
                                 generateStub(targetVM, out, className, name + "RTC", params,
                                                 gen.runtimeCheckedFlagsMethod.method,
-                                                "Stubs.getRuntimeCheckedCPUFeatures()",
+                                                String.format("Stubs.getRuntimeCheckedCPUFeatures(%s.class)", className),
                                                 gen.runtimeCheckedFlagsMethod.runtimeCheckedFlagsParameterIndex);
                                 break;
                         }

@@ -455,10 +455,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     @SuppressWarnings("try")
-    public void removeExits() {
+    public void removeExits(boolean forKillCFG) {
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             try (DebugCloseable position = graph().withNodeSourcePosition(loopexit)) {
-                loopexit.removeExit();
+                loopexit.removeExit(forKillCFG);
             }
         }
     }

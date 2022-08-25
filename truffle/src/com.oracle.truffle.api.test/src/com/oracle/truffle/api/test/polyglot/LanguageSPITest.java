@@ -230,7 +230,7 @@ public class LanguageSPITest {
         } else {
             // We cannot obtain any information from a closed isolate.
             AbstractPolyglotTest.assertFails(c2::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+                assertEquals("The Context is already closed.", e.getMessage());
             });
         }
     }
@@ -254,7 +254,7 @@ public class LanguageSPITest {
         } else {
             // We cannot obtain any information from a closed isolate.
             AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+                assertEquals("The Context is already closed.", e.getMessage());
             });
         }
     }
@@ -278,7 +278,7 @@ public class LanguageSPITest {
         } else {
             // We cannot obtain any information from a closed isolate.
             AbstractPolyglotTest.assertFails(context[0]::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+                assertEquals("The Context is already closed.", e.getMessage());
             });
         }
     }
@@ -305,7 +305,7 @@ public class LanguageSPITest {
         } else {
             // We cannot obtain any information from a closed isolate.
             AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+                assertEquals("The Context is already closed.", e.getMessage());
             });
         }
     }
@@ -367,7 +367,7 @@ public class LanguageSPITest {
         } else {
             // We cannot obtain any information from a closed isolate.
             AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+                assertEquals("The Context is already closed.", e.getMessage());
             });
         }
     }
@@ -391,8 +391,9 @@ public class LanguageSPITest {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
-            AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+            AbstractPolyglotTest.assertFails(context::enter, PolyglotException.class, (e) -> {
+                assertFalse(e.isInternalError());
+                assertTrue(e.isCancelled());
             });
         }
     }
@@ -424,8 +425,9 @@ public class LanguageSPITest {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
-            AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().matches("Isolate 0x\\w+ is already closed."));
+            AbstractPolyglotTest.assertFails(context::enter, PolyglotException.class, (e) -> {
+                assertFalse(e.isInternalError());
+                assertTrue(e.isCancelled());
             });
         }
     }

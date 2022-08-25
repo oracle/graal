@@ -1651,19 +1651,29 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
         return NULL;
     }
 
+#define BIND_LIBJAVAVM_SVM_API(X) \
+    graal_ ## X ## _fn_t graal_ ## X = os_dl_sym(libjavavm, "graal_" #X); \
+    if (graal_ ## X == NULL) { \
+        graal_ ## X = os_dl_sym(libjavavm, "truffle_isolate_" #X); \
+        if (graal_ ## X == NULL) { \
+            fprintf(stderr, "%s does not contain the expected libjavavm interface: missing " #X OS_NEWLINE_STR, espresso_path); \
+            return NULL; \
+        } \
+    }
+
 #define BIND_LIBJAVAVM(X) \
-    X ## _fn_t X =  os_dl_sym(libjavavm, #X); \
-    if (X == NULL) {                                \
+    X ## _fn_t X = os_dl_sym(libjavavm, #X); \
+    if (X == NULL) { \
         fprintf(stderr, "%s does not contain the expected libjavavm interface: missing " #X OS_NEWLINE_STR, espresso_path); \
         return NULL; \
     }
 
-    BIND_LIBJAVAVM(graal_create_isolate)
-    BIND_LIBJAVAVM(graal_attach_thread)
-    BIND_LIBJAVAVM(graal_detach_thread)
-    BIND_LIBJAVAVM(graal_get_current_thread)
-    BIND_LIBJAVAVM(graal_tear_down_isolate)
-    BIND_LIBJAVAVM(graal_detach_all_threads_and_tear_down_isolate)
+    BIND_LIBJAVAVM_SVM_API(create_isolate)
+    BIND_LIBJAVAVM_SVM_API(attach_thread)
+    BIND_LIBJAVAVM_SVM_API(detach_thread)
+    BIND_LIBJAVAVM_SVM_API(get_current_thread)
+    BIND_LIBJAVAVM_SVM_API(tear_down_isolate)
+    BIND_LIBJAVAVM_SVM_API(detach_all_threads_and_tear_down_isolate)
     BIND_LIBJAVAVM(Espresso_CreateJavaVM)
     BIND_LIBJAVAVM(Espresso_EnterContext)
     BIND_LIBJAVAVM(Espresso_LeaveContext)
@@ -1671,6 +1681,7 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
     BIND_LIBJAVAVM(Espresso_CloseContext)
     BIND_LIBJAVAVM(Espresso_Exit)
 
+#undef BIND_LIBJAVAVM_SVM_API
 #undef BIND_LIBJAVAVM
 
     LibJavaVM *result = malloc(sizeof(LibJavaVM));

@@ -4188,6 +4188,13 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected JavaMethod lookupMethodInPool(int cpi, int opcode) {
+        if (GraalServices.hasLookupMethodWithCaller()) {
+            try {
+                return GraalServices.lookupMethodWithCaller(constantPool, cpi, opcode, method);
+            } catch (IllegalAccessError e) {
+                throw new PermanentBailoutException(e, "cannot link call from %s", method.format("%H.%n(%p)"));
+            }
+        }
         return constantPool.lookupMethod(cpi, opcode);
     }
 

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.3.0",
+  "mxversion" : "6.5.5",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -1109,6 +1109,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.replacements",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.aarch64",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "annotationProcessors" : [
@@ -1514,6 +1519,7 @@ suite = {
       ],
       "requires" : [
         "jdk.unsupported",
+        "jdk.jfr"
       ],
       "requiresConcealed" : {
         "java.base" : [

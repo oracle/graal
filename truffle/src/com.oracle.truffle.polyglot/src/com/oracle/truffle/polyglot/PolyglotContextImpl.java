@@ -110,13 +110,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
+import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -811,7 +811,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 if (deactivateSafepoints && threadInfo != PolyglotThreadInfo.NULL) {
                     threadLocalActions.notifyThreadActivation(threadInfo, false);
                 }
-                checkClosed();
+                checkClosedOrDisposing();
                 assert threadInfo != null;
 
                 threadInfo = threads.get(current);
@@ -857,6 +857,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 }
 
                 prev = threadInfo.enterInternal();
+                if (needsInitialization) {
+                    this.threadLocalActions.notifyEnterCreatedThread();
+                }
                 if (notifyEnter) {
                     try {
                         threadInfo.notifyEnter(engine, this);
@@ -866,10 +869,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     }
                 }
                 enteredThread = threadInfo;
-
-                if (needsInitialization) {
-                    this.threadLocalActions.notifyEnterCreatedThread();
-                }
 
                 // new thread became active so we need to check potential active thread local
                 // actions and process them.
@@ -1256,6 +1255,13 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     public Object getPolyglotBindingsObject() {
         return polyglotBindingsObject;
+    }
+
+    void checkClosedOrDisposing() {
+        checkCancelled();
+        if (state.isClosed() || disposing) {
+            throw PolyglotEngineException.closedException("The Context is already closed.");
+        }
     }
 
     void checkClosed() {

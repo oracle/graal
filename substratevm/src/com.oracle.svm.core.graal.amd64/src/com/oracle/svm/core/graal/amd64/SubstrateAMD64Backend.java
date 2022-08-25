@@ -60,8 +60,8 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
@@ -806,6 +806,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 emitMove(result, value);
             }
         }
+
+        @Override
+        public int getArrayLengthOffset() {
+            return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
+        }
     }
 
     public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
@@ -1006,14 +1011,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return null;
             }
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target()));
+            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(foreignCallDescriptor, gen.target(), Stubs.getRequiredCPUFeatures(valueNode.getClass())));
         }
 
     }
 
-    private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target) {
+    private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target, EnumSet<?> runtimeCheckedCPUFeatures) {
         EnumSet<?> buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
-        if (buildtimeCPUFeatures.containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64) || !((AMD64) target.arch).getFeatures().containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64)) {
+        if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !((AMD64) target.arch).getFeatures().containsAll(runtimeCheckedCPUFeatures)) {
             return descriptor;
         } else {
             GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");

@@ -30,6 +30,7 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -85,7 +86,7 @@ public final class Target_java_lang_VirtualThread {
 
     @Substitute
     boolean getAndClearInterrupt() {
-        assert Thread.currentThread() == (Object) this;
+        assert Thread.currentThread() == SubstrateUtil.cast(this, Object.class);
         Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
         try {
             boolean oldValue = interrupted;
@@ -254,7 +255,7 @@ final class VirtualThreadHelper {
      */
     static Object acquireInterruptLockMaybeSwitch(Target_java_lang_VirtualThread self) {
         Object token = null;
-        if ((Object) self == Thread.currentThread()) {
+        if (SubstrateUtil.cast(self, Object.class) == Thread.currentThread()) {
             /*
              * If we block on our interrupt lock, we yield, for which we first unmount. Unmounting
              * also tries to acquire our interrupt lock, so we likely block again, this time on the

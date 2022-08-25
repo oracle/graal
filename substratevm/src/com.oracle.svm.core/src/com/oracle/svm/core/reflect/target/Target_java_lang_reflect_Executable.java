@@ -40,9 +40,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 @TargetClass(value = Executable.class)
 public final class Target_java_lang_reflect_Executable {
 
@@ -70,7 +67,7 @@ public final class Target_java_lang_reflect_Executable {
 
     static class RawParametersComputer extends ReflectionMetadataComputer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getReflectParametersEncoding((Executable) receiver);
         }
     }

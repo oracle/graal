@@ -631,6 +631,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             }
             append(new AArch64ControlFlow.ReturnOp(operand));
         }
+
+        @Override
+        public int getArrayLengthOffset() {
+            return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
+        }
     }
 
     public final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
