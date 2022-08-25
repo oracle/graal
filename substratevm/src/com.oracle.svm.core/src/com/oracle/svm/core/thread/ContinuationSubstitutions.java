@@ -57,7 +57,6 @@ final class Target_java_util_concurrent_locks_LockSupport {
     static void park(Object blocker) {
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         try {
             if (VirtualThreads.singleton().isVirtual(t)) {
                 VirtualThreads.singleton().park();
@@ -65,7 +64,6 @@ final class Target_java_util_concurrent_locks_LockSupport {
                 U.park(false, 0L);
             }
         } finally {
-            com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, blocker,Long.MIN_VALUE, Long.MIN_VALUE);
             setBlocker(t, null);
         }
     }
@@ -74,7 +72,6 @@ final class Target_java_util_concurrent_locks_LockSupport {
     static void parkNanos(Object blocker, long nanos) {
         System.out.println("park nanos");
         if (nanos > 0) {
-            long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
             Thread t = Thread.currentThread();
             setBlocker(t, blocker);
             try {
@@ -84,7 +81,6 @@ final class Target_java_util_concurrent_locks_LockSupport {
                     U.park(false, nanos);
                 }
             } finally {
-                com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, blocker, nanos, Long.MIN_VALUE);
                 setBlocker(t, null);
             }
         }
@@ -92,7 +88,6 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     static void parkUntil(Object blocker, long deadline) {
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
         try {
@@ -102,45 +97,38 @@ final class Target_java_util_concurrent_locks_LockSupport {
                 U.park(true, deadline);
             }
         } finally {
-            com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, blocker, Long.MIN_VALUE, deadline);
             setBlocker(t, null);
         }
     }
 
     @Substitute
     static void park() {
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
             VirtualThreads.singleton().park();
         } else {
             U.park(false, 0L);
         }
-        com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, null, Long.MIN_VALUE, Long.MIN_VALUE);
     }
 
     @Substitute
     public static void parkNanos(long nanos) {
         if (nanos > 0) {
-            long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
             if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
                 VirtualThreads.singleton().parkNanos(nanos);
                 ((SubstrateVirtualThread) Thread.currentThread()).parkNanos(nanos);
             } else {
                 U.park(false, nanos);
             }
-            com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, null, nanos, Long.MIN_VALUE);
         }
     }
 
     @Substitute
     public static void parkUntil(long deadline) {
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
             VirtualThreads.singleton().parkUntil(deadline);
         } else {
             U.park(true, deadline);
         }
-        com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, null, Long.MIN_VALUE, deadline);
     }
 }
 
