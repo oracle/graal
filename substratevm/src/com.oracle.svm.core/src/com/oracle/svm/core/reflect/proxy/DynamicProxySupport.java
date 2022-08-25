@@ -102,26 +102,30 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             try {
                 Class<?> clazz = createProxyClassFromImplementedInterfaces(intfs);
 
-                /*
-                 * Treat the proxy as a predefined class so that we can set its class loader to the
-                 * loader passed at runtime. If one of the interfaces is a predefined class, this can be
-                 * required so that the classes can actually see each other according to the runtime
-                 * class loader hierarchy.
-                 */
-                PredefinedClassesSupport.registerClass(clazz);
+                boolean isPredefinedProxy = Arrays.stream(interfaces).anyMatch(PredefinedClassesSupport::isPredefined);
+
+                if (isPredefinedProxy) {
+                    /*
+                     * Treat the proxy as a predefined class so that we can set its class loader to
+                     * the loader passed at runtime. If one of the interfaces is a predefined class,
+                     * this can be required so that the classes can actually see each other
+                     * according to the runtime class loader hierarchy.
+                     */
+                    PredefinedClassesSupport.registerClass(clazz);
+                }
 
                 /*
                  * The constructor of the generated dynamic proxy class that takes a
-                 * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by
-                 * `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[],
-                 * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
-                 * be allocated at run time.
+                 * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively
+                 * invoked by `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[],
+                 * InvocationHandler)`, is registered for reflection so that dynamic proxy instances
+                 * can be allocated at run time.
                  */
                 RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
 
                 /*
-                 * The proxy class reflectively looks up the methods of the interfaces it implements to
-                 * pass a Method object to InvocationHandler.
+                 * The proxy class reflectively looks up the methods of the interfaces it implements
+                 * to pass a Method object to InvocationHandler.
                  */
                 for (Class<?> intf : intfs) {
                     RuntimeReflection.register(intf.getMethods());
