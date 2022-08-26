@@ -28,11 +28,11 @@ import java.util.ArrayList;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -93,8 +93,8 @@ public class GCCause {
     }
 }
 
-@AutomaticFeature
-class GCCauseFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class GCCauseFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         GCCause.cacheReverseMapping();

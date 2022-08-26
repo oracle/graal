@@ -26,44 +26,30 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 
-@AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
-class WindowsNativeLibraryFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        WindowsNativeLibrarySupport.initialize();
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton(PlatformNativeLibrarySupport.class)
 class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
-
-    static void initialize() {
-        ImageSingletons.add(PlatformNativeLibrarySupport.class, new WindowsNativeLibrarySupport());
-    }
 
     @Override
     public boolean initializeBuiltinLibraries() {

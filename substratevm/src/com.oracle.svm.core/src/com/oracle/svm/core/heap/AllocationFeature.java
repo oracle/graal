@@ -26,12 +26,12 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class AllocationFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

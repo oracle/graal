@@ -24,36 +24,24 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
-class LinuxPhysicalMemory extends PhysicalMemory {
+@AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
+class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
-    static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
-
-        @Override
-        public UnsignedWord size() {
-            long numberOfPhysicalMemoryPages = Unistd.sysconf(Unistd._SC_PHYS_PAGES());
-            long sizeOfAPhysicalMemoryPage = Unistd.sysconf(Unistd._SC_PAGESIZE());
-            if (numberOfPhysicalMemoryPages == -1 || sizeOfAPhysicalMemoryPage == -1) {
-                throw VMError.shouldNotReachHere("Physical memory size (number of pages or page size) not available");
-            }
-            return WordFactory.unsigned(numberOfPhysicalMemoryPages).multiply(WordFactory.unsigned(sizeOfAPhysicalMemoryPage));
+    @Override
+    public UnsignedWord size() {
+        long numberOfPhysicalMemoryPages = Unistd.sysconf(Unistd._SC_PHYS_PAGES());
+        long sizeOfAPhysicalMemoryPage = Unistd.sysconf(Unistd._SC_PAGESIZE());
+        if (numberOfPhysicalMemoryPages == -1 || sizeOfAPhysicalMemoryPage == -1) {
+            throw VMError.shouldNotReachHere("Physical memory size (number of pages or page size) not available");
         }
-    }
-
-    @AutomaticFeature
-    static class PhysicalMemoryFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PhysicalMemorySupport.class, new PhysicalMemorySupportImpl());
-        }
+        return WordFactory.unsigned(numberOfPhysicalMemoryPages).multiply(WordFactory.unsigned(sizeOfAPhysicalMemoryPage));
     }
 }

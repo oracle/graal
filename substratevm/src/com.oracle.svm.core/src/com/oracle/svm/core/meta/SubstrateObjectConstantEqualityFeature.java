@@ -25,9 +25,9 @@
 package com.oracle.svm.core.meta;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
@@ -42,8 +42,8 @@ final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
     }
 }
 
-@AutomaticFeature
-final class SubstrateObjectConstantEqualityFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class SubstrateObjectConstantEqualityFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (!ImageSingletons.contains(ObjectConstantEquality.class)) {

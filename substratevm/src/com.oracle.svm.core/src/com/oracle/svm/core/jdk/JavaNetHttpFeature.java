@@ -26,16 +26,16 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -56,8 +56,8 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {
     }
 }
 
-@AutomaticFeature
-class SimpleWebServerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class SimpleWebServerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

@@ -24,22 +24,19 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
-import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
-import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
-import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.Time.timespec;
+import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
+import com.oracle.svm.core.posix.headers.linux.LinuxTime;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 
+@AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
@@ -79,15 +76,5 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             return -1;
         }
         return time.tv_sec() * 1_000_000_000 + time.tv_nsec();
-    }
-}
-
-@Platforms({Platform.LINUX.class})
-@AutomaticFeature
-final class LinuxThreadCpuTimeFeature implements Feature {
-
-    @Override
-    public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(ThreadCpuTimeSupport.class, new LinuxThreadCpuTimeSupport());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.handles;
+package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ObjectHandlesSupport;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.windows.headers.SysinfoAPI;
 
-class ObjectHandlesSupportImpl implements ObjectHandlesSupport {
-    final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl();
-
-    @Override
-    public ObjectHandles getGlobalHandles() {
-        return globalHandles;
-    }
+@AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
+class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     @Override
-    public ObjectHandles createHandles() {
-        return new ObjectHandlesImpl();
-    }
-}
-
-@AutomaticFeature
-class ObjectHandlesFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ObjectHandlesSupport.class, new ObjectHandlesSupportImpl());
+    public UnsignedWord size() {
+        SysinfoAPI.MEMORYSTATUSEX memStatusEx = StackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
+        memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));
+        SysinfoAPI.GlobalMemoryStatusEx(memStatusEx);
+        return WordFactory.unsigned(memStatusEx.ullTotalPhys());
     }
 }

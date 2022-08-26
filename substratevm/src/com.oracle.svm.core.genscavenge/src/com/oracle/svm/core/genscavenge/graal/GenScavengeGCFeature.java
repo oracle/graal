@@ -36,7 +36,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
@@ -50,7 +51,6 @@ import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
@@ -60,14 +60,14 @@ import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.core.jdk.RuntimeFeature;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -76,7 +76,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
+        return Arrays.asList(RuntimeSupportFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
     }
 
     @Override

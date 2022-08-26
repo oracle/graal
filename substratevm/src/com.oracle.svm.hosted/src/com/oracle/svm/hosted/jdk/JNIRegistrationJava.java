@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -44,8 +44,8 @@ import com.oracle.svm.hosted.FeatureImpl;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@AutomaticFeature
-class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature {
 
     private static final Consumer<DuringAnalysisAccess> CORESERVICES_LINKER = (duringAnalysisAccess -> {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;

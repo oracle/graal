@@ -33,12 +33,12 @@ import java.net.SocketAddress;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -48,8 +48,8 @@ import com.oracle.svm.util.ReflectionUtil;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@AutomaticFeature
-class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeature {
 
     private boolean hasExtendedOptionsImpl;
     private boolean hasPlatformSocketOptions;

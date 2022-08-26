@@ -26,14 +26,13 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -41,12 +40,10 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.thread.VMOperation;
 
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
-public final class PinnedObjectImpl implements PinnedObject {
-    public static class PinnedObjectSupportImpl implements PinnedObjectSupport {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public PinnedObjectSupportImpl() {
-        }
+final class PinnedObjectImpl implements PinnedObject {
 
+    @AutomaticallyRegisteredImageSingleton(value = PinnedObjectSupport.class, onlyWith = UseSerialOrEpsilonGC.class)
+    static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override
         public PinnedObject create(Object object) {
             PinnedObjectImpl result = new PinnedObjectImpl(object);

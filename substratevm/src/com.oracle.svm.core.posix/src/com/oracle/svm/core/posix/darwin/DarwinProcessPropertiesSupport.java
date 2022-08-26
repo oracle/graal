@@ -24,21 +24,20 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 import com.oracle.svm.core.posix.headers.darwin.DarwinDyld;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
 public class DarwinProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
     @Override
@@ -59,15 +58,6 @@ public class DarwinProcessPropertiesSupport extends PosixProcessPropertiesSuppor
             }
             final String executableString = CTypeConversion.toJavaString(bufferPointer);
             return realpath(executableString);
-        }
-    }
-
-    @AutomaticFeature
-    public static class ImagePropertiesFeature implements Feature {
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(ProcessPropertiesSupport.class, new DarwinProcessPropertiesSupport());
         }
     }
 }

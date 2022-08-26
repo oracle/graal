@@ -29,13 +29,13 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Utsname;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
@@ -87,8 +87,9 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
-@AutomaticFeature
-class LinuxSystemPropertiesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class LinuxSystemPropertiesFeature implements InternalFeature {
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());

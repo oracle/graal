@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,21 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.List;
+
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
-@AutomaticFeature
-public class RuntimeFeature implements Feature {
-
+/**
+ * For compatibility with legacy code.
+ */
+@AutomaticallyRegisteredFeature
+@Deprecated
+public class RuntimeFeature implements InternalFeature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        RuntimeSupport.initializeRuntimeSupport();
-        ImageSingletons.add(VMRuntimeSupport.class, RuntimeSupport.getRuntimeSupport());
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(RuntimeSupportFeature.class);
     }
 }

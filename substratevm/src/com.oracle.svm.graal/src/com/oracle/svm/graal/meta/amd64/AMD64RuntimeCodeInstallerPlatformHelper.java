@@ -24,24 +24,15 @@
  */
 package com.oracle.svm.graal.meta.amd64;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
-@AutomaticFeature
+@AutomaticallyRegisteredImageSingleton(RuntimeCodeInstallerPlatformHelper.class)
 @Platforms(Platform.AMD64.class)
-class AMD64RuntimeCodeInstallerPlatformHelperFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInstallerPlatformHelper.class, new AMD64RuntimeCodeInstallerPlatformHelper());
-    }
-}
-
 public class AMD64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInstallerPlatformHelper {
 
     @Override

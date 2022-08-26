@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
 public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
     @Override
@@ -38,14 +37,4 @@ public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport
         final String exefileString = "/proc/self/exe";
         return realpath(exefileString);
     }
-
-    @AutomaticFeature
-    public static class ImagePropertiesFeature implements Feature {
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(ProcessPropertiesSupport.class, new LinuxProcessPropertiesSupport());
-        }
-    }
-
 }

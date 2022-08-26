@@ -27,16 +27,23 @@ package com.oracle.svm.core.heapdump;
 import java.io.FileOutputStream;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-public final class HeapDumpFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class HeapDumpFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl());
+        ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            ImageSingletons.add(HeapDumpWriter.class, new UnimplementedHeapDumpWriter("Currently not supported for " + ImageSingletons.lookup(Platform.class)));
+        } else {
+            ImageSingletons.add(HeapDumpWriter.class, new HeapDumpWriterImpl());
+        }
     }
 }
 

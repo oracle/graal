@@ -35,17 +35,17 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -63,8 +63,8 @@ import jdk.vm.ci.meta.JavaKind;
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
  * implemented via pthreads.
  */
-@AutomaticFeature
-final class PthreadVMLockFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class PthreadVMLockFeature implements InternalFeature {
 
     private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override

@@ -41,15 +41,14 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
 
 import com.oracle.svm.core.annotate.AnnotateOriginal;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
@@ -77,6 +76,7 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton(RuntimeOptionsSupport.class)
 class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
@@ -184,18 +184,6 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         }
 
         return Long.parseLong(valueString) * scale;
-    }
-}
-
-/**
- * Sets option access.
- */
-@AutomaticFeature
-class OptionAccessFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeOptionsSupport.class, new RuntimeOptionsSupportImpl());
     }
 }
 

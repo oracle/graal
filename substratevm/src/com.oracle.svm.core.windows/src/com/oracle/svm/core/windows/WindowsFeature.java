@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,34 +25,24 @@
 package com.oracle.svm.core.windows;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.windows.headers.SysinfoAPI;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-class WindowsPhysicalMemory extends PhysicalMemory {
+@AutomaticallyRegisteredFeature
+class WindowsFeature implements InternalFeature {
 
-    static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
-
-        @Override
-        public UnsignedWord size() {
-            SysinfoAPI.MEMORYSTATUSEX memStatusEx = StackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
-            memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));
-            SysinfoAPI.GlobalMemoryStatusEx(memStatusEx);
-            return WordFactory.unsigned(memStatusEx.ullTotalPhys());
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new WindowsImageHeapProvider());
         }
     }
 
-    @AutomaticFeature
-    static class PhysicalMemoryFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PhysicalMemorySupport.class, new WindowsPhysicalMemorySupportImpl());
-        }
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        Log.finalizeDefaultLogHandler(new WindowsLogHandler());
     }
 }

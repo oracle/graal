@@ -27,8 +27,10 @@ package com.oracle.svm.core.reflect.target;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 
+@AutomaticallyRegisteredImageSingleton
 public class ReflectionMetadataEncoding {
     @UnknownObjectField(types = {byte[].class}) private byte[] encoding;
 

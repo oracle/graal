@@ -38,17 +38,17 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -121,8 +121,8 @@ final class TimeZoneSupport {
 /**
  * Reads time zone mappings data and stores in the image heap, if necessary.
  */
-@AutomaticFeature
-final class TimeZoneFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class TimeZoneFeature implements InternalFeature {
     static class Options {
         @Option(help = "When true, all time zones will be pre-initialized in the image.")//
         public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<>(false) {

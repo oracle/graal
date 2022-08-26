@@ -32,12 +32,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.thread.VMOperationListenerFeature;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.thread.VMOperationListenerSupport;
+import com.oracle.svm.core.thread.VMOperationListenerSupportFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * The performance data feature (hsperfdata) provides monitoring data that can be access by external
@@ -74,11 +74,11 @@ import com.oracle.svm.core.thread.VMOperationListenerSupport;
  * {@link ZipFile}</li>
  * </ul>
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class PerfDataFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(VMOperationListenerFeature.class, RuntimeFeature.class);
+        return Arrays.asList(VMOperationListenerSupportFeature.class, RuntimeSupportFeature.class);
     }
 
     @Override

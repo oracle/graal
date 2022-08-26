@@ -24,22 +24,23 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import org.graalvm.compiler.java.LambdaUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.compiler.java.LambdaUtils;
+
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 /**
  * @see LambdaProxyRenamingSubstitutionProcessor
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class StableLambdaProxyNameFeature implements InternalFeature {
 
     @Override

@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -43,14 +42,15 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.SubstrateSegfaultHandler.SingleIsolateSegfaultSetup;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -60,10 +60,10 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-class SubstrateSegfaultHandlerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class SubstrateSegfaultHandlerFeature implements InternalFeature {
     @Override
-    public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
             return; /* No segfault handler. */
         }

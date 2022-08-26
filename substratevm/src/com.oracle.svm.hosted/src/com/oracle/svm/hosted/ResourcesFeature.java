@@ -42,18 +42,17 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -94,8 +94,8 @@ import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
  * @see NativeImageResourceFileAttributes
  * @see NativeImageResourceFileAttributesView
  */
-@AutomaticFeature
-public final class ResourcesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class ResourcesFeature implements InternalFeature {
 
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 

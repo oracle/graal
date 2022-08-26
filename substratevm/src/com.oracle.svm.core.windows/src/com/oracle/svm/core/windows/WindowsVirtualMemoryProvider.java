@@ -26,7 +26,6 @@ package com.oracle.svm.core.windows;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -36,18 +35,17 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -57,14 +55,7 @@ import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 
-@AutomaticFeature
-class WindowsVirtualMemoryProviderFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageSingletons.add(VirtualMemoryProvider.class, new WindowsVirtualMemoryProvider());
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton(VirtualMemoryProvider.class)
 public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     private static final CGlobalData<WordPointer> CACHED_PAGE_SIZE = CGlobalDataFactory.createWord();

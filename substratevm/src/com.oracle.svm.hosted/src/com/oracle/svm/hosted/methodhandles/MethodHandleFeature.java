@@ -36,12 +36,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,9 +74,9 @@ import sun.invoke.util.Wrapper;
  * calls into the JDK internals with equivalent implementations (see
  * {@code Target_java_lang_invoke_MethodHandleNatives}).
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
-public class MethodHandleFeature implements Feature {
+public class MethodHandleFeature implements InternalFeature {
 
     private Set<MethodHandle> seenMethodHandles;
     private Class<?> directMethodHandleClass;

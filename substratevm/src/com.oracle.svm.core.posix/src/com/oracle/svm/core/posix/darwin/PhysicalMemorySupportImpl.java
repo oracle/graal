@@ -24,50 +24,38 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
-class DarwinPhysicalMemory extends PhysicalMemory {
+@AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
+class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
-    static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
+    @Override
+    public UnsignedWord size() {
+        CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
+        namePointer.write(0, DarwinSysctl.CTL_HW());
+        namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
 
-        @Override
-        public UnsignedWord size() {
-            CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
-            namePointer.write(0, DarwinSysctl.CTL_HW());
-            namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
-
-            WordPointer physicalMemoryPointer = StackValue.get(WordPointer.class);
-            WordPointer physicalMemorySizePointer = StackValue.get(WordPointer.class);
-            physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
-            final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
-            if (sysctlResult != 0) {
-                Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(LibC.errno()).newline();
-                throw VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
-            }
-            return physicalMemoryPointer.read();
+        WordPointer physicalMemoryPointer = StackValue.get(WordPointer.class);
+        WordPointer physicalMemorySizePointer = StackValue.get(WordPointer.class);
+        physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
+        final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
+        if (sysctlResult != 0) {
+            Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(LibC.errno()).newline();
+            throw VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
         }
-    }
-
-    @AutomaticFeature
-    static class PhysicalMemoryFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PhysicalMemorySupport.class, new PhysicalMemorySupportImpl());
-        }
+        return physicalMemoryPointer.read();
     }
 }

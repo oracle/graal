@@ -27,11 +27,11 @@ package com.oracle.svm.hosted.jdk;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.util.VMError;
@@ -39,8 +39,8 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@AutomaticFeature
-public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+public class JNIRegistrationPrefs extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

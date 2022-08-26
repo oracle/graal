@@ -28,20 +28,20 @@ import java.lang.reflect.Field;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-public class ContinuationsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ContinuationsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!Continuation.isSupported()) {

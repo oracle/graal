@@ -28,34 +28,25 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PAGE_ERROR;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 
-@AutomaticFeature
-class WindowsSubstrateSegfaultHandlerFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateSegfaultHandler.class, new WindowsSubstrateSegfaultHandler());
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton(SubstrateSegfaultHandler.class)
 class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static final int EX_READ = 0;
     private static final int EX_WRITE = 1;

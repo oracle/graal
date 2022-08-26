@@ -30,15 +30,15 @@ import java.security.cert.X509Certificate;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -60,8 +60,8 @@ import sun.security.ssl.SSLLogger;
  * TrustStoreManager managers by invoking them at image build time (using reflection because the
  * class is non-public) and returning the frozen values using a substitution.
  */
-@AutomaticFeature
-final class TrustStoreManagerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class TrustStoreManagerFeature implements InternalFeature {
 
     static final String TRUST_STORE_MANAGER_CLASS_NAME = "sun.security.ssl.TrustStoreManager";
 

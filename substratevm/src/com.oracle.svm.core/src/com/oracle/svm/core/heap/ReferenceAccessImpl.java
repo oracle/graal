@@ -30,23 +30,20 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton(ReferenceAccess.class)
 public final class ReferenceAccessImpl implements ReferenceAccess {
-    static void initialize() {
-        ImageSingletons.add(ReferenceAccess.class, new ReferenceAccessImpl());
-    }
 
-    private ReferenceAccessImpl() {
+    ReferenceAccessImpl() {
     }
 
     @Override
@@ -119,13 +116,5 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
         }
         // Assume that 48 bit is the maximum address space that can be used.
         return WordFactory.unsigned((1L << 48) - 1);
-    }
-}
-
-@AutomaticFeature
-class ReferenceAccessFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ReferenceAccessImpl.initialize();
     }
 }

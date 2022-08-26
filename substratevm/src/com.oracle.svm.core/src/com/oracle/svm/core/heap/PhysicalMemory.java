@@ -43,7 +43,7 @@ import com.oracle.svm.core.util.VMError;
 public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
-    protected interface PhysicalMemorySupport {
+    public interface PhysicalMemorySupport {
 
         default boolean hasSize() {
             throw VMError.shouldNotReachHere("Unused, will be removed");

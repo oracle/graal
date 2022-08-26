@@ -67,17 +67,17 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -491,7 +491,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class StackOverflowCheckFeature implements InternalFeature {
 
     @Override

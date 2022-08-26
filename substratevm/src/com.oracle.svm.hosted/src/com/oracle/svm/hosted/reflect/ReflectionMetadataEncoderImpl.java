@@ -80,6 +80,7 @@ import com.oracle.svm.core.reflect.target.EncodedReflectionMetadataSupplier;
 import com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl;
 import com.oracle.svm.core.reflect.target.ReflectionMetadataEncoding;
 import com.oracle.svm.core.reflect.target.Target_sun_reflect_annotation_AnnotationParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
@@ -122,6 +123,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder {
 
+    @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
         public ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {

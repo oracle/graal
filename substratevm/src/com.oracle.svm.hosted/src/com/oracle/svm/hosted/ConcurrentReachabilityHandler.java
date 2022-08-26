@@ -32,7 +32,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisElement.ElementNotification;
@@ -42,12 +41,13 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-@AutomaticFeature
-public class ConcurrentReachabilityHandler implements ReachabilityHandler, Feature {
+@AutomaticallyRegisteredFeature
+public class ConcurrentReachabilityHandler implements ReachabilityHandler, InternalFeature {
 
     private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
 

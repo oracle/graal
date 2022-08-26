@@ -28,11 +28,11 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ImageHeapMap;
 
+@AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
 
     static ClassForNameSupport singleton() {
@@ -57,13 +57,5 @@ public final class ClassForNameSupport {
         }
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         return result;
-    }
-}
-
-@AutomaticFeature
-final class ClassForNameFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ClassForNameSupport.class, new ClassForNameSupport());
     }
 }

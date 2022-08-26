@@ -30,10 +30,9 @@ import java.util.concurrent.ConcurrentMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 /**
  * This class stores information about which packages need to be stored within each ClassLoader.
@@ -52,6 +51,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
  * updated to contain references to all appropriate packages.</li>
  * </ol>
  */
+@AutomaticallyRegisteredImageSingleton
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ClassLoaderSupport {
 
@@ -86,13 +86,5 @@ public final class ClassLoaderSupport {
 
     public static ConcurrentHashMap<String, Package> getRegisteredPackages(ClassLoader classLoader) {
         return singleton().registeredPackages.get(classLoader);
-    }
-}
-
-@AutomaticFeature
-final class ClassLoaderSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupport());
     }
 }

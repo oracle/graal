@@ -87,7 +87,6 @@ import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -96,7 +95,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
@@ -116,8 +116,8 @@ import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
-@AutomaticFeature
-public class SecurityServicesFeature extends JNIRegistrationUtil implements Feature, SecurityProvidersFilter {
+@AutomaticallyRegisteredFeature
+public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature, SecurityProvidersFilter {
 
     public static class Options {
         @Option(help = "Enable automatic registration of security services.")//
