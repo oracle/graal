@@ -27,7 +27,8 @@ package com.oracle.svm.core.thread;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.TimeUtils;
-
+import com.oracle.svm.core.jfr.events.ThreadParkEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
 import java.util.concurrent.locks.LockSupport;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
@@ -44,7 +45,7 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      */
     @Substitute
     void park(boolean isAbsolute, long time) {
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
+        long startTicks = JfrTicks.elapsedTicks();
         Thread t = Thread.currentThread();
         Object parkBlocker = LockSupport.getBlocker(t);
 
@@ -52,15 +53,15 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
         if (!isAbsolute && time == 0L) {
             /* Park without deadline. */
             PlatformThreads.parkCurrentPlatformOrCarrierThread();
-            com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, Long.MIN_VALUE);
+            ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, Long.MIN_VALUE);
         } else {
             /* Park with deadline. */
             final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
             PlatformThreads.parkCurrentPlatformOrCarrierThread(delayNanos);
             if (isAbsolute) {
-                com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, time);
+                ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, time);
             } else {
-                com.oracle.svm.core.jfr.events.ThreadParkEvent.emit(startTicks, parkBlocker, time, Long.MIN_VALUE);
+                ThreadParkEvent.emit(startTicks, parkBlocker, time, Long.MIN_VALUE);
             }
         }
         /*
