@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -73,11 +72,6 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
     private TypeElement generateStub;
     private TypeElement generateStubs;
     private TypeMirror constantNodeParameter;
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {

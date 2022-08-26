@@ -36,19 +36,24 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.processing.Filer;
 import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 /**
@@ -63,6 +68,11 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
      */
     public ProcessingEnvironment env() {
         return processingEnv;
+    }
+
+    @Override
+    public final SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
     }
 
     @Override
@@ -285,6 +295,30 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
             }
         }
         return result;
+    }
+
+    public static PackageElement getPackage(Element element) {
+        Element e = element.getEnclosingElement();
+        while (e != null && e.getKind() != ElementKind.PACKAGE) {
+            e = e.getEnclosingElement();
+        }
+        return (PackageElement) e;
+    }
+
+    public static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
+        try {
+            /* Ensure Unix line endings to comply with code style guide checked by Checkstyle. */
+            String className = pkg + "." + relativeName;
+            JavaFileObject sourceFile = filer.createSourceFile(className, originatingElements);
+            return new PrintWriter(sourceFile.openWriter()) {
+                @Override
+                public void println() {
+                    print("\n");
+                }
+            };
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
