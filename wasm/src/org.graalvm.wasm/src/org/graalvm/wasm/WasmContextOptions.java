@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ public class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
     @CompilationFinal private boolean signExtensionOps;
     @CompilationFinal private boolean keepDataSections;
+    @CompilationFinal private boolean multiValue;
 
     @CompilationFinal private OptionValues optionValues;
 
@@ -65,6 +66,7 @@ public class WasmContextOptions {
         this.saturatingFloatToInt = readBooleanOption(WasmOptions.SaturatingFloatToInt);
         this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
         this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
+        this.multiValue = readBooleanOption(WasmOptions.MultiValue);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
@@ -83,12 +85,17 @@ public class WasmContextOptions {
         return keepDataSections;
     }
 
+    public boolean isMultiValue() {
+        return multiValue;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
         hash = 53 * hash + (this.saturatingFloatToInt ? 1 : 0);
         hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
         hash = 53 * hash + (this.keepDataSections ? 1 : 0);
+        hash = 53 * hash + (this.multiValue ? 1 : 0);
         return hash;
     }
 
@@ -111,6 +118,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.keepDataSections != other.keepDataSections) {
+            return false;
+        }
+        if (this.multiValue != other.multiValue) {
             return false;
         }
         return true;

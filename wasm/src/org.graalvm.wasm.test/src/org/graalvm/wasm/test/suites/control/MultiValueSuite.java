@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,16 +39,23 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.test;
+package org.graalvm.wasm.test.suites.control;
 
-import java.util.Properties;
+import org.graalvm.wasm.test.WasmFileSuite;
+import org.junit.Test;
 
-public class WasmTestProperties {
-    public static Properties create(String... properties) {
-        Properties p = new Properties();
-        for (String property : properties) {
-            p.setProperty(property, "true");
-        }
-        return p;
+import java.io.IOException;
+
+public class MultiValueSuite extends WasmFileSuite {
+    @Override
+    protected String testResource() {
+        return "multi-value";
+    }
+
+    @Override
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

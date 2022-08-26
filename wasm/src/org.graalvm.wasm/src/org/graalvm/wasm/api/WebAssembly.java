@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,6 @@ import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
@@ -538,18 +537,21 @@ public class WebAssembly extends Dictionary {
         typeInfo.append(f.index());
 
         typeInfo.append('(');
-        int argumentCount = f.numArguments();
-        for (int i = 0; i < argumentCount; i++) {
+        int paramCount = f.paramCount();
+        for (int i = 0; i < paramCount; i++) {
             if (i != 0) {
                 typeInfo.append(' ');
             }
-            typeInfo.append(ValueType.fromByteValue(f.argumentTypeAt(i)));
+            typeInfo.append(ValueType.fromByteValue(f.paramTypeAt(i)));
         }
         typeInfo.append(')');
 
-        byte returnType = f.returnType();
-        if (returnType != WasmType.VOID_TYPE) {
-            typeInfo.append(ValueType.fromByteValue(f.returnType()));
+        int resultCount = f.resultCount();
+        for (int i = 0; i < resultCount; i++) {
+            if (i != 0) {
+                typeInfo.append(' ');
+            }
+            typeInfo.append(ValueType.fromByteValue(f.resultTypeAt(i)));
         }
         return typeInfo.toString();
     }
