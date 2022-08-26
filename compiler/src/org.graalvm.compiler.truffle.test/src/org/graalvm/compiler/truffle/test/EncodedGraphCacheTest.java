@@ -29,7 +29,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -53,7 +52,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class EncodedGraphCacheTest extends PartialEvaluationTest {
@@ -187,54 +185,6 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
             }
         }
         return false;
-    }
-
-    @Test
-    public void testCacheInvalidation() {
-        boolean encodedGraphCache = true;
-        setupContext(Context.newBuilder() //
-                        .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCache", String.valueOf(encodedGraphCache)) //
-                        .option("engine.EncodedGraphCachePurgeDelay", "10000" /* 10s */) //
-                        .option("engine.CompilerIdleDelay", "0"));
-
-        RootTestNode rootTestNode = rootTestNode();
-        OptimizedCallTarget callTarget = null;
-        TruffleCompilerImpl truffleCompiler = null;
-        boolean graphWasCached = false;
-        for (int attempts = 0; attempts < 10 && !graphWasCached; attempts++) {
-            callTarget = compileAST(rootTestNode);
-            truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
-            // Disable graph cache purges to reduce transient failures with many compiler threads.
-            disableEncodedGraphCachePurges(truffleCompiler, true);
-            graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod, encodedGraphCache);
-        }
-        assertTrue("InvalidationTestNode.execute is cached", graphWasCached);
-        Assert.assertNotNull(truffleCompiler);
-
-        // Invalidates HotSpot's leaf class assumption for DummyException.
-        DummyChildException.ensureInitialized();
-
-        // Re-compilation should fail on code installation and the cached graph must be
-        // invalidated/evicted.
-        try {
-            compileAST(rootTestNode);
-            fail("Should fail on code installation due to invalid dependencies");
-        } catch (BailoutException expected) {
-            assertFalse(expected.isPermanent());
-            assertFalse(expected instanceof CancellationBailoutException);
-        }
-
-        assertFalse("InvalidationTestNode.execute was invalidated/evicted",
-                        encodedGraphCacheContains(truffleCompiler, testMethod, encodedGraphCache));
-
-        // Retry again, the encoded graph is re-parsed without the (invalidated) assumption.
-        callTarget = compileAST(rootTestNode);
-        // Cache purges are disabled.
-        graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod, encodedGraphCache);
-
-        Assert.assertTrue("Re-parsed graph was cached", graphWasCached);
-        Assert.assertEquals(42, (int) callTarget.call());
     }
 
     @Test

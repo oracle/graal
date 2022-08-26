@@ -64,7 +64,6 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
