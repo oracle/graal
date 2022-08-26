@@ -292,8 +292,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             ReferenceHandlerThread.start();
         }
 
-        ParallelGC.startWorkerThreads();
-
         /*
          * After starting all the necessary threads, we can finally execute complex JDK code or code
          * that allocates a significant amount of memory.
@@ -324,6 +322,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 ImageSingletons.lookup(JavaMainSupport.class).mainArgs = args;
             }
         }
+
+        /* Number of workers can be affected by a runtime option, so start threads after options are parsed */
+        ParallelGC.startWorkerThreads();
 
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now

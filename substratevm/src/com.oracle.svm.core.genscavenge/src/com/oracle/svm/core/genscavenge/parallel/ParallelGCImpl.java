@@ -1,11 +1,13 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
+import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -25,13 +27,19 @@ import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
 
-    /// determine at runtime, max 32 (from busyWorkers)
-    private static final int WORKERS_COUNT = 4;
-    private static final int WORKERS_ALL   = 0b1110;
-    private static final int WORKERS_NONE  = 0;
+    private static final int MAX_WORKERS_COUNT = 31;
 
+    /**
+     * Number of parallel GC workers. Default is 1 so that if GC happens before worker threads are started,
+     * it occurs on a single thread just like serial GC.
+     */
+    private int workerCount = 1;
+    private int allWorkersBusy;
+    private final AtomicInteger busyWorkers = new AtomicInteger(0);
+
+    /// create only as many as needed
     private static final ThreadLocalBuffer[] BUFFERS =
-            IntStream.range(0, WORKERS_COUNT).mapToObj(i -> new ThreadLocalBuffer()).toArray(ThreadLocalBuffer[]::new);
+            IntStream.range(0, MAX_WORKERS_COUNT).mapToObj(i -> new ThreadLocalBuffer()).toArray(ThreadLocalBuffer[]::new);
     private static final FastThreadLocalObject<ThreadLocalBuffer> localBuffer =
             FastThreadLocalFactory.createObject(ThreadLocalBuffer.class, "ParallelGCImpl.bufferTL");
     private int currentBuffer;
@@ -45,7 +53,6 @@ public class ParallelGCImpl extends ParallelGC {
     public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
     private final VMCondition seqPhase = new VMCondition(mutex);
     private final VMCondition parPhase = new VMCondition(mutex);
-    private final AtomicInteger busyWorkers = new AtomicInteger(0);
 
     private volatile boolean inParallelPhase;
 
@@ -76,8 +83,8 @@ public class ParallelGCImpl extends ParallelGC {
      */
     public void push(Pointer ptr) {
         assert !isInParallelPhase();
-        push(ptr, BUFFERS[currentBuffer]);
-        currentBuffer = (currentBuffer + 1) % WORKERS_COUNT;
+        BUFFERS[currentBuffer].push(ptr);
+        currentBuffer = (currentBuffer + 1) % workerCount;
     }
 
     /**
@@ -85,13 +92,7 @@ public class ParallelGCImpl extends ParallelGC {
      */
     public void pushToLocalBuffer(Pointer ptr) {
         assert isInParallelPhase();
-        push(ptr, localBuffer.get());
-    }
-
-    private void push(Pointer ptr, ThreadLocalBuffer buffer) {
-        if (!buffer.push(ptr)) {
-            getVisitor().doVisitObject(ptr.toObject());
-        }
+        localBuffer.get().push(ptr);
     }
 
     @Override
@@ -99,35 +100,63 @@ public class ParallelGCImpl extends ParallelGC {
         int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
         VMError.guarantee(hubOffset == 0, "hub offset must be 0");
 
-        IntStream.range(1, WORKERS_COUNT).forEach(this::startWorkerThread);
+        workerCount = getWorkerCount(); ///cmp serialGC vs pargc with 1 worker
+        allWorkersBusy = ~(-1 << workerCount) & (-1 << 1);
+        for (int i = 0; i < workerCount; i++) {
+            BUFFERS[i].runtimeInit();
+            if (i > 0) {
+                // We reuse the gc thread for one of the workers, so number of worker threads is `workerCount - 1`
+                startWorkerThread(i);
+            }
+        }
+    }
+
+    private int getWorkerCount() {
+        int setting = ParallelGCOptions.ParallelGCWorkers.getValue();
+        int workers = setting > 0 ? setting : getDefaultWorkerCount();
+        workers = Math.min(workers, MAX_WORKERS_COUNT);
+        verboseGCLog().string("[Number of ParallelGC workers: ").unsigned(workers).string("]").newline();
+        return workers;
+    }
+
+    private int getDefaultWorkerCount() {
+        // Adapted from Hotspot, see WorkerPolicy::nof_parallel_worker_threads()
+        int cpus = Jvm.JVM_ActiveProcessorCount();
+        return cpus <= 8 ? cpus : 8 + (cpus - 8) * 5 / 8;
     }
 
     private void startWorkerThread(int n) {
         Thread t = new Thread(() -> {
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
-                log().string("WW start ").unsigned(n).newline();
+                debugLog().string("WW start ").unsigned(n).newline();
 
                 final ThreadLocalBuffer buffer = BUFFERS[n];
                 localBuffer.set(buffer);
                 getStats().install();
                 while (true) {
-                    do {
-                        log().string("WW block ").unsigned(n).newline();
-                        mutex.lock();
-                        parPhase.block();
-                        mutex.unlock();
-                    } while ((busyWorkers.get() & (1 << n)) == 0);
+                    try {
+                        do {
+                            debugLog().string("WW block ").unsigned(n).newline();
+                            mutex.lock();
+                            parPhase.block();
+                            mutex.unlock();
+                        } while ((busyWorkers.get() & (1 << n)) == 0);
 
-                    int witness = busyWorkers.get();
-                    int expected;
-                    do {
-                        expected = witness;
-                        witness = busyWorkers.compareAndExchange(expected, expected & ~(1 << n));
-                    } while (witness != expected);
-                    if (busyWorkers.get() == WORKERS_NONE) {
-                        seqPhase.signal();
+                        debugLog().string("WW run ").unsigned(n).newline();
+                        drain(buffer);
+                        int witness = busyWorkers.get();
+                        int expected;
+                        do {
+                            expected = witness;
+                            witness = busyWorkers.compareAndExchange(expected, expected & ~(1 << n));
+                        } while (witness != expected);
+                        if (busyWorkers.get() == 0) {
+                            seqPhase.signal();
+                        }
+                        debugLog().string("WW idle ").unsigned(n).newline();
+                    } catch (Throwable ex) {
+                        VMError.shouldNotReachHere(ex);
                     }
-                    log().string("WW idle ").unsigned(n).newline();
                 }
         });
         t.setName("ParallelGCWorker-" + n);
@@ -138,16 +167,16 @@ public class ParallelGCImpl extends ParallelGC {
     private void waitForIdleImpl() {
         inParallelPhase = true;
 
-        log().string("PP start workers\n");
-        busyWorkers.set(WORKERS_ALL);
+        debugLog().string("PP start workers\n");
+        busyWorkers.set(allWorkersBusy);
         parPhase.broadcast();     // let worker threads run
 
         localBuffer.set(BUFFERS[0]);
         drain(BUFFERS[0]);
 
-        while (busyWorkers.get() != WORKERS_NONE) {
+        while (busyWorkers.get() != 0) {
             mutex.lock();
-            log().string("PP wait busy=").unsigned(busyWorkers.get()).newline();
+            debugLog().string("PP wait busy=").unsigned(busyWorkers.get()).newline();
             seqPhase.block();     // wait for them to become idle
             mutex.unlock();
         }
@@ -171,8 +200,12 @@ public class ParallelGCImpl extends ParallelGC {
         return Stats.stats();
     }
 
-    static Log log() {
-        return Log.noopLog();///
+    private static Log verboseGCLog() {
+        return SubstrateGCOptions.VerboseGC.getValue() ? Log.log() : Log.noopLog();
+    }
+
+    static Log debugLog() {///rm
+        return Log.noopLog();
     }
 }
 

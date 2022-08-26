@@ -394,7 +394,6 @@ public final class Space {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(original);
 
-        ObjectHeaderImpl impl = ObjectHeaderImpl.getObjectHeaderImpl();
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
         UnsignedWord originalHeader = ObjectHeaderImpl.readHeaderFromPointer(originalMemory);
         if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
@@ -403,7 +402,7 @@ public final class Space {
 
         // We need forwarding pointer to point somewhere, so we speculatively allocate memory here.
         // If another thread copies the object first, we retract the allocation later.
-        UnsignedWord size = getSizeFromHeader(original, originalHeader, impl);
+        UnsignedWord size = getSizeFromHeader(original, originalHeader);
         assert size.aboveThan(0);
         Pointer copyMemory = allocateMemory(size);
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
@@ -445,8 +444,8 @@ public final class Space {
     }
 
     @AlwaysInline("GC performance")
-    public static UnsignedWord getSizeFromHeader(Object obj, UnsignedWord header, ObjectHeaderImpl impl) {
-        int encoding = impl.dynamicHubFromObjectHeader(header).getLayoutEncoding();
+    public static UnsignedWord getSizeFromHeader(Object obj, UnsignedWord header) {
+        int encoding = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(header).getLayoutEncoding();
         return LayoutEncoding.getSizeFromEncoding(obj, encoding);
     }
 
