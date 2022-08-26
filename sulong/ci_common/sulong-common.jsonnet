@@ -218,4 +218,10 @@
       libgmp: "==6.1.2",
     },
   },
+
+  requireGMPDarwinAArch64:: {
+    packages+: {
+      libgmp: "==6.2.1",
+    },
+  },
 }
