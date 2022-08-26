@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.bitcode;
+package com.oracle.truffle.llvm.tests.internal.bitcode;
 
 import java.io.File;
 import java.io.IOException;
@@ -236,8 +236,8 @@ public class AllocationLimitsTest {
     }
 
     /**
-     * Checks whether we can create a {@link VariableBitWidthType} of
-     * {@link VariableBitWidthType#MAX_INT_BITS} size without allocating it.
+     * Checks whether we can create a VariableBitWidthType of VariableBitWidthType#MAX_INT_BITS size
+     * without allocating it.
      */
     @Test
     public void varWidthMaxIntBitsPtr() {

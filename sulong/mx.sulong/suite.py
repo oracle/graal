@@ -182,7 +182,6 @@ suite = {
       ],
       "requires" : [
         "java.logging",
-        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -210,6 +209,23 @@ suite = {
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.debug" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests",
+        "com.oracle.truffle.llvm.tests.pipe",
+        "truffle:TRUFFLE_TCK",
+        "mx:JUNIT",
+      ],
       "requires" : [
         "java.logging",
       ],
@@ -231,7 +247,6 @@ suite = {
         "mx:JUNIT",
       ],
       "requires" : [
-        "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
@@ -247,7 +262,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.pipe",
-        "truffle:TRUFFLE_TCK",
+        "truffle:TRUFFLE_API",
         "mx:JUNIT",
       ],
       "requires" : [
@@ -282,6 +297,7 @@ suite = {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.llvm.tests",
         "com.oracle.truffle.llvm.runtime",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
@@ -297,7 +313,6 @@ suite = {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.runtime",
         "mx:JUNIT",
         "sdk:POLYGLOT_TCK",
       ],
@@ -1999,21 +2014,11 @@ suite = {
       "subDir" : "tests",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
-        "com.oracle.truffle.llvm.tests.api",
-        "com.oracle.truffle.llvm.tests.internal",
-        "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.pipe",
-        "com.oracle.truffle.llvm.tests.tck"
       ],
       "exclude" : ["mx:JUNIT"],
       "distDependencies" : [
-        "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
-        "sulong:SULONG_NATIVE",
-        "sulong:SULONG_CORE",
-        "sulong:SULONG_NFI",
-        "sulong:SULONG_LEGACY",
-        "SULONG_TEST_NATIVE",
       ],
       "os" : {
         # not SULONG_TCK_NATIVE on windows
@@ -2024,6 +2029,47 @@ suite = {
           },
         },
       },
+      "license" : "BSD-new",
+      "testDistribution" : True,
+    },
+
+    "SULONG_TEST_API" : {
+      "subDir" : "tests",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.api",
+      ],
+      "exclude" : [
+       "mx:JUNIT"
+      ],
+      "distDependencies" : [
+        "sulong:SULONG_API",
+        "sulong:SULONG_TEST",
+      ],
+      "license" : "BSD-new",
+      "testDistribution" : True,
+    },
+
+    "SULONG_TEST_INTERNAL" : {
+      "subDir" : "tests",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.debug",
+        "com.oracle.truffle.llvm.tests.internal",
+        "com.oracle.truffle.llvm.tests.interop",
+        "com.oracle.truffle.llvm.tests.tck"
+      ],
+      "exclude" : [
+       "mx:JUNIT"
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_TCK",
+        "sulong:SULONG_NATIVE",
+        "sulong:SULONG_CORE",
+        "sulong:SULONG_NFI",
+        "sulong:SULONG_LEGACY",
+        "sulong:SULONG_TEST",
+        "SULONG_TEST_NATIVE",
+      ],
       "license" : "BSD-new",
       "testDistribution" : True,
     },
