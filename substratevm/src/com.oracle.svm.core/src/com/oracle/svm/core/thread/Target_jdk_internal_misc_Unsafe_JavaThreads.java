@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.TimeUtils;
@@ -68,7 +67,6 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
          * Unsafe.park does not distinguish between timing out, being unparked, and being
          * interrupted, but the thread's interrupt status must be preserved.
          */
-
     }
 
     /**
