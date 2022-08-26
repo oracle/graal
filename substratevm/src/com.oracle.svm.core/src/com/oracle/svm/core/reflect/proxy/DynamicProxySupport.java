@@ -81,11 +81,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final ClassLoader classLoader;
     private final Map<ProxyCacheKey, Object> proxyCache;
 
-    public DynamicProxySupport(ClassLoader classLoader) {
-        this.classLoader = classLoader;
+    public DynamicProxySupport() {
         this.proxyCache = new ConcurrentHashMap<>();
     }
 
@@ -148,20 +146,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         return createProxyClassFromImplementedInterfaces(intfs);
     }
 
-    private Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
-        Class<?> clazz;
-        try {
-            clazz = getJdkProxyClass(classLoader, interfaces);
-        } catch (Throwable e) {
-            try {
-                /* We do not have a specific loader in which we wish to load the class here */
-                clazz = getJdkProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
-            } catch (Throwable e2) {
-                throw e;
-            }
-        }
-
-        return clazz;
+    private static Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
+        return getJdkProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
     }
 
     private static ClassLoader getCommonClassLoaderOrFail(ClassLoader loader, Class<?>... intfs) {
