@@ -268,7 +268,7 @@ public abstract class DebugInfoBase {
             int primaryLine = debugCodeInfo.line();
 
             /* Search for a method defining this primary range. */
-            ClassEntry classEntry = ensureClassEntry(ownerType);
+            ClassEntry classEntry = lookupClassEntry(ownerType);
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
             Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
@@ -358,14 +358,21 @@ public abstract class DebugInfoBase {
     }
 
     ClassEntry lookupClassEntry(ResolvedJavaType type) {
-        TypeEntry typeEntry = typesIndex.get(type);
-        if (typeEntry == null || !(typeEntry.isClass())) {
+        // lookup key should advertise itself as a resolved instance class or interface
+        assert type.isInstanceClass() || type.isInterface();
+        // lookup target should already be included in the index
+        ClassEntry classEntry = instanceClassesIndex.get(type);
+        if (classEntry == null || !(classEntry.isClass())) {
             throw new RuntimeException("class entry not found " + type.getName());
         }
-        return (ClassEntry) typeEntry;
+        // lookup target should also be indexed in the types index
+        assert typesIndex.get(type) != null;
+        return classEntry;
     }
 
     public ClassEntry lookupObjectClass() {
+        // this should only be looked up after all types have been notified
+        assert objectClass != null;
         return objectClass;
     }
 
@@ -405,7 +412,7 @@ public abstract class DebugInfoBase {
         final int lo = primaryRange.getLo() + locationInfo.addressLo();
         final int hi = primaryRange.getLo() + locationInfo.addressHi();
         final int line = locationInfo.line();
-        ClassEntry subRangeClassEntry = ensureClassEntry(ownerType);
+        ClassEntry subRangeClassEntry = lookupClassEntry(ownerType);
         MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);
         Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isTopLevel, caller);
         classEntry.indexSubRange(subRange);
@@ -420,20 +427,6 @@ public abstract class DebugInfoBase {
         }
         subRange.setLocalValueInfo(localValueInfos);
         return subRange;
-    }
-
-    private ClassEntry ensureClassEntry(ResolvedJavaType type) {
-        /* We should already have an entry -- TODO prove that claim. */
-        ClassEntry classEntry = instanceClassesIndex.get(type);
-        if (classEntry == null) {
-            /* We must have a type entry -- TODO prove we never reach here. */
-            TypeEntry typeEntry = typesIndex.get(type);
-            assert (typeEntry != null && typeEntry.isClass());
-            classEntry = (ClassEntry) typeEntry;
-            indexInstanceClass(type, classEntry);
-        }
-        assert (classEntry.getTypeName().equals(type.toJavaName()));
-        return classEntry;
     }
 
     private void indexInstanceClass(ResolvedJavaType idType, ClassEntry classEntry) {

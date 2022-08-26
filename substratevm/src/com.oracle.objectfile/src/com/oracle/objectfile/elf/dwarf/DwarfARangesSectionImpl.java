@@ -34,9 +34,9 @@ import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 import org.graalvm.compiler.debug.DebugContext;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -58,9 +58,6 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void createContent() {
-        assert !contentByteArrayCreated();
-
-        int pos = 0;
         /*
          * We need an entry for each compilation unit.
          *
@@ -97,36 +94,41 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          * Where N is the number of ranges belonging to the compilation unit and the last range
          * contains two zeroes.
          */
-
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.isPrimary()) {
-                pos += DW_AR_HEADER_SIZE;
-                /*
-                 * Align to 2 * address size.
-                 */
-                pos += DW_AR_HEADER_PAD_SIZE;
-                // count 16 bytes for each normal compiled method
-                pos += classEntry.normalPrimaryEntries().count() * (2 * 8);
-                // allow for two trailing zeroes to terminate
-                pos += 2 * 8;
-            }
-        }
-        /* Now allow for deopt target ranges. */
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.includesDeoptTarget()) {
-                pos += DW_AR_HEADER_SIZE;
-                /*
-                 * Align to 2 * address size.
-                 */
-                pos += DW_AR_HEADER_PAD_SIZE;
-                // count 16 bytes for each deopt compiled method
-                pos += classEntry.deoptPrimaryEntries().count() * (2 * 8);
-                // allow for two trailing zeroes to terminate
-                pos += 2 * 8;
-            }
-        }
-        byte[] buffer = new byte[pos];
+        assert !contentByteArrayCreated();
+        Cursor cursor = new Cursor();
+        // size arange entries for normal compiled methods
+        instanceClassStream().filter(ClassEntry::isPrimary).forEach(classEntry -> {
+            cursor.add(normalEntrySize(classEntry));
+        });
+        // size arange entries for deopt compiled methods
+        instanceClassStream().filter(ClassEntry::includesDeoptTarget).forEach(classEntry -> {
+            cursor.add(deoptEntrySize(classEntry));
+        });
+        byte[] buffer = new byte[cursor.get()];
         super.setContent(buffer);
+    }
+
+    private static int normalEntrySize(ClassEntry classEntry) {
+        assert classEntry.isPrimary();
+        return entrySize(classEntry.normalPrimaryEntries());
+    }
+
+    private static int deoptEntrySize(ClassEntry classEntry) {
+        assert classEntry.includesDeoptTarget();
+        return entrySize(classEntry.deoptPrimaryEntries());
+    }
+
+    private static int entrySize(Stream<PrimaryEntry> compiledEntries) {
+        int size = 0;
+        // allow for header data
+        size += DW_AR_HEADER_SIZE;
+        // align to 2 * address size.
+        size += DW_AR_HEADER_PAD_SIZE;
+        // count 16 bytes for each deopt compiled method
+        size += compiledEntries.count() * (2 * 8);
+        // allow for two trailing zeroes to terminate
+        size += 2 * 8;
+        return size;
     }
 
     @Override
@@ -155,14 +157,10 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
 
         enableLog(context, pos);
 
-        // write the normal entry aranges first
-        List<ClassEntry> classEntries = new ArrayList<>();
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.isPrimary()) {
-                classEntries.add(classEntry);
-            }
-        }
+        // write normal entry aranges
+        List<ClassEntry> classEntries = instanceClassStream().filter(ClassEntry::isPrimary).collect(Collectors.toList());
         classEntries.sort(this::sortByLowPC);
+
         log(context, "  [0x%08x] DEBUG_ARANGES", pos);
         for (ClassEntry classEntry : classEntries) {
             int lengthPos = pos;
@@ -176,14 +174,10 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             // backpatch the length field
             patchLength(lengthPos, buffer, pos);
         }
-        // now write the deopt entry aranges.
-        classEntries.clear();
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.isPrimary() && classEntry.includesDeoptTarget()) {
-                classEntries.add(classEntry);
-            }
-        }
+        // now write the deopt entry aranges
+        classEntries = instanceClassStream().filter(ClassEntry::includesDeoptTarget).collect(Collectors.toList());
         classEntries.sort(this::sortByLowPCDeopt);
+
         for (ClassEntry classEntry : classEntries) {
             int lengthPos = pos;
             int cuIndex = getDeoptCUIndex(classEntry);

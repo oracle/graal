@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.function.Predicate;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -164,25 +165,26 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * because they are compiled later and hence inhabit a range that extends beyond the normal
          * method address range.
          */
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.includesDeoptTarget()) {
-                /*
-                 * Save the offset of this file's CU so it can be used when writing the aranges
-                 * section.
-                 */
-                setDeoptCUIndex(classEntry, pos);
-                int lengthPos = pos;
-                pos = writeCUHeader(buffer, pos);
-                log(context, "  [0x%08x] Compilation Unit (deopt targets)", pos);
-                assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-                pos = writeDeoptMethodsCU(context, classEntry, buffer, pos);
-                /*
-                 * Backpatch length at lengthPos (excluding length field).
-                 */
-                patchLength(lengthPos, buffer, pos);
-            }
-        }
-
+        // use a cursor to propagate successive positions across the foreach
+        Cursor cursor = new Cursor(pos);
+        instanceClassStream().filter(ClassEntry::includesDeoptTarget).forEach(classEntry -> {
+            int newPos = cursor.get();
+            /*
+             * Save the offset of this file's CU so it can be used when writing the aranges section.
+             */
+            setDeoptCUIndex(classEntry, newPos);
+            int lengthPos = newPos;
+            newPos = writeCUHeader(buffer, newPos);
+            log(context, "  [0x%08x] Compilation Unit (deopt targets)", newPos);
+            assert newPos == lengthPos + DW_DIE_HEADER_SIZE;
+            writeDeoptMethodsCU(context, classEntry, buffer, newPos);
+            /*
+             * Backpatch length at lengthPos (excluding length field).
+             */
+            patchLength(lengthPos, buffer, newPos);
+            cursor.set(newPos);
+        });
+        pos = cursor.get();
         return pos;
     }
 
@@ -200,9 +202,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* Write child entries for basic Java types. */
 
-        pos = getTypes().filter(TypeEntry::isPrimitive).reduce(pos,
-                        (pos1, typeEntry) -> {
-                            PrimitiveTypeEntry primitiveTypeEntry = (PrimitiveTypeEntry) typeEntry;
+        pos = primitiveTypeStream().reduce(pos,
+                        (pos1, primitiveTypeEntry) -> {
                             if (primitiveTypeEntry.getBitCount() > 0) {
                                 return writePrimitiveType(context, primitiveTypeEntry, buffer, pos1);
                             } else {
@@ -211,14 +212,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                         },
                         (oldpos, newpos) -> newpos);
 
-        /* Write child entries for object header and array header structs. */
+        /* Write child entry for object/array header struct. */
 
-        pos = getTypes().filter(TypeEntry::isHeader).reduce(pos,
-                        (pos1, typeEntry) -> {
-                            HeaderTypeEntry headerTypeEntry = (HeaderTypeEntry) typeEntry;
-                            return writeHeaderType(context, headerTypeEntry, buffer, pos1);
-                        },
-                        (oldpos, newpos) -> newpos);
+        pos = writeHeaderType(context, headerType(), buffer, pos);
 
         /* Terminate with null entry. */
 
@@ -334,14 +330,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeNonPrimaryClasses(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] non primary classes", pos);
-        return getTypes().filter(TypeEntry::isClass).reduce(pos,
-                        (p, typeEntry) -> {
-                            ClassEntry classEntry = (ClassEntry) typeEntry;
-                            return (classEntry.isPrimary() ? p : writeNonPrimaryClassUnit(context, classEntry, buffer, p));
-                        },
-                        (oldpos, newpos) -> newpos);
-
+        log(context, "  [0x%08x] non compiled classes", pos);
+        Cursor cursor = new Cursor(pos);
+        instanceClassStream().filter(Predicate.not(ClassEntry::isPrimary)).forEach(classEntry -> {
+            cursor.set(writeNonPrimaryClassUnit(context, classEntry, buffer, cursor.get()));
+        });
+        return cursor.get();
     }
 
     private int writeNonPrimaryClassUnit(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
@@ -400,13 +394,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writePrimaryClasses(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] primary classes", pos);
-        return getTypes().filter(TypeEntry::isClass).reduce(pos,
-                        (p, typeEntry) -> {
-                            ClassEntry classEntry = (ClassEntry) typeEntry;
-                            return (classEntry.isPrimary() ? writePrimaryClassUnit(context, classEntry, buffer, p) : p);
-                        },
-                        (oldpos, newpos) -> newpos);
+        log(context, "  [0x%08x] compiled classes", pos);
+        Cursor cursor = new Cursor(pos);
+        instanceClassStream().filter(ClassEntry::isPrimary).forEach(classEntry -> {
+            cursor.set(writePrimaryClassUnit(context, classEntry, buffer, cursor.get()));
+        });
+        return cursor.get();
     }
 
     private int writePrimaryClassUnit(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
@@ -1107,9 +1100,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeArrayTypes(DebugContext context, byte[] buffer, int pos) {
         log(context, "  [0x%08x] array classes", pos);
-        return getTypes().filter(TypeEntry::isArray).reduce(pos,
-                        (p, typeEntry) -> {
-                            ArrayTypeEntry arrayTypeEntry = (ArrayTypeEntry) typeEntry;
+        return arrayTypeStream().reduce(pos,
+                        (p, arrayTypeEntry) -> {
                             return writeArrayTypeUnit(context, arrayTypeEntry, buffer, p);
                         },
                         (oldpos, newpos) -> newpos);

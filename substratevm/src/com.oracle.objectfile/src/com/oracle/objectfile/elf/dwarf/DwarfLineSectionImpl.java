@@ -159,10 +159,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Write entries for each file listed in the primary list.
          */
-        int pos = 0;
-        for (ClassEntry classEntry : getInstanceClasses()) {
+        Cursor cursor = new Cursor();
+        instanceClassStream().forEach(classEntry -> {
             assert classEntry.getFileName().length() != 0;
-            int startPos = pos;
+            int startPos = cursor.get();
             setLineIndex(classEntry, startPos);
             int headerSize = headerSize();
             int dirTableSize = computeDirTableSize(classEntry);
@@ -172,9 +172,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
             int totalSize = prologueSize + lineNumberTableSize;
             setLineSectionSize(classEntry, totalSize);
-            pos += totalSize;
-        }
-        byte[] buffer = new byte[pos];
+            cursor.add(totalSize);
+        });
+        byte[] buffer = new byte[cursor.get()];
         super.setContent(buffer);
     }
 
@@ -291,11 +291,12 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
         byte[] buffer = getContent();
 
-        int pos = 0;
-        enableLog(context, pos);
-        log(context, "  [0x%08x] DEBUG_LINE", pos);
+        Cursor cursor = new Cursor();
+        enableLog(context, cursor.get());
+        log(context, "  [0x%08x] DEBUG_LINE", cursor.get());
 
-        for (ClassEntry classEntry : getInstanceClasses()) {
+        instanceClassStream().forEach(classEntry -> {
+            int pos = cursor.get();
             int startPos = pos;
             assert getLineIndex(classEntry) == startPos;
             log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
@@ -311,8 +312,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             pos = writeLineNumberTable(context, classEntry, buffer, pos);
             log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
             log(context, "  [0x%08x] size = 0x%x", pos, pos - startPos);
-        }
-        assert pos == buffer.length;
+            cursor.set(pos);
+        });
+        assert cursor.get() == buffer.length;
     }
 
     private int writeHeader(ClassEntry classEntry, byte[] buffer, int p) {

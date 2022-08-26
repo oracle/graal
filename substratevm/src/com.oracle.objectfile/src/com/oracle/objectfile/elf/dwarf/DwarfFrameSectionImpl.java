@@ -151,24 +151,20 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeMethodFrames(byte[] buffer, int p) {
-        int pos = p;
+        Cursor cursor = new Cursor(p);
         /* Write frames for normal methods. */
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.isPrimary()) {
-                pos = classEntry.normalPrimaryEntries().reduce(pos,
-                                (p1, entry) -> writeMethodFrame(entry, buffer, p1),
-                                (oldPos, newPos) -> newPos);
-            }
-        }
+        instanceClassStream().filter(ClassEntry::isPrimary).forEach(classEntry -> {
+            classEntry.normalPrimaryEntries().forEach(primaryEntry -> {
+                cursor.set(writeMethodFrame(primaryEntry, buffer, cursor.get()));
+            });
+        });
         /* Now write frames for deopt targets. */
-        for (ClassEntry classEntry : getInstanceClasses()) {
-            if (classEntry.includesDeoptTarget()) {
-                pos = classEntry.deoptPrimaryEntries().reduce(pos,
-                                (p1, entry) -> writeMethodFrame(entry, buffer, p1),
-                                (oldPos, newPos) -> newPos);
-            }
-        }
-        return pos;
+        instanceClassStream().filter(ClassEntry::includesDeoptTarget).forEach(classEntry -> {
+            classEntry.deoptPrimaryEntries().forEach(primaryEntry -> {
+                cursor.set(writeMethodFrame(primaryEntry, buffer, cursor.get()));
+            });
+        });
+        return cursor.get();
     }
 
     protected abstract int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos);

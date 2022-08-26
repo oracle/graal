@@ -31,8 +31,11 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
@@ -46,6 +49,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -55,6 +59,35 @@ import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_stack_value;
  * A class from which all DWARF debug sections inherit providing common behaviours.
  */
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
+    // auxiliary class used to track byte array positions
+    protected class Cursor {
+        int pos;
+
+        public Cursor() {
+            this(0);
+        }
+
+        public Cursor(int p) {
+            assert p >= 0;
+            set(p);
+        }
+
+        public void set(int p) {
+            assert p >= 0;
+            pos = p;
+        }
+
+        public int add(int d) {
+            assert pos + d >= 0;
+            pos += d;
+            return pos;
+        }
+
+        public int get() {
+            return pos;
+        }
+    }
+
     protected DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
     protected long debugTextBase = 0;
@@ -617,10 +650,60 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      */
     protected static final byte[] scratch = new byte[10];
 
-    protected Stream<? extends TypeEntry> getTypes() {
+    /**
+     * Retrieve a stream of all types notified via the DebugTypeInfo API.
+     * 
+     * @return a stream of all types notified via the DebugTypeInfo API.
+     */
+    protected Stream<TypeEntry> typeStream() {
         return dwarfSections.getTypes().stream();
     }
 
+    /**
+     * Retrieve a stream of all primitive types notified via the DebugTypeInfo API.
+     * 
+     * @return a stream of all primitive types notified via the DebugTypeInfo API.
+     */
+    protected Stream<PrimitiveTypeEntry> primitiveTypeStream() {
+        return typeStream().filter(TypeEntry::isPrimitive).map(entry -> ((PrimitiveTypeEntry) entry));
+    }
+
+    /**
+     * Retrieve a stream of all array types notified via the DebugTypeInfo API.
+     * 
+     * @return a stream of all array types notified via the DebugTypeInfo API.
+     */
+    protected Stream<ArrayTypeEntry> arrayTypeStream() {
+        return typeStream().filter(TypeEntry::isArray).map(entry -> ((ArrayTypeEntry) entry));
+    }
+
+    /**
+     * Retrieve the unique object header type notified via the DebugTypeInfo API
+     * 
+     * @return the unique object header type notified via the DebugTypeInfo API.
+     */
+    protected HeaderTypeEntry headerType() {
+        Optional<HeaderTypeEntry> optHeader = typeStream().filter(TypeEntry::isHeader).map(entry -> ((HeaderTypeEntry) entry)).findFirst();
+        assert optHeader.isPresent();
+        return optHeader.get();
+    }
+
+    /**
+     * Retrieve a stream of all instance classes, including interfaces and enums, notified via the
+     * DebugTypeInfo API.
+     * 
+     * @return a stream of all instance classes notified via the DebugTypeInfo API.
+     */
+    protected Stream<ClassEntry> instanceClassStream() {
+        return dwarfSections.getInstanceClasses().stream();
+    }
+
+    /**
+     * Retrieve an iterable for all all instance classes, including interfaces and enums, notified
+     * via the DebugTypeInfo API.
+     * 
+     * @return an iterable for all instance classes notified via the DebugTypeInfo API.
+     */
     protected Iterable<? extends ClassEntry> getInstanceClasses() {
         return dwarfSections.getInstanceClasses();
     }

@@ -46,7 +46,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
-import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
@@ -135,23 +134,21 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     private int writePrimaryClassLocations(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] primary class locations", pos);
-        return getTypes().filter(TypeEntry::isClass).reduce(pos,
-                        (p, typeEntry) -> {
-                            ClassEntry classEntry = (ClassEntry) typeEntry;
-                            return (classEntry.isPrimary() ? writeMethodLocations(context, classEntry, false, buffer, p) : p);
-                        },
-                        (oldpos, newpos) -> newpos);
+        log(context, "  [0x%08x] normal class locations", pos);
+        Cursor cursor = new Cursor(pos);
+        instanceClassStream().filter(ClassEntry::isPrimary).forEach(classEntry -> {
+            cursor.set(writeMethodLocations(context, classEntry, false, buffer, cursor.get()));
+        });
+        return cursor.get();
     }
 
     private int writeDeoptClassLocations(DebugContext context, byte[] buffer, int pos) {
         log(context, "  [0x%08x] deopt class locations", pos);
-        return getTypes().filter(TypeEntry::isClass).reduce(pos,
-                        (p, typeEntry) -> {
-                            ClassEntry classEntry = (ClassEntry) typeEntry;
-                            return (classEntry.isPrimary() && classEntry.includesDeoptTarget() ? writeMethodLocations(context, classEntry, true, buffer, p) : p);
-                        },
-                        (oldpos, newpos) -> newpos);
+        Cursor cursor = new Cursor(pos);
+        instanceClassStream().filter(ClassEntry::includesDeoptTarget).forEach(classEntry -> {
+            cursor.set(writeMethodLocations(context, classEntry, true, buffer, cursor.get()));
+        });
+        return cursor.get();
     }
 
     private int writeMethodLocations(DebugContext context, ClassEntry classEntry, boolean isDeopt, byte[] buffer, int p) {
