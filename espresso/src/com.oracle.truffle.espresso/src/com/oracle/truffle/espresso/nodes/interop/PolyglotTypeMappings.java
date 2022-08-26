@@ -130,7 +130,9 @@ public class PolyglotTypeMappings {
 
     @TruffleBoundary
     public TypeConverter mapTypeConversion(Object metaObject, int identity, InteropLibrary interop) {
-        assert typeConverterFunctions != null;
+        if (typeConverterFunctions == null) {
+            return emptyConverter;
+        }
         TypeConverter converter = identityConverterCache.get(identity);
         if (converter == null) {
             String metaName = ToEspressoNode.getMetaName(metaObject, interop);
