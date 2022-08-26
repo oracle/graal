@@ -969,7 +969,6 @@ typedef struct LibJavaVM {
     Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;   // release
     Espresso_CloseContext_fn_t Espresso_CloseContext;       // release + leave + close
     Espresso_Shutdown_fn_t Espresso_Shutdown;               // shutdown
-    Espresso_Exit_fn_t Espresso_Exit;                       // leave + close + exit
 } LibJavaVM;
 
 typedef struct LibJavaVMIsolate {

@@ -137,28 +137,4 @@ public class LibEspresso {
         VMRuntime.shutdown();
         return JNIErrors.JNI_OK();
     }
-
-    @CEntryPoint(name = "Espresso_Exit")
-    static void exit(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
-        ObjectHandle contextHandle = javaVM.getFunctions().getContext();
-        Context context = ObjectHandles.getGlobal().get(contextHandle);
-        Value exitValue = context.eval("java", "<ExitCode>");
-        int exitCode;
-        if (!exitValue.fitsInInt()) {
-            STDERR.println("Cannot retrieve exit code");
-            exitCode = 1;
-        } else {
-            exitCode = exitValue.asInt();
-        }
-        context.leave();
-        try {
-            context.close();
-        } catch (Throwable t) {
-            t.printStackTrace();
-            if (exitCode == 0) {
-                exitCode = 1;
-            }
-        }
-        System.exit(exitCode);
-    }
 }

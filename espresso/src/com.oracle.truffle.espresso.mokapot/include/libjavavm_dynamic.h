@@ -42,8 +42,6 @@ typedef int (*Espresso_CloseContext_fn_t)(graal_isolatethread_t* thread, struct 
 
 typedef int (*Espresso_Shutdown_fn_t)(graal_isolatethread_t* thread);
 
-typedef void (*Espresso_Exit_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
-
 #if defined(__cplusplus)
 }
 #endif

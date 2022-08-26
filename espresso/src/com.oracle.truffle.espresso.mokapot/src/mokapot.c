@@ -1680,7 +1680,6 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
     BIND_LIBJAVAVM(Espresso_ReleaseContext)
     BIND_LIBJAVAVM(Espresso_CloseContext)
     BIND_LIBJAVAVM(Espresso_Shutdown)
-    BIND_LIBJAVAVM(Espresso_Exit)
 
 #undef BIND_LIBJAVAVM_SVM_API
 #undef BIND_LIBJAVAVM
@@ -1701,7 +1700,6 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
     result->Espresso_ReleaseContext = Espresso_ReleaseContext;
     result->Espresso_CloseContext = Espresso_CloseContext;
     result->Espresso_Shutdown = Espresso_Shutdown;
-    result->Espresso_Exit = Espresso_Exit;
     return result;
 }
 
