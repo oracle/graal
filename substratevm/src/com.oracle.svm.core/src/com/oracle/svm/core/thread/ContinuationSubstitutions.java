@@ -70,7 +70,6 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     static void parkNanos(Object blocker, long nanos) {
-        System.out.println("park nanos");
         if (nanos > 0) {
             Thread t = Thread.currentThread();
             setBlocker(t, blocker);

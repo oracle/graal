@@ -166,9 +166,6 @@ public final class Target_java_lang_Thread {
     @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
     volatile Target_sun_nio_ch_Interruptible blocker;
 
-    @Alias
-    volatile Object parkBlocker;
-
     @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
     volatile Target_sun_nio_ch_Interruptible nioBlocker;
 

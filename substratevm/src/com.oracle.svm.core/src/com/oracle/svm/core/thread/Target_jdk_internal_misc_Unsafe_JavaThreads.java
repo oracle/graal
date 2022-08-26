@@ -29,6 +29,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.TimeUtils;
 
+import java.util.concurrent.locks.LockSupport;
+
 @TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method"})
 final class Target_jdk_internal_misc_Unsafe_JavaThreads {
@@ -45,7 +47,7 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
     void park(boolean isAbsolute, long time) {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         Thread t = Thread.currentThread();
-        Object parkBlocker = SubstrateUtil.cast(t, com.oracle.svm.core.thread.Target_java_lang_Thread.class).parkBlocker;
+        Object parkBlocker = LockSupport.getBlocker(t);
 
         /* Decide what kind of park I am doing. */
         if (!isAbsolute && time == 0L) {
