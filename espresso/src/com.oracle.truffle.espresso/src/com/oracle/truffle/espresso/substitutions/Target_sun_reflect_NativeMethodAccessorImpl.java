@@ -387,26 +387,9 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 }
             } else {
                 arg = args.get(language, i);
-                if (arg instanceof StaticObject) {
-                    // Throws guest IllegalArgumentException if the
-                    // parameter cannot be casted or widened.
-                    adjustedArgs[i] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
-                } else {
-                    // primitive or foreign
-                    try {
-                        Object espressoObject = toEspressoNode.execute(arg, paramKlass);
-                        if (espressoObject instanceof StaticObject) {
-                            // Throws guest IllegalArgumentException if the
-                            // parameter cannot be casted or widened.
-                            adjustedArgs[i] = checkAndWiden(meta, (StaticObject) espressoObject, paramKlass);
-                        } else {
-                            adjustedArgs[i] = espressoObject;
-                        }
-                    } catch (UnsupportedTypeException e) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unable to read argument from foreign object!");
-                    }
-                }
+                // Throws guest IllegalArgumentException if the
+                // parameter cannot be casted or widened.
+                adjustedArgs[i] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
             }
         }
 
