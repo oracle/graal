@@ -194,6 +194,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     // libjava must be loaded after mokapot.
     private final @Pointer TruffleObject javaLibrary;
 
+    private final Object zipLoadLock = new Object() {
+    };
+    private volatile @Pointer TruffleObject zipLibrary;
+
     private static String stringify(List<Path> paths) {
         StringJoiner joiner = new StringJoiner(File.pathSeparator);
         for (Path p : paths) {
@@ -2117,6 +2121,22 @@ public final class VM extends NativeEnv implements ContextAccess {
             return function;
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    @VmImpl
+    @TruffleBoundary
+    public @Pointer TruffleObject JVM_LoadZipLibrary() {
+        if (zipLibrary != null) {
+            return zipLibrary;
+        }
+        synchronized (zipLoadLock) {
+            TruffleObject tmpZipLib = getNativeAccess().loadLibrary(getContext().getVmProperties().bootLibraryPath(), "zip", false);
+            if (tmpZipLib == null || getUncached().isNull(tmpZipLib)) {
+                getLogger().severe("Unable to load zip library.");
+            }
+            zipLibrary = tmpZipLib;
+            return zipLibrary;
         }
     }
 
