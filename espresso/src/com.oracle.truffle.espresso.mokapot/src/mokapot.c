@@ -1791,10 +1791,6 @@ jint DestroyJavaVM(JavaVM *vm) {
     if (libjavavm->tear_down_isolate(thread) != 0 && result == JNI_OK) {
         result = JNI_ERR;
     }
-    result2 = libjavavm->detach_thread(thread);
-    if (result == JNI_OK && result2 != JNI_OK) {
-        result = result2;
-    }
     free(espressoIsolate);
     return result;
 }
