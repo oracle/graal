@@ -1679,6 +1679,7 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
     BIND_LIBJAVAVM(Espresso_LeaveContext)
     BIND_LIBJAVAVM(Espresso_ReleaseContext)
     BIND_LIBJAVAVM(Espresso_CloseContext)
+    BIND_LIBJAVAVM(Espresso_Shutdown)
     BIND_LIBJAVAVM(Espresso_Exit)
 
 #undef BIND_LIBJAVAVM_SVM_API
@@ -1699,6 +1700,7 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
     result->Espresso_LeaveContext = Espresso_LeaveContext;
     result->Espresso_ReleaseContext = Espresso_ReleaseContext;
     result->Espresso_CloseContext = Espresso_CloseContext;
+    result->Espresso_Shutdown = Espresso_Shutdown;
     result->Espresso_Exit = Espresso_Exit;
     return result;
 }
@@ -1778,23 +1780,20 @@ jint DestroyJavaVM(JavaVM *vm) {
     }
     jint result = (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
     remove_java_vm(vm);
-    jint result2;
-    if (espressoIsolate->is_sun_standard_launcher == JNI_TRUE) {
-        libjavavm->Espresso_Exit(thread, (struct JavaVM_ *) espressoJavaVM);
-        fprintf(stderr, "Error: Espresso_Exit didn't exit");
-        result2 = JNI_ERR;
-    } else {
-        result2 = libjavavm->Espresso_CloseContext(thread, (struct JavaVM_ *) espressoJavaVM);
-    }
+    jint result2 = libjavavm->Espresso_CloseContext(thread, (struct JavaVM_ *) espressoJavaVM);
     if (result == JNI_OK && result2 != JNI_OK) {
         result = result2;
     }
-    result2 = libjavavm->detach_thread(thread);
+    result2 = libjavavm->Espresso_Shutdown(thread);
     if (result == JNI_OK && result2 != JNI_OK) {
         result = result2;
     }
     if (libjavavm->tear_down_isolate(thread) != 0 && result == JNI_OK) {
         result = JNI_ERR;
+    }
+    result2 = libjavavm->detach_thread(thread);
+    if (result == JNI_OK && result2 != JNI_OK) {
+        result = result2;
     }
     free(espressoIsolate);
     return result;

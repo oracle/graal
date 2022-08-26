@@ -132,6 +132,12 @@ public class LibEspresso {
         return JNIErrors.JNI_OK();
     }
 
+    @CEntryPoint(name = "Espresso_Shutdown")
+    static int shutdown(@SuppressWarnings("unused") IsolateThread thread) {
+        VMRuntime.shutdown();
+        return JNIErrors.JNI_OK();
+    }
+
     @CEntryPoint(name = "Espresso_Exit")
     static void exit(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
         ObjectHandle contextHandle = javaVM.getFunctions().getContext();
