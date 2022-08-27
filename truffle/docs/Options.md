@@ -166,6 +166,7 @@ Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
 - `--engine.NodeSourcePositions` : Enable node source positions in truffle partial evaluations.
 - `--engine.OSRCompilationThreshold=[1, inf)` : Number of loop iterations until on-stack-replacement compilation is triggered (default 100352).
 - `--engine.OSRMaxCompilationReAttempts=[0, inf)` : Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.
+- `--engine.ParsePEGraphsWithAssumptions=true|false` : Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).
 - `--engine.PerformanceWarningsAreFatal=` : Treat performance warnings as fatal occurrences that will exit the applications
 - `--engine.PrintExpansionHistogram` : Prints a histogram of all expanded Java methods.
 - `--engine.PriorityQueue=true|false` : Use the priority of compilation jobs in the compilation queue (default: true).
