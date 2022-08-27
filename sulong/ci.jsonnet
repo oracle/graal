@@ -32,11 +32,14 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   sulong_coverage:: sc.gateTags("build,sulongCoverage") + {
     job::"coverage",
     extra_mx_args +: ["--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy"],
-    extra_gate_args+: ["--jacocout", "html"],
+    extra_gate_args+: ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
     run+: [
       # $SONAR_HOST_URL might not be set [GR-28642],
-      ["test", "-z", "$SONAR_HOST_URL", "||"] + self.mx + ["sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
-      self.mx + ["coverage-upload"],
+      # ["test", "-z", "$SONAR_HOST_URL", "||"] + self.mx + ["sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
+      # self.mx + ["coverage-upload"],
+    ],
+    teardown+: [
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     timelimit: "1:45:00",
   },

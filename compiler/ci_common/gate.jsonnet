@@ -50,11 +50,13 @@
 
   test:: s.base(no_warning_as_error=true),
 
-  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacocout", "html"]) + {
+  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"]) + {
     run+: [
-      ["mx", "coverage-upload"],
       # GR-18258 ["mx", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."jvm-config.default, "-Dsonar.projectName=GraalVM - Compiler ("jvm-config.default")", "--exclude-generated", "--skip-coverage"]
-    ]
+    ],
+    teardown+: [
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+    ],
   },
 
   test_javabase:: s.base("build,javabasetest"),
@@ -79,9 +81,9 @@
 
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Dgraal.CompilerConfiguration=economy"),
 
-  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacocout", "html"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
-    run+: [
-      ["mx", "coverage-upload"]
+  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
+    teardown+: [
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     timelimit : "1:30:00"
   },
