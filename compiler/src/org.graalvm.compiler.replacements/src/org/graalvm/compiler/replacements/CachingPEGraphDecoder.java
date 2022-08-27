@@ -76,11 +76,14 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final Supplier<AutoCloseable> createPersistentCachedGraphScope;
     private final BasePhase<? super CoreProviders> postParsingPhase;
 
+    private final boolean allowAssumptionsDuringParsing;
+
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache, Supplier<AutoCloseable> createPersistentCachedGraphScope,
+                    boolean allowAssumptionsDuringParsing,
                     boolean needsExplicitException) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
@@ -95,6 +98,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.persistentGraphCache = persistentGraphCache;
         this.createPersistentCachedGraphScope = createPersistentCachedGraphScope;
         this.localGraphCache = EconomicMap.create();
+        this.allowAssumptionsDuringParsing = allowAssumptionsDuringParsing;
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
@@ -138,7 +142,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
          * to no benefit. Assumptions can be added/enabled later during PE/compilation.
          */
         // @formatter:off
-        graphToEncode = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).
+        graphToEncode = new StructuredGraph.Builder(options, debug, AllowAssumptions.ifTrue(allowAssumptionsDuringParsing)).
                 profileProvider(null).
                 trackNodeSourcePosition(graphBuilderConfig.trackNodeSourcePosition()).
                 method(method).
