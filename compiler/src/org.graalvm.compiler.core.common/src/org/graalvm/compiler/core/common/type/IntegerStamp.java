@@ -1782,9 +1782,126 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    null,   // BinaryOp.max
+                    new BinaryOp.Max(true, true) {
 
-                    null,   // BinaryOp.min
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), Math.max(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forInteger(x.getBits(), Math.max(x.lowerBound(), y.lowerBound()), Math.max(x.upperBound(), y.upperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            int bits = n.getJavaKind().getBitCount();
+                            return n.asLong() == NumUtil.minValue(bits);
+                        }
+                    },
+
+                    new BinaryOp.Min(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), Math.min(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forInteger(x.getBits(), Math.min(x.lowerBound(), y.lowerBound()), Math.min(x.upperBound(), y.upperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            int bits = n.getJavaKind().getBitCount();
+                            return n.asLong() == NumUtil.maxValue(bits);
+                        }
+                    },
+
+                    new BinaryOp.UMax(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), NumUtil.maxUnsigned(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.maxUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
+                                            NumUtil.maxUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            return n.asLong() == 0;
+                        }
+                    },
+
+                    new BinaryOp.UMin(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), NumUtil.minUnsigned(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.minUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
+                                            NumUtil.minUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            int bits = n.getJavaKind().getBitCount();
+                            return CodeUtil.zeroExtend(n.asLong(), bits) == NumUtil.maxValueUnsigned(bits);
+                        }
+                    },
 
                     new ReinterpretOp() {
 
