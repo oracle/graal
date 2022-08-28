@@ -202,7 +202,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 modulesForHostedModuleLayer.addAll(moduleLayerForImageBuild.modules());
                 Module builderModule = ModuleLayerFeature.class.getModule();
                 assert builderModule != null;
-                modulesForHostedModuleLayer.remove(builderModule);
+                //modulesForHostedModuleLayer.remove(builderModule);
             }
             modulesForHostedModuleLayer.retainAll(reachableNamedModules);
             Set<String> reachableModulesForHostedModuleLayer = modulesForHostedModuleLayer
