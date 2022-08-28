@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.awt.*;
+import java.awt.GraphicsEnvironment;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
