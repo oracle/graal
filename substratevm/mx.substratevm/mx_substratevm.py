@@ -1136,8 +1136,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 
 libgraal_jar_distributions = [
     'substratevm:GRAAL_HOTSPOT_LIBRARY',
-    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL',
-    'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
+    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
 
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
