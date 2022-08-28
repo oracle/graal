@@ -974,7 +974,7 @@ public abstract class Source {
         return new IllegalArgumentException("Invalid MIME type provided. MIME types consist of a type and a subtype separated by '/'.");
     }
 
-    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
+    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOSupported();
 
     static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
                     boolean internal, boolean interactive, boolean cached, Object fileSystemContext, boolean embedderSource) throws IOException {
@@ -1531,11 +1531,11 @@ public abstract class Source {
             this.embedderSource = b;
         }
 
-        void url(URL url) {
+        void url(@SuppressWarnings("hiding") URL url) {
             this.url = url;
         }
 
-        void path(String path) {
+        void path(@SuppressWarnings("hiding") String path) {
             this.path = path;
         }
 

@@ -387,12 +387,18 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
 
+        public abstract boolean isInnerContextOptionsAllowed(Object polyglotLanguageContext, Env env);
+
         public abstract boolean isCurrentNativeAccessAllowed(Node node);
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext, Runnable onCancelledRunnable,
-                        Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, OutputStream out, OutputStream err, InputStream in,
+                        ZoneId timeZone, String[] permittedLanguages, Map<String, Object> config, Map<String, String> options, Map<String, String[]> arguments,
+                        Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelled, Consumer<Integer> onExited,
+                        Runnable onClosed, boolean inheritAccess, Boolean allowCreateThreads, Boolean allowNativeAccess, Boolean allowIO,
+                        Boolean allowHostLookup, Boolean allowHostClassLoading, Boolean allowCreateProcess, Boolean allowPolyglotAccess,
+                        Boolean allowEnvironmentAccess, Map<String, String> environment, Boolean allowInnerContextOptions);
 
         public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
@@ -405,6 +411,8 @@ public abstract class Accessor {
         public abstract Object enterIfNeeded(Object polyglotContext);
 
         public abstract void leaveIfNeeded(Object polyglotContext, Object prev);
+
+        public abstract boolean initializeInnerContext(Node location, Object polyglotContext, String languageId, boolean allowInternal);
 
         public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source, boolean allowInternal);
 
@@ -537,9 +545,11 @@ public abstract class Accessor {
 
         public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object polyglotLanguageContext, OutputStream stream);
 
-        public abstract boolean isIOAllowed();
+        public abstract boolean isIOAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean isCreateProcessAllowed();
+        public abstract boolean isIOSupported();
+
+        public abstract boolean isCreateProcessSupported();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
 

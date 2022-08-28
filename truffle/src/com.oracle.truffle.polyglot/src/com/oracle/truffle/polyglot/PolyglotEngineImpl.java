@@ -304,7 +304,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor, storeEngine);
 
-        if (isSharingEnabled()) {
+        if (isSharingEnabled(null)) {
             initializeMultiContext();
         }
 
@@ -331,13 +331,17 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     /**
      * Returns true if this engine should try to share code between language contexts.
+     *
      */
-    boolean isSharingEnabled() {
+    boolean isSharingEnabled(PolyglotContextConfig config) {
         boolean forced = engineOptionValues.get(PolyglotEngineOptions.ForceCodeSharing);
         boolean disabled = engineOptionValues.get(PolyglotEngineOptions.DisableCodeSharing);
         if (forced && disabled) {
             throw PolyglotEngineException.illegalState("Option engine.ForceCodeSharing can not be true at the same time as engine.DisableCodeSahring.");
         }
+        forced |= config != null && config.isCodeSharingForced();
+        disabled |= config != null && config.isCodeSharingDisabled();
+
         return !disabled && (forced || !boundEngine || storeEngine);
     }
 
@@ -511,7 +515,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         this.engineOptionValues = prototype.engineOptionValues.copy();
 
-        if (isSharingEnabled()) {
+        if (isSharingEnabled(null)) {
             initializeMultiContext();
         }
 
@@ -1352,7 +1356,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void preInitialize() {
         synchronized (this.lock) {
-            if (isSharingEnabled()) {
+            if (isSharingEnabled(null)) {
                 for (PolyglotSharingLayer layer : sharedLayers) {
                     if (!layer.isClaimed()) {
                         continue;
@@ -1618,9 +1622,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     @SuppressWarnings({"all"})
     public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
-                    HostAccess hostAccess,
-                    PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
-                    boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
+                    HostAccess hostAccess, PolyglotAccess polyglotAccess,
+                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
+                    boolean allowContextOptions, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguagesArray, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
                     boolean allowValueSharing, boolean useSystemExit) {
@@ -1723,10 +1727,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 throw PolyglotEngineException.illegalArgument("Cannot allow EnvironmentAccess because the privilege is removed at image build time");
             }
             PolyglotLimits polyglotLimits = (PolyglotLimits) limitsImpl;
-            PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
-                            allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
+            PolyglotContextConfig config = new PolyglotContextConfig(this, null, useOut, useErr, useIn,
+                            allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, allowContextOptions,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
-                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit);
+                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit, null, null, null, null);
             context = loadPreinitializedContext(config);
             replayEvents = false;
             contextAddedToEngine = false;
@@ -1813,7 +1817,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
         PolyglotContextImpl context = null;
-        final boolean sharing = isSharingEnabled();
+        final boolean sharing = isSharingEnabled(config);
         if (sharing) {
             assert preInitializedContext.get() == null : "sharing enabled with preinitialized regular context. sharing requires context preinit per layer.";
             synchronized (this.lock) {

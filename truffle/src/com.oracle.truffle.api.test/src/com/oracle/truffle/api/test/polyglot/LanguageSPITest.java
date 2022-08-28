@@ -41,8 +41,10 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.execute;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -52,6 +54,10 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -82,6 +88,7 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
@@ -98,6 +105,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -717,7 +725,7 @@ public class LanguageSPITest {
         protected Object executeBoundary() {
             Context outerLangContext = CONTEXT_REF.get(null);
             Object config = new Object();
-            TruffleContext innerContext = outerLangContext.env.newContextBuilder().config("config", config).build();
+            TruffleContext innerContext = outerLangContext.env.newInnerContextBuilder().initializeCreatorContext(true).config("config", config).build();
             Object p = innerContext.enter(null);
             Context innerLangContext = CONTEXT_REF.get(null);
             try {
@@ -855,6 +863,770 @@ public class LanguageSPITest {
         context.close();
     }
 
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextAccessPrivilegesLanguage extends AbstractExecutableTestLanguage {
+
+        static final int CREATE_PROCESS = 0;
+        static final int NATIVE_ACCESS = 1;
+        static final int IO = 2;
+        static final int HOST_CLASS_LOADING = 3;
+        static final int HOST_LOOKUP = 4;
+        static final int CREATE_THREAD = 5;
+        static final int POLYGLOT_ACCESS = 6;
+        static final int ENVIRONMENT_ACCESS = 7;
+
+        static final int NUMBER_PRIVILEGES = 8;
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextAccessPrivilegesLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            boolean expectedPrivilege = (boolean) contextArguments[0];
+            int privilege = (int) contextArguments[1];
+            boolean inheritPrivileges = (boolean) contextArguments[2];
+            Boolean allowPrivilege = (Boolean) contextArguments[3];
+
+            var builder = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(inheritPrivileges);
+            if (allowPrivilege != null) {
+                setInnerPrivilege(builder, privilege, allowPrivilege);
+            }
+
+            Boolean actualOuterPrivilege = getPrivilege(env, privilege);
+
+            TruffleContext c = builder.build();
+            Object prev = c.enter(null);
+            try {
+                ExecutableContext innerContext = CONTEXT_REFERENCE.get(null);
+                Boolean actualInnerPrivilege = getPrivilege(innerContext.env, privilege);
+
+                if (actualInnerPrivilege != null) {
+                    assertEquals("Privilege " + privilege, expectedPrivilege, actualInnerPrivilege);
+
+                    // check invariants
+                    if (inheritPrivileges) {
+                        if (allowPrivilege == null) {
+                            assertEquals(actualOuterPrivilege, actualInnerPrivilege);
+                        } else {
+                            assertEquals(allowPrivilege && actualOuterPrivilege, actualInnerPrivilege);
+                        }
+                    } else {
+                        if (allowPrivilege == null || !allowPrivilege) {
+                            assertEquals(false, actualInnerPrivilege);
+                        }
+                    }
+                }
+
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+
+        private static void setInnerPrivilege(TruffleContext.Builder builder, int privilege, boolean allowPrivilege) {
+            switch (privilege) {
+                case CREATE_PROCESS:
+                    builder.allowCreateProcess(allowPrivilege);
+                    break;
+                case NATIVE_ACCESS:
+                    builder.allowNativeAccess(allowPrivilege);
+                    break;
+                case IO:
+                    builder.allowIO(allowPrivilege);
+                    break;
+                case HOST_CLASS_LOADING:
+                    if (allowPrivilege) {
+                        // needed for host class loading
+                        builder.allowIO(true);
+                        builder.allowHostClassLookup(true);
+                    }
+                    builder.allowHostClassLoading(allowPrivilege);
+                    break;
+                case HOST_LOOKUP:
+                    builder.allowHostClassLookup(allowPrivilege);
+                    break;
+                case CREATE_THREAD:
+                    builder.allowCreateThread(allowPrivilege);
+                    break;
+                case POLYGLOT_ACCESS:
+                    builder.allowPolyglotAccess(allowPrivilege);
+                    break;
+                case ENVIRONMENT_ACCESS:
+                    builder.environment("testInnerEnvKey", "true");
+                    builder.allowInheritEnvironmentAccess(allowPrivilege);
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+
+        }
+
+        private static Boolean getPrivilege(Env env, int privilege) {
+            switch (privilege) {
+                case CREATE_PROCESS:
+                    return env.isCreateProcessAllowed();
+                case NATIVE_ACCESS:
+                    return env.isNativeAccessAllowed();
+                case IO:
+                    return env.isIOAllowed();
+                case HOST_CLASS_LOADING:
+                    TruffleFile file = env.getTruffleFileInternal("", null);
+                    try {
+                        env.addToHostClassPath(file);
+                        return true;
+                    } catch (AbstractTruffleException e) {
+                        if ("Cannot add classpath entry  in native mode.".equals(e.getMessage())) {
+                            return null;
+                        } else {
+                            return false;
+                        }
+                    }
+                case HOST_LOOKUP:
+                    return env.isHostLookupAllowed();
+                case CREATE_THREAD:
+                    return env.isCreateThreadAllowed();
+                case POLYGLOT_ACCESS:
+                    return env.isPolyglotBindingsAccessAllowed() || env.isPolyglotEvalAllowed();
+                case ENVIRONMENT_ACCESS:
+                    // environment access can only be observed with properties
+                    String value = env.getEnvironment().get(OUTER_CONTEXT_TEST_KEY);
+                    if (value != null) {
+                        return value.equals("enabled");
+                    }
+                    return false;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+
+        }
+
+    }
+
+    static final String OUTER_CONTEXT_TEST_KEY = "OuterContextTestKey";
+
+    @Test
+    public void testInnerContextAccessPrivileges() {
+        // test all privileges
+        for (int privilege = 0; privilege < InnerContextAccessPrivilegesLanguage.NUMBER_PRIVILEGES; privilege++) {
+
+            // test no outer context privilege
+            assertInnerContextPrivilege(false, privilege, false, false, null);
+            assertInnerContextPrivilege(false, privilege, false, false, true);
+            assertInnerContextPrivilege(false, privilege, false, false, false);
+
+            // test outer context privilege but no inheritance
+            assertInnerContextPrivilege(false, privilege, true, false, null);
+            assertInnerContextPrivilege(true, privilege, true, false, true);
+            assertInnerContextPrivilege(false, privilege, true, false, false);
+
+            // test outer context privilege and inheritance
+            assertInnerContextPrivilege(true, privilege, true, true, null);
+            assertInnerContextPrivilege(true, privilege, true, true, true);
+            assertInnerContextPrivilege(false, privilege, true, true, false);
+
+            // test no outer context privilege and inheritance
+            assertInnerContextPrivilege(false, privilege, false, true, null);
+            assertInnerContextPrivilege(false, privilege, false, true, true);
+            assertInnerContextPrivilege(false, privilege, false, true, false);
+        }
+    }
+
+    private static void assertInnerContextPrivilege(boolean expectedInnerPrivilege, int privilege, boolean outerPrivilege, boolean innerInheritPrivileges, Boolean innerPrivilege) {
+        try (Context context = setOuterPrivilege(Context.newBuilder(), privilege, outerPrivilege).build()) {
+            execute(context, InnerContextAccessPrivilegesLanguage.class, expectedInnerPrivilege, privilege, innerInheritPrivileges, innerPrivilege);
+        }
+    }
+
+    private static Context.Builder setOuterPrivilege(Context.Builder builder, int privilege, boolean allowPrivilege) {
+        switch (privilege) {
+            case InnerContextAccessPrivilegesLanguage.CREATE_PROCESS:
+                builder.allowCreateProcess(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.NATIVE_ACCESS:
+                builder.allowNativeAccess(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.IO:
+                builder.allowIO(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.HOST_CLASS_LOADING:
+                // required for host class loading
+                builder.allowIO(true);
+                builder.allowHostClassLookup((s) -> true);
+                builder.allowHostClassLoading(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.HOST_LOOKUP:
+                if (allowPrivilege) {
+                    builder.allowHostClassLookup((s) -> true);
+                } else {
+                    builder.allowHostClassLookup(null);
+                }
+                break;
+            case InnerContextAccessPrivilegesLanguage.CREATE_THREAD:
+                builder.allowCreateThread(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.POLYGLOT_ACCESS:
+                builder.allowPolyglotAccess(allowPrivilege ? PolyglotAccess.ALL : PolyglotAccess.NONE);
+                break;
+            case InnerContextAccessPrivilegesLanguage.ENVIRONMENT_ACCESS:
+                if (allowPrivilege) {
+                    builder.environment(OUTER_CONTEXT_TEST_KEY, "enabled");
+                    builder.allowEnvironmentAccess(EnvironmentAccess.INHERIT);
+                } else {
+                    builder.environment(OUTER_CONTEXT_TEST_KEY, "disabled");
+                    builder.allowEnvironmentAccess(EnvironmentAccess.NONE);
+                }
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        return builder;
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextSharingLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextSharingLanguage.class);
+        static final LanguageReference<InnerContextSharingLanguage> LANGUAGE_REFERENCE = LanguageReference.create(InnerContextSharingLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            ExecutableContext outerContext = CONTEXT_REFERENCE.get(null);
+            InnerContextSharingLanguage outerLanguage = LANGUAGE_REFERENCE.get(null);
+            Boolean forceSharing = (Boolean) contextArguments[0];
+            boolean expectOuterShared = (boolean) contextArguments[1];
+            boolean expectInnerShared = (boolean) contextArguments[2];
+
+            ExecutableContext innerContext = null;
+            InnerContextSharingLanguage innerLanguage = null;
+
+            for (int i = 0; i < 3; i++) {
+                TruffleContext c = env.newInnerContextBuilder().initializeCreatorContext(true).forceSharing(forceSharing).build();
+                Object prev = c.enter(null);
+                try {
+                    if (i != 0) {
+                        if (expectInnerShared) {
+                            Assert.assertSame(innerLanguage, LANGUAGE_REFERENCE.get(null));
+                        } else {
+                            Assert.assertNotSame(innerLanguage, LANGUAGE_REFERENCE.get(null));
+                        }
+                    }
+                    innerContext = CONTEXT_REFERENCE.get(null);
+                    innerLanguage = LANGUAGE_REFERENCE.get(null);
+
+                    if (expectOuterShared) {
+                        Assert.assertSame(outerLanguage, innerLanguage);
+                    } else {
+                        Assert.assertNotSame(outerLanguage, innerLanguage);
+                    }
+
+                    Assert.assertNotSame(outerContext, innerContext);
+
+                } finally {
+                    c.leave(null, prev);
+                    c.close();
+                }
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextSharing() {
+        Boolean forceSharing;
+        boolean expectOuterShared;
+        boolean expectInnerShared;
+
+        forceSharing = null;
+        expectOuterShared = false;
+        expectInnerShared = false;
+        try (Context context = Context.newBuilder().build()) {
+            execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+        }
+
+        forceSharing = null;
+        expectOuterShared = true;
+        expectInnerShared = true;
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+        }
+
+        forceSharing = Boolean.TRUE;
+        expectOuterShared = false;
+        expectInnerShared = true;
+        try (Context context = Context.newBuilder().build()) {
+            execute(context, InnerContextSharingLanguage.class, forceSharing,
+                            expectOuterShared, expectInnerShared);
+        }
+
+        forceSharing = Boolean.TRUE;
+        expectOuterShared = true;
+        expectInnerShared = true;
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+        }
+
+        forceSharing = Boolean.FALSE;
+        expectOuterShared = false;
+        expectInnerShared = false;
+        try (Context context = Context.newBuilder().build()) {
+            execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+        }
+
+        forceSharing = Boolean.FALSE;
+        expectOuterShared = false;
+        expectInnerShared = false;
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextOptionsLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextOptionsLanguage.class);
+        static final LanguageReference<InnerContextOptionsLanguage> LANGUAGE_REFERENCE = LanguageReference.create(InnerContextOptionsLanguage.class);
+
+        @Option(help = "", category = OptionCategory.USER, stability = OptionStability.STABLE) public static final OptionKey<String> InheritedKey = new OptionKey<>("");
+        @Option(help = "", category = OptionCategory.USER, stability = OptionStability.STABLE) public static final OptionKey<String> SharingKey = new OptionKey<>("");
+
+        @Override
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(SharingKey).equals(newOptions.get(SharingKey));
+        }
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new InnerContextOptionsLanguageOptionDescriptors();
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            boolean expectSupportOptions = (boolean) contextArguments[0];
+            boolean expectShared = (boolean) contextArguments[1];
+
+            ExecutableContext innerContext = null;
+            assertEquals("inheritedValue", env.getOptions().get(InheritedKey));
+
+            if (expectSupportOptions) {
+                assertTrue(env.isInnerContextOptionsAllowed());
+                var builder = env.newInnerContextBuilder();
+
+                assertFails(() -> builder.option(null, "value"), NullPointerException.class);
+                assertFails(() -> builder.option(getOptionKey("SharingKey"), null), NullPointerException.class);
+                assertFails(() -> builder.options(null), NullPointerException.class);
+                var invalidMap = new HashMap<String, String>();
+                invalidMap.put("map", null);
+                assertFails(() -> builder.options(invalidMap), NullPointerException.class);
+
+                builder.options(new HashMap<>());
+
+                TruffleContext c = builder.initializeCreatorContext(true).option(getOptionKey("SharingKey"), "value").build();
+                Object prev = c.enter(null);
+
+                if (expectShared) {
+                    assertSame(this, LANGUAGE_REFERENCE.get(null));
+                } else {
+                    assertNotSame(this, LANGUAGE_REFERENCE.get(null));
+                }
+
+                try {
+                    innerContext = CONTEXT_REFERENCE.get(null);
+                    assertEquals("value", innerContext.env.getOptions().get(SharingKey));
+                    assertEquals("inheritedValue", innerContext.env.getOptions().get(InheritedKey));
+
+                } finally {
+                    c.leave(null, prev);
+                    c.close();
+                }
+            } else {
+                assertFalse(env.isInnerContextOptionsAllowed());
+                var builder = env.newInnerContextBuilder().initializeCreatorContext(true).option(getOptionKey("SharingKey"), "value");
+                assertFails(() -> builder.build(), IllegalArgumentException.class, (e) -> {
+                    assertEquals("Language options were specified for the inner context but the outer context does not have the required context options privilege for this operation. " +
+                                    "Use TruffleLanguage.Env.isInnerContextOptionsAllowed() to check whether the inner context has this privilege. " +
+                                    "Use Context.Builder.allowInnerContextOptions(true) to grant inner context option privilege for inner contexts.", e.getMessage());
+                });
+            }
+
+            return null;
+        }
+
+        static String getOptionKey(String name) {
+            return TestUtils.getDefaultLanguageId(InnerContextOptionsLanguage.class) + "." + name;
+        }
+
+    }
+
+    @Test
+    public void testInnerContextOptions() {
+        // allow inner context options when all access is granted
+        try (Context context = Context.newBuilder().//
+                        option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                        allowInnerContextOptions(true).build()) {
+            execute(context, InnerContextOptionsLanguage.class, true, false);
+        }
+
+        // disallow inner context options when all is denied
+        try (Context context = Context.newBuilder().//
+                        option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                        allowInnerContextOptions(false).build()) {
+            execute(context, InnerContextOptionsLanguage.class, false, false);
+        }
+
+        try (Engine engine = Engine.create()) {
+            // test options may disable sharing for inner context options
+            try (Context context = Context.newBuilder().//
+                            option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                            allowInnerContextOptions(true).engine(engine).build()) {
+                execute(context, InnerContextOptionsLanguage.class, true, false);
+            }
+            // test with matching options we share code with the inner context
+            try (Context context = Context.newBuilder().//
+                            option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                            option(InnerContextOptionsLanguage.getOptionKey("SharingKey"), "value").//
+                            allowInnerContextOptions(true).engine(engine).build()) {
+                execute(context, InnerContextOptionsLanguage.class, true, true);
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextArgumentsLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextArgumentsLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertArrayEquals(env.getApplicationArguments(), new String[]{"outerArgs"});
+
+            var builder = env.newInnerContextBuilder().initializeCreatorContext(true);
+
+            assertFails(() -> builder.arguments(null, new String[0]), NullPointerException.class);
+            assertFails(() -> builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), null), NullPointerException.class);
+            assertFails(() -> builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{null}), NullPointerException.class);
+
+            TruffleContext c;
+            Object prev;
+
+            c = builder.build();
+            prev = c.enter(null);
+            try {
+                // application arguments are not inherited to inner contexts by default
+                assertArrayEquals(new String[0], CONTEXT_REFERENCE.get(null).env.getApplicationArguments());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            c = builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{"innerArgs"}).build();
+            prev = c.enter(null);
+            try {
+                // if set for inner contexts application arguments are availble
+                assertArrayEquals(new String[]{"innerArgs"}, CONTEXT_REFERENCE.get(null).env.getApplicationArguments());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+
+    }
+
+    @Test
+    public void testInnerContextArguments() {
+        try (Context context = Context.newBuilder().//
+                        arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{"outerArgs"}).build()) {
+            execute(context, InnerContextArgumentsLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextTimeZoneLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextTimeZoneLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            ZoneId outerZone = env.getTimeZone();
+            assertEquals(ZoneOffset.UTC, outerZone);
+
+            TruffleContext c;
+            Object prev;
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).timeZone(null).build();
+            prev = c.enter(null);
+            try {
+                // time zone is inherited unless set explicitly
+                assertEquals(ZoneOffset.UTC, CONTEXT_REFERENCE.get(null).env.getTimeZone());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).timeZone(ZoneOffset.of("+1")).build();
+            prev = c.enter(null);
+            try {
+                // if explicitly set time zone is passed on
+                assertEquals(ZoneOffset.of("+1"), CONTEXT_REFERENCE.get(null).env.getTimeZone());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+
+    }
+
+    @Test
+    public void testInnerContextTimeZone() {
+        try (Context context = Context.newBuilder().//
+                        timeZone(ZoneOffset.UTC).build()) {
+            execute(context, InnerContextTimeZoneLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextInnerStreamsLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextInnerStreamsLanguage.class);
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextInnerStreamsLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext c;
+            Object prev;
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ByteArrayOutputStream err = new ByteArrayOutputStream();
+            ByteArrayInputStream in = new ByteArrayInputStream("innerIn".getBytes());
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).out(out).err(err).in(in).build();
+            prev = c.enter(null);
+            try {
+                Env innerEnv = CONTEXT_REFERENCE.get(null).env;
+                innerEnv.out().write("innerOut".getBytes());
+                assertEquals("innerOut", new String(out.toByteArray()));
+
+                innerEnv.err().write("innerErr".getBytes());
+                assertEquals("innerErr", new String(err.toByteArray()));
+
+                assertEquals("innerIn", new String(innerEnv.in().readAllBytes()));
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextInnerStreams() {
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        ByteArrayInputStream in = new ByteArrayInputStream("outerIn".getBytes());
+        try (Context context = Context.newBuilder().logHandler(log).out(out).err(err).in(in).build()) {
+            execute(context, InnerContextInnerStreamsLanguage.class);
+        }
+        assertEquals("", new String(out.toByteArray()));
+        assertEquals("", new String(err.toByteArray()));
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextOuterStreamsLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextOuterStreamsLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext c;
+            Object prev;
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).out(null).err(null).in(null).build();
+            prev = c.enter(null);
+            try {
+                Env innerEnv = CONTEXT_REFERENCE.get(null).env;
+                innerEnv.out().write("innerOut".getBytes());
+                innerEnv.err().write("innerErr".getBytes());
+                assertEquals("outerIn", new String(innerEnv.in().readAllBytes()));
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextOuterStreams() {
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        ByteArrayInputStream in = new ByteArrayInputStream("outerIn".getBytes());
+        try (Context context = Context.newBuilder().logHandler(log).out(out).err(err).in(in).build()) {
+            execute(context, InnerContextOuterStreamsLanguage.class);
+        }
+        assertEquals("innerOut", new String(out.toByteArray()));
+        assertEquals("innerErr", new String(err.toByteArray()));
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextPermittedLanguagesLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextPermittedLanguagesLanguage.class);
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextPermittedLanguagesLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object prev;
+
+            // all languages accessible
+            TruffleContext c0 = env.newInnerContextBuilder().build();
+            prev = c0.enter(null);
+            try {
+                c0.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
+                c0.initializePublic(null, ID); // current language works
+            } finally {
+                c0.leave(null, prev);
+                c0.close();
+            }
+
+            // creator context always accessible even if not specified as permitted language
+            TruffleContext c1 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID).initializeCreatorContext(true).build();
+            prev = c1.enter(null);
+            try {
+                c1.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
+                c1.initializePublic(null, ID); // current language works
+            } finally {
+                c1.leave(null, prev);
+                c1.close();
+            }
+
+            // creator context always accessible if initialized
+            TruffleContext c2 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID).build();
+            prev = c2.enter(null);
+            try {
+                c2.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
+                assertFails(() -> c2.initializePublic(null, ID), IllegalArgumentException.class);
+            } finally {
+                c2.leave(null, prev);
+                c2.close();
+            }
+
+            TruffleContext c3 = env.newInnerContextBuilder(ID).initializeCreatorContext(true).build();
+            prev = c3.enter(null);
+            try {
+                c3.initializePublic(null, ID); // other language works
+                assertFails(() -> c3.initializePublic(null, InnerContextInnerStreamsLanguage.ID), IllegalArgumentException.class);
+
+                assertNull(CONTEXT_REFERENCE.get(null).env.getPublicLanguages().get(InnerContextInnerStreamsLanguage.ID));
+                assertNull(CONTEXT_REFERENCE.get(null).env.getInternalLanguages().get(InnerContextInnerStreamsLanguage.ID));
+            } finally {
+                c3.leave(null, prev);
+                c3.close();
+            }
+
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextPermittedLanguages() {
+        try (Context context = Context.create()) {
+            execute(context, InnerContextPermittedLanguagesLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextInheritPermittedLanguagesLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextInheritPermittedLanguagesLanguage.class);
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextInheritPermittedLanguagesLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object prev;
+
+            // all languages accessible accessible language config is inherited
+            TruffleContext c0 = env.newInnerContextBuilder().build();
+            prev = c0.enter(null);
+            try {
+                c0.initializePublic(null, InnerContextPermittedLanguagesLanguage.ID);
+                c0.initializePublic(null, InnerContextInheritPermittedLanguagesLanguage.ID);
+                assertFails(() -> c0.initializePublic(null, InnerContextInnerStreamsLanguage.ID), IllegalArgumentException.class);
+            } finally {
+                c0.leave(null, prev);
+                c0.close();
+            }
+
+            // reduce languages further
+            TruffleContext c1 = env.newInnerContextBuilder(InnerContextInheritPermittedLanguagesLanguage.ID).build();
+            prev = c1.enter(null);
+            try {
+                c1.initializePublic(null, InnerContextInheritPermittedLanguagesLanguage.ID);
+                assertFails(() -> c1.initializePublic(null, InnerContextPermittedLanguagesLanguage.ID), IllegalArgumentException.class);
+                assertFails(() -> c1.initializePublic(null, InnerContextInnerStreamsLanguage.ID), IllegalArgumentException.class);
+            } finally {
+                c1.leave(null, prev);
+                c1.close();
+            }
+
+            // not exisiting language
+            var builder0 = env.newInnerContextBuilder("$$$invalidLanguage$$$");
+            assertFails(() -> builder0.build(), IllegalArgumentException.class, (e) -> {
+                assertTrue(e.getMessage(),
+                                e.getMessage().startsWith("The language $$$invalidLanguage$$$ permitted for the created inner context is not installed or was not permitted by the parent context."));
+            });
+
+            // existing but unaccessible language
+            var builder1 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID);
+            assertFails(() -> builder1.build(), IllegalArgumentException.class, (e) -> {
+                assertTrue(e.getMessage(), e.getMessage().startsWith(
+                                "The language " + InnerContextInnerStreamsLanguage.ID + " permitted for the created inner context is not installed or was not permitted by the parent context."));
+            });
+
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextInheritPermittedLanguages() {
+        try (Context context = Context.create(InnerContextInheritPermittedLanguagesLanguage.ID, InnerContextPermittedLanguagesLanguage.ID)) {
+            execute(context, InnerContextInheritPermittedLanguagesLanguage.class);
+        }
+    }
+
     @TruffleLanguage.Registration
     static class EnterInNewThreadTestLanguage extends AbstractExecutableTestLanguage {
 
@@ -929,7 +1701,7 @@ public class LanguageSPITest {
                 @TruffleBoundary
                 private Object executeBoundary() {
                     Env env = CONTEXT_REF.get(null).env;
-                    TruffleContext innerContext = env.newContextBuilder().build();
+                    TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
                     Object p = innerContext.enter(null);
                     Context innerLangContext = CONTEXT_REF.get(null);
                     innerContext.leave(null, p);
@@ -1186,7 +1958,7 @@ public class LanguageSPITest {
         assertEquals(1, outerLang.parseCalled.size());
         assertEquals(source1.getCharacters(), outerLang.parseCalled.get(0).getCharacters());
 
-        TruffleContext innerContext = env.newContextBuilder().build();
+        TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object prev = innerContext.enter(null);
         MultiContextLanguage innerLang = MultiContextLanguage.REFERENCE.get(null);
         assertNotSame(innerLang, outerLang);
@@ -1246,7 +2018,7 @@ public class LanguageSPITest {
         assertEquals(1, lang.parseCalled.size());
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
-        TruffleContext innerContext = env.newContextBuilder().build();
+        TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object prev = innerContext.enter(null);
 
         MultiContextLanguage innerLang = OneContextLanguage.get(null);
@@ -1691,14 +2463,14 @@ public class LanguageSPITest {
             @Override
             protected void finalizeContext(LanguageContext context) {
                 if (contextOnFinalize.get()) {
-                    context.env.newContextBuilder().build();
+                    context.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                 }
             }
 
             @Override
             protected void disposeContext(LanguageContext context) {
                 if (contextOnDispose.get()) {
-                    context.env.newContextBuilder().build();
+                    context.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                 }
             }
         });

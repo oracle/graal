@@ -156,6 +156,7 @@ meth public org.graalvm.polyglot.Context$Builder allowHostAccess(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLoading(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLookup(java.util.function.Predicate<java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder allowIO(boolean)
+meth public org.graalvm.polyglot.Context$Builder allowInnerContextOptions(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowNativeAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
 meth public org.graalvm.polyglot.Context$Builder allowValueSharing(boolean)
@@ -181,7 +182,7 @@ meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -222,7 +223,9 @@ hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTranspo
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
 fld public final static org.graalvm.polyglot.EnvironmentAccess NONE
+meth public java.lang.String toString()
 supr java.lang.Object
+hfds name
 
 CLSS public final org.graalvm.polyglot.HostAccess
 fld public final static org.graalvm.polyglot.HostAccess ALL

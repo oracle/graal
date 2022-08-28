@@ -146,13 +146,13 @@ public class TStringUTF8Tests extends TStringTestBase {
         }
     }
 
-    private void checkByteLengthOfCodePoint(byte[] arr, int length) {
+    private static void checkByteLengthOfCodePoint(byte[] arr, int length) {
         int expected = jcodingsCodePointLength(arr, length);
         int actual = asTString(arr, length).byteLengthOfCodePointUncached(0, UTF_8, TruffleString.ErrorHandling.RETURN_NEGATIVE);
         Assert.assertEquals(expected, actual);
     }
 
-    private int jcodingsCodePointLength(byte[] arr, int length) {
+    private static int jcodingsCodePointLength(byte[] arr, int length) {
         final int width = UTF8Encoding.INSTANCE.length(arr, 0, length);
         if (width <= length) {
             return width;
