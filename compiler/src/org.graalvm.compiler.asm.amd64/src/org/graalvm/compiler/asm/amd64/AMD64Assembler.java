@@ -4176,7 +4176,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void xorb(Register dst, AMD64Address src) {
-        XOR.rmOp.emit(this, BYTE, dst, src);
+        XOR.byteRmOp.emit(this, BYTE, dst, src);
     }
 
     public final void xorl(Register dst, Register src) {

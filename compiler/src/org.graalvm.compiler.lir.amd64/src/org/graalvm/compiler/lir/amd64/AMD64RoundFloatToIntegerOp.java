@@ -49,9 +49,9 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 9210,
-          lineEnd   = 9306,
-          commit    = "d00e7b92b4a6d33f5db6e2aedce5e058832a23de",
+          lineStart = 9243,
+          lineEnd   = 9339,
+          commit    = "926380d3b748fd591f45abc99c497abc62c52565",
           sha1      = "7bb09de1deee91732af6a55f527c53eb33dec489")
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
           lineStart = 641,

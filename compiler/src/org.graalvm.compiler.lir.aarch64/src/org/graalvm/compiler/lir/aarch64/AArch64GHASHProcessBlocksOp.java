@@ -42,11 +42,10 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMM
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp.offset;
+import static org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp.asFloatRegister;
 
 import java.util.Arrays;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -60,21 +59,22 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 5823,
-          lineEnd   = 5957,
-          commit    = "27af0144ea57e86d9b81c2b328fad66e4a046f61",
+          lineStart = 5831,
+          lineEnd   = 5965,
+          commit    = "f91943c19fc0b060684a437d2c768461d54c088e",
           sha1      = "f11f84b57df21c9b49473f204e11efc0e6da53d0")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp",
           lineStart = 285,
-          lineEnd   = 680,
-          commit    = "27af0144ea57e86d9b81c2b328fad66e4a046f61",
-          sha1      = "087f57262da406b3d20e61d03eab5e9303dfba4c")
+          lineEnd   = 691,
+          commit    = "2fe0ce01485d7b84dc109d3d4f24bdd908c0e7cf",
+          sha1      = "75163bb4c510e3fa9f2347c5017561493d893691")
 // @formatter:on
 public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
@@ -318,7 +318,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         for (int i = 1; i < unrolls; i++) {
             int ofs = i * REGISTER_STRIDE;
             // zero each state register
-            masm.neon.eorVVV(ASIMDSize.FullReg, offset(v0, ofs), offset(v0, ofs), offset(v0, ofs));
+            masm.neon.eorVVV(ASIMDSize.FullReg, asFloatRegister(v0, ofs), asFloatRegister(v0, ofs), asFloatRegister(v0, ofs));
         }
 
         // long-swap subkeyH into a1XORa0
@@ -328,7 +328,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
         // Load #unrolls blocks of data
         for (int ofs = 0; ofs < unrolls * REGISTER_STRIDE; ofs += REGISTER_STRIDE) {
-            masm.fldr(128, offset(v2, ofs), AArch64Address.createImmediateAddress(128, IMMEDIATE_POST_INDEXED, data, 0x10));
+            masm.fldr(128, asFloatRegister(v2, ofs), AArch64Address.createImmediateAddress(128, IMMEDIATE_POST_INDEXED, data, 0x10));
         }
 
         // Register assignments, replicated across 4 clones, v0 ... v23
@@ -361,8 +361,8 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         // Xor data into current state
         for (int ofs = 0; ofs < unrolls * REGISTER_STRIDE; ofs += REGISTER_STRIDE) {
             // bit-swapped data ^ bit-swapped state
-            masm.neon.rbitVV(ASIMDSize.FullReg, offset(v2, ofs), offset(v2, ofs));
-            masm.neon.eorVVV(ASIMDSize.FullReg, offset(v2, ofs), offset(v0, ofs), offset(v2, ofs));
+            masm.neon.rbitVV(ASIMDSize.FullReg, asFloatRegister(v2, ofs), asFloatRegister(v2, ofs));
+            masm.neon.eorVVV(ASIMDSize.FullReg, asFloatRegister(v2, ofs), asFloatRegister(v0, ofs), asFloatRegister(v2, ofs));
         }
 
         // Generate fully-unrolled multiply-reduce in two stages.
@@ -405,9 +405,9 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
             int ofs = i * REGISTER_STRIDE;
             masm.fldr(128, hPrime, AArch64Address.createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, subkeyH, 16 * (unrolls - i - 1)));
 
-            masm.neon.rbitVV(ASIMDSize.FullReg, offset(v2, ofs), offset(v2, ofs));
+            masm.neon.rbitVV(ASIMDSize.FullReg, asFloatRegister(v2, ofs), asFloatRegister(v2, ofs));
             // bit-swapped data ^ bit-swapped state
-            masm.neon.eorVVV(ASIMDSize.FullReg, offset(v2, ofs), offset(v0, ofs), offset(v2, ofs));
+            masm.neon.eorVVV(ASIMDSize.FullReg, asFloatRegister(v2, ofs), asFloatRegister(v0, ofs), asFloatRegister(v2, ofs));
 
             masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, hPrime, hPrime);
             masm.neon.rbitVV(ASIMDSize.FullReg, hPrime, hPrime);
@@ -416,23 +416,23 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
             // xor subkeyH into subkeyL (Karatsuba: (A1+A0))
             masm.neon.eorVVV(ASIMDSize.FullReg, a1XORa0, a1XORa0, hPrime);
             ghashModmul(masm,
-                            /* result */offset(v0, ofs),
-                            /* resultLo */offset(v5, ofs),
-                            /* resultHi */offset(v4, ofs),
-                            /* b */offset(v2, ofs),
+                            /* result */asFloatRegister(v0, ofs),
+                            /* resultLo */asFloatRegister(v5, ofs),
+                            /* resultHi */asFloatRegister(v4, ofs),
+                            /* b */asFloatRegister(v2, ofs),
                             hPrime,
                             vzr,
                             a1XORa0,
                             p,
-                            /* temps */offset(v1, ofs),
-                            offset(v3, ofs),
-                            /* reuse b */offset(v2, ofs));
+                            /* temps */asFloatRegister(v1, ofs),
+                            asFloatRegister(v3, ofs),
+                            /* reuse b */asFloatRegister(v2, ofs));
         }
 
         // Then we sum the results.
         for (int i = 0; i < unrolls - 1; i++) {
             int ofs = i * REGISTER_STRIDE;
-            masm.neon.eorVVV(ASIMDSize.FullReg, v0, v0, offset(v0, ofs + REGISTER_STRIDE));
+            masm.neon.eorVVV(ASIMDSize.FullReg, v0, v0, asFloatRegister(v0, ofs + REGISTER_STRIDE));
         }
 
         masm.sub(32, blocks, blocks, unrolls);
@@ -545,16 +545,16 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         public AArch64AESEncryptOp.KernelGenerator next() {
             return new GHASHMultiplyGenerator(masm,
                             unrolls,
-                            offset(resultLo, REGISTER_STRIDE),
-                            offset(resultHi, REGISTER_STRIDE),
-                            offset(b, REGISTER_STRIDE),
+                            asFloatRegister(resultLo, REGISTER_STRIDE),
+                            asFloatRegister(resultHi, REGISTER_STRIDE),
+                            asFloatRegister(b, REGISTER_STRIDE),
                             a,
                             a1XORa0,
                             p,
                             vzr,
-                            offset(tmp1, REGISTER_STRIDE),
-                            offset(tmp2, REGISTER_STRIDE),
-                            offset(tmp3, REGISTER_STRIDE));
+                            asFloatRegister(tmp1, REGISTER_STRIDE),
+                            asFloatRegister(tmp2, REGISTER_STRIDE),
+                            asFloatRegister(tmp3, REGISTER_STRIDE));
         }
 
         @Override
@@ -654,7 +654,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
             if (!Register.None.equals(data) && once) {
                 assert length() >= unrolls : "not enough room for interleaved loads";
                 if (index < unrolls) {
-                    masm.fldr(128, offset(data, index * REGISTER_STRIDE),
+                    masm.fldr(128, asFloatRegister(data, index * REGISTER_STRIDE),
                                     AArch64Address.createImmediateAddress(128, IMMEDIATE_POST_INDEXED, dataPtr, 0x10));
                 }
             }
@@ -664,14 +664,14 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         public AArch64AESEncryptOp.KernelGenerator next() {
             return new GHASHReduceGenerator(masm,
                             unrolls,
-                            offset(result, REGISTER_STRIDE),
-                            offset(lo, REGISTER_STRIDE),
-                            offset(hi, REGISTER_STRIDE),
+                            asFloatRegister(result, REGISTER_STRIDE),
+                            asFloatRegister(lo, REGISTER_STRIDE),
+                            asFloatRegister(hi, REGISTER_STRIDE),
                             p,
                             vzr,
                             dataPtr,
                             data,
-                            offset(t1, REGISTER_STRIDE),
+                            asFloatRegister(t1, REGISTER_STRIDE),
                             false);
         }
 
