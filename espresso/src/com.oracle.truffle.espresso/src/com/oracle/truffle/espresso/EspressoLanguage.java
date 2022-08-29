@@ -199,8 +199,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (context.getEnv().isPreInitialization()) {
             // Spawn Espresso VM in an inner context. Make sure to initialize the context
             TruffleContext ctx = context.getEnv() //
-                            .newInnerContextBuilder()
-                            .initializeCreatorContext(true)
+                            .newInnerContextBuilder() //
+                            .initializeCreatorContext(true) //
                             .inheritAllAccess(true) //
                             .config("preinit", true) //
                             .build();
