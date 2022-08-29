@@ -197,12 +197,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
         if (context.getEnv().isPreInitialization()) {
-            // Spawn Espresso VM in an inner context. Creating a context in this way also
-            // initializes it.
+            // Spawn Espresso VM in an inner context. Make sure to initialize the context
             TruffleContext ctx = context.getEnv() //
-                            .newContextBuilder() //
+                            .newInnerContextBuilder()
+                            .initializeCreatorContext(true)
+                            .inheritAllAccess(true) //
                             .config("preinit", true) //
-                            .initializeCreatorContext(true) //
                             .build();
             Object prev = ctx.enter(null);
             try {
