@@ -227,7 +227,9 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
         String packageName = packageName(bundleName);
         Set<Module> modules;
-        if (moduleName != null) {
+        if (ResourcesFeature.MODULE_NAME_ALL_UNNAMED.equals(moduleName)) {
+            modules = Collections.emptySet();
+        } else if (moduleName != null) {
             modules = classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet());
         } else {
             modules = packageToModules.getOrDefault(packageName, Collections.emptySet());

@@ -91,6 +91,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -278,7 +279,7 @@ public class SubstrateGraphBuilderPlugins {
         Class<?>[] interfaces = extractClassArray(snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-            ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(interfaces);
+            RuntimeProxyCreation.register(interfaces);
             if (ImageSingletons.contains(FallbackFeature.class)) {
                 ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(b.getMethod(), b.bci());
             }

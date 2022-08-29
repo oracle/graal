@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.nativeimage.hosted;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 
-public interface RuntimeSerializationSupport {
+/**
+ * This class can be used to make creating dynamic proxy classes at run time valid.
+ *
+ * @since 22.3
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class RuntimeProxyCreation {
 
-    void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz);
-
-    void register(ConfigurationCondition condition, Class<?>... classes);
-
-    void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz);
-
-    void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
-
-    void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName);
-
-    default void registerLambdaCapturingClass(ConfigurationCondition condition, Class<?> lambdaCapturingClass) {
-        registerLambdaCapturingClass(condition, lambdaCapturingClass.getName());
+    /**
+     * Enables registering specifications of {@link java.lang.reflect.Proxy} classes during the
+     * image build so that matching proxy objects can be created at runtime. The proxy class is
+     * fully specified by the interfaces it implements.
+     *
+     * @since 22.3
+     */
+    public static void register(Class<?>... interfaces) {
+        ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(interfaces);
     }
 
-    void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces);
-
-    default void registerProxyClass(ConfigurationCondition condition, Class<?>... implementedInterfaces) {
-        registerProxyClass(condition, Arrays.stream(implementedInterfaces).map(Class::getName).collect(Collectors.toList()));
+    private RuntimeProxyCreation() {
     }
 }

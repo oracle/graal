@@ -32,12 +32,12 @@ import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 
 /**
@@ -66,52 +66,53 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
                         "java.lang.InstantiationException", "java.lang.UnsupportedOperationException",
                         "java.io.IOException", "java.io.FileNotFoundException", "java.io.SyncFailedException", "java.io.InterruptedIOException",
                         "java.util.zip.DataFormatException", "java.lang.IndexOutOfBoundsException");
-        JNIRuntimeAccess.register(constructor(a, "java.io.FileNotFoundException", String.class, String.class));
+        RuntimeJNIAccess.register(constructor(a, "java.io.FileNotFoundException", String.class, String.class));
 
         /* Unconditional Integer and Boolean JNI registration (cheap) */
-        JNIRuntimeAccess.register(clazz(a, "java.lang.Integer"));
-        JNIRuntimeAccess.register(constructor(a, "java.lang.Integer", int.class));
-        JNIRuntimeAccess.register(fields(a, "java.lang.Integer", "value"));
-        JNIRuntimeAccess.register(clazz(a, "java.lang.Boolean"));
-        JNIRuntimeAccess.register(constructor(a, "java.lang.Boolean", boolean.class));
-        JNIRuntimeAccess.register(fields(a, "java.lang.Boolean", "value"));
-        JNIRuntimeAccess.register(method(a, "java.lang.Boolean", "getBoolean", String.class));
+        RuntimeJNIAccess.register(clazz(a, "java.lang.Integer"));
+        RuntimeJNIAccess.register(constructor(a, "java.lang.Integer", int.class));
+        RuntimeJNIAccess.register(fields(a, "java.lang.Integer", "value"));
+        RuntimeJNIAccess.register(clazz(a, "java.lang.Boolean"));
+        RuntimeJNIAccess.register(constructor(a, "java.lang.Boolean", boolean.class));
+        RuntimeJNIAccess.register(fields(a, "java.lang.Boolean", "value"));
+        RuntimeJNIAccess.register(method(a, "java.lang.Boolean", "getBoolean", String.class));
 
         /*
          * Core JDK elements accessed from many places all around the JDK. They can be registered
          * unconditionally.
          */
 
-        JNIRuntimeAccess.register(java.io.FileDescriptor.class);
-        JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "fd"));
+        RuntimeJNIAccess.register(java.io.FileDescriptor.class);
+        RuntimeJNIAccess.register(fields(a, "java.io.FileDescriptor", "fd"));
         if (isWindows()) {
-            JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "handle"));
+            RuntimeJNIAccess.register(fields(a, "java.io.FileDescriptor", "handle"));
         }
-        JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "append"));
+        RuntimeJNIAccess.register(fields(a, "java.io.FileDescriptor", "append"));
 
         /* Used by FileOutputStream.initIDs, which is called unconditionally during startup. */
-        JNIRuntimeAccess.register(fields(a, "java.io.FileOutputStream", "fd"));
+        RuntimeJNIAccess.register(fields(a, "java.io.FileOutputStream", "fd"));
         /* Used by FileInputStream.initIDs, which is called unconditionally during startup. */
-        JNIRuntimeAccess.register(fields(a, "java.io.FileInputStream", "fd"));
+        RuntimeJNIAccess.register(fields(a, "java.io.FileInputStream", "fd"));
         /* Used by UnixFileSystem/WinNTFileSystem.initIDs, called unconditionally during startup. */
-        JNIRuntimeAccess.register(java.io.File.class);
-        JNIRuntimeAccess.register(fields(a, "java.io.File", "path"));
+        RuntimeJNIAccess.register(java.io.File.class);
+        RuntimeJNIAccess.register(fields(a, "java.io.File", "path"));
 
         // TODO classify the remaining registrations
 
-        JNIRuntimeAccess.register(byte[].class); /* used by ProcessEnvironment.environ() */
+        /* used by ProcessEnvironment.environ() */
+        RuntimeJNIAccess.register(byte[].class);
 
-        JNIRuntimeAccess.register(java.lang.String.class);
-        JNIRuntimeAccess.register(java.lang.System.class);
-        JNIRuntimeAccess.register(method(a, "java.lang.System", "getProperty", String.class));
-        JNIRuntimeAccess.register(java.nio.charset.Charset.class);
-        JNIRuntimeAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
-        JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class));
-        JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
-        JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
-        JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes"));
-        JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
-        JNIRuntimeAccess.register(fields(a, "java.lang.String", "coder", "value"));
+        RuntimeJNIAccess.register(String.class);
+        RuntimeJNIAccess.register(System.class);
+        RuntimeJNIAccess.register(method(a, "java.lang.System", "getProperty", String.class));
+        RuntimeJNIAccess.register(java.nio.charset.Charset.class);
+        RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
+        RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class));
+        RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
+        RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", String.class));
+        RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes"));
+        RuntimeJNIAccess.register(method(a, "java.lang.String", "concat", String.class));
+        RuntimeJNIAccess.register(fields(a, "java.lang.String", "coder", "value"));
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
         if (isWindows()) {
@@ -142,10 +143,10 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerProcessHandleImplInfoInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.lang.ProcessHandleImpl$Info", "command", "commandLine", "arguments", "startTime", "totalTime", "user"));
+        RuntimeJNIAccess.register(fields(a, "java.lang.ProcessHandleImpl$Info", "command", "commandLine", "arguments", "startTime", "totalTime", "user"));
     }
 
     private static void registerRandomAccessFileInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.io.RandomAccessFile", "fd"));
+        RuntimeJNIAccess.register(fields(a, "java.io.RandomAccessFile", "fd"));
     }
 }

@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -62,6 +63,7 @@ public final class DynamicProxyFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
+        ImageSingletons.add(RuntimeProxyCreationSupport.class, dynamicProxySupport);
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader);
         ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);
         ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
