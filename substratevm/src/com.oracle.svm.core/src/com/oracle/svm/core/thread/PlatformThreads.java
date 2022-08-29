@@ -403,6 +403,7 @@ public abstract class PlatformThreads {
      * Returns true if the {@link Thread} object for the current thread exists. This method only
      * returns false in the very early initialization stages of a newly attached thread.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isCurrentAssigned() {
         return currentThread.get() != null;
     }

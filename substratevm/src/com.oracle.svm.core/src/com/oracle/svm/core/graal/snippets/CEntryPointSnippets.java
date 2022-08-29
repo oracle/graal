@@ -138,7 +138,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate,
+                    boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize, boolean ensuringJavaThread);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
@@ -224,7 +225,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        error = attachThread(isolate.read(), false, false, vmThreadSize);
+        error = attachThread(isolate.read(), false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -358,7 +359,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             writeCurrentVMThread(WordFactory.nullPointer());
         }
 
-        int error = runtimeCall(ATTACH_THREAD, isolate, startedByIsolate, inCrashHandler, vmThreadSize);
+        int error = runtimeCall(ATTACH_THREAD, isolate, startedByIsolate, inCrashHandler, vmThreadSize, ensureJavaThread);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -374,7 +375,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int attachThread(Isolate isolate, boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize) {
+    private static int attachThread(Isolate isolate, boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize, boolean ensuringJavaThread) {
         int sanityError = Isolates.checkSanity(isolate);
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
@@ -394,6 +395,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             } else {
                 writeCurrentVMThread(thread);
+                if (ensuringJavaThread && !PlatformThreads.isCurrentAssigned()) {
+                    throw VMError.shouldNotReachHere("thread was already attached but does not have a Thread object and we would assign one");
+                }
             }
         } else {
             StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
