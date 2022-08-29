@@ -32,7 +32,6 @@ import java.util.concurrent.BlockingQueue;
 
 public final class SocketConnection implements Runnable {
     private final Socket socket;
-    private final ServerSocket serverSocket;
     private boolean closed = false;
     private final OutputStream socketOutput;
     private final InputStream socketInput;
@@ -42,9 +41,8 @@ public final class SocketConnection implements Runnable {
 
     private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(4096);
 
-    SocketConnection(Socket socket, ServerSocket serverSocket) throws IOException {
+    SocketConnection(Socket socket) throws IOException {
         this.socket = socket;
-        this.serverSocket = serverSocket;
         socket.setTcpNoDelay(true);
         socketInput = socket.getInputStream();
         socketOutput = socket.getOutputStream();
@@ -70,9 +68,6 @@ public final class SocketConnection implements Runnable {
             }
             JDWP.LOGGER.fine("closing socket now");
 
-            if (serverSocket != null) {
-                serverSocket.close();
-            }
             socketOutput.close();
             socketInput.close();
             socket.close();

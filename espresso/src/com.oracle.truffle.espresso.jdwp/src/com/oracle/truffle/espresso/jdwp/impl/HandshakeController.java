@@ -47,9 +47,8 @@ public final class HandshakeController {
             connectionHost = "localhost";
         }
         Socket connectionSocket;
-        ServerSocket serverSocket = null;
         if (server) {
-            serverSocket = new ServerSocket();
+            ServerSocket serverSocket = new ServerSocket();
             serverSocket.setSoTimeout(0); // no timeout
             serverSocket.setReuseAddress(true);
             if ("*".equals(host)) {
@@ -71,7 +70,7 @@ public final class HandshakeController {
         if (!handshake(connectionSocket)) {
             throw new IOException("Unable to handshake with debubgger");
         }
-        SocketConnection connection = new SocketConnection(connectionSocket, serverSocket);
+        SocketConnection connection = new SocketConnection(connectionSocket);
         Thread jdwpSender = new Thread(connection, "jdwp-transmitter");
         jdwpSender.setDaemon(true);
         jdwpSender.start();
