@@ -193,26 +193,36 @@ public final class ModuleLayerFeature implements InternalFeature {
     private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
                     Collection<Module> reachableSyntheticModules) {
         ModuleLayer moduleLayerForImageBuild = accessImpl.imageClassLoader.classLoaderSupport.moduleLayerForImageBuild;
+        Set<String> moduleLayerForImageBuildModules = moduleLayerForImageBuild
+                        .modules()
+                        .stream()
+                        .map(Module::getName)
+                        .collect(Collectors.toSet());
         Map<ModuleLayer, ModuleLayer> moduleLayerPairs = new HashMap<>(hostedModuleLayers.size());
         moduleLayerPairs.put(ModuleLayer.empty(), ModuleLayer.empty());
+
+        Set<String> allReachableAndRequiredModuleNames = reachableNamedModules
+                        .stream()
+                        .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
+                        .collect(Collectors.toSet());
 
         for (ModuleLayer hostedModuleLayer : hostedModuleLayers) {
             if (hostedModuleLayer == moduleLayerForImageBuild) {
                 continue;
             }
 
-            Set<Module> modulesForHostedModuleLayer = new HashSet<>(hostedModuleLayer.modules());
+            Set<String> reachableModuleNamesForHostedModuleLayer = hostedModuleLayer
+                            .modules()
+                            .stream()
+                            .map(Module::getName)
+                            .collect(Collectors.toSet());
             if (hostedModuleLayer == ModuleLayer.boot()) {
-                modulesForHostedModuleLayer.addAll(moduleLayerForImageBuild.modules());
+                reachableModuleNamesForHostedModuleLayer.addAll(moduleLayerForImageBuildModules);
                 Module builderModule = ModuleLayerFeature.class.getModule();
                 assert builderModule != null;
-                modulesForHostedModuleLayer.remove(builderModule);
+                reachableModuleNamesForHostedModuleLayer.remove(builderModule.getName());
             }
-            modulesForHostedModuleLayer.retainAll(reachableNamedModules);
-            Set<String> reachableModulesForHostedModuleLayer = modulesForHostedModuleLayer
-                            .stream()
-                            .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
-                            .collect(Collectors.toSet());
+            reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
 
             Function<String, ClassLoader> clf = name -> {
                 Optional<Module> module = hostedModuleLayer.findModule(name);
@@ -226,7 +236,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
             List<ModuleLayer> parents = hostedModuleLayer.parents().stream().map(moduleLayerPairs::get).collect(Collectors.toList());
 
-            ModuleLayer runtimeModuleLayer = synthesizeRuntimeModuleLayer(parents, accessImpl.imageClassLoader, reachableModulesForHostedModuleLayer, syntheticModules, clf);
+            ModuleLayer runtimeModuleLayer = synthesizeRuntimeModuleLayer(parents, accessImpl.imageClassLoader, reachableModuleNamesForHostedModuleLayer, syntheticModules, clf);
             moduleLayerPairs.put(hostedModuleLayer, runtimeModuleLayer);
         }
 
