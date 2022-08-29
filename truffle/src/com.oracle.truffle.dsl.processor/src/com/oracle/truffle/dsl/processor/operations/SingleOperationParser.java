@@ -153,6 +153,9 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 return null;
             }
 
+            AnnotationMirror mir = ElementUtils.findAnnotationMirror(mirror, getAnnotationType());
+            AnnotationValue valDBE = ElementUtils.getAnnotationValue(mir, "disableBoxingElimination", true);
+
             te = (TypeElement) element;
             if (isShortCircuit) {
                 name = (String) ElementUtils.getAnnotationValue(proxyMirror, "name").getValue();
@@ -161,6 +164,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
 
             data = new SingleOperationData(context, te, null, parentData, name, false);
+            data.setDisableBoxingElimination((boolean) valDBE.getValue());
         }
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
@@ -245,7 +249,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         if (!isVariadic) {
-            addBoxingEliminationNodeChildAnnotations(props, clonedType);
+            addBoxingEliminationNodeChildAnnotations(data, props, clonedType);
         }
 
         if (parentData.isGenerateUncached()) {
@@ -280,10 +284,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return data;
     }
 
-    private void addBoxingEliminationNodeChildAnnotations(MethodProperties props, CodeTypeElement ct) {
+    private void addBoxingEliminationNodeChildAnnotations(SingleOperationData data, MethodProperties props, CodeTypeElement ct) {
         int i = 0;
         int localI = 0;
-        CodeTypeElement childType = createRegularNodeChild();
+        CodeTypeElement childType = createRegularNodeChild(!data.isDisableBoxingElimination());
         CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
         List<CodeAnnotationValue> anns = new ArrayList<>();
         for (ParameterKind param : props.parameters) {
@@ -455,15 +459,17 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private static final String GENERIC_EXECUTE_NAME = "Generic";
 
-    private CodeTypeElement createRegularNodeChild() {
+    private CodeTypeElement createRegularNodeChild(boolean withBoxingElimination) {
 
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
         result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object.class)));
 
-        for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
-            result.add(createChildExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
+        if (withBoxingElimination) {
+            for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
+                result.add(createChildExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
+            }
         }
 
         return result;

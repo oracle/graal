@@ -49,6 +49,7 @@ import java.util.Set;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.ShortCircuitOperation;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
@@ -87,6 +88,8 @@ public class OperationsContext {
     private final Map<String, CustomInstruction> customInstructionNameMap = new HashMap<>();
     private final Map<String, SingleOperationData> opDataNameMap = new HashMap<>();
     private final OperationsData data;
+
+    public CodeTypeElement outerType;
 
     private final Set<String> operationNames = new HashSet<>();
     public TypeMirror labelType;
@@ -158,9 +161,7 @@ public class OperationsContext {
 
     private void createLoadConstant() {
         loadConstantInstructions = new LoadConstantInstruction[FrameKind.values().length];
-        for (FrameKind kind : data.getFrameKinds()) {
-            loadConstantInstructions[kind.ordinal()] = add(new LoadConstantInstruction(this, instructionId++, kind));
-        }
+        loadConstantInstructions[FrameKind.OBJECT.ordinal()] = add(new LoadConstantInstruction(this, instructionId++, FrameKind.OBJECT));
 
         add(new Operation.LoadConstant(this, operationId++, loadConstantInstructions));
     }

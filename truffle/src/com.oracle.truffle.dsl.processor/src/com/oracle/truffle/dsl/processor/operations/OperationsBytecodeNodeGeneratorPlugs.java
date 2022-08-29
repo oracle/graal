@@ -472,7 +472,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         CodeTree isResultBoxed = multiState.createNotContains(frameState, new Object[]{resultUnboxedState});
 
-        if (uncached || typeName.equals("Object")) {
+        if (uncached || data.isDisableBoxingElimination() || typeName.equals("Object")) {
             b.startStatement();
             b.startCall("$frame", "setObject");
             b.string("$sp - " + destOffset);

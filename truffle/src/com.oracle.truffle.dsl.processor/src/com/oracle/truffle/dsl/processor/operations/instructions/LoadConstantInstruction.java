@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import java.util.EnumSet;
+
+import javax.lang.model.element.Modifier;
+
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
@@ -60,16 +65,41 @@ public class LoadConstantInstruction extends Instruction {
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
-        b.variable(vars.sp);
-        b.tree(createGetArgument(vars));
-        b.end(2);
+        if (!ctx.outerType.getEnclosedElements().stream().anyMatch(x -> x.getSimpleName().toString().equals("do_loadConstantObject"))) {
+            CodeExecutableElement metImpl = new CodeExecutableElement(
+                            EnumSet.of(Modifier.PRIVATE, Modifier.STATIC),
+                            context.getType(void.class),
+                            "do_loadConstantObject");
 
-        b.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
+            metImpl.addParameter(vars.frame);
+            metImpl.addParameter(vars.bc);
+            metImpl.addParameter(vars.bci);
+            metImpl.addParameter(vars.sp);
+            metImpl.addParameter(vars.consts);
 
-        return b.build();
+            CodeTreeBuilder b = metImpl.getBuilder();
+
+            b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
+            b.variable(vars.sp);
+            b.tree(createGetArgument(vars));
+            b.end(2);
+
+            ctx.outerType.add(metImpl);
+        }
+
+        CodeTreeBuilder bOuter = CodeTreeBuilder.createBuilder();
+        bOuter.startStatement().startCall("do_loadConstantObject");
+        bOuter.variable(vars.frame);
+        bOuter.variable(vars.bc);
+        bOuter.variable(vars.bci);
+        bOuter.variable(vars.sp);
+        bOuter.variable(vars.consts);
+        bOuter.end(2);
+
+        bOuter.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
+
+        return bOuter.build();
 
     }
 
@@ -87,7 +117,7 @@ public class LoadConstantInstruction extends Instruction {
 
     @Override
     public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.REPLACE;
+        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

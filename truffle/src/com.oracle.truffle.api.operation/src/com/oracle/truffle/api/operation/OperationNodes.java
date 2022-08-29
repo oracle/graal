@@ -47,6 +47,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.serialization.OperationSerializationCallback;
 import com.oracle.truffle.api.source.Source;
 
@@ -60,8 +61,9 @@ public abstract class OperationNodes {
         this.parse = parse;
     }
 
-    public List<OperationRootNode> getNodes() {
-        return List.of(nodes);
+    @SuppressWarnings("unchecked")
+    public <T extends RootNode & OperationRootNode> List<T> getNodes() {
+        return (List<T>) List.of(nodes);
     }
 
     public boolean hasSources() {

@@ -332,8 +332,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     CodeTypeElement createOperationNodeImpl() {
         String simpleName = m.getTemplateType().getSimpleName().toString() + "Gen";
         CodeTypeElement typOperationNodeImpl = GeneratorUtils.createClass(m, null, MOD_PUBLIC_FINAL, simpleName, m.getTemplateType().asType());
-
         GeneratorUtils.addSuppressWarnings(context, typOperationNodeImpl, "unused", "cast", "unchecked", "hiding", "rawtypes", "static-method");
+
+        m.getOperationsContext().outerType = typOperationNodeImpl;
 
         typOperationNodeImpl.getImplements().add(types.BytecodeOSRNode);
 
@@ -808,6 +809,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         m.getOperationsContext().labelType = typLabelData.asType();
         m.getOperationsContext().exceptionType = typExceptionHandler.asType();
+        m.getOperationsContext().outerType = typOperationNodeImpl;
 
         typBuilderImpl.add(createBuilderImplCtor(opNodesImpl));
 

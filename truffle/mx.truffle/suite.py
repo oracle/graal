@@ -333,19 +333,17 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.polyglot",
-        "com.oracle.truffle.api.test",
-        "com.oracle.truffle.api.operation",
+        "TRUFFLE_API",
         "mx:JUNIT",
+        "mx:JMH_1_21",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "11+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
       "testProject" : True,
       "jacoco" : "exclude",
     },
-
 
     "com.oracle.truffle.api.dsl" : {
       "subDir" : "src",
