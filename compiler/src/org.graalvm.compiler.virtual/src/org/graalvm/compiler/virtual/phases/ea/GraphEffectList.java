@@ -67,7 +67,7 @@ public final class GraphEffectList extends EffectList {
     /**
      * Determines how many nodes are virtualized (positive) or materialized (negative) by this
      * effect. Note that this is different than {@link #virtualizationDelta} as it considers actual
-     * nods in the IR. This can be relevant if the only effect of a PEA is to fold two commit
+     * nodes in the IR. This can be relevant if the only effect of a PEA is to fold two commit
      * allocation nodes into one. While this may look like no progress the actual allocation path
      * can common out barriers, tlab reads etc.
      */

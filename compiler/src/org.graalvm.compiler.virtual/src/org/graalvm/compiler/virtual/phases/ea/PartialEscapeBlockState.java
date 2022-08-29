@@ -205,7 +205,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
          * with barriers, we ignore other allocations as we only process new instance and commit
          * allocation nodes
          */
-        materializeEffects.addAllocationDelta(-(objects.size() > 0 ? 1 : 0));
+        materializeEffects.addAllocationDelta(objects.size() > 0 ? -1 : 0);
         materializeEffects.addVirtualizationDelta(-(objects.size() + otherAllocations.size()));
         materializeEffects.add(new Effect("materializeBefore") {
             @Override
