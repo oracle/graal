@@ -212,8 +212,7 @@ public final class EspressoFrame {
     }
 
     public static void clear(Frame frame, int slot) {
-        clearPrimitive(frame, slot);
-        clearReference(frame, slot);
+        frame.clearStatic(slot);
     }
 
     // endregion Operand stack accessors
