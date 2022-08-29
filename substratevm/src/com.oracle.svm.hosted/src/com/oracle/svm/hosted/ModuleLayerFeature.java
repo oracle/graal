@@ -107,7 +107,11 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .stream()
                         .map(Module::getName)
                         .collect(Collectors.toSet());
-        Function<String, ClassLoader> clf = n -> accessImpl.imageClassLoader.getClassLoader();
+        Function<String, ClassLoader> clf = n -> {
+            Optional<Module> module = ModuleLayer.boot().findModule(n);
+            assert module.isPresent();
+            return module.get().getClassLoader();
+        };
         ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(ModuleLayer.empty()), accessImpl.imageClassLoader, baseModules, Set.of(), clf);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
         access.registerObjectReplacer(this::replaceHostedModules);
@@ -202,7 +206,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 modulesForHostedModuleLayer.addAll(moduleLayerForImageBuild.modules());
                 Module builderModule = ModuleLayerFeature.class.getModule();
                 assert builderModule != null;
-                //modulesForHostedModuleLayer.remove(builderModule);
+                modulesForHostedModuleLayer.remove(builderModule);
             }
             modulesForHostedModuleLayer.retainAll(reachableNamedModules);
             Set<String> reachableModulesForHostedModuleLayer = modulesForHostedModuleLayer
