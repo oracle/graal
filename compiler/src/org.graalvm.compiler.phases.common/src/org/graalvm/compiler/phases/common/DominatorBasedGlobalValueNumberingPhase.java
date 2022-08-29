@@ -303,47 +303,42 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
                 return;
             }
 
+            if (!canGVN(cur)) {
+                return;
+            }
+
+            boolean canSubsitute = blockMap.hasSubstitute(cur);
+            boolean canLICM = unconditionallyInsideLoop && considerLICM;
+            if (cur instanceof MemoryAccess) {
+                MemoryAccess access = (MemoryAccess) cur;
+                if (loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
+                    if (canSubsitute) {
+                        // loop kills this location, do not bother trying to figure out if parts can
+                        // be GVNed, let floating reads later handle that
+                        return;
+                    }
+                    canLICM = false;
+                }
+            }
+
+            if (canLICM) {
+                canLICM = nodeCanBeLifted(cur, ld.loop(hirLoop), licmNodes);
+            }
+
             /*
              * Perform the actual global value numbering of fixed nodes. May also perform LICM for
              * nodes that either already have a dominating value number equal operation or performs
              * a limited form of LICM for nodes that are dominated by the loop header and dominate
              * all exits. Such operations that are unconditionally executed in the particular loop.
              */
-            boolean canSubsitute = blockMap.hasSubstitute(cur);
             if (canSubsitute) {
-                if (cur instanceof MemoryAccess) {
-                    MemoryAccess access = (MemoryAccess) cur;
-                    if (insideLoop && loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                        // loop kills this location, do not bother trying to figure out if parts can
-                        // be GVNed, let floating reads later handle that
-                        return;
-                    } else {
-                        // GVN node
-                        blockMap.substitute(cur, cfg, licmNodes);
-                    }
-                } else {
-                    // GVN node
-                    if (canGVN(cur)) {
-                        blockMap.substitute(cur, cfg, licmNodes);
-                    }
-                }
+                // GVN node
+                blockMap.substitute(cur, cfg, licmNodes, canLICM ? ld.loop(hirLoop) : null);
             } else {
-                if (unconditionallyInsideLoop && considerLICM) {
-                    if (canGVN(cur)) {
-                        if (cur instanceof MemoryAccess) {
-                            MemoryAccess access = (MemoryAccess) cur;
-                            if (!loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                                // LICM of node
-                                tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
-                            }
-                        } else {
-                            tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
-                        }
-                    }
+                if (canLICM) {
+                    tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
                 }
-                if (canGVN(cur)) {
-                    blockMap.rememberNodeForGVN(cur);
-                }
+                blockMap.rememberNodeForGVN(cur);
             }
         }
 
@@ -393,7 +388,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
             fwn.setNext(next);
             n.graph().addBeforeFixed(loop.loopBegin().forwardEnd(), toLift);
             liftedNodes.checkAndMarkInc(toLift);
-            loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s", n);
+            loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s for loop %s", n, loop);
             earlyGVNLICM.increment(loop.loopBegin().getDebug());
             if (loop.loopBegin().getDebug().isCountEnabled()) {
                 DebugContext.counter(earlyGVNLICM.getName() + "_" + n.getClass().getSimpleName()).increment(n.graph().getDebug());
@@ -572,7 +567,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
          * Perform actual global value numbering. Replace node {@code n} with an equal node (inputs
          * and data fields) up in the dominance chain.
          */
-        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes) {
+        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, LoopEx invariantInLoop) {
             Node edgeDataEqual = find(n);
             if (edgeDataEqual != null) {
                 assert edgeDataEqual.graph() != null;
@@ -588,6 +583,22 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
                      */
                     assert defBlock.getLoop() != null;
                     defBlock = defBlock.getLoop().getHeader().getDominator();
+                }
+
+                if (invariantInLoop != null) {
+                    Block loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
+                    if (AbstractControlFlowGraph.strictlyDominates(loopDefBlock, defBlock)) {
+                        /*
+                         * The LICM location strictly dominates the GVN location so it must the
+                         * final location. Move the GVN node to the LICM location and then perform
+                         * the substitution normally.
+                         */
+                        if (!tryPerformLICM(invariantInLoop, (FixedNode) edgeDataEqual, licmNodes)) {
+                            GraalError.shouldNotReachHere("tryPerformLICM must success for " + edgeDataEqual);
+                        }
+                    } else {
+                        GraalError.guarantee(AbstractControlFlowGraph.dominates(defBlock, loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);
+                    }
                 }
 
                 Block useBlock = cfg.blockFor(n);
