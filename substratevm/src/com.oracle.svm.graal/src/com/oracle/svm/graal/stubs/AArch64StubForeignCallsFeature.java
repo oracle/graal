@@ -37,9 +37,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 
 @AutomaticFeature
 @Platforms(AARCH64.class)
-public class AARCH64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
+public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
 
-    public AARCH64StubForeignCallsFeature() {
+    public AArch64StubForeignCallsFeature() {
         super(new StubDescriptor[]{
                         new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, true, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(CryptoForeignCalls.AES_STUBS, false, AES_CPU_FEATURES_AARCH64, AES_CPU_FEATURES_AARCH64),

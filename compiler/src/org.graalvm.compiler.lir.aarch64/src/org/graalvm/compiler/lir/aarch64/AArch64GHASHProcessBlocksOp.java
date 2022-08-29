@@ -500,16 +500,16 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     masm.neon.extVVV(ASIMDSize.FullReg, tmp1, b, b, 0x08);
                     break;
                 case 1:
-                    masm.neon.pmullVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, resultHi, b, a); // A1*B1
+                    masm.neon.pmull2VVV(ElementSize.DoubleWord, resultHi, b, a); // A1*B1
                     break;
                 case 2:
                     masm.neon.eorVVV(ASIMDSize.FullReg, tmp1, tmp1, b); // (B1+B0)
                     break;
                 case 3:
-                    masm.neon.pmullVVV(ASIMDSize.HalfReg, ElementSize.DoubleWord, resultLo, b, a); // A0*B0
+                    masm.neon.pmullVVV(ElementSize.DoubleWord, resultLo, b, a); // A0*B0
                     break;
                 case 4:
-                    masm.neon.pmullVVV(ASIMDSize.HalfReg, ElementSize.DoubleWord, tmp2, tmp1, a1XORa0); // (A1+A0)(B1+B0)
+                    masm.neon.pmullVVV(ElementSize.DoubleWord, tmp2, tmp1, a1XORa0); // (A1+A0)(B1+B0)
                     break;
                 case 5:
                     masm.neon.extVVV(ASIMDSize.FullReg, tmp1, resultLo, resultHi, 0x08);
@@ -525,10 +525,10 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     break;
                 // Register pair <resultHi:resultLo> holds the result of carry-less multiplication
                 case 9:
-                    masm.neon.insVV(ElementSize.DoubleWord, resultHi, 0, tmp2, 1);
+                    masm.neon.insXX(ElementSize.DoubleWord, resultHi, 0, tmp2, 1);
                     break;
                 case 10:
-                    masm.neon.insVV(ElementSize.DoubleWord, resultLo, 1, tmp2, 0);
+                    masm.neon.insXX(ElementSize.DoubleWord, resultLo, 1, tmp2, 0);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();
@@ -620,7 +620,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                 // bits we can do this with two 64-bit multiplications, lo*p and
                 // hi*p.
                 case 0:
-                    masm.neon.pmullVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, t0, hi, p);
+                    masm.neon.pmull2VVV(ElementSize.DoubleWord, t0, hi, p);
                     break;
                 case 1:
                     masm.neon.extVVV(ASIMDSize.FullReg, t1, t0, vzr, 8);
@@ -635,7 +635,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     masm.neon.eorVVV(ASIMDSize.FullReg, lo, lo, t1);
                     break;
                 case 5:
-                    masm.neon.pmullVVV(ASIMDSize.HalfReg, ElementSize.DoubleWord, t0, hi, p);
+                    masm.neon.pmullVVV(ElementSize.DoubleWord, t0, hi, p);
                     break;
                 case 6:
                     masm.neon.eorVVV(ASIMDSize.FullReg, result, lo, t0);
@@ -718,12 +718,12 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         // bits we can do this with two 64-bit multiplications, lo*p and
         // hi*p.
 
-        masm.neon.pmullVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, t0, hi, p);
+        masm.neon.pmull2VVV(ElementSize.DoubleWord, t0, hi, p);
         masm.neon.extVVV(ASIMDSize.FullReg, t1, t0, vzr, 8);
         masm.neon.eorVVV(ASIMDSize.FullReg, hi, hi, t1);
         masm.neon.extVVV(ASIMDSize.FullReg, t1, vzr, t0, 8);
         masm.neon.eorVVV(ASIMDSize.FullReg, lo, lo, t1);
-        masm.neon.pmullVVV(ASIMDSize.HalfReg, ElementSize.DoubleWord, t0, hi, p);
+        masm.neon.pmullVVV(ElementSize.DoubleWord, t0, hi, p);
         masm.neon.eorVVV(ASIMDSize.FullReg, result, lo, t0);
     }
 
@@ -756,10 +756,10 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         // B0 in b.d[0] (state)
         // B1 in b.d[1]
         masm.neon.extVVV(ASIMDSize.FullReg, tmp1, b, b, 0x08);
-        masm.neon.pmullVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, resultHi, b, a); // A1*B1
+        masm.neon.pmull2VVV(ElementSize.DoubleWord, resultHi, b, a); // A1*B1
         masm.neon.eorVVV(ASIMDSize.FullReg, tmp1, tmp1, b); // (B1+B0)
-        masm.neon.pmullVVV(ASIMDSize.HalfReg, ElementSize.DoubleWord, resultLo, b, a);  // A0*B0
-        masm.neon.pmullVVV(ASIMDSize.HalfReg, ElementSize.DoubleWord, tmp2, tmp1, a1XORa0); // (A1+A0)(B1+B0)
+        masm.neon.pmullVVV(ElementSize.DoubleWord, resultLo, b, a);  // A0*B0
+        masm.neon.pmullVVV(ElementSize.DoubleWord, tmp2, tmp1, a1XORa0); // (A1+A0)(B1+B0)
 
         masm.neon.extVVV(ASIMDSize.FullReg, tmp1, resultLo, resultHi, 0x08);
         masm.neon.eorVVV(ASIMDSize.FullReg, tmp3, resultHi, resultLo); // A1*B1+A0*B0
@@ -767,7 +767,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         masm.neon.eorVVV(ASIMDSize.FullReg, tmp2, tmp2, tmp3);
 
         // Register pair <resultHi:resultLo> holds the result of carry-less multiplication
-        masm.neon.insVV(ElementSize.DoubleWord, resultHi, 0, tmp2, 1);
-        masm.neon.insVV(ElementSize.DoubleWord, resultLo, 1, tmp2, 0);
+        masm.neon.insXX(ElementSize.DoubleWord, resultHi, 0, tmp2, 1);
+        masm.neon.insXX(ElementSize.DoubleWord, resultLo, 1, tmp2, 0);
     }
 }
