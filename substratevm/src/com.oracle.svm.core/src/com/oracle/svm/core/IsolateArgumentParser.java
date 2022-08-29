@@ -198,6 +198,11 @@ public class IsolateArgumentParser {
         return (int) PARSED_OPTION_VALUES[index];
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getLongOptionValue(int index) {
+        return PARSED_OPTION_VALUES[index];
+    }
+
     private static Object getOptionValue(int index) {
         Class<?> optionValueType = OPTIONS[index].getDescriptor().getOptionValueType();
         long value = PARSED_OPTION_VALUES[index];
