@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v17;
 import static jdk.vm.ci.aarch64.AArch64.v18;
@@ -94,9 +95,24 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
         this.toValue = toValue;
         this.keyValue = keyValue;
         this.lengthOffset = lengthOffset;
-        this.temps = new Value[]{v0.asValue(), v17.asValue(), v18.asValue(), v19.asValue(), v20.asValue(), v21.asValue(),
-                        v22.asValue(), v23.asValue(), v24.asValue(), v25.asValue(), v26.asValue(), v27.asValue(),
-                        v28.asValue(), v29.asValue(), v30.asValue(), v31.asValue()};
+        this.temps = new Value[]{
+                        v0.asValue(),
+                        v17.asValue(),
+                        v18.asValue(),
+                        v19.asValue(),
+                        v20.asValue(),
+                        v21.asValue(),
+                        v22.asValue(),
+                        v23.asValue(),
+                        v24.asValue(),
+                        v25.asValue(),
+                        v26.asValue(),
+                        v27.asValue(),
+                        v28.asValue(),
+                        v29.asValue(),
+                        v30.asValue(),
+                        v31.asValue(),
+        };
     }
 
     @Override
@@ -117,11 +133,25 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
             // Increments from, to
             // Input data in v0, v1, ...
             // unrolls controls the number of times to unroll the generated function
-            new AESKernelGenerator(masm, 1, from, to, keylen, 0, 17).unroll();
+            new AESKernelGenerator(masm, 1, from, to, keylen, v0, v17).unroll();
         }
     }
 
-    private static void aesencLoadkeys(AArch64MacroAssembler masm, Register key, Register keylen) {
+    private static int indexOf(Register reg) {
+        assert SIMD.equals(reg.getRegisterCategory());
+        for (int i = 0; i < AArch64.simdRegisters.size(); i++) {
+            if (reg.equals(AArch64.simdRegisters.get(i))) {
+                return i;
+            }
+        }
+        throw GraalError.shouldNotReachHere("unknown register ");
+    }
+
+    static Register offset(Register base, int offset) {
+        return AArch64.simdRegisters.get(indexOf(base) + offset);
+    }
+
+    static void aesencLoadkeys(AArch64MacroAssembler masm, Register key, Register keylen) {
         Label loadkeys44 = new Label();
         Label loadkeys52 = new Label();
 
@@ -170,10 +200,10 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
      * {@link #generate(int)}, {@link #length()}, and {@link #next()} to generate unrolled and
      * interleaved functions.
      */
-    public abstract static class KernelGenerator {
+    abstract static class KernelGenerator {
         protected final int unrolls;
 
-        public KernelGenerator(int unrolls) {
+        KernelGenerator(int unrolls) {
             this.unrolls = unrolls;
         }
 
@@ -199,26 +229,26 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
     }
 
     /** An unrolled and interleaved generator for AES encryption. */
-    public static class AESKernelGenerator extends KernelGenerator {
+    static final class AESKernelGenerator extends KernelGenerator {
 
         private final AArch64MacroAssembler masm;
         private final Register from;
         private final Register to;
         private final Register keylen;
-        private final int data;
-        private final int subkeys;
+        private final Register data;
+        private final Register subkeys;
         private final boolean once;
 
         private final Label rounds44;
         private final Label rounds52;
 
-        public AESKernelGenerator(AArch64MacroAssembler masm,
+        AESKernelGenerator(AArch64MacroAssembler masm,
                         int unrolls,
                         Register from,
                         Register to,
                         Register keylen,
-                        int data,
-                        int subkeys,
+                        Register data,
+                        Register subkeys,
                         boolean once) {
             super(unrolls);
             this.masm = masm;
@@ -232,13 +262,13 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
             this.rounds52 = new Label();
         }
 
-        public AESKernelGenerator(AArch64MacroAssembler masm,
+        AESKernelGenerator(AArch64MacroAssembler masm,
                         int unrolls,
                         Register from,
                         Register to,
                         Register keylen,
-                        int data,
-                        int subkeys) {
+                        Register data,
+                        Register subkeys) {
             this(masm,
                             unrolls,
                             from,
@@ -249,13 +279,9 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                             true);
         }
 
-        private static Register getSimdRegister(int index) {
-            return AArch64.simdRegisters.get(index);
-        }
-
-        private void aesRound(int input, int subkey) {
-            masm.neon.aese(getSimdRegister(input), getSimdRegister(subkey));
-            masm.neon.aesmc(getSimdRegister(input), getSimdRegister(input));
+        private void aesRound(Register input, Register subkey) {
+            masm.neon.aese(input, subkey);
+            masm.neon.aesmc(input, input);
         }
 
         @Override
@@ -264,7 +290,7 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                 case 0:
                     if (!from.equals(Register.None)) {
                         // get 16 bytes of input
-                        masm.fldr(128, getSimdRegister(data), AArch64Address.createBaseRegisterOnlyAddress(128, from));
+                        masm.fldr(128, data, AArch64Address.createBaseRegisterOnlyAddress(128, from));
                     }
                     break;
                 case 1:
@@ -275,10 +301,10 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                     }
                     break;
                 case 2:
-                    aesRound(data, subkeys + 0);
+                    aesRound(data, offset(subkeys, 0));
                     break;
                 case 3:
-                    aesRound(data, subkeys + 1);
+                    aesRound(data, offset(subkeys, 1));
                     break;
                 case 4:
                     if (once) {
@@ -286,10 +312,10 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                     }
                     break;
                 case 5:
-                    aesRound(data, subkeys + 2);
+                    aesRound(data, offset(subkeys, 2));
                     break;
                 case 6:
-                    aesRound(data, subkeys + 3);
+                    aesRound(data, offset(subkeys, 3));
                     break;
                 case 7:
                     if (once) {
@@ -297,41 +323,41 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                     }
                     break;
                 case 8:
-                    aesRound(data, subkeys + 4);
+                    aesRound(data, offset(subkeys, 4));
                     break;
                 case 9:
-                    aesRound(data, subkeys + 5);
+                    aesRound(data, offset(subkeys, 5));
                     break;
                 case 10:
-                    aesRound(data, subkeys + 6);
+                    aesRound(data, offset(subkeys, 6));
                     break;
                 case 11:
-                    aesRound(data, subkeys + 7);
+                    aesRound(data, offset(subkeys, 7));
                     break;
                 case 12:
-                    aesRound(data, subkeys + 8);
+                    aesRound(data, offset(subkeys, 8));
                     break;
                 case 13:
-                    aesRound(data, subkeys + 9);
+                    aesRound(data, offset(subkeys, 9));
                     break;
                 case 14:
-                    aesRound(data, subkeys + 10);
+                    aesRound(data, offset(subkeys, 10));
                     break;
                 case 15:
-                    aesRound(data, subkeys + 11);
+                    aesRound(data, offset(subkeys, 11));
                     break;
                 case 16:
-                    aesRound(data, subkeys + 12);
+                    aesRound(data, offset(subkeys, 12));
                     break;
                 case 17:
-                    masm.neon.aese(getSimdRegister(data), getSimdRegister(subkeys + 13));
+                    masm.neon.aese(data, offset(subkeys, 13));
                     break;
                 case 18:
-                    masm.neon.eorVVV(ASIMDSize.FullReg, getSimdRegister(data), getSimdRegister(data), getSimdRegister(subkeys + 14));
+                    masm.neon.eorVVV(ASIMDSize.FullReg, data, data, offset(subkeys, 14));
                     break;
                 case 19:
                     if (!to.equals(Register.None)) {
-                        masm.fstr(128, getSimdRegister(data), AArch64Address.createBaseRegisterOnlyAddress(128, to));
+                        masm.fstr(128, data, AArch64Address.createBaseRegisterOnlyAddress(128, to));
                     }
                     break;
                 default:
@@ -346,7 +372,7 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                             from,
                             to,
                             keylen,
-                            data + 1,
+                            offset(data, 1),
                             subkeys,
                             false);
         }

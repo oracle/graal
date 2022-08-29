@@ -71,6 +71,7 @@ import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
@@ -115,6 +116,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
                 registerStringCodingPlugins(invocationPlugins, replacements);
                 registerAESPlugins(invocationPlugins, replacements, arch);
+                registerGHASHPlugin(invocationPlugins, replacements, arch);
             }
         });
     }
@@ -559,9 +561,22 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         return true;
     }
 
+    public static boolean supportsAESPlugins(AArch64 arch) {
+        return supports(arch, CPUFeature.AES);
+    }
+
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, AArch64 arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerConditional(supports(arch, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
-        r.registerConditional(supports(arch, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
+        r.registerConditional(supportsAESPlugins(arch), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(supportsAESPlugins(arch), new AESCryptPlugin(DECRYPT));
+    }
+
+    public static boolean supportsGHASHPlugins(AArch64 arch) {
+        return supports(arch, CPUFeature.PMULL);
+    }
+
+    private static void registerGHASHPlugin(InvocationPlugins plugins, Replacements replacements, AArch64 arch) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH", replacements);
+        r.registerConditional(supportsGHASHPlugins(arch), new GHASHPlugin());
     }
 }

@@ -573,6 +573,7 @@ public abstract class AArch64ASIMDAssembler {
         CMLT_ZERO(0b01010 << 12),
         ABS(0b01011 << 12),
         XTN(0b10010 << 12),
+        PMULL(0b1110 << 12),
         /* size 0x */
         FCVTN(0b10110 << 12),
         FCVTL(0b10111 << 12),
@@ -590,6 +591,8 @@ public abstract class AArch64ASIMDAssembler {
         NEG(UBit | 0b01011 << 12),
         /* UBit 1, size 00 */
         NOT(UBit | 0b00101 << 12),
+        /* UBit 1, size 01 */
+        RBIT(UBit | 0b00101 << 12),
         /* UBit 1, size 1x */
         FCMGE_ZERO(UBit | 0b01100 << 12),
         FCMLE_ZERO(UBit | 0b01101 << 12),
@@ -843,6 +846,15 @@ public abstract class AArch64ASIMDAssembler {
         int baseEncoding = 0b0_0_0_01110000_00000_0_0000_1_00000_00000;
         int imm5Encoding = (index * 2 * eSize.bytes() | eSize.bytes()) << 16;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | imm5Encoding | rd(dst) | rs1(src));
+    }
+
+    private void copyEncoding(boolean setQBit, ElementSize eSize, Register dst, int indexDst, Register src, int indexSrc) {
+        assert indexDst >= 0 && indexDst < ASIMDSize.FullReg.bytes() / eSize.bytes();
+        assert indexSrc >= 0 && indexSrc < ASIMDSize.FullReg.bytes() / eSize.bytes();
+        int baseEncoding = 0b0_0_1_01110000_00000_0_0000_1_00000_00000;
+        int imm5Encoding = (indexDst * 2 * eSize.bytes() | eSize.bytes()) << 16;
+        int imm4Encoding = (indexSrc * eSize.bytes()) << 11;
+        emitInt(imm4Encoding | baseEncoding | qBit(setQBit) | imm5Encoding | rd(dst) | rs1(src));
     }
 
     private void twoRegMiscEncoding(ASIMDInstruction instr, ASIMDSize size, int eSizeEncoding, Register dst, Register src) {
@@ -2064,6 +2076,22 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.175 Insert vector element from another vector element.<br>
+     *
+     * This instruction copies the vector element of the source register to the specified vector
+     * element of the destination register.
+     *
+     * @param eSize size of value to duplicate.
+     * @param dst SIMD register.
+     * @param indexDst offset of value to store.
+     * @param src SIMD register.
+     * @param indexSrc offset of value to duplicate.
+     */
+    public void insVV(ElementSize eSize, Register dst, int indexDst, Register src, int indexSrc) {
+        copyEncoding(true, eSize, dst, indexDst, src, indexSrc);
+    }
+
+    /**
      * C7.2.176 Insert vector element from general-purpose register.<br>
      *
      * <code>dst[index] = src</code>
@@ -2337,6 +2365,41 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.ORR, size, elemSize10, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.215 Polynomial Multiply Long.<br>
+     *
+     * This instruction multiplies corresponding elements in the lower or upper half of the vectors.
+     *
+     * @param size source register size.
+     * @param elementSize source element size. Must be ElementSize.Byte or ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void pmullVVV(ASIMDSize size, ElementSize elementSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert elementSize == ElementSize.Byte || elementSize == ElementSize.DoubleWord;
+
+        threeDifferentEncoding(ASIMDInstruction.PMULL, size == ASIMDSize.FullReg, elemSizeXX(elementSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.218 Reverse Bit order.<br>
+     * This instruction reverses the bits in each byte.
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void rbitVV(ASIMDSize size, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        twoRegMiscEncoding(ASIMDInstruction.RBIT, size, elemSize01, dst, src);
     }
 
     /**

@@ -567,7 +567,8 @@ suite = {
       "dependencies" : [
         "JVMCI_HOTSPOT",
         "org.graalvm.compiler.api.runtime",
-        "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.replacements.amd64",
+        "org.graalvm.compiler.replacements.aarch64",
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
       ],
@@ -635,7 +636,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core.aarch64",
         "org.graalvm.compiler.hotspot",
-        "org.graalvm.compiler.replacements.aarch64",
       ],
       "requires" : [
         "jdk.unsupported" # sun.misc.Unsafe
@@ -653,7 +653,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.amd64",
-        "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.hotspot",
       ],
       "requiresConcealed" : {

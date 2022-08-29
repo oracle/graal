@@ -70,6 +70,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
+import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -579,6 +580,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitAESDecrypt(Value from, Value to, Value key) {
         append(new AArch64AESDecryptOp(asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
+        append(new AArch64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
     }
 
     @Override

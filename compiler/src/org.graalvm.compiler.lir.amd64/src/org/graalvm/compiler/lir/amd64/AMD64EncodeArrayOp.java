@@ -36,6 +36,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -161,7 +162,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
                 masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -64));
                 masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Stride.S2, -32));
                 masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, YMM);
-                masm.vptest(vectorTemp2, vectorTemp1);
+                masm.vptest(vectorTemp2, vectorTemp1, AVXKind.AVXSize.YMM);
                 masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
                 masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, YMM);
                 masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, YMM);
@@ -184,7 +185,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
             if (supportsAVX2AndYMM()) {
                 masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Stride.S2, -32));
-                masm.vptest(vectorTemp2, vectorTemp1);
+                masm.vptest(vectorTemp2, vectorTemp1, AVXKind.AVXSize.YMM);
                 masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
                 masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, YMM);
                 masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, YMM);
