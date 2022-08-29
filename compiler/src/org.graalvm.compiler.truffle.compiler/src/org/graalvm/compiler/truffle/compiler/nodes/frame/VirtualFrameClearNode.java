@@ -70,9 +70,9 @@ public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements V
                 JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
                 boolean success;
                 if ((accessMode & VirtualFrameAccessFlags.STATIC_FLAG) != 0) {
-                    success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1);
-                } else {
                     success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag), tagKind, -1);
+                } else {
+                    success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1);
                 }
                 if ((accessMode & VirtualFrameAccessFlags.OBJECT_FLAG) != 0) {
                     success = success && tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
