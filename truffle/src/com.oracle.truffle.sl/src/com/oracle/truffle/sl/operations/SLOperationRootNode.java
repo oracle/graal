@@ -114,6 +114,10 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
         super((SLLanguage) language, frameDescriptor.build());
     }
 
+    protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super((SLLanguage) language, frameDescriptor);
+    }
+
     @Override
     public SLExpressionNode getBodyNode() {
         return null;
@@ -127,10 +131,6 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
     @Override
     public TruffleString getTSName() {
         return getMetadata(MethodName);
-    }
-
-    protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-        super((SLLanguage) language, frameDescriptor);
     }
 
     @GenerateOperations.Metadata //

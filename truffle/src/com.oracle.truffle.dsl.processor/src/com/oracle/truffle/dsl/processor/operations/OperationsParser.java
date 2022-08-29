@@ -53,6 +53,7 @@ import java.util.Set;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -63,6 +64,7 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -92,6 +94,56 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         if (ElementUtils.findParentEnclosingType(typeElement).isPresent()) {
             data.addError(typeElement, "Operations class must be a top-level class.");
+        }
+
+        if (!ElementUtils.isAssignable(typeElement.asType(), types.RootNode)) {
+            data.addError(typeElement, "Operation class must directly or indirectly subclass RootNode");
+        }
+
+        if (!ElementUtils.isAssignable(typeElement.asType(), types.OperationRootNode)) {
+            data.addError(typeElement, "Operation class must directly or indirectly implement OperationRootNode");
+        }
+
+        if (data.hasErrors()) {
+            return data;
+        }
+
+        boolean haveNonBuilderCtor = false;
+        boolean haveBuilderCtor = false;
+
+        for (ExecutableElement ctor : ElementFilter.constructorsIn(typeElement.getEnclosedElements())) {
+            boolean isValid = ctor.getParameters().size() == 2;
+
+            isValid = isValid && ElementUtils.isAssignable(ctor.getParameters().get(0).asType(), types.TruffleLanguage);
+
+            isValid = isValid && (ctor.getModifiers().contains(Modifier.PUBLIC) || ctor.getModifiers().contains(Modifier.PROTECTED));
+
+            if (isValid) {
+                TypeMirror paramType2 = ctor.getParameters().get(1).asType();
+                if (ElementUtils.isAssignable(paramType2, types.FrameDescriptor)) {
+                    haveNonBuilderCtor = true;
+                } else if (ElementUtils.isAssignable(paramType2, context.getDeclaredType(TruffleTypes.FrameDescriptor_Name + ".Builder"))) {
+                    haveBuilderCtor = true;
+                } else {
+                    isValid = false;
+                }
+            }
+
+            if (!isValid) {
+                data.addError(ctor, "Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder)");
+            }
+        }
+
+        if (!haveNonBuilderCtor) {
+            data.addError(typeElement, "Operation class requires a (TruffleLanguage, FrameDescriptor) constructor");
+        }
+
+        if (!haveBuilderCtor) {
+            data.addError(typeElement, "Operation class requires a (TruffleLanguage, FrameDescriptor.Builder) constructor");
+        }
+
+        if (data.hasErrors()) {
+            return data;
         }
 
         // find all metadata
