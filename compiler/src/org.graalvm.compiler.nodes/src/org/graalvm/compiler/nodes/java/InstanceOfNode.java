@@ -120,7 +120,12 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
         } else if (!checkedStamp.isExactType()) {
             TypeReference checkedType = TypeReference.createTrusted(tool.getAssumptions(), checkedStamp.type());
             if (checkedType != null && checkedType.isExact()) {
-                return InstanceOfNode.create(checkedType, forValue, profile, anchor);
+                // Preserve null-ness of the original stamp.
+                if (checkedStamp.nonNull()) {
+                    return create(checkedType, forValue, profile, anchor);
+                } else {
+                    return createAllowNull(checkedType, forValue, profile, anchor);
+                }
             }
         }
         return this;
