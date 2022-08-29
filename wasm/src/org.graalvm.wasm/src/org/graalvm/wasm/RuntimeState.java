@@ -97,14 +97,14 @@ public class RuntimeState {
      * be dropped after using them. They can be set to null even in compiled code, therefore they
      * cannot be compilation final.
      */
-    private Object[][] elemInstances;
+    @CompilationFinal(dimensions = 0) private Object[][] elemInstances;
 
     /**
      * The passive data instances that can be used to lazily initialize memory. They can potentially
      * be dropped after using them. They can be set to null even in compiled code, therefore they
      * cannot be compilation final.
      */
-    private byte[][] dataInstances;
+    @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
 
     @CompilationFinal private Linker.LinkState linkState;
 
