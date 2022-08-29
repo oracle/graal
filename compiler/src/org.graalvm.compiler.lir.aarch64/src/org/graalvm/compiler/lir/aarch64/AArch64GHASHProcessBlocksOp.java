@@ -46,6 +46,7 @@ import static org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp.offset;
 
 import java.util.Arrays;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -107,6 +108,11 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        assert stateValue.getPlatformKind().equals(AArch64Kind.QWORD) : stateValue;
+        assert htblValue.getPlatformKind().equals(AArch64Kind.QWORD) : htblValue;
+        assert originalDataValue.getPlatformKind().equals(AArch64Kind.QWORD) : originalDataValue;
+        assert originalBlocksValue.getPlatformKind().equals(AArch64Kind.DWORD) : originalBlocksValue;
+
         Label labelSmall = new Label();
         Label labelDone = new Label();
 
@@ -119,7 +125,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
         Register blocks = asRegister(blocksValue);
 
         masm.mov(64, data, originalData);
-        masm.mov(64, blocks, originalBlocks);
+        masm.mov(32, blocks, originalBlocks);
 
         masm.compare(32, blocks, 8);
         masm.branchConditionally(ConditionFlag.LT, labelSmall);
@@ -387,8 +393,8 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                         /* temp */v3,
                         true).unroll();
 
-        masm.sub(64, blocks, blocks, unrolls);
-        masm.compare(64, blocks, unrolls * 2);
+        masm.sub(32, blocks, blocks, unrolls);
+        masm.compare(32, blocks, unrolls * 2);
         masm.branchConditionally(ConditionFlag.GE, labelGHASHLoop);
 
         // Merge the #unrolls states. Note that the data for the next
@@ -429,7 +435,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
             masm.neon.eorVVV(ASIMDSize.FullReg, v0, v0, offset(v0, ofs + REGISTER_STRIDE));
         }
 
-        masm.sub(64, blocks, blocks, unrolls);
+        masm.sub(32, blocks, blocks, unrolls);
 
         // And finally bit-reverse the state back to big endian.
         masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v0, v0);
