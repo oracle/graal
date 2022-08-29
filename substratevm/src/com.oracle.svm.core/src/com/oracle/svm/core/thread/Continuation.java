@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -32,7 +33,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -122,7 +122,6 @@ public final class Continuation {
      *         which passes an object result.
      */
     @NeverInline("Accesses caller stack pointer and return address.")
-    @Uninterruptible(reason = "Prevent safepoint checks between copying frames and farReturn.")
     private Object enter1(boolean isContinue) {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
@@ -143,8 +142,8 @@ public final class Continuation {
                 throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
             }
 
-            // enter() may do something interruptible.
-            ContinuationSupport.enter(cont, topSP);
+            Object preparedData = ImageSingletons.lookup(ContinuationSupport.class).prepareCopy(cont);
+            ContinuationSupport.enter(cont, topSP, preparedData);
             throw VMError.shouldNotReachHere();
         } else {
             assert stored == null;
@@ -158,7 +157,6 @@ public final class Continuation {
     }
 
     @NeverInline("Needs a separate frame which is part of the continuation stack that we can eventually return to.")
-    @Uninterruptible(reason = "Not actually, but because caller is uninterruptible.", calleeMustBe = false)
     private void enter2() {
         try {
             target.run();

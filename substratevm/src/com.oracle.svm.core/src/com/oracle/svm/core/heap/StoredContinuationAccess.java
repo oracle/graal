@@ -163,13 +163,13 @@ public final class StoredContinuationAccess {
 
     public static StoredContinuation clone(StoredContinuation cont) {
         StoredContinuation clone = allocate(getFramesSizeInBytes(cont));
-        return fillCloneUninterruptibly(cont, clone);
+        Object preparedData = ImageSingletons.lookup(ContinuationSupport.class).prepareCopy(cont);
+        return fillCloneUninterruptibly(cont, clone, preparedData);
     }
 
     @Uninterruptible(reason = "Prevent garbage collection while initializing instance and copying frames.")
-    private static StoredContinuation fillCloneUninterruptibly(StoredContinuation cont, StoredContinuation clone) {
-        // copyFrames() may do something interruptible before uninterruptibly copying frames.
-        CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, clone);
+    private static StoredContinuation fillCloneUninterruptibly(StoredContinuation cont, StoredContinuation clone, Object preparedData) {
+        CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, clone, preparedData);
         setIP(clone, ip);
         afterFill(clone);
         return clone;

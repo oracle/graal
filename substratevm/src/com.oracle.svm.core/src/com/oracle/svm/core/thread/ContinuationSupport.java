@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class ContinuationSupport {
     private long ipOffset;
@@ -64,6 +64,10 @@ public class ContinuationSupport {
         return ipOffset;
     }
 
+    public Object prepareCopy(@SuppressWarnings("unused") StoredContinuation storedCont) {
+        return null;
+    }
+
     /**
      * This method reserves the extra stack space for the continuation. Be careful when modifying
      * the code or the arguments of this method because we need the guarantee the following
@@ -73,26 +77,27 @@ public class ContinuationSupport {
      * manipulated (and therefore incorrect) stack pointer.</li>
      * <li>The method must never return because the stack pointer would be incorrect
      * afterwards.</li>
+     * <li>Only uninterruptible code may be executed once this method is called.</li>
      * </ul>
      */
     @NeverInline("Modifies the stack pointer manually, which breaks stack accesses.")
     @Uninterruptible(reason = "Manipulates the stack pointer.")
-    public static void enter(StoredContinuation storedCont, Pointer topSP) {
+    public static void enter(StoredContinuation storedCont, Pointer topSP, Object preparedData) {
         WriteStackPointerNode.write(topSP);
-        enter0(storedCont, topSP);
+        enter0(storedCont, topSP, preparedData);
     }
 
     @NeverInline("The caller modified the stack pointer manually, so we need a new stack frame.")
     @Uninterruptible(reason = "Copies stack frames containing references.")
-    private static void enter0(StoredContinuation storedCont, Pointer topSP) {
+    private static void enter0(StoredContinuation storedCont, Pointer topSP, Object preparedData) {
         // copyFrames() may do something interruptible before uninterruptibly copying frames.
         // Code must not rely on remaining uninterruptible until after frames were copied.
-        CodePointer enterIP = singleton().copyFrames(storedCont, topSP);
+        CodePointer enterIP = singleton().copyFrames(storedCont, topSP, preparedData);
         KnownIntrinsics.farReturn(Continuation.FREEZE_OK, topSP, enterIP, false);
     }
 
     @Uninterruptible(reason = "Copies stack frames containing references.")
-    protected CodePointer copyFrames(StoredContinuation storedCont, Pointer topSP) {
+    protected CodePointer copyFrames(StoredContinuation storedCont, Pointer topSP, @SuppressWarnings("unused") Object preparedData) {
         int totalSize = StoredContinuationAccess.getFramesSizeInBytes(storedCont);
         assert totalSize % ConfigurationValues.getTarget().wordSize == 0;
 
@@ -102,7 +107,7 @@ public class ContinuationSupport {
     }
 
     @Uninterruptible(reason = "Copies stack frames containing references.")
-    public CodePointer copyFrames(StoredContinuation fromCont, StoredContinuation toCont) {
-        return copyFrames(fromCont, StoredContinuationAccess.getFramesStart(toCont));
+    public CodePointer copyFrames(StoredContinuation fromCont, StoredContinuation toCont, Object preparedData) {
+        return copyFrames(fromCont, StoredContinuationAccess.getFramesStart(toCont), preparedData);
     }
 }
