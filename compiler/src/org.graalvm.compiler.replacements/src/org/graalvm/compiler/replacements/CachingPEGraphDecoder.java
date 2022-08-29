@@ -138,8 +138,9 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         /*
          * Always parse graphs without assumptions, this is required when graphs are cached across
          * compilations. If the shared graph cache is disabled (--engine.EncodedGraphCache=false) a
-         * compilation-local cache is used and graphs can contain assumptions, but this offer little
-         * to no benefit. Assumptions can be added/enabled later during PE/compilation.
+         * compilation-local cache is used and graphs can contain assumptions, but this offers
+         * little to no benefit and only meant for debugging. Assumptions can be added/enabled later
+         * during PE/compilation.
          */
         // @formatter:off
         graphToEncode = new StructuredGraph.Builder(options, debug, AllowAssumptions.ifTrue(allowAssumptionsDuringParsing)).
