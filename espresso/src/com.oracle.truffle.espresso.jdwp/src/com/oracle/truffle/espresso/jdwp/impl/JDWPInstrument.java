@@ -50,6 +50,8 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     private Collection<Thread> activeThreads = new ArrayList<>();
     private PrintStream err;
 
+    private volatile boolean resetting;
+
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
         assert controller == null;
@@ -62,43 +64,52 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
 
     public void reset(boolean prepareForReconnect) {
         // stop all running jdwp threads in an orderly fashion
-        for (Thread activeThread : activeThreads) {
-            activeThread.interrupt();
-        }
-        // close the connection to the debugger
-        if (connection != null) {
-            connection.close();
-        }
-        // wait for threads to fully stop
-        boolean stillRunning = true;
-        while (stillRunning) {
-            stillRunning = false;
+        resetting = true;
+        try {
             for (Thread activeThread : activeThreads) {
-                if (activeThread.isAlive()) {
-                    stillRunning = true;
+                activeThread.interrupt();
+            }
+            // close the connection to the debugger
+            if (connection != null) {
+                connection.close();
+            }
+            // wait for threads to fully stop
+            boolean stillRunning = true;
+            while (stillRunning) {
+                stillRunning = false;
+                for (Thread activeThread : activeThreads) {
+                    if (activeThread.isAlive()) {
+                        stillRunning = true;
+                    }
+                }
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    // ignore
                 }
             }
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                // ignore
+
+            // re-enable GC for all objects
+            controller.getGCPrevention().clearAll();
+
+            // end the current debugger session to avoid hitting any further breakpoints
+            // when resuming all threads
+            controller.endSession();
+
+            // resume all threads
+            controller.resumeAll(true);
+
+            if (prepareForReconnect) {
+                // replace the controller instance
+                controller.reInitialize();
             }
+        } finally {
+            resetting = false;
         }
+    }
 
-        // re-enable GC for all objects
-        controller.getGCPrevention().clearAll();
-
-        // end the current debugger session to avoid hitting any further breakpoints
-        // when resuming all threads
-        controller.endSession();
-
-        // resume all threads
-        controller.resumeAll(true);
-
-        if (prepareForReconnect) {
-            // replace the controller instance
-            controller.reInitialize();
-        }
+    public boolean isResetting() {
+        return resetting;
     }
 
     public void printStackTrace(Throwable e) {
@@ -156,7 +167,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     void doConnect(boolean suspend, boolean server) throws IOException {
-        SocketConnection socketConnection = HandshakeController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
+        SocketConnection socketConnection = HandshakeController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads, this);
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         controller.getEventListener().setConnection(socketConnection);
@@ -180,8 +191,10 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         } catch (ConnectException ex) {
             handleConnectException(ex, true);
         } catch (IOException e) {
-            printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
-            printStackTrace(e);
+            if (!isResetting()) {
+                printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
+                printStackTrace(e);
+            }
         }
     }
 

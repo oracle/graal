@@ -40,7 +40,7 @@ public final class HandshakeController {
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
-    public static SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads) throws IOException {
+    public static SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads, JDWPInstrument instrument) throws IOException {
         String connectionHost = host;
         if (connectionHost == null) {
             // only allow local host if nothing specified
@@ -61,8 +61,19 @@ public final class HandshakeController {
             // print to console that we're listening
             String address = host != null ? host + ":" + port : "" + port;
             System.out.println("Listening for transport dt_socket at address: " + address);
-            // block until a debugger has accepted the socket
-            connectionSocket = serverSocket.accept();
+
+            JdwpServerSocketCloser jdwpServerSocketCloser = new JdwpServerSocketCloser(serverSocket, instrument, "jdwp-server-socket-closer");
+            jdwpServerSocketCloser.setDaemon(true);
+            jdwpServerSocketCloser.start();
+            activeThreads.add(jdwpServerSocketCloser);
+
+            try {
+                // block until a debugger has accepted the socket
+                connectionSocket = serverSocket.accept();
+            } finally {
+                jdwpServerSocketCloser.terminate();
+                activeThreads.remove(jdwpServerSocketCloser);
+            }
         } else {
             connectionSocket = new Socket(connectionHost, port);
         }
@@ -109,5 +120,44 @@ public final class HandshakeController {
         // handshake received, so return the gesture to establish the jdwp transport
         s.getOutputStream().write(hello);
         return true;
+    }
+
+    private static class JdwpServerSocketCloser extends Thread {
+        private final ServerSocket serverSocket;
+        private final JDWPInstrument instrument;
+
+        boolean terminated;
+
+        JdwpServerSocketCloser(ServerSocket serverSocket, JDWPInstrument instrument, String name) {
+            super(name);
+            this.serverSocket = serverSocket;
+            this.instrument = instrument;
+        }
+
+        @Override
+        public void run() {
+            synchronized (this) {
+                while (!terminated && !instrument.isResetting()) {
+                    try {
+                        this.wait();
+                    } catch (InterruptedException e1) {
+                        // Swallow the exception
+                    }
+                }
+            }
+            if (!serverSocket.isClosed()) {
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    instrument.printError("Critical failure closing jdwp connection: " + e.getLocalizedMessage());
+                    instrument.printStackTrace(e);
+                }
+            }
+        }
+
+        synchronized void terminate() {
+            terminated = true;
+            notify();
+        }
     }
 }
