@@ -62,6 +62,7 @@ import java.util.Objects;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -76,6 +77,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -1769,7 +1771,7 @@ final class HostObject implements TruffleObject {
     }
 
     @TruffleBoundary
-    static String toStringImpl(HostContext context, Object javaObject, int level, boolean allowSideEffects) {
+    private static String toStringImpl(HostContext context, Object javaObject, int level, boolean allowSideEffects) {
         try {
             if (javaObject == null) {
                 return "null";
@@ -1778,11 +1780,19 @@ final class HostObject implements TruffleObject {
             } else if (javaObject instanceof Class) {
                 return ((Class<?>) javaObject).getTypeName();
             } else {
-                if (allowSideEffects) {
-                    return Objects.toString(javaObject);
-                } else {
-                    return javaObject.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(javaObject));
+                if (allowSideEffects && context != null) {
+                    Object hostObject = HostObject.forObject(javaObject, context);
+                    try {
+                        InteropLibrary thisLib = InteropLibrary.getUncached(hostObject);
+                        if (thisLib.isMemberInvocable(hostObject, "toString")) {
+                            Object result = thisLib.invokeMember(hostObject, "toString");
+                            return InteropLibrary.getUncached().asString(result);
+                        }
+                    } catch (InteropException e) {
+                        // ignore
+                    }
                 }
+                return javaObject.getClass().getTypeName();
             }
         } catch (Throwable t) {
             throw context.hostToGuestException(t);
@@ -1790,6 +1800,7 @@ final class HostObject implements TruffleObject {
     }
 
     private static String arrayToString(HostContext context, Object array, int level, boolean allowSideEffects) {
+        CompilerAsserts.neverPartOfCompilation();
         if (array == null) {
             return "null";
         }
