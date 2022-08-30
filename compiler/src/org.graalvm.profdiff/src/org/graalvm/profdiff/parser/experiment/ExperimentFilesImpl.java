@@ -37,10 +37,19 @@ import org.graalvm.profdiff.core.ExperimentId;
  * Represents files belonging to a single experiment.
  */
 public class ExperimentFilesImpl implements ExperimentFiles {
+    /**
+     * The ID of this experiment.
+     */
     private final ExperimentId experimentId;
 
+    /**
+     * The path to the directory which contains the optimization logs of this experiment.
+     */
     private final String optimizationLogPath;
 
+    /**
+     * The file path to the JSON proftool output (mx profjson) of this experiment.
+     */
     private final String proftoolOutputPath;
 
     /**
@@ -49,8 +58,7 @@ public class ExperimentFilesImpl implements ExperimentFiles {
      *
      * @param experimentId the ID of this experiment
      * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson)
-     * @param optimizationLogPath the path to the directory which contains optimization logs of the
-     *            same execution
+     * @param optimizationLogPath the path to the directory which contains the optimization logs
      */
     public ExperimentFilesImpl(ExperimentId experimentId, String proftoolOutputPath, String optimizationLogPath) {
         this.experimentId = experimentId;
@@ -63,6 +71,16 @@ public class ExperimentFilesImpl implements ExperimentFiles {
         return new NamedReader(proftoolOutputPath, new FileReader(proftoolOutputPath));
     }
 
+    /**
+     * Gets the list of readers reading an optimization log. Each reader describes one compiled
+     * method. Individual optimization logs are discovered by listing the files in the provided
+     * {@link #optimizationLogPath}.
+     *
+     * The optimization log may sometimes produce an empty file. In that case, the file skipped and
+     * a warning is printed to stderr.
+     *
+     * @return the list of readers each reading an optimization log
+     */
     @Override
     public List<NamedReader> getOptimizationLogs() throws IOException {
         File[] files = new File(optimizationLogPath).listFiles();
@@ -71,6 +89,10 @@ public class ExperimentFilesImpl implements ExperimentFiles {
         }
         List<NamedReader> readers = new ArrayList<>();
         for (File file : files) {
+            if (file.length() == 0) {
+                System.err.println("Warning: The file " + file.getPath() + " is empty.");
+                continue;
+            }
             readers.add(new NamedReader(file.getPath(), new FileReader(file)));
         }
         return readers;

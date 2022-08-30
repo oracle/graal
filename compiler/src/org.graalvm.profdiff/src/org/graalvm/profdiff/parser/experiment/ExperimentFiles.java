@@ -79,8 +79,8 @@ public interface ExperimentFiles {
     NamedReader getProftoolOutput() throws FileNotFoundException;
 
     /**
-     * Gets the list of readers reading an optimization log. Each reader should describe one
-     * compiled method. All read files must belong to one experiment with a matching execution ID.
+     * Gets the list of readers reading an optimization log. Each reader describes one compiled
+     * method.
      *
      * @return the list of readers each reading an optimization log
      */
