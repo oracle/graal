@@ -172,7 +172,7 @@
     "gate-compiler-benchmarktest-labsjdk-11-linux-amd64": {},
     "gate-compiler-benchmarktest-labsjdk-17-linux-amd64": {},
 
-    "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00") + {capabilities+: ["!s3_16_32"]}, # TODO Remove !s3_16_32 when GR-39450 is fixed,
+    "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00"),
 
     "gate-compiler-bootstrap_lite-labsjdk-11-darwin-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
