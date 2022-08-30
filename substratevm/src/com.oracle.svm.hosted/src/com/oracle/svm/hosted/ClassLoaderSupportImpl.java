@@ -59,7 +59,8 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
-import com.oracle.svm.util.ModuleSupport;
+
+import jdk.internal.module.Modules;
 
 class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
@@ -239,8 +240,11 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
             return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
+        Module builderModule = ClassLoaderSupportImpl.class.getModule();
         for (Module module : modules) {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ClassLoaderSupportImpl.class, false, module.getName(), packageName);
+            if (builderModule.isNamed()) {
+                Modules.addOpens(module, packageName, builderModule);
+            }
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
         return resourceBundles;

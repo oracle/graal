@@ -212,7 +212,7 @@ public class NativeImage {
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
-    final String enableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
+    final String oHEnableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHOptimize = oH(SubstrateOptions.Optimize);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
@@ -1033,7 +1033,8 @@ public class NativeImage {
 
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
         imagePath = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHPath);
-        boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(enableSharedLibraryFlag));
+        boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(oHEnableSharedLibraryFlag));
+        boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
 
         if (!printFlags) {
@@ -1055,7 +1056,7 @@ public class NativeImage {
                 boolean hasMainClassModule = mainClassModule != null && !mainClassModule.isEmpty();
                 boolean hasMainClass = mainClass != null && !mainClass.isEmpty();
                 if (extraImageArgs.isEmpty()) {
-                    if (buildExecutable && !hasMainClassModule && !hasMainClass) {
+                    if (buildExecutable && !hasMainClassModule && !hasMainClass && !listModules) {
                         String moduleMsg = config.modulePathBuild ? " (or <module>/<mainclass>)" : "";
                         showError("Please specify class" + moduleMsg + " containing the main entry point method. (see --help)");
                     }
@@ -1075,7 +1076,7 @@ public class NativeImage {
                         } else if (getHostedOptionFinalArgumentValue(imageBuilderArgs, oHName) == null) {
                             if (hasMainClassModule) {
                                 imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase());
-                            } else {
+                            } else if (!listModules) {
                                 /* Although very unlikely, report missing image-name if needed. */
                                 throw showError("Missing image-name. Use -o <imagename> to provide one.");
                             }
