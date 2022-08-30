@@ -96,6 +96,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
@@ -105,6 +106,7 @@ import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -454,24 +456,25 @@ public class SVMHost extends HostVM {
         return automaticSubstitutions;
     }
 
-    private static HubType computeHubType(AnalysisType type) {
+    private static int computeHubType(AnalysisType type) {
         if (type.isArray()) {
             if (type.getComponentType().isPrimitive() || type.getComponentType().isWordType()) {
-                return HubType.TypeArray;
+                return HubType.PRIMITIVE_ARRAY;
             } else {
-                return HubType.ObjectArray;
+                return HubType.OBJECT_ARRAY;
             }
         } else if (type.isInstanceClass()) {
             if (Reference.class.isAssignableFrom(type.getJavaClass())) {
-                return HubType.InstanceReference;
+                return HubType.REFERENCE_INSTANCE;
             } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(type.getJavaClass())) {
-                return HubType.PodInstance;
+                return HubType.POD_INSTANCE;
+            } else if (Continuation.isSupported() && type.getJavaClass() == StoredContinuation.class) {
+                return HubType.STORED_CONTINUATION_INSTANCE;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
-            return HubType.Instance;
-        } else {
-            return HubType.Other;
+            return HubType.INSTANCE;
         }
+        return HubType.OTHER;
     }
 
     private static ReferenceType computeReferenceType(AnalysisType type) {

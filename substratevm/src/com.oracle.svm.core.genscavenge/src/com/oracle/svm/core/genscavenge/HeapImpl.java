@@ -31,7 +31,6 @@ import java.util.List;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -58,7 +57,6 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
-import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -87,8 +85,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
@@ -466,11 +462,6 @@ public final class HeapImpl extends Heap {
     boolean walkNativeImageHeapRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
         return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
                         (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
-    }
-
-    @Override
-    public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
-        return RememberedSet.get().createBarrierSet(metaAccess);
     }
 
     @Override

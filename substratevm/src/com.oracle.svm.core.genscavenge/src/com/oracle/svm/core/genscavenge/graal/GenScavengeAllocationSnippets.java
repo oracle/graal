@@ -51,11 +51,15 @@ import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatStoredContinuationNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -71,27 +75,37 @@ final class GenScavengeAllocationSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents, int fillStartOffset,
-                    boolean emitMemoryBarrier, @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling,
+    public static Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents, boolean emitMemoryBarrier,
+                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return alloc().formatArray(objectHeader, size, length, memory, fillContents, fillStartOffset,
-                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        return alloc().formatArray(objectHeader, size, length, memory, fillContents, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+    }
+
+    @Snippet
+    public static Object formatStoredContinuation(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, @ConstantParameter long ipOffset,
+                    @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
+        DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+        int layoutEncoding = hubNonNull.getLayoutEncoding();
+        UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
+        Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
+        return alloc().formatStoredContinuation(objectHeader, size, length, memory, emitMemoryBarrier, ipOffset, snippetCounters);
     }
 
     @Snippet
     public static Object formatPodSnippet(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents,
-                    int fillStartOffset, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling,
+                    @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
-
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         byte[] refMapNonNull = (byte[]) PiNode.piCastNonNull(referenceMap, SnippetAnchorNode.anchor());
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return alloc().formatPod(objectHeader, hubNonNull, arrayLength, refMapNonNull, memory, fillContents, fillStartOffset,
-                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        int layoutEncoding = hubNonNull.getLayoutEncoding();
+        UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, arrayLength);
+        return alloc().formatPod(objectHeader, hubNonNull, allocationSize, arrayLength, refMapNonNull, memory, fillContents, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling,
+                        snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
@@ -107,6 +121,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
         private final SubstrateAllocationSnippets.Templates baseTemplates;
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
+        private final SnippetInfo formatStoredContinuation;
         private final SnippetInfo formatPod;
 
         Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
@@ -114,13 +129,19 @@ final class GenScavengeAllocationSnippets implements Snippets {
             this.baseTemplates = baseTemplates;
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet");
             formatArray = snippet(GenScavengeAllocationSnippets.class, "formatArraySnippet");
-            formatPod = snippet(GenScavengeAllocationSnippets.class, "formatPodSnippet", NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+            formatStoredContinuation = Continuation.isSupported() ? snippet(GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
+            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(GenScavengeAllocationSnippets.class, "formatPodSnippet", NamedLocationIdentity.getArrayLocation(JavaKind.Byte)) : null;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
             lowerings.put(FormatObjectNode.class, new FormatObjectLowering());
             lowerings.put(FormatArrayNode.class, new FormatArrayLowering());
-            lowerings.put(FormatPodNode.class, new FormatPodLowering());
+            if (Continuation.isSupported()) {
+                lowerings.put(FormatStoredContinuationNode.class, new FormatStoredContinuationLowering());
+            }
+            if (Pod.RuntimeSupport.isPresent()) {
+                lowerings.put(FormatPodNode.class, new FormatPodLowering());
+            }
         }
 
         private class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
@@ -155,10 +176,29 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
-                args.add("fillStartOffset", node.getFillStartOffset());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private class FormatStoredContinuationLowering implements NodeLoweringProvider<FormatStoredContinuationNode> {
+            @Override
+            public void lower(FormatStoredContinuationNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                    return;
+                }
+                Arguments args = new Arguments(formatStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("memory", node.getMemory());
+                args.add("hub", node.getHub());
+                args.add("length", node.getLength());
+                args.add("rememberedSet", node.getRememberedSet());
+                args.add("unaligned", node.getUnaligned());
+                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
+                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -179,7 +219,6 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
-                args.add("fillStartOffset", node.getFillStartOffset());
                 args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public final class LoomSupport {
-    private static final boolean isEnabled;
-    static {
-        boolean enabled = false;
-        if (JavaVersionUtil.JAVA_SPEC == 19) {
-            try {
-                enabled = (Boolean) Class.forName("jdk.internal.misc.PreviewFeatures")
-                                .getDeclaredMethod("isEnabled").invoke(null);
-            } catch (ReflectiveOperationException ignored) {
-            }
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+
+@AutomaticFeature
+public class AllocationFeature implements InternalFeature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(SubstrateAllocationSnippets.class)) {
+            ImageSingletons.add(SubstrateAllocationSnippets.class, new SubstrateAllocationSnippets());
         }
-        isEnabled = enabled;
     }
 
-    @Fold
-    public static boolean isEnabled() {
-        return isEnabled;
-    }
-
-    // See JDK native enum freeze_result
-    static final int FREEZE_OK = 0;
-    static final int FREEZE_PINNED_CS = 2; // critical section
-    static final int FREEZE_PINNED_NATIVE = 3;
-
-    public static Continuation getInternalContinuation(Target_jdk_internal_vm_Continuation cont) {
-        return cont.internal;
-    }
-
-    private LoomSupport() {
+    @Override
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        ImageSingletons.lookup(SubstrateAllocationSnippets.class).registerForeignCalls(foreignCalls);
     }
 }

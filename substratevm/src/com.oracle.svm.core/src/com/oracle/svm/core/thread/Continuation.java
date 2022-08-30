@@ -33,7 +33,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -123,7 +122,6 @@ public final class Continuation {
      *         which passes an object result.
      */
     @NeverInline("Accesses caller stack pointer and return address.")
-    @Uninterruptible(reason = "Prevent safepoint checks between copying frames and farReturn.")
     private Object enter1(boolean isContinue) {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
@@ -131,29 +129,22 @@ public final class Continuation {
 
         assert sp.isNull() && ip.isNull() && baseSP.isNull();
         if (isContinue) {
-            assert stored != null;
-
-            int totalSize = StoredContinuationAccess.getFramesSizeInBytes(stored);
-            Pointer topSP = currentSP.subtract(totalSize);
-            if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
-                throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
-            }
-
-            // copyFrames() may do something interruptible before uninterruptibly copying frames.
-            // Code must not rely on remaining uninterruptible until after frames were copied.
-            CodePointer enterIP = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(stored, topSP);
-
-            /*
-             * NO CALLS BEYOND THIS POINT! They would overwrite the frames we just copied.
-             */
-
+            StoredContinuation cont = this.stored;
+            assert cont != null;
             this.ip = callerIP;
             this.sp = callerSP;
             this.baseSP = currentSP;
             this.stored = null;
-            KnownIntrinsics.farReturn(FREEZE_OK, topSP, enterIP, false);
-            throw VMError.shouldNotReachHere();
 
+            int framesSize = StoredContinuationAccess.getFramesSizeInBytes(cont);
+            Pointer topSP = currentSP.subtract(framesSize);
+            if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
+                throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
+            }
+
+            Object preparedData = ImageSingletons.lookup(ContinuationSupport.class).prepareCopy(cont);
+            ContinuationSupport.enter(cont, topSP, preparedData);
+            throw VMError.shouldNotReachHere();
         } else {
             assert stored == null;
             this.ip = callerIP;
@@ -166,7 +157,6 @@ public final class Continuation {
     }
 
     @NeverInline("Needs a separate frame which is part of the continuation stack that we can eventually return to.")
-    @Uninterruptible(reason = "Not actually, but because caller is uninterruptible.", calleeMustBe = false)
     private void enter2() {
         try {
             target.run();

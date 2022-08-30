@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -73,10 +75,22 @@ public class ContinuationsFeature implements Feature {
                 ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
             }
 
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            access.registerAsAccessed(ipField);
+
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
         } else {
             access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
+        }
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (Continuation.isSupported()) {
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            long offset = access.objectFieldOffset(ipField);
+            ContinuationSupport.singleton().setIPOffset(offset);
         }
     }
 
