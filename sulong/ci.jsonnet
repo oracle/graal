@@ -34,7 +34,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     extra_mx_args +: ["--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy"],
     extra_gate_args+: ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
     teardown+: [
-      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+      self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     timelimit: "1:45:00",
   },
