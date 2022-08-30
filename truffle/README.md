@@ -40,6 +40,8 @@ $ mx build
 $ mx unittest
 ```
 
+> **NOTE:** Install pure `gcc` (e.g. `brew install gcc`) on macOS
+
 The created `./mxbuild/dists` directory contains all necessary jars and source bundles.
 
   - `truffle-api.jar` contains the framework
