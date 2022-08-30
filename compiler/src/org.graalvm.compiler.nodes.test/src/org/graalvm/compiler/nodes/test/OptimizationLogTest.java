@@ -117,13 +117,12 @@ public class OptimizationLogTest extends GraalCompilerTest {
      */
     @Test
     public void buildOptimizationTreeWhenEnabled() {
-        StructuredGraph graph = parseGraph("addSnippet", true, true);
+        StructuredGraph graph = parseGraph("addSnippet", true);
         OptimizationLog optimizationLog = graph.getOptimizationLog();
         Assert.assertTrue(optimizationLog.isOptimizationLogEnabled());
 
-        Providers providers = getProviders();
-        ReportNodePhase reportNodePhase = new ReportNodePhase(() -> 43);
-        reportNodePhase.apply(graph, providers);
+        graph.getDebug().setCompilationListener(optimizationLog);
+        new ReportNodePhase(() -> 43).apply(graph, getProviders());
 
         OptimizationLogImpl.OptimizationPhaseScope rootPhase = graph.getOptimizationLog().getCurrentPhase();
         Assert.assertEquals("RootPhase", rootPhase.getPhaseName());
@@ -158,7 +157,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
      */
     @Test
     public void noReportingWhenDisabled() {
-        StructuredGraph graph = parseGraph("addSnippet", false, false);
+        StructuredGraph graph = parseGraph("addSnippet", false);
         OptimizationLog optimizationLog = graph.getOptimizationLog();
         Assert.assertFalse(optimizationLog.isOptimizationLogEnabled());
 
@@ -174,18 +173,15 @@ public class OptimizationLogTest extends GraalCompilerTest {
     }
 
     /**
-     * Parses the graph {@link #parseEager eagerly} and potentially applies extra options or sets a
-     * compilation listener. Always enables {@link GraalOptions#TrackNodeSourcePosition node source
-     * position tracking}.
+     * Parses the graph {@link #parseEager eagerly} and potentially enables the optimization log.
+     * Always enables {@link GraalOptions#TrackNodeSourcePosition node source position tracking}.
      *
      * @param methodName the name of the method to be parsed
      * @param enableOptimizationLog whether the {@link DebugOptions#OptimizationLog} should be
      *            enabled
-     * @param setCompilationListener the graph's {@link OptimizationLogImpl} will be set as the
-     *            compilation listener iff set
      * @return the parsed graph
      */
-    private StructuredGraph parseGraph(String methodName, boolean enableOptimizationLog, boolean setCompilationListener) {
+    private StructuredGraph parseGraph(String methodName, boolean enableOptimizationLog) {
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
         EconomicMap<OptionKey<?>, Object> extraOptions = EconomicMap.create();
         EconomicSet<DebugOptions.OptimizationLogTarget> optimizationLogTargets = EconomicSet.create();
@@ -197,10 +193,6 @@ public class OptimizationLogTest extends GraalCompilerTest {
         OptionValues options = new OptionValues(getInitialOptions(), extraOptions);
         DebugContext debugContext = getDebugContext(options, null, method);
         StructuredGraph.Builder builder = new StructuredGraph.Builder(options, debugContext, null).method(method).compilationId(getCompilationId(method));
-        StructuredGraph graph = parse(builder, getEagerGraphBuilderSuite());
-        if (setCompilationListener) {
-            debugContext.setCompilationListener(graph.getOptimizationLog());
-        }
-        return graph;
+        return parse(builder, getEagerGraphBuilderSuite());
     }
 }
