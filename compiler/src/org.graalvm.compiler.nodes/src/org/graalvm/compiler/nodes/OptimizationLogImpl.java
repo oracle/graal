@@ -285,7 +285,7 @@ public class OptimizationLogImpl implements OptimizationLog {
                 DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {
-                debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName,
+                debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName, node,
                                 position == null ? "unknown" : position.getBCI(),
                                 properties == null ? "" : JSONFormatter.formatJSON(properties));
             }
