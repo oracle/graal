@@ -277,6 +277,7 @@ public abstract class Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (write) {
+            b.startGroup();
             b.variable(vars.bc);
             b.string("[");
         } else {
@@ -286,7 +287,7 @@ public abstract class Instruction {
         b.startGroup().variable(vars.bci).string(" + " + internalName + suffix + " + " + index).end();
 
         if (write) {
-            b.string("]");
+            b.string("]").end();
         } else {
             b.end();
         }

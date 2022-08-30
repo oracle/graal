@@ -250,7 +250,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private static final String CHILD_OFFSET_NAME = "childArrayOffset_";
     private static final String CONST_OFFSET_NAME = "constArrayOffset_";
 
-    private CodeTree createArrayReference(FrameState frame, Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild) {
+    private CodeTree createArrayReference(FrameState frame, Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild, boolean write) {
         if (refObject == null) {
             throw new IllegalArgumentException("refObject is null");
         }
@@ -278,8 +278,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             targetField = dummyVariables.consts;
         }
 
-        b.startCall("UFA", "unsafeObjectArrayRead");
-        b.variable(targetField);
+        if (write) {
+            b.variable(targetField).string("[");
+        } else {
+            b.startCall("UFA", "unsafeObjectArrayRead");
+            b.variable(targetField);
+        }
+
         b.startGroup();
 
         if (frame == null || !frame.getBoolean("definedOffsets", false)) {
@@ -302,7 +307,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         }
 
-        b.string(" + " + index).end();
+        b.string(" + " + index).end(); // group
+        if (write) {
+            b.string("]");
+        } else {
+            b.end(); // call
+        }
 
         if (doCast) {
             b.end();
@@ -322,7 +332,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         boolean specClass = useSpecializationClass.test(s);
         Object refObject = specClass ? s : fieldName;
         boolean isChild = specClass ? specializationClassIsNode(s) : ElementUtils.isAssignable(fieldType, types.Node);
-        return createArrayReference(frame, refObject, !write, fieldType, isChild);
+        return createArrayReference(frame, refObject, !write, fieldType, isChild, write);
     }
 
     /* Specialization class needs to be a Node in such a case. */
@@ -350,7 +360,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (nodeFieldName.startsWith("$child")) {
             return CodeTreeBuilder.singleString("__INVALID__");
         }
-        return createArrayReference(frame, execution, forRead, execution.getNodeType(), true);
+        return createArrayReference(frame, execution, forRead, execution.getNodeType(), true, !forRead);
     }
 
     @Override
@@ -390,7 +400,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         if (base == null) {
-            base = createArrayReference(frame, refObject, innerForRead, mir, isChild);
+            base = createArrayReference(frame, refObject, innerForRead, mir, isChild, !forRead);
         }
 
         if (fieldName == null) {
@@ -636,11 +646,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
         if (execution.getName().startsWith("$localRefArray")) {
-            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REFS, true, types.LocalSetterRange, false);
+            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REFS, true, types.LocalSetterRange, false, false);
         }
 
         if (execution.getName().startsWith("$localRef")) {
-            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REF_PREFIX + execution.getName().substring(9), true, types.LocalSetter, false);
+            return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REF_PREFIX + execution.getName().substring(9), true, types.LocalSetter, false, false);
         }
 
         int childIndex = execution.getIndex();
