@@ -42,6 +42,10 @@ public class EnumMultiOptionKey<T extends Enum<T>> extends OptionKey<EconomicSet
         this.enumClass = enumClass;
     }
 
+    public Class<T> getEnumClass() {
+        return enumClass;
+    }
+
     /**
      * Returns the set of possible values for this option.
      */
