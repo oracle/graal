@@ -195,9 +195,6 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Compact1Profile,
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
-            if (byteLength == 0) {
-                return encoding.getEmpty();
-            }
             final int offset;
             final int length;
             final int stride;
@@ -344,9 +341,6 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
-            if (byteLength == 0) {
-                return encoding.getEmpty();
-            }
             final int length;
             final int stride;
             final int codePointLength;

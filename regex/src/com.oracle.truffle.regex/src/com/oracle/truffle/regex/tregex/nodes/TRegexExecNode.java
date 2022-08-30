@@ -90,7 +90,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.regressionTestMode = !backtrackingMode && ast.getOptions().isRegressionTestMode();
         this.sticky = ast.getFlags().isSticky();
         this.runnerNode = insert(nfaNode);
-        if (this.regressionTestMode || ast.getOptions().isGenerateDFAImmediately()) {
+        if (this.regressionTestMode || !backtrackingMode && ast.getOptions().isGenerateDFAImmediately()) {
             switchToLazyDFA();
         }
         if (this.regressionTestMode) {
