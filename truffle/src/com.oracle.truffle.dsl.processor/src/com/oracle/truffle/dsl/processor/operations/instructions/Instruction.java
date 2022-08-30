@@ -273,9 +273,25 @@ public abstract class Instruction {
         return b.build();
     }
 
-    private CodeTree createDirectIndex(ExecutionVariables vars, String suffix, int index) {
-        // this should also become unsafe based, but we need to separate out reads and writes
-        return CodeTreeBuilder.createBuilder().variable(vars.bc).string("[").variable(vars.bci).string(" + " + internalName + suffix + " + " + index + "]").build();
+    private CodeTree createDirectIndex(ExecutionVariables vars, String suffix, int index, boolean write) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (write) {
+            b.variable(vars.bc);
+            b.string("[");
+        } else {
+            b.startCall("unsafeFromBytecode");
+            b.variable(vars.bc);
+        }
+        b.startGroup().variable(vars.bci).string(" + " + internalName + suffix + " + " + index).end();
+
+        if (write) {
+            b.string("]");
+        } else {
+            b.end();
+        }
+
+        return b.build();
     }
 
     public CodeTree createConstantIndex(ExecutionVariables vars, int index) {
@@ -286,15 +302,15 @@ public abstract class Instruction {
         return createIndirectIndex(vars, CHILDREN_OFFSET_SUFFIX, index);
     }
 
-    public CodeTree createLocalIndex(ExecutionVariables vars, int index) {
-        return createDirectIndex(vars, LOCALS_OFFSET_SUFFIX, index);
+    public CodeTree createLocalIndex(ExecutionVariables vars, int index, boolean write) {
+        return createDirectIndex(vars, LOCALS_OFFSET_SUFFIX, index, write);
     }
 
-    public CodeTree createArgumentIndex(ExecutionVariables vars, int index) {
-        return createDirectIndex(vars, ARGUMENT_OFFSET_SUFFIX, index);
+    public CodeTree createArgumentIndex(ExecutionVariables vars, int index, boolean write) {
+        return createDirectIndex(vars, ARGUMENT_OFFSET_SUFFIX, index, write);
     }
 
-    public CodeTree createPopIndexedIndex(ExecutionVariables vars, int index) {
+    public CodeTree createPopIndexedIndex(ExecutionVariables vars, int index, boolean write) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startParantheses();
@@ -302,7 +318,7 @@ public abstract class Instruction {
             b.startParantheses();
         }
 
-        b.tree(createDirectIndex(vars, POP_INDEXED_OFFSET_SUFFIX, index / 2));
+        b.tree(createDirectIndex(vars, POP_INDEXED_OFFSET_SUFFIX, index / 2, write));
 
         if (index % 2 == 1) {
             b.string(" >> 8").end();
@@ -313,20 +329,20 @@ public abstract class Instruction {
         return b.build();
     }
 
-    public CodeTree createVariadicIndex(ExecutionVariables vars) {
-        return createDirectIndex(vars, VARIADIC_OFFSET_SUFFIX, 0);
+    public CodeTree createVariadicIndex(ExecutionVariables vars, boolean write) {
+        return createDirectIndex(vars, VARIADIC_OFFSET_SUFFIX, 0, write);
     }
 
-    public CodeTree createBranchTargetIndex(ExecutionVariables vars, int index) {
-        return createDirectIndex(vars, BRANCH_TARGET_OFFSET_SUFFIX, index);
+    public CodeTree createBranchTargetIndex(ExecutionVariables vars, int index, boolean write) {
+        return createDirectIndex(vars, BRANCH_TARGET_OFFSET_SUFFIX, index, write);
     }
 
-    public CodeTree createBranchProfileIndex(ExecutionVariables vars, int index) {
-        return createDirectIndex(vars, BRANCH_PROFILE_OFFSET_SUFFIX, index * 2);
+    public CodeTree createBranchProfileIndex(ExecutionVariables vars, int index, boolean write) {
+        return createDirectIndex(vars, BRANCH_PROFILE_OFFSET_SUFFIX, index * 2, write);
     }
 
-    public CodeTree createStateBitsIndex(ExecutionVariables vars, int index) {
-        return createDirectIndex(vars, STATE_BITS_OFFSET_SUFFIX, index);
+    public CodeTree createStateBitsIndex(ExecutionVariables vars, int index, boolean write) {
+        return createDirectIndex(vars, STATE_BITS_OFFSET_SUFFIX, index, write);
     }
 
     public CodeTree createLength() {
@@ -682,26 +698,26 @@ public abstract class Instruction {
 
         for (int i = 0; i < locals.size(); i++) {
             int ci = i;
-            sbAppend(b, " local(%s)", () -> b.startGroup().tree(createLocalIndex(vars, ci)).end());
+            sbAppend(b, " local(%s)", () -> b.startGroup().tree(createLocalIndex(vars, ci, false)).end());
         }
 
         for (int i = 0; i < arguments.size(); i++) {
             int ci = i;
-            sbAppend(b, " arg(%s)", () -> b.startGroup().tree(createArgumentIndex(vars, ci)).end());
+            sbAppend(b, " arg(%s)", () -> b.startGroup().tree(createArgumentIndex(vars, ci, false)).end());
         }
 
         for (int i = 0; i < popIndexed.size(); i++) {
             int ci = i;
-            sbAppend(b, " pop(-%s)", () -> b.startGroup().tree(createPopIndexedIndex(vars, ci)).end());
+            sbAppend(b, " pop(-%s)", () -> b.startGroup().tree(createPopIndexedIndex(vars, ci, false)).end());
         }
 
         if (isVariadic) {
-            sbAppend(b, " var(%s)", () -> b.startGroup().tree(createVariadicIndex(vars)).end());
+            sbAppend(b, " var(%s)", () -> b.startGroup().tree(createVariadicIndex(vars, false)).end());
         }
 
         for (int i = 0; i < branchTargets.size(); i++) {
             int ci = i;
-            sbAppend(b, " branch(%04x)", () -> b.startGroup().tree(createBranchTargetIndex(vars, ci)).end());
+            sbAppend(b, " branch(%04x)", () -> b.startGroup().tree(createBranchTargetIndex(vars, ci, false)).end());
         }
 
         return b.build();

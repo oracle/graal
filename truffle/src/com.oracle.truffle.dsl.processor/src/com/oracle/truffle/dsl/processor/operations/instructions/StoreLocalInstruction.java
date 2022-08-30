@@ -60,7 +60,7 @@ public class StoreLocalInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startAssign("int localIdx");
-        b.tree(createLocalIndex(vars, 0));
+        b.tree(createLocalIndex(vars, 0, false));
         b.end();
 
         b.startAssign("int sourceSlot").variable(vars.sp).string(" - 1").end();
@@ -101,7 +101,7 @@ public class StoreLocalInstruction extends Instruction {
         b.startStatement().startCall("doSetResultBoxed");
         b.variable(vars.bc);
         b.variable(vars.bci);
-        b.startGroup().tree(createPopIndexedIndex(vars, 0)).end();
+        b.startGroup().tree(createPopIndexedIndex(vars, 0, false)).end();
         b.string(tag);
         b.end(2);
     }

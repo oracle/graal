@@ -43,6 +43,8 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 
+import sun.misc.Unsafe;
+
 public abstract class UnsafeFrameAccess {
 
     public static UnsafeFrameAccess lookup() {
@@ -51,9 +53,21 @@ public abstract class UnsafeFrameAccess {
 
     private static final UnsafeFrameAccess INSTANCE = new Impl();
 
+    public abstract short unsafeShortArrayRead(short[] arr, int index);
+
+    public abstract void unsafeShortArrayWrite(short[] arr, int index, short value);
+
+    public abstract int unsafeIntArrayRead(int[] arr, int index);
+
+    public abstract void unsafeIntArrayWrite(int[] arr, int index, int value);
+
+    public abstract <T> T unsafeObjectArrayRead(T[] arr, int index);
+
     public abstract byte unsafeGetTag(Frame frame, int slot);
 
     public abstract Object unsafeGetObject(Frame frame, int slot);
+
+    public abstract boolean unsafeGetBoolean(Frame frame, int slot);
 
     public abstract int unsafeGetInt(Frame frame, int slot);
 
@@ -63,6 +77,8 @@ public abstract class UnsafeFrameAccess {
 
     public abstract void unsafeSetObject(Frame frame, int slot, Object value);
 
+    public abstract void unsafeSetBoolean(Frame frame, int slot, boolean value);
+
     public abstract void unsafeSetInt(Frame frame, int slot, int value);
 
     public abstract void unsafeSetLong(Frame frame, int slot, long value);
@@ -70,6 +86,8 @@ public abstract class UnsafeFrameAccess {
     public abstract void unsafeSetDouble(Frame frame, int slot, double value);
 
     public abstract boolean unsafeIsObject(Frame frame, int slot);
+
+    public abstract boolean unsafeIsBoolean(Frame frame, int slot);
 
     public abstract boolean unsafeIsInt(Frame frame, int slot);
 
@@ -88,9 +106,30 @@ public abstract class UnsafeFrameAccess {
 
     private static final class Impl extends UnsafeFrameAccess {
 
+        @Override
+        public short unsafeShortArrayRead(short[] arr, int index) {
+            return FrameWithoutBoxing.UNSAFE.getShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE);
+        }
+
+        @Override
+        public void unsafeShortArrayWrite(short[] arr, int index, short value) {
+            FrameWithoutBoxing.UNSAFE.putShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE, value);
+        }
+
+        @Override
+        public int unsafeIntArrayRead(int[] arr, int index) {
+            return FrameWithoutBoxing.UNSAFE.getInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE);
+        }
+
+        @Override
+        public void unsafeIntArrayWrite(int[] arr, int index, int value) {
+            FrameWithoutBoxing.UNSAFE.putInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE, value);
+        }
+
+        @Override
         @SuppressWarnings("unchecked")
-        private static <T> T unsafeCast(Object o) {
-            return (T) o;
+        public <T> T unsafeObjectArrayRead(T[] arr, int index) {
+            return (T) FrameWithoutBoxing.UNSAFE.getObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
         }
 
         private static FrameWithoutBoxing castFrame(Frame frame) {
@@ -110,6 +149,11 @@ public abstract class UnsafeFrameAccess {
         @Override
         public int unsafeGetInt(Frame frame, int slot) {
             return castFrame(frame).unsafeGetInt(slot);
+        }
+
+        @Override
+        public boolean unsafeGetBoolean(Frame frame, int slot) {
+            return castFrame(frame).unsafeGetBoolean(slot);
         }
 
         @Override
@@ -133,6 +177,11 @@ public abstract class UnsafeFrameAccess {
         }
 
         @Override
+        public void unsafeSetBoolean(Frame frame, int slot, boolean value) {
+            castFrame(frame).unsafeSetBoolean(slot, value);
+        }
+
+        @Override
         public void unsafeSetLong(Frame frame, int slot, long value) {
             castFrame(frame).unsafeSetLong(slot, value);
         }
@@ -145,6 +194,11 @@ public abstract class UnsafeFrameAccess {
         @Override
         public boolean unsafeIsObject(Frame frame, int slot) {
             return castFrame(frame).unsafeIsObject(slot);
+        }
+
+        @Override
+        public boolean unsafeIsBoolean(Frame frame, int slot) {
+            return castFrame(frame).unsafeIsBoolean(slot);
         }
 
         @Override

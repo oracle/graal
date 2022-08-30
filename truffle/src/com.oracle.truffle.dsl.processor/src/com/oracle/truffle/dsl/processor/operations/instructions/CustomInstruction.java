@@ -158,7 +158,7 @@ public class CustomInstruction extends Instruction {
 
         if (data.getMainProperties().isVariadic) {
 
-            b.declaration("int", "numVariadics", createVariadicIndex(vars));
+            b.declaration("int", "numVariadics", createVariadicIndex(vars, false));
 
             int additionalInputs = data.getMainProperties().numStackValues - 1;
 

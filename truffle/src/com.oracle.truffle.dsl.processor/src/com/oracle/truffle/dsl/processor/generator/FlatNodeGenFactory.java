@@ -2239,7 +2239,7 @@ public class FlatNodeGenFactory {
                 builder.declaration(s.getType(), s.getNewName(), s.createMaskedReference(frameState, reachableSpecializationsReportingPolymorphism()));
             }
             if (requiresExclude) {
-                builder.declaration(exclude.getType(), NEW_EXCLUDE, exclude.createReference(frameState));
+                builder.declaration(exclude.getType(), NEW_EXCLUDE, exclude.createReference(frameState, false));
             }
         }
         builder.startIf();

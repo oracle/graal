@@ -110,9 +110,10 @@ public class LoadConstantInstruction extends Instruction {
         if (kind != FrameKind.OBJECT) {
             b.string("(", kind.getTypeName(), ") ");
         }
-        b.variable(vars.consts).string("[");
+        b.startCall("UFA", "unsafeObjectArrayRead");
+        b.variable(vars.consts);
         b.tree(createConstantIndex(vars, 0));
-        b.end().string("]");
+        b.end();
         return b.build();
     }
 

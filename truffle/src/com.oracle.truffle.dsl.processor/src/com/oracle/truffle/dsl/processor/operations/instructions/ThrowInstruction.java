@@ -58,7 +58,7 @@ public class ThrowInstruction extends Instruction {
         // we can convert this to a jump to a statically determined handler
         // or a throw out of a function
 
-        b.startAssign("int slot").tree(createLocalIndex(vars, 0)).end();
+        b.startAssign("int slot").tree(createLocalIndex(vars, 0, false)).end();
 
         b.startThrow();
         b.cast(ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"));

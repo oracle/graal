@@ -238,8 +238,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     @Override
-    public CodeTree createBitSetReference(BitSet bits) {
-        return cinstr.createStateBitsIndex(dummyVariables, cinstr.addStateBits(bits));
+    public CodeTree createBitSetReference(BitSet bits, boolean write) {
+        return cinstr.createStateBitsIndex(dummyVariables, cinstr.addStateBits(bits), write);
     }
 
     @Override
@@ -278,7 +278,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             targetField = dummyVariables.consts;
         }
 
-        b.variable(targetField).string("[");
+        b.startCall("UFA", "unsafeObjectArrayRead");
+        b.variable(targetField);
+        b.startGroup();
 
         if (frame == null || !frame.getBoolean("definedOffsets", false)) {
             if (isChild) {
@@ -300,7 +302,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         }
 
-        b.string(" + " + index + "]");
+        b.string(" + " + index).end();
 
         if (doCast) {
             b.end();
@@ -745,7 +747,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.tree(OperationGeneratorUtils.callSetResultBoxed(cinstr.createPopIndexedIndex(dummyVariables, i), CodeTreeBuilder.singleString("type" + i)));
+                b.tree(OperationGeneratorUtils.callSetResultBoxed(cinstr.createPopIndexedIndex(dummyVariables, i, false), CodeTreeBuilder.singleString("type" + i)));
             }
         }
 

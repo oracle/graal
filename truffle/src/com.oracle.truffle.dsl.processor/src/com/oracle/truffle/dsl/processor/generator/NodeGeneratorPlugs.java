@@ -75,7 +75,7 @@ public interface NodeGeneratorPlugs {
 
     TypeMirror getBitSetType(TypeMirror defaultType);
 
-    CodeTree createBitSetReference(BitSet bits);
+    CodeTree createBitSetReference(BitSet bits, boolean write);
 
     CodeTree transformValueBeforePersist(CodeTree tree);
 

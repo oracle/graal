@@ -590,17 +590,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTreeBuilder b = met.createBuilder();
         b.startReturn();
-        if (OperationGeneratorFlags.USE_UNSAFE) {
-            b.startCall("UNSAFE", "getShort");
-            b.string("bc");
-            b.startGroup();
-            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_BASE_OFFSET");
-            b.string(" + ");
-            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_INDEX_SCALE");
-            b.string(" * index").end(2);
-        } else {
-            b.string("bc[index]");
-        }
+        b.string("UFA.unsafeShortArrayRead(bc, index)");
         b.end();
 
         return met;
@@ -613,20 +603,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         met.addParameter(new CodeVariableElement(context.getType(short.class), "value"));
 
         CodeTreeBuilder b = met.createBuilder();
-        b.startStatement();
-        if (OperationGeneratorFlags.USE_UNSAFE) {
-            b.startCall("UNSAFE", "putShort");
-            b.string("bc");
-            b.startGroup();
-            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_BASE_OFFSET");
-            b.string(" + ");
-            b.staticReference(TYPE_UNSAFE, "ARRAY_SHORT_INDEX_SCALE");
-            b.string(" * index").end();
-            b.string("value");
-            b.end();
-        } else {
-            b.string("bc[index] = value");
-        }
+        b.statement("UFA.unsafeShortArrayWrite(bc, index, value)");
         b.end();
 
         return met;
@@ -1164,8 +1141,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         final int maxInt = 0x3FFFFFFF;
 
-        b.declaration("int", "t", "profiles[index]");
-        b.declaration("int", "f", "profiles[index + 1]");
+        b.declaration("int", "t", "UFA.unsafeIntArrayRead(profiles, index)");
+        b.declaration("int", "f", "UFA.unsafeIntArrayRead(profiles, index + 1)");
 
         b.declaration("boolean", "val", "value");
         b.startIf().string("val").end().startBlock();
@@ -1178,7 +1155,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.end();
         b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock();
         b.startIf().string("t < " + maxInt).end().startBlock();
-        b.statement("profiles[index] = t + 1");
+        b.statement("UFA.unsafeIntArrayWrite(profiles, index, t + 1)");
         b.end();
         b.end();
 
@@ -1192,7 +1169,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.end();
         b.startIf().tree(GeneratorUtils.createInInterpreter()).end().startBlock();
         b.startIf().string("f < " + maxInt).end().startBlock();
-        b.statement("profiles[index + 1] = f + 1");
+        b.statement("UFA.unsafeIntArrayWrite(profiles, index + 1, f + 1)");
         b.end();
         b.end();
 

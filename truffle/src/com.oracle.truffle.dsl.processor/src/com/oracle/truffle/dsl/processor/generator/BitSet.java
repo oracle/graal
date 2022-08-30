@@ -138,11 +138,11 @@ public class BitSet {
         }
     }
 
-    public CodeTree createReference(FrameState frameState) {
+    public CodeTree createReference(FrameState frameState, boolean write) {
         CodeTree ref = createLocalReference(frameState);
         if (ref == null) {
             if (plugs != null) {
-                ref = plugs.createBitSetReference(this);
+                ref = plugs.createBitSetReference(this, write);
             } else {
                 ref = CodeTreeBuilder.createBuilder().string("this.", getName(), "_").build();
             }
@@ -185,7 +185,7 @@ public class BitSet {
         LocalVariable var = new LocalVariable(type, name, null);
         CodeTreeBuilder init = builder.create();
         if (plugs != null) {
-            init.tree(plugs.createBitSetReference(this));
+            init.tree(plugs.createBitSetReference(this, false));
         } else {
             init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
         }
@@ -228,18 +228,18 @@ public class BitSet {
 
     public CodeTree createIsEmpty(FrameState frameState) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.tree(createReference(frameState)).string(" == 0");
+        builder.tree(createReference(frameState, false)).string(" == 0");
         return builder.build();
     }
 
     private CodeTree createMaskedReference(FrameState frameState, long maskedElements) {
         if (maskedElements == this.allMask) {
             // no masking needed
-            return createReference(frameState);
+            return createReference(frameState, false);
         } else {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             // masking needed we use the state bitset for guards as well
-            builder.string("(").tree(createReference(frameState)).string(" & ").string(formatMask(maskedElements)).string(")");
+            builder.string("(").tree(createReference(frameState, false)).string(" & ").string(formatMask(maskedElements)).string(")");
             return builder.build();
         }
     }
@@ -358,7 +358,7 @@ public class BitSet {
         if (!hasLocal && elements.length == 0) {
             return valueBuilder.build();
         }
-        valueBuilder.tree(createReference(frameState));
+        valueBuilder.tree(createReference(frameState, true));
         if (elements.length > 0) {
             if (value) {
                 valueBuilder.string(" | ");
@@ -378,7 +378,7 @@ public class BitSet {
         builder.startStatement();
         if (persist) {
             if (plugs != null) {
-                builder.tree(plugs.createBitSetReference(this)).string(" = ");
+                builder.tree(plugs.createBitSetReference(this, true)).string(" = ");
             } else {
                 builder.string("this.", name, "_ = ");
             }
@@ -389,7 +389,7 @@ public class BitSet {
                 builder.tree(localReference).string(" = ");
             }
         } else {
-            builder.tree(createReference(frameState)).string(" = ");
+            builder.tree(createReference(frameState, true)).string(" = ");
         }
 
         CodeTree value = valueTree;
@@ -406,12 +406,12 @@ public class BitSet {
         int offset = getStateOffset(element);
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
-        builder.tree(createReference(frameState)).string(" = ");
+        builder.tree(createReference(frameState, true)).string(" = ");
         if (type.getKind() != TypeKind.INT) {
             builder.cast(type);
         }
         builder.startParantheses();
-        builder.tree(createReference(frameState));
+        builder.tree(createReference(frameState, false));
         builder.string(" | (");
         if (capacity > 32) {
             builder.string("(long) ");

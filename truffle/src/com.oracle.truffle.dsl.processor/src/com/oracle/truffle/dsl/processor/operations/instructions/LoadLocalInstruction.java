@@ -59,7 +59,7 @@ public class LoadLocalInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startAssign("int localIdx");
-        b.tree(createLocalIndex(vars, 0));
+        b.tree(createLocalIndex(vars, 0, false));
         b.end();
 
         createCopyObject(vars, b);

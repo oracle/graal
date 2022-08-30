@@ -80,7 +80,7 @@ public class BranchInstruction extends Instruction {
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.declaration("int", "targetBci", createBranchTargetIndex(vars, 0));
+        b.declaration("int", "targetBci", createBranchTargetIndex(vars, 0, false));
 
         if (SAFEPOINT_POLL || LOOP_COUNTING || TRY_OSR || uncached) {
             b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock(); // {

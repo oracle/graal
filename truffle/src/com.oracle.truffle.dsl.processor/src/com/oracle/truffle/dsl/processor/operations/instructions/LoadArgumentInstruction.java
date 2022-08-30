@@ -63,7 +63,7 @@ public class LoadArgumentInstruction extends Instruction {
 
         b.startCall(vars.frame, "getArguments").end();
         b.string("[");
-        b.tree(createArgumentIndex(vars, 0));
+        b.tree(createArgumentIndex(vars, 0, false));
         b.string("]");
 
         return b.build();

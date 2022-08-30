@@ -84,7 +84,7 @@ public class ShortCircuitInstruction extends CustomInstruction {
         // }
         b.end().startElseBlock();
         // {
-        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0)).end();
+        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0, false)).end();
 
         b.statement("continue loop");
         // }
