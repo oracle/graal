@@ -1276,7 +1276,7 @@ public final class PolyglotNativeAPI {
         resetErrorState();
         Value jValue = fetchHandle(value);
         if (jValue.isString()) {
-            writeString(jValue.asString(), buffer, buffer_size, result, UTF8_CHARSET);
+            writeUTF8String(jValue.asString(), buffer, buffer_size, result);
         } else {
             throw reportError("Expected type String but got " + jValue.getMetaObject().toString(), PolyglotStatus.poly_string_expected);
         }
@@ -1295,7 +1295,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_value_to_string_utf8(PolyglotIsolateThread thread, PolyglotValue value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
         resetErrorState();
         Value jValue = fetchHandle(value);
-        writeString(jValue.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        writeUTF8String(jValue.toString(), buffer, buffer_size, result);
         return poly_ok;
     }
 
@@ -1483,7 +1483,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_language_get_id(PolyglotIsolateThread thread, PolyglotLanguage language, CCharPointer utf8_result, UnsignedWord buffer_size, SizeTPointer length) {
         resetErrorState();
         Language jLanguage = fetchHandle(language);
-        writeString(jLanguage.getId(), utf8_result, buffer_size, length, UTF8_CHARSET);
+        writeUTF8String(jLanguage.getId(), utf8_result, buffer_size, length);
         return poly_ok;
     }
 
@@ -1793,7 +1793,7 @@ public final class PolyglotNativeAPI {
 
         e.getPolyglotStackTrace().forEach(trace -> pw.println(trace));
 
-        writeString(sw.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        writeUTF8String(sw.toString(), buffer, buffer_size, result);
         return poly_ok;
     }
 
@@ -1820,7 +1820,7 @@ public final class PolyglotNativeAPI {
                 pw.println(trace);
             }
         }
-        writeString(sw.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        writeUTF8String(sw.toString(), buffer, buffer_size, result);
         return poly_ok;
     }
 
@@ -1839,7 +1839,7 @@ public final class PolyglotNativeAPI {
         resetErrorState();
         PolyglotException e = fetchHandle(exception);
 
-        writeString(e.getMessage(), buffer, buffer_size, result, UTF8_CHARSET);
+        writeUTF8String(e.getMessage(), buffer, buffer_size, result);
         return poly_ok;
     }
 
@@ -1927,13 +1927,8 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
-    private static void writeString(String valueString, CCharPointer buffer, UnsignedWord length, SizeTPointer result, Charset charset) {
-        if (buffer.isNull()) {
-            int stringLength = valueString.getBytes(charset).length;
-            result.write(WordFactory.unsigned(stringLength));
-        } else {
-            result.write(CTypeConversion.toCString(valueString, charset, buffer, length));
-        }
+    private static void writeUTF8String(String valueString, CCharPointer buffer, UnsignedWord length, SizeTPointer result) {
+        result.write(CTypeConversion.toCString(valueString, UTF8_CHARSET, buffer, length));
     }
 
     private static List<Language> sortedLangs(Engine engine) {
