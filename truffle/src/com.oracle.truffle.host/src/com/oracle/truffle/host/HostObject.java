@@ -1778,7 +1778,7 @@ final class HostObject implements TruffleObject {
             } else if (javaObject.getClass().isArray()) {
                 return arrayToString(context, javaObject, level, allowSideEffects);
             } else if (javaObject instanceof Class) {
-                return ((Class<?>) javaObject).getTypeName();
+                return getTypeNameSafe((Class<?>) javaObject);
             } else {
                 if (allowSideEffects && context != null) {
                     Object hostObject = HostObject.forObject(javaObject, context);
@@ -1792,11 +1792,25 @@ final class HostObject implements TruffleObject {
                         // ignore
                     }
                 }
-                return javaObject.getClass().getTypeName();
+                return getTypeNameSafe(javaObject.getClass());
             }
         } catch (Throwable t) {
             throw context.hostToGuestException(t);
         }
+    }
+
+    /**
+     * Safe version of {@link Class#getTypeName()} that strips any hidden class suffix from the
+     * class name.
+     */
+    @TruffleBoundary
+    private static String getTypeNameSafe(Class<?> type) {
+        String typeName = type.getTypeName();
+        int slash = typeName.indexOf('/');
+        if (slash != -1) {
+            return typeName.substring(0, slash);
+        }
+        return typeName;
     }
 
     private static String arrayToString(HostContext context, Object array, int level, boolean allowSideEffects) {
