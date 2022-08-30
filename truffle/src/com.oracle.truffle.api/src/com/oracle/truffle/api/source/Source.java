@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -1007,7 +1008,7 @@ public abstract class Source {
                 }
             } else {
                 // Canonicalize the file if it exists
-                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
             }
             useFileSystemContext = SourceAccessor.LANGUAGE.getFileSystemContext(useTruffleFile);
             useName = useName == null ? useTruffleFile.getName() : useName;
@@ -1038,7 +1039,7 @@ public abstract class Source {
             useFileSystemContext = useFileSystemContext == null ? SourceAccessor.ACCESSOR.engineSupport().getCurrentFileSystemContext() : useFileSystemContext;
             try {
                 useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, useFileSystemContext);
-                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
                 if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
                         String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
@@ -1100,6 +1101,18 @@ public abstract class Source {
         SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome,
                         embedderSource);
         return SOURCES.intern(key);
+    }
+
+    private static TruffleFile getCanonicalFileIfItExists(TruffleFile file) throws IOException {
+        if (file.exists()) {
+            try {
+                return file.getCanonicalFile();
+            } catch (NoSuchFileException ex) {
+                // The file may have been deleted between exists() and getCanonicalFile().
+                // We handle this race condition as if the file did not exist.
+            }
+        }
+        return file;
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {
@@ -1413,13 +1426,13 @@ public abstract class Source {
          * The MIME type can be guessed by the system based on {@link #findMimeType(TruffleFile)
          * files} or {@link #findMimeType(URL) urls}.
          *
+         * @param mimeType the new mime type to be assigned, or <code>null</code> if default MIME
+         *            type should be used.
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
          * @see LanguageInfo#getDefaultMimeType()
          * @see LanguageInfo#getMimeTypes()
          * @see Source#findMimeType(TruffleFile)
          * @see Source#findMimeType(URL)
-         * @param mimeType the new mime type to be assigned, or <code>null</code> if default MIME
-         *            type should be used.
-         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
          * @since 19.0
          */
         public SourceBuilder mimeType(@SuppressWarnings("hiding") String mimeType) {
