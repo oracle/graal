@@ -45,7 +45,6 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Formats method names so that different compilations of a method can be correlated. If the method
@@ -145,9 +144,8 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      */
     @SuppressWarnings("try")
     private String findStableLambdaMethodName(ResolvedJavaMethod method) {
-        ResolvedJavaType type = method.getDeclaringClass();
         StructuredGraph methodGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug()).method(method).build();
-        try (DebugContext.Scope ignored = graph.getDebug().scope("Lambda method analysis", methodGraph, type, this)) {
+        try (DebugContext.Scope ignored = graph.getDebug().scope("Lambda method analysis", methodGraph, method, this)) {
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
             getGraphBuilderPhase().apply(methodGraph, context);
         } catch (Throwable e) {
