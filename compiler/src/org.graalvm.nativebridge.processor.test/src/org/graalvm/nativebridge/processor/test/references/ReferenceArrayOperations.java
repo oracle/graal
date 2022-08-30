@@ -38,5 +38,7 @@ public interface ReferenceArrayOperations {
 
     int exchangeSubArray(Handler[] handlers, int offset, int length);
 
-    Handler[] get();
+    Handler[] getHostObjects();
+
+    Record[] getGuestObjects();
 }

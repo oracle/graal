@@ -63,5 +63,9 @@ abstract class NativeReferenceArrayOperations extends NativeObject implements Re
 
     @Override
     @ByReference(HSHandler.class)
-    public abstract Handler[] get();
+    public abstract Handler[] getHostObjects();
+
+    @Override
+    @ByReference(NativeRecord.class)
+    public abstract Record[] getGuestObjects();
 }
