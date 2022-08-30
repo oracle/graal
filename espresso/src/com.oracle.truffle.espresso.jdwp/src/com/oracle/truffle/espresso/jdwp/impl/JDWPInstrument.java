@@ -28,6 +28,7 @@ import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Semaphore;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -50,7 +51,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     private Collection<Thread> activeThreads = new ArrayList<>();
     private PrintStream err;
 
-    private volatile boolean resetting;
+    private final Semaphore resetting = new Semaphore(1);
 
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
@@ -63,53 +64,52 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     public void reset(boolean prepareForReconnect) {
+        if (!resetting.tryAcquire()) {
+            return;
+        }
         // stop all running jdwp threads in an orderly fashion
-        resetting = true;
-        try {
+        for (Thread activeThread : activeThreads) {
+            activeThread.interrupt();
+        }
+        // close the connection to the debugger
+        if (connection != null) {
+            connection.close();
+        }
+        // wait for threads to fully stop
+        boolean stillRunning = true;
+        while (stillRunning) {
+            stillRunning = false;
             for (Thread activeThread : activeThreads) {
-                activeThread.interrupt();
-            }
-            // close the connection to the debugger
-            if (connection != null) {
-                connection.close();
-            }
-            // wait for threads to fully stop
-            boolean stillRunning = true;
-            while (stillRunning) {
-                stillRunning = false;
-                for (Thread activeThread : activeThreads) {
-                    if (activeThread.isAlive()) {
-                        stillRunning = true;
-                    }
-                }
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    // ignore
+                if (activeThread.isAlive()) {
+                    stillRunning = true;
                 }
             }
-
-            // re-enable GC for all objects
-            controller.getGCPrevention().clearAll();
-
-            // end the current debugger session to avoid hitting any further breakpoints
-            // when resuming all threads
-            controller.endSession();
-
-            // resume all threads
-            controller.resumeAll(true);
-
-            if (prepareForReconnect) {
-                // replace the controller instance
-                controller.reInitialize();
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                // ignore
             }
-        } finally {
-            resetting = false;
+        }
+
+        // re-enable GC for all objects
+        controller.getGCPrevention().clearAll();
+
+        // end the current debugger session to avoid hitting any further breakpoints
+        // when resuming all threads
+        controller.endSession();
+
+        // resume all threads
+        controller.resumeAll(true);
+
+        if (prepareForReconnect) {
+            // replace the controller instance
+            controller.reInitialize();
+            resetting.release();
         }
     }
 
     public boolean isResetting() {
-        return resetting;
+        return resetting.availablePermits() == 0;
     }
 
     public void printStackTrace(Throwable e) {
