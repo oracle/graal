@@ -474,7 +474,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         if (uncached || data.isDisableBoxingElimination() || typeName.equals("Object")) {
             b.startStatement();
-            b.startCall("$frame", "setObject");
+            b.startCall("UFA", "unsafeSetObject");
+            b.string("$frame");
             b.string("$sp - " + destOffset);
             b.tree(value);
             b.end(2);
@@ -483,7 +484,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             b.startIf().tree(isResultBoxed).end().startBlock();
             // {
             b.startStatement();
-            b.startCall("$frame", "setObject");
+            b.startCall("UFA", "unsafeSetObject");
+            b.string("$frame");
             b.string("$sp - " + destOffset);
             b.string("value");
             b.end(2);
@@ -491,7 +493,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             b.end().startElseBlock();
             // {
             b.startStatement();
-            b.startCall("$frame", "set" + typeName);
+            b.startCall("UFA", "unsafeSet" + typeName);
+            b.string("$frame");
             b.string("$sp - " + destOffset);
             b.string("value");
             b.end(2);

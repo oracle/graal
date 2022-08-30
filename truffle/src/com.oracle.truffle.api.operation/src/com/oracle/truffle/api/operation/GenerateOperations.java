@@ -61,6 +61,8 @@ public @interface GenerateOperations {
 
     boolean forceTracing() default false;
 
+    boolean enableYield() default false;
+
     @Retention(RetentionPolicy.SOURCE)
     @Target({ElementType.FIELD})
     @interface Metadata {

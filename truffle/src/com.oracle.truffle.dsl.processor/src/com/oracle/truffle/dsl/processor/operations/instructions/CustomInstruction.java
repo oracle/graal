@@ -168,13 +168,13 @@ public class CustomInstruction extends Instruction {
                 String inputName = "input_" + inputIndex;
                 switch (kind) {
                     case STACK_VALUE:
-                        b.declaration("Object", inputName, "$frame.getObject($sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
+                        b.declaration("Object", inputName, "UFA.unsafeGetObject($frame, $sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VARIADIC:
                         b.declaration("Object[]", inputName, "new Object[numVariadics]");
                         b.startFor().string("int varIndex = 0; varIndex < numVariadics; varIndex++").end().startBlock();
-                        b.startStatement().string(inputName, "[varIndex] = $frame.getObject($sp - numVariadics + varIndex)").end();
+                        b.startStatement().string(inputName, "[varIndex] = UFA.unsafeGetObject($frame, $sp - numVariadics + varIndex)").end();
                         b.end();
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
@@ -210,7 +210,8 @@ public class CustomInstruction extends Instruction {
             b.startAssign(vars.sp).variable(vars.sp).string(" - " + additionalInputs + " - numVariadics + " + numPushedValues).end();
 
             if (numPushedValues > 0) {
-                b.startStatement().startCall(vars.frame, "setObject");
+                b.startStatement().startCall("UFA", "unsafeSetObject");
+                b.string("$frame");
                 b.string("$sp - 1");
                 b.string("result");
                 b.end(2);
@@ -229,7 +230,7 @@ public class CustomInstruction extends Instruction {
 
             if (uncached) {
                 for (int i = numPopStatic(); i > 0; i--) {
-                    b.string("$frame.getObject($sp - " + i + ")");
+                    b.string("UFA.unsafeGetObject($frame, $sp - " + i + ")");
                 }
 
                 addLocalRefs(b, vars);

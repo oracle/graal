@@ -80,7 +80,8 @@ public class LoadConstantInstruction extends Instruction {
 
             CodeTreeBuilder b = metImpl.getBuilder();
 
-            b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
+            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+            b.variable(vars.frame);
             b.variable(vars.sp);
             b.tree(createGetArgument(vars));
             b.end(2);

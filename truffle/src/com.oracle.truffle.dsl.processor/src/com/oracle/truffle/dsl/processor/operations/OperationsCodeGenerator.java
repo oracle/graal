@@ -350,6 +350,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             genCtor.getModifiers().add(Modifier.PRIVATE);
         }
 
+        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getDeclaredType("com.oracle.truffle.api.impl.UnsafeFrameAccess"), "UFA = UnsafeFrameAccess.lookup()"));
+
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME), "nodes")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(short[].class), "_bc")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(Object[].class), "_consts")));
@@ -359,6 +361,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxLocals")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxStack")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int[].class), "sourceInfo")));
+        if (m.enableYield) {
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(arrayOf(new GeneratedTypeMirror("", "ContinuationRoot")), "yieldEntries")));
+        }
 
         CodeVariableElement fldSwitchImpl = new CodeVariableElement(MOD_PRIVATE, typBytecodeBase.asType(), "switchImpl");
         GeneratorUtils.addCompilationFinalAnnotation(fldSwitchImpl);
@@ -474,6 +479,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createSetResultUnboxed());
         typOperationNodeImpl.add(createSetResultBoxedImpl());
         typOperationNodeImpl.add(createCounter());
+        if (m.enableYield) {
+            typOperationNodeImpl.add(createContinuationLocationImpl(typOperationNodeImpl));
+            typOperationNodeImpl.add(createContinuationRoot(typOperationNodeImpl));
+        }
         typOperationNodeImpl.add(createUnsafeFromBytecode());
         typOperationNodeImpl.add(createUnsafeWriteBytecode());
         typOperationNodeImpl.add(createConditionProfile());
@@ -483,6 +492,72 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createSerializeMethod(typBuilderImpl, typBuilderImpl));
 
         return typOperationNodeImpl;
+    }
+
+    private CodeTypeElement createContinuationRoot(CodeTypeElement typOperationNodeImpl) {
+        CodeTypeElement cr = new CodeTypeElement(MOD_PRIVATE_STATIC_FINAL, ElementKind.CLASS, null, "ContinuationRoot");
+        cr.setSuperClass(types.RootNode);
+
+        cr.add(new CodeVariableElement(MOD_FINAL, typOperationNodeImpl.asType(), "root"));
+        cr.add(new CodeVariableElement(MOD_FINAL, context.getType(int.class), "target"));
+
+        cr.add(GeneratorUtils.createConstructorUsingFields(Set.of(), cr,
+                        // gets the (language, frameDescriptor) ctor
+                        ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
+
+        CodeExecutableElement mExecute = cr.add(GeneratorUtils.overrideImplement(types.RootNode, "execute"));
+
+        CodeTreeBuilder b = mExecute.getBuilder();
+
+        b.statement("Object[] args = frame.getArguments()");
+        b.startIf().string("args.length != 2").end().startBlock();
+        b.tree(GeneratorUtils.createShouldNotReachHere("expected 2 arguments: (parentFrame, inputValue)"));
+        b.end();
+
+        b.declaration(types.MaterializedFrame, "parentFrame", "(MaterializedFrame) args[0]");
+        b.declaration(context.getType(Object.class), "inputValue", "args[1]");
+
+        b.startIf().string("parentFrame.getFrameDescriptor() != frame.getFrameDescriptor()").end().startBlock();
+        b.tree(GeneratorUtils.createShouldNotReachHere("invalid continuation parent frame passed"));
+        b.end();
+
+        b.declaration("int", "sp", "(target >> 16) & 0xffff");
+        b.statement("parentFrame.copyTo(frame, 0, sp - 1)");
+        b.statement("frame.setObject(sp - 1, inputValue)");
+
+        b.statement("return root.executeAt(frame, target)");
+
+        return cr;
+    }
+
+    private CodeTypeElement createContinuationLocationImpl(CodeTypeElement typOperationNodeImpl) {
+        DeclaredType superType = context.getDeclaredType("com.oracle.truffle.api.operation.ContinuationLocation");
+
+        CodeTypeElement cli = new CodeTypeElement(MOD_PRIVATE_STATIC_FINAL, ElementKind.CLASS, null, "ContinuationLocationImpl");
+        cli.setSuperClass(superType);
+
+        cli.add(new CodeVariableElement(MOD_FINAL, context.getType(int.class), "entry"));
+        cli.add(new CodeVariableElement(MOD_FINAL, context.getType(int.class), "target"));
+
+        cli.add(GeneratorUtils.createConstructorUsingFields(Set.of(), cli));
+
+        cli.add(compFinal(new CodeVariableElement(typOperationNodeImpl.asType(), "root")));
+
+        CodeExecutableElement mGetRootNode = cli.add(GeneratorUtils.overrideImplement(superType, "getRootNode"));
+        CodeTreeBuilder b = mGetRootNode.getBuilder();
+        b.statement("ContinuationRoot node = root.yieldEntries[entry]");
+        b.startIf().string("node == null").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.statement("node = new ContinuationRoot(root.getLanguageInternal(), root.getFrameDescriptor(), root, target)");
+        b.statement("root.yieldEntries[entry] = node");
+        b.end();
+        b.statement("return node");
+
+        CodeExecutableElement mToString = cli.add(GeneratorUtils.override(context.getDeclaredType(Object.class), "toString"));
+        b = mToString.getBuilder();
+        b.statement("return String.format(\"ContinuationLocation [index=%d, sp=%s, bci=%04x]\", entry, target >> 16, target & 0xffff)");
+
+        return cli;
     }
 
     private CodeExecutableElement createNodeExecute() {
@@ -827,6 +902,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numLabels"));
         }
+        if (m.enableYield) {
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "yieldCount"));
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, arrayOf(new GeneratedTypeMirror("", "ContinuationLocationImpl")), "yieldLocations = null"));
+        }
+
         CodeVariableElement fldConstPool = typBuilderImpl.add(
                         new CodeVariableElement(MOD_PRIVATE, new DeclaredCodeTypeMirror(context.getTypeElement(ArrayList.class), List.of(context.getType(Object.class))), "constPool"));
         fldConstPool.createInitBuilder().string("new ArrayList<>()");
@@ -2029,6 +2109,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("result._maxLocals = numLocals");
         b.statement("result._maxStack = maxStack");
 
+        if (m.enableYield) {
+            b.statement("result.yieldEntries = yieldCount > 0 ? new ContinuationRoot[yieldCount] : null");
+            b.startFor().string("int i = 0; i < yieldCount; i++").end().startBlock();
+            b.statement("yieldLocations[i].root = result");
+            b.end();
+        }
+
         b.startIf().string("sourceBuilder != null").end().startBlock();
         b.statement("result.sourceInfo = sourceBuilder.build()");
         b.end();
@@ -2289,8 +2376,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTreeBuilder b = mExpectObject.createBuilder();
 
-        b.startIf().string("frame.isObject(slot)").end().startBlock(); // if {
-        b.startReturn().string("frame.getObject(slot)").end();
+        b.startIf().string("UFA.unsafeIsObject(frame, slot)").end().startBlock(); // if {
+        b.startReturn().string("UFA.unsafeGetObject(frame, slot)").end();
         b.end().startElseBlock(); // } else {
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.startReturn().string("frame.getValue(slot)").end();
@@ -2312,14 +2399,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("System.out.println(\" [SR] stack read @ \" + slot + \" : \" + frame.getValue(slot) + \"\")");
         }
 
-        b.startSwitch().string("frame.getTag(slot)").end().startBlock(); // switch {
+        b.startSwitch().string("UFA.unsafeGetTag(frame, slot)").end().startBlock(); // switch {
 
         b.startCase().string(kind.ordinal() + " /* " + kind + " */").end().startCaseBlock(); // {
-        b.startReturn().string("frame.get" + kind.getFrameName() + "(slot)").end();
+        b.startReturn().string("UFA.unsafeGet" + kind.getFrameName() + "(frame, slot)").end();
         b.end(); // }
 
         b.startCase().string(FrameKind.OBJECT.ordinal() + " /* OBJECT */").end().startCaseBlock(); // {
-        b.declaration("Object", "value", "frame.getObject(slot)");
+        b.declaration("Object", "value", "UFA.unsafeGetObject(frame, slot)");
 
         b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
         b.startReturn().string("(" + kind.getTypeName() + ") value").end();
@@ -2479,6 +2566,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("numChildNodes = 0");
         b.statement("numConditionProfiles = 0");
         b.statement("exceptionHandlers.clear()");
+
+        if (m.enableYield) {
+            b.statement("yieldCount = 0");
+        }
 
         for (OperationMetadataData metadata : m.getMetadatas()) {
             b.startAssign("metadata_" + metadata.getName()).string("null").end();

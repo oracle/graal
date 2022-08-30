@@ -50,6 +50,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
@@ -906,5 +907,32 @@ public class TestOperationsParserTest {
         });
 
         Assert.assertEquals(1L, root.call());
+    }
+
+    @Test
+    public void testYield() {
+        RootCallTarget root = parse(b -> {
+            b.beginYield();
+            b.emitConstObject(1L);
+            b.endYield();
+
+            b.beginYield();
+            b.emitConstObject(2L);
+            b.endYield();
+
+            b.beginReturn();
+            b.emitConstObject(3L);
+            b.endReturn();
+
+            b.publish(LANGUAGE);
+        });
+
+        ContinuationResult r1 = (ContinuationResult) root.call();
+        Assert.assertEquals(1L, r1.getResult());
+
+        ContinuationResult r2 = (ContinuationResult) r1.continueWith(null);
+        Assert.assertEquals(2L, r2.getResult());
+
+        Assert.assertEquals(3L, r2.continueWith(null));
     }
 }

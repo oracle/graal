@@ -78,6 +78,8 @@ public class OperationsData extends Template {
 
     private int numTosSlots;
 
+    public boolean enableYield;
+
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
     }

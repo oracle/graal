@@ -45,13 +45,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ManualBytecodeNode extends RootNode {
+public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
 
     @CompilationFinal(dimensions = 1) private short[] bc;
 
@@ -74,12 +77,18 @@ public class ManualBytecodeNode extends RootNode {
         return executeAt(frame, 0, 0);
     }
 
+    private static class Counter {
+        int count;
+    }
+
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     private Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
         int bci = startBci;
         int sp = startSp;
+
+        Counter loopCounter = new Counter();
 
         loop: while (true) {
             short opcode = localBc[bci];
@@ -89,6 +98,19 @@ public class ManualBytecodeNode extends RootNode {
                 case OP_JUMP: {
                     int nextBci = localBc[bci + 1];
                     CompilerAsserts.partialEvaluationConstant(nextBci);
+                    if (nextBci <= bci) {
+                        if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+                            TruffleSafepoint.poll(this);
+                            LoopNode.reportLoopCount(this, 256);
+                            loopCounter.count = 0;
+                        }
+                        if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
+                            Object osrResult = BytecodeOSRNode.tryOSR(this, (sp << 16) | nextBci, null, null, frame);
+                            if (osrResult != null) {
+                                return osrResult;
+                            }
+                        }
+                    }
                     bci = nextBci;
                     continue loop;
                 }
@@ -151,6 +173,20 @@ public class ManualBytecodeNode extends RootNode {
                     CompilerDirectives.shouldNotReachHere();
             }
         }
+    }
+
+    public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+        return executeAt(osrFrame, target >> 16, target & 0xffff);
+    }
+
+    @CompilationFinal private Object osrMetadata;
+
+    public Object getOSRMetadata() {
+        return osrMetadata;
+    }
+
+    public void setOSRMetadata(Object osrMetadata) {
+        this.osrMetadata = osrMetadata;
     }
 }
 

@@ -75,14 +75,16 @@ public class StoreLocalInstruction extends Instruction {
     private static final boolean USE_SPEC_FRAME_COPY = true;
 
     private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, USE_SPEC_FRAME_COPY ? "copyPrimitive" : "copy");
+        b.startStatement().startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyPrimitive" : "unsafeCopy");
+        b.variable(vars.frame);
         b.string("sourceSlot");
         b.string("localIdx");
         b.end(2);
     }
 
     private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, USE_SPEC_FRAME_COPY ? "copyObject" : "copy");
+        b.startStatement().startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyObject" : "unsafeCopy");
+        b.variable(vars.frame);
         b.string("sourceSlot");
         b.string("localIdx");
         b.end(2);

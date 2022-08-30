@@ -771,4 +771,16 @@ public interface Frame {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Copies values from this frame to the given frame. The frames are required to have the same
+     * {@link Frame#getFrameDescriptor() frame descriptors}.
+     *
+     * @param slot the slot of the local variable
+     * @since 22.2
+     */
+    default void copyTo(Frame other, int start, int length) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
 }

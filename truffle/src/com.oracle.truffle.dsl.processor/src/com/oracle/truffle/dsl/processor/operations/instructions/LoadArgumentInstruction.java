@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
@@ -75,20 +76,23 @@ public class LoadArgumentInstruction extends Instruction {
         b.declaration("Object", "value", createGetValue(vars));
 
         if (kind == FrameKind.OBJECT) {
-            b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
+            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+            b.variable(vars.frame);
             b.variable(vars.sp);
             b.string("value");
             b.end(2);
         } else {
             b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
             // {
-            b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
+            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+            b.variable(vars.frame);
             b.variable(vars.sp);
             b.string("(", kind.getTypeName(), ") value");
             b.end(2);
             // }
             b.end().startElseBlock();
             // {
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.startStatement().startCall(vars.frame, "setObject");
             b.variable(vars.sp);
             b.string("value");

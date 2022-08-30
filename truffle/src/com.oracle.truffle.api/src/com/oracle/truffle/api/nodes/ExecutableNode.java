@@ -166,4 +166,8 @@ public abstract class ExecutableNode extends Node {
         }
         return (C) language;
     }
+
+    public final TruffleLanguage<?> getLanguageInternal() {
+        return getLanguage();
+    }
 }
