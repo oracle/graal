@@ -238,7 +238,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         test((tool, state, safepoint) -> {
             Variable var = tool.newVariable(LIRKind.fromJavaKind(tool.target().arch, JavaKind.Int));
             tool.append(new ValueDef(var));
-            LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{var}, new JavaKind[]{JavaKind.Illegal}, 1, 0, 0);
+            LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{var}, new JavaKind[]{JavaKind.Void}, 1, 0, 0);
             safepoint.accept(newState);
         });
     }
