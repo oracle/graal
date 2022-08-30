@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisElement;
-import com.oracle.graal.pointsto.meta.AnalysisElement.ElementReachableNotification;
+import com.oracle.graal.pointsto.meta.AnalysisElement.ElementNotification;
 import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
 import com.oracle.graal.pointsto.meta.AnalysisElement.SubtypeReachableNotification;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 @AutomaticFeature
 public class ConcurrentReachabilityHandler implements ReachabilityHandler, Feature {
 
-    private final Map<Consumer<DuringAnalysisAccess>, ElementReachableNotification> reachabilityNotifications = new ConcurrentHashMap<>();
+    private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
 
     public static ConcurrentReachabilityHandler singleton() {
         return ImageSingletons.lookup(ConcurrentReachabilityHandler.class);
@@ -113,7 +113,7 @@ public class ConcurrentReachabilityHandler implements ReachabilityHandler, Featu
          * by each AnalysisElement, i.e., each trigger, and are removed as soon as they are
          * notified.
          */
-        ElementReachableNotification notification = reachabilityNotifications.computeIfAbsent(callback, ElementReachableNotification::new);
+        ElementNotification notification = reachabilityNotifications.computeIfAbsent(callback, ElementNotification::new);
 
         if (notification.isNotified()) {
             /* Already notified from an earlier registration, nothing to do. */

@@ -155,7 +155,11 @@ public abstract class TypeFlow<T> {
      * @param graphRef the holder method clone
      */
     public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef) {
-        this(original.getSource(), original.getDeclaredType(), TypeState.forEmpty(), original.getSlot(), true, graphRef);
+        this(original, graphRef, TypeState.forEmpty());
+    }
+
+    public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef, TypeState cloneState) {
+        this(original.getSource(), original.getDeclaredType(), cloneState, original.getSlot(), true, graphRef);
         this.usedAsAParameter = original.usedAsAParameter;
         this.usedAsAReceiver = original.usedAsAReceiver;
         PointsToStats.registerTypeFlowRetainReason(this, original);
