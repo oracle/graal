@@ -589,12 +589,12 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
                     Block loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
                     if (AbstractControlFlowGraph.strictlyDominates(loopDefBlock, defBlock)) {
                         /*
-                         * The LICM location strictly dominates the GVN location so it must the
+                         * The LICM location strictly dominates the GVN location so it must be the
                          * final location. Move the GVN node to the LICM location and then perform
                          * the substitution normally.
                          */
                         if (!tryPerformLICM(invariantInLoop, (FixedNode) edgeDataEqual, licmNodes)) {
-                            GraalError.shouldNotReachHere("tryPerformLICM must success for " + edgeDataEqual);
+                            GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual);
                         }
                     } else {
                         GraalError.guarantee(AbstractControlFlowGraph.dominates(defBlock, loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);

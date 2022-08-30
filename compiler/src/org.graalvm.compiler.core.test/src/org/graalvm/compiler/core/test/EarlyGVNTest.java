@@ -85,9 +85,23 @@ public class EarlyGVNTest extends GraalCompilerTest {
         super.checkHighTierGraph(graph);
     }
 
+    /**
+     * Helper class for assertion checking.
+     */
     static class NodeCount {
+        /**
+         * Expected node class to be checked.
+         */
         final NodeClass<?> nodeClass;
+
+        /**
+         * Expected count of nodes to be found in the graph.
+         */
         final int count;
+
+        /**
+         * Expected count of nodes which are outside all loops.
+         */
         final int invariantCount;
 
         NodeCount(NodeClass<?> nodeClass, int count, int invariantCount) {
