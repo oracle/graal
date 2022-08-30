@@ -1918,6 +1918,9 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_perf_data_get_address_of_int64_t(PolyglotIsolateThread thread, CCharPointer utf8Key, CInt64PointerPointer result) {
         resetErrorState();
         String key = CTypeConversion.utf8ToJavaString(utf8Key);
+        if (!ImageSingletons.lookup(PerfDataSupport.class).hasLong(key)) {
+            throw reportError("Key " + key + " is not a valid performance data entry key.", poly_generic_failure);
+        }
         CInt64Pointer ptr = (CInt64Pointer) ImageSingletons.lookup(PerfDataSupport.class).getLong(key);
         result.write(ptr);
         return poly_ok;
