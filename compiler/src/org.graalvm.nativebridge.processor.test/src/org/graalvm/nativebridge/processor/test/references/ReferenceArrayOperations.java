@@ -26,19 +26,23 @@ package org.graalvm.nativebridge.processor.test.references;
 
 public interface ReferenceArrayOperations {
 
-    void accept(Handler[] handlers);
+    void acceptHost(Handler[] handlers);
 
-    void acceptSubArray(Handler[] handlers, int offset, int length);
+    void acceptHostSubArray(Handler[] handlers, int offset, int length);
 
-    void fill(Handler[] handlers);
+    void fillHost(Handler[] handlers);
 
-    int fillSubArray(Handler[] handlers, int offset, int length);
+    int fillHostSubArray(Handler[] handlers, int offset, int length);
 
-    void exchange(Handler[] handlers);
+    void exchangeHost(Handler[] handlers);
 
-    int exchangeSubArray(Handler[] handlers, int offset, int length);
+    int exchangeHostSubArray(Handler[] handlers, int offset, int length);
 
     Handler[] getHostObjects();
+
+    void acceptGuest(Record[] records);
+
+    void acceptGuestSubArray(Record[] records, int offset, int length);
 
     Record[] getGuestObjects();
 }

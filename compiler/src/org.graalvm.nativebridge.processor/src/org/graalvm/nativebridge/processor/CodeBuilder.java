@@ -225,6 +225,10 @@ final class CodeBuilder {
         return write(memberName);
     }
 
+    CodeBuilder memberSelect(TypeMirror clazz, CharSequence memberName, boolean brackets) {
+        return memberSelect(new CodeBuilder(this).write(clazz).build(), memberName, brackets);
+    }
+
     CodeBuilder parameterizedType(DeclaredType parameterizedType, TypeMirror... actualTypeParameters) {
         write(types.erasure(parameterizedType));
         write("<");

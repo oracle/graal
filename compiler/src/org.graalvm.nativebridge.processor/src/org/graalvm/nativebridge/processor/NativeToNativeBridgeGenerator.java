@@ -50,7 +50,7 @@ final class NativeToNativeBridgeGenerator extends AbstractBridgeGenerator {
     private boolean sharedImplementation;
 
     NativeToNativeBridgeGenerator(AbstractBridgeParser parser, TypeCache typeCache, DefinitionData definitionData) {
-        super(parser, definitionData);
+        super(parser, definitionData, typeCache);
         delegateGenerator = new HotSpotToNativeBridgeGenerator(parser, typeCache, definitionData,
                         new String[]{HotSpotToNativeBridgeGenerator.SHARED_START_POINT_SIMPLE_NAME, HotSpotToNativeBridgeGenerator.SHARED_END_POINT_SIMPLE_NAME},
                         new String[]{START_POINT_SIMPLE_NAME, END_POINT_SIMPLE_NAME});

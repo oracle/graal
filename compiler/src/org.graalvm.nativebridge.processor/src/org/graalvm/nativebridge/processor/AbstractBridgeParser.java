@@ -1028,6 +1028,10 @@ abstract class AbstractBridgeParser {
             return kind == Kind.CUSTOM;
         }
 
+        boolean isReference() {
+            return kind == Kind.REFERENCE;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) {

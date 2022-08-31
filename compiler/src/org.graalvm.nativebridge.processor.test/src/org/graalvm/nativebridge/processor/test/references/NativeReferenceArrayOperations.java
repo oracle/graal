@@ -41,29 +41,35 @@ abstract class NativeReferenceArrayOperations extends NativeObject implements Re
     }
 
     @Override
-    public abstract void accept(@ByReference(HSHandler.class) Handler[] handlers);
+    public abstract void acceptHost(@ByReference(HSHandler.class) Handler[] handlers);
 
     @Override
-    public abstract void acceptSubArray(@In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(HSHandler.class) Handler[] handlers, int offset, int length);
+    public abstract void acceptHostSubArray(@In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(HSHandler.class) Handler[] handlers, int offset, int length);
 
     @Override
-    public abstract void fill(@Out @ByReference(HSHandler.class) Handler[] handlers);
+    public abstract void fillHost(@Out @ByReference(HSHandler.class) Handler[] handlers);
 
     @Override
-    public abstract int fillSubArray(@Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(HSHandler.class) Handler[] handlers, int offset,
+    public abstract int fillHostSubArray(@Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(HSHandler.class) Handler[] handlers, int offset,
                     int length);
 
     @Override
-    public abstract void exchange(@In @Out @ByReference(HSHandler.class) Handler[] handlers);
+    public abstract void exchangeHost(@In @Out @ByReference(HSHandler.class) Handler[] handlers);
 
     @Override
-    public abstract int exchangeSubArray(
+    public abstract int exchangeHostSubArray(
                     @In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(HSHandler.class) Handler[] handlers,
                     int offset, int length);
 
     @Override
     @ByReference(HSHandler.class)
     public abstract Handler[] getHostObjects();
+
+    @Override
+    public abstract void acceptGuest(@ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract void acceptGuestSubArray(@In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(NativeRecord.class) Record[] records, int offset, int length);
 
     @Override
     @ByReference(NativeRecord.class)

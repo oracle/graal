@@ -59,10 +59,13 @@ abstract class AbstractBridgeGenerator {
     final DefinitionData definitionData;
     final Types types;
 
-    AbstractBridgeGenerator(AbstractBridgeParser parser, DefinitionData definitionData) {
+    private final AbstractTypeCache typeCache;
+
+    AbstractBridgeGenerator(AbstractBridgeParser parser, DefinitionData definitionData, AbstractTypeCache typeCache) {
         this.parser = parser;
         this.definitionData = definitionData;
         this.types = parser.types;
+        this.typeCache = typeCache;
     }
 
     final FactoryMethodInfo resolveFactoryMethod(CharSequence factoryMethodName, CharSequence startPointSimpleName, CharSequence endPointSimpleName,
@@ -254,22 +257,59 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<Map.Entry<MarshallerData, CharSequence>> customMarshallers) {
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters) {
         builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
         boolean first = true;
-        for (Map.Entry<MarshallerData, CharSequence> e : customMarshallers) {
+        for (MarshalledParameter e : marshalledParameters) {
             if (first) {
                 first = false;
             } else {
                 builder.spaceIfNeeded().write("+").space();
             }
-            builder.invoke(e.getKey().name, "inferSize", e.getValue());
+            if (e.marshallerData.isCustom()) {
+                builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
+            } else if (e.marshallerData.isReference()) {
+                AnnotationMirror in = find(e.marshallerData.annotations, typeCache.in, types);
+                AnnotationMirror out = find(e.marshallerData.annotations, typeCache.out, types);
+                CharSequence arrayLength = null;
+                if (in != null) {
+                    arrayLength = getArrayLengthParameterName(in);
+                } else if (out != null) {
+                    arrayLength = getArrayLengthParameterName(out);
+                }
+                if (arrayLength == null) {
+                    arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
+                }
+                TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
+                TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
+                builder.memberSelect(boxedInt, "BYTES", false).write(" + (").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(
+                                boxedLong, "BYTES", false).write(" : 0)");
+            } else {
+                throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
+            }
         }
         builder.lineEnd(";");
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
         return parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
+    }
+
+    private static AnnotationMirror find(List<? extends AnnotationMirror> annotations, DeclaredType requiredAnnotation, Types types) {
+        for (AnnotationMirror annotation : annotations) {
+            if (types.isSameType(annotation.getAnnotationType(), requiredAnnotation)) {
+                return annotation;
+            }
+        }
+        return null;
+    }
+
+    static CharSequence getArrayLengthParameterName(AnnotationMirror annotation) {
+        return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayLengthParameter");
+    }
+
+    static CharSequence getArrayOffsetParameterName(AnnotationMirror annotation) {
+        return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayOffsetParameter");
     }
 
     abstract static class MarshallerSnippets {
@@ -300,13 +340,13 @@ abstract class AbstractBridgeGenerator {
                         CharSequence jniEnvFieldName);
 
         @SuppressWarnings("unused")
-        boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName,
+        boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput, CharSequence jniEnvFieldName,
                         Map<String, CharSequence> parameterValueOverrides) {
             return false;
         }
 
         @SuppressWarnings("unused")
-        boolean preUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName,
+        boolean preUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, CharSequence jniEnvFieldName,
                         Map<String, CharSequence> parameterValueOverride) {
             return false;
         }
@@ -343,11 +383,11 @@ abstract class AbstractBridgeGenerator {
         }
 
         final AnnotationMirror findIn(List<? extends AnnotationMirror> annotations) {
-            return find(annotations, cache.in);
+            return find(annotations, cache.in, types);
         }
 
         final AnnotationMirror findOut(List<? extends AnnotationMirror> annotations) {
-            return find(annotations, cache.out);
+            return find(annotations, cache.out, types);
         }
 
         final CharSequence unmarshallHotSpotToNativeProxyInNative(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
@@ -474,23 +514,6 @@ abstract class AbstractBridgeGenerator {
             Boolean value = (Boolean) AbstractBridgeParser.getAnnotationValue(annotation, "trimToResult");
             return value != null && value;
         }
-
-        static CharSequence getArrayLengthParameterName(AnnotationMirror annotation) {
-            return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayLengthParameter");
-        }
-
-        static CharSequence getArrayOffsetParameterName(AnnotationMirror annotation) {
-            return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayOffsetParameter");
-        }
-
-        private AnnotationMirror find(List<? extends AnnotationMirror> annotations, DeclaredType requiredAnnotation) {
-            for (AnnotationMirror annotation : annotations) {
-                if (types.isSameType(annotation.getAnnotationType(), requiredAnnotation)) {
-                    return annotation;
-                }
-            }
-            return null;
-        }
     }
 
     abstract static class CacheSnippets {
@@ -603,6 +626,18 @@ abstract class AbstractBridgeGenerator {
             this.endPointSimpleName = endPointSimpleName;
             this.parameters = parameters;
             this.superCallParameters = superCallParameters;
+        }
+    }
+
+    static final class MarshalledParameter {
+        final CharSequence parameterName;
+        final TypeMirror parameterType;
+        final MarshallerData marshallerData;
+
+        MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, MarshallerData marshallerData) {
+            this.parameterName = parameterName;
+            this.parameterType = parameterType;
+            this.marshallerData = marshallerData;
         }
     }
 }
