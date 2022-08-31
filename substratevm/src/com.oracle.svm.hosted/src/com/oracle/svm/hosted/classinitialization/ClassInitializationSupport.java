@@ -293,8 +293,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     static String getTraceString(StackTraceElement[] trace) {
         StringBuilder b = new StringBuilder();
 
-        for (int i = 0; i < trace.length; i++) {
-            StackTraceElement stackTraceElement = trace[i];
+        for (StackTraceElement stackTraceElement : trace) {
             b.append("\tat ").append(stackTraceElement.toString()).append("\n");
         }
 

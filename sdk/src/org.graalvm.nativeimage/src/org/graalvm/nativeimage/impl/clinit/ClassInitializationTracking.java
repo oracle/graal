@@ -40,10 +40,6 @@
  */
 package org.graalvm.nativeimage.impl.clinit;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -53,30 +49,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ClassInitializationTracking {
 
-    /**
-     * Field that is true during native image generation (even during system class loading), but
-     * false at run time.
-     *
-     * Static initializer runs on the hosting VM, setting field value to true during native image
-     * generation. At run time, the substituted value is used, setting the field value to false.
-     */
-    public static final boolean IS_IMAGE_BUILD_TIME;
-
     public static final Map<Class<?>, StackTraceElement[]> initializedClasses = new ConcurrentHashMap<>();
+
     /**
      * Instantiated objects must be traced using their identities as their hashCode may change
      * during the execution. We also want two objects of the same class that have the same hash and
      * are equal to be mapped as two distinct entries.
      */
     public static final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
-
-    static {
-        /*
-         * Prevents javac from constant folding use of this field. It is set to true by the process
-         * that builds the shared library.
-         */
-        IS_IMAGE_BUILD_TIME = true;
-    }
 
     /**
      * This method is called from the native-image diagnostics agent to report class initialization.
