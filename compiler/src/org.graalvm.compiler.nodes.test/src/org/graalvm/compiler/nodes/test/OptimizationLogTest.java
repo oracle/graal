@@ -72,8 +72,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
-            graph.getOptimizationLog().withProperty("foo", 42).withLazyProperty("bar", barPropertySupplier)
-                            .report(getClass(), "StartNodeReported", graph.start());
+            graph.getOptimizationLog().withProperty("foo", 42).withLazyProperty("bar", barPropertySupplier).report(getClass(), "StartNodeReported", graph.start());
             new ReportAddNodePhase().apply(graph, context);
             new ReportReturnNodePhase().apply(graph, context);
         }

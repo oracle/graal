@@ -402,9 +402,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 if (performReplacement(node, canonical, tool)) {
                     Node finalCanonical = canonical;
                     StructuredGraph graph = (StructuredGraph) node.graph();
-                    graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shortName)
-                                    .withLazyProperty("canonicalNodeClass", () -> (finalCanonical == null) ? null : finalCanonical.getNodeClass().shortName())
-                                    .report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CanonicalReplacement", node);
+                    graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shortName).withLazyProperty("canonicalNodeClass",
+                                    () -> (finalCanonical == null) ? null : finalCanonical.getNodeClass().shortName()).report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class,
+                                                    "CanonicalReplacement", node);
                     return true;
                 }
             }

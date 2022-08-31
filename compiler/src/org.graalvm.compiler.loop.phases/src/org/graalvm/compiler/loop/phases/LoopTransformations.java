@@ -110,8 +110,7 @@ public abstract class LoopTransformations {
         LoopFragmentInside inside = loop.inside().duplicate();
         inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
-        loop.loopBegin().graph().getOptimizationLog().withProperty("peelings", loop.loopBegin().peelings())
-                        .report(LoopTransformations.class, "LoopPeeling", loop.loopBegin());
+        loop.loopBegin().graph().getOptimizationLog().withProperty("peelings", loop.loopBegin().peelings()).report(LoopTransformations.class, "LoopPeeling", loop.loopBegin());
         if (mainExit != null) {
             adaptCountedLoopExitProbability(mainExit, frequencyBefore - 1D);
         }
@@ -221,8 +220,7 @@ public abstract class LoopTransformations {
         }
 
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
-        loop.loopBegin().graph().getOptimizationLog().withProperty("unswitches", loop.loopBegin().unswitches())
-                        .report(LoopTransformations.class, "LoopUnswitching", loop.loopBegin());
+        loop.loopBegin().graph().getOptimizationLog().withProperty("unswitches", loop.loopBegin().unswitches()).report(LoopTransformations.class, "LoopUnswitching", loop.loopBegin());
     }
 
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
@@ -230,8 +228,7 @@ public abstract class LoopTransformations {
         adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
-        loop.loopBegin().graph().getOptimizationLog().withProperty("unrollFactor", loop.loopBegin().getUnrollFactor())
-                        .report(LoopTransformations.class, "LoopPartialUnroll", loop.loopBegin());
+        loop.loopBegin().graph().getOptimizationLog().withProperty("unrollFactor", loop.loopBegin().getUnrollFactor()).report(LoopTransformations.class, "LoopPartialUnroll", loop.loopBegin());
     }
 
     /**
