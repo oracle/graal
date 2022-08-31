@@ -313,7 +313,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -1238,8 +1237,6 @@ public class NativeImageGenerator {
         ResolvedJavaType resolvedJavaType = providers.getMetaAccess().lookupJavaType(ClassInitializationTracking.class);
         if (resolvedJavaType instanceof AnalysisType) {
             ((AnalysisType) resolvedJavaType).registerAsReachable();
-            ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(ClassInitializationTracking.class, "IS_IMAGE_BUILD_TIME"));
-            ((AnalysisField) field).registerAsAccessed();
         }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());

@@ -61,7 +61,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     private static final Field dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
 
     private final EarlyClassInitializerAnalysis earlyClassInitializerAnalysis;
-    private Set<Class<?>> provenSafeEarly = Collections.synchronizedSet(new HashSet<>());
+    private final Set<Class<?>> provenSafeEarly = Collections.synchronizedSet(new HashSet<>());
     private Set<Class<?>> provenSafeLate = Collections.synchronizedSet(new HashSet<>());
 
     ProvenSafeClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
@@ -437,7 +437,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
         classesWithKind(RUN_TIME).stream()
                         .filter(t -> aMetaAccess.optionalLookupJavaType(t).isPresent())
                         .filter(t -> aMetaAccess.lookupJavaType(t).isReachable())
-                        .filter(t -> canBeProvenSafe(t))
+                        .filter(this::canBeProvenSafe)
                         .forEach(c -> {
                             AnalysisType type = aMetaAccess.lookupJavaType(c);
                             if (!initGraph.isUnsafe(type)) {
