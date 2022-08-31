@@ -1854,6 +1854,8 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
+          # these are hand-crafted invalid bitcode files
+          "file:tests/com.oracle.truffle.llvm.tests.bitcodeformat.invalid/invalid",
         ],
       },
       "license" : "BSD-new",
