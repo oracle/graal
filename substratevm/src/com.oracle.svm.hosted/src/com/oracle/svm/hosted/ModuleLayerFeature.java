@@ -251,7 +251,7 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     private ModuleLayer synthesizeRuntimeModuleLayer(List<ModuleLayer> parentLayers, ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules,
-                    Function<String, ClassLoader> clf, Configuration cf) {
+                    Function<String, ClassLoader> clf, Configuration cfOverride) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
          * {@link NativeImageClassLoaderSupport}.
@@ -259,13 +259,16 @@ public final class ModuleLayerFeature implements InternalFeature {
         NativeImageClassLoaderSupport classLoaderSupport = cl.classLoaderSupport;
         ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
-        if (cf == null) {
+        Configuration runtimeModuleLayerConfiguration;
+        if (cfOverride == null) {
             List<Configuration> parentConfigs = parentLayers.stream().map(ModuleLayer::configuration).collect(Collectors.toList());
-            cf = synthesizeRuntimeModuleLayerConfiguration(beforeFinder, parentConfigs, afterFinder, reachableModules);
+            runtimeModuleLayerConfiguration = synthesizeRuntimeModuleLayerConfiguration(beforeFinder, parentConfigs, afterFinder, reachableModules);
+        } else {
+            runtimeModuleLayerConfiguration = cfOverride;
         }
         ModuleLayer runtimeModuleLayer = null;
         try {
-            runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(cf);
+            runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(runtimeModuleLayerConfiguration);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeModuleLayer, clf);
             for (Module syntheticModule : syntheticModules) {
                 Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule, syntheticModule.getDescriptor());
