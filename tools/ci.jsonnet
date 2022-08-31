@@ -11,7 +11,19 @@
     timelimit: "30:00",
   },
 
-  local tools_gate = tools_common + common.eclipse + common.jdt + {
+  local common_guard = {
+    guard: {
+      inludes: ["<graal>/tools/**"],
+      excludes: ["<graal>/**/*.md"]
+    }
+  },
+  local gate_guard = common_guard + {
+    guard+: {
+      inludes+: ["<graal>/sdk/**", "<graal>/truffle/**"]
+    }
+  },
+
+  local tools_gate = gate_guard + tools_common + common.eclipse + common.jdt + {
     name: 'gate-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
@@ -28,13 +40,13 @@
     targets: ["weekly"],
   },
 
-  local tools_javadoc = tools_common + {
+  local tools_javadoc = tools_common + common_guard + {
     name: "gate-tools-javadoc",
     run: [
       ["mx", "build"],
       ["mx", "javadoc"],
     ],
-    targets: ["gate"],
+    targets: ["gate"]
   },
 
   local coverage_whitelisting = [
