@@ -11,6 +11,9 @@
     ],
     targets: ["gate"],
     timelimit: "30:00",
+    guard: {
+        includes: ["<graal>/sdk/**"],
+    }
   },
 
   builds: [
