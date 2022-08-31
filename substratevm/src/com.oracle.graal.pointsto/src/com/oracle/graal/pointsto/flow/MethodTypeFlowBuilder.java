@@ -130,6 +130,8 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
