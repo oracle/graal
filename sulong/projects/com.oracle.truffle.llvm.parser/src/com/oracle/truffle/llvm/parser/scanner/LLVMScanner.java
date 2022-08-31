@@ -84,6 +84,7 @@ public class LLVMScanner {
     }
 
     public LLVMScanner(BitStream bitstream, ParserListener parser, Map<Block, List<AbbreviatedRecord[]>> defaultAbbreviations, Block block, int idSize, long offset) {
+        assert idSize > 0;
         this.bitstream = bitstream;
         this.defaultAbbreviations = defaultAbbreviations;
         this.block = block;
@@ -126,8 +127,13 @@ public class LLVMScanner {
         }
 
         @Override
-        protected void enterSubBlock(long blockId, long newIdSize, long numWords) {
+        protected void enterSubBlock(long blockId, int newIdSize, long numWords) {
+            assert numWords > 0;
+            long startOffset = offset;
             offset += numWords * Integer.SIZE;
+            if (offset < startOffset) {
+                throw new LLVMParserException("invalid bitcode: overflow or negative size");
+            }
         }
 
         @Override
@@ -151,6 +157,7 @@ public class LLVMScanner {
     }
 
     protected long read(int bits) {
+        assert bits >= 0;
         final long value = bitstream.read(offset, bits);
         offset += bits;
         return value;
@@ -170,6 +177,7 @@ public class LLVMScanner {
     }
 
     private long readVBR(int width) {
+        assert width > 0;
         final long value = bitstream.readVBR(offset, width);
         offset += BitStream.widthVBR(value, width);
         return value;
@@ -254,6 +262,7 @@ public class LLVMScanner {
         private final int width;
 
         FixedAbbreviatedRecord(int width) {
+            assert width >= 0;
             this.width = width;
         }
 
@@ -268,6 +277,7 @@ public class LLVMScanner {
         private final int width;
 
         VBRAbbreviatedRecord(int width) {
+            assert width > 0;
             this.width = width;
         }
 
@@ -298,7 +308,7 @@ public class LLVMScanner {
             scanner.alignInt();
             scanner.recordBuffer.ensureFits(blobLength / MAX_BLOB_PART_LENGTH);
             while (blobLength > 0) {
-                final long l = blobLength <= MAX_BLOB_PART_LENGTH ? blobLength : MAX_BLOB_PART_LENGTH;
+                final long l = Long.compareUnsigned(blobLength, MAX_BLOB_PART_LENGTH) <= 0 ? blobLength : MAX_BLOB_PART_LENGTH;
                 final long blobValue = scanner.read((int) (Primitive.USER_OPERAND_LITERAL.getBits() * l));
                 scanner.recordBuffer.addOp(blobValue);
                 blobLength -= l;
@@ -349,14 +359,20 @@ public class LLVMScanner {
 
                 switch ((int) recordType) {
                     case AbbrevRecordId.FIXED: {
-                        final int width = (int) read(Primitive.USER_OPERAND_DATA);
-                        operandScanners[i] = new FixedAbbreviatedRecord(width);
+                        final long width = read(Primitive.USER_OPERAND_DATA);
+                        if (width < 0 || width != (int) width) {
+                            throw new LLVMParserException("invalid bitcode: overflow or negative size");
+                        }
+                        operandScanners[i] = new FixedAbbreviatedRecord((int) width);
                         break;
                     }
 
                     case AbbrevRecordId.VBR: {
-                        final int width = (int) read(Primitive.USER_OPERAND_DATA);
-                        operandScanners[i] = new VBRAbbreviatedRecord(width);
+                        final long width = read(Primitive.USER_OPERAND_DATA);
+                        if (width <= 0 || width != (int) width) {
+                            throw new LLVMParserException("invalid bitcode: overflow or negative size");
+                        }
+                        operandScanners[i] = new VBRAbbreviatedRecord((int) width);
                         break;
                     }
 
@@ -390,15 +406,20 @@ public class LLVMScanner {
         abbreviationDefinitions.add(operandScanners);
     }
 
-    protected void enterSubBlock(long blockId, long newIdSize, long numWords) {
+    protected void enterSubBlock(long blockId, int newIdSize, long numWords) {
+        assert numWords > 0;
+        assert newIdSize > 0;
         final long endingOffset = offset + (numWords * Integer.SIZE);
+        if (endingOffset < offset) {
+            throw new LLVMParserException("invalid bitcode: overflow or negative size");
+        }
 
         final Block subBlock = Block.lookup(blockId);
         if (subBlock == null || subBlock.skip()) {
             offset = endingOffset;
 
         } else if (subBlock.parseLazily()) {
-            final LazyScanner lazyScanner = new LazyScanner(bitstream, new HashMap<>(defaultAbbreviations), offset, endingOffset, (int) newIdSize, subBlock);
+            final LazyScanner lazyScanner = new LazyScanner(bitstream, new HashMap<>(defaultAbbreviations), offset, endingOffset, newIdSize, subBlock);
             offset = endingOffset;
             parser.skip(subBlock, lazyScanner);
 
@@ -406,7 +427,7 @@ public class LLVMScanner {
             final int localAbbreviationDefinitionsOffset = defaultAbbreviations.getOrDefault(block, Collections.emptyList()).size();
             parents.push(new ScannerState(subList(abbreviationDefinitions, localAbbreviationDefinitionsOffset), block, idSize, parser));
             parser = parser.enter(subBlock);
-            startSubBlock(subBlock, (int) newIdSize);
+            startSubBlock(subBlock, newIdSize);
         }
     }
 
@@ -416,13 +437,19 @@ public class LLVMScanner {
         alignInt();
         final long numWords = read(Integer.SIZE);
 
-        enterSubBlock(blockId, newIdSize, numWords);
+        if (numWords <= 0 || newIdSize <= 0 || newIdSize != (int) newIdSize) {
+            // overflow
+            throw new LLVMParserException("invalid bitcode: overflow or negative size");
+        }
+        enterSubBlock(blockId, (int) newIdSize, numWords);
     }
 
     private void startSubBlock(Block subBlock, int newIdSize) {
         abbreviationDefinitions.clear();
         abbreviationDefinitions.addAll(defaultAbbreviations.getOrDefault(subBlock, Collections.emptyList()));
         block = subBlock;
+
+        assert newIdSize > 0;
         idSize = newIdSize;
 
         if (block == Block.BLOCKINFO) {
@@ -522,6 +549,7 @@ public class LLVMScanner {
         private final Block startingBlock;
 
         private LazyScanner(BitStream bitstream, Map<Block, List<AbbreviatedRecord[]>> oldDefaultAbbreviations, long startingOffset, long endingOffset, int startingIdSize, Block startingBlock) {
+            assert startingIdSize > 0;
             this.bitstream = bitstream;
             this.oldDefaultAbbreviations = oldDefaultAbbreviations;
             this.startingOffset = startingOffset;
