@@ -50,7 +50,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     private DebuggerConnection connection;
     private Collection<Thread> activeThreads = new ArrayList<>();
     private PrintStream err;
-
+    private volatile HandshakeController hsController = null;
     private final Semaphore resetting = new Semaphore(1);
 
     @Override
@@ -70,6 +70,11 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         // stop all running jdwp threads in an orderly fashion
         for (Thread activeThread : activeThreads) {
             activeThread.interrupt();
+        }
+        // close the server socket used to listen for transport dt_socket
+        HandshakeController hsc = hsController;
+        if (hsc != null) {
+            hsc.close();
         }
         // close the connection to the debugger
         if (connection != null) {
@@ -167,7 +172,13 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     void doConnect(boolean suspend, boolean server) throws IOException {
-        SocketConnection socketConnection = HandshakeController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads, this);
+        SocketConnection socketConnection;
+
+        hsController = new HandshakeController();
+        socketConnection = hsController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads, this);
+        hsController.close();
+        hsController = null;
+
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         controller.getEventListener().setConnection(socketConnection);
