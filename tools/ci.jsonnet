@@ -13,8 +13,7 @@
 
   local common_guard = {
     guard: {
-      inludes: ["<graal>/tools/**"],
-      excludes: ["<graal>/**/*.md"]
+      inludes: ["<graal>/tools/**"]
     }
   },
   local gate_guard = common_guard + {
