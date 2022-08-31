@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -34,6 +35,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -55,14 +58,26 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     protected final PointsToAnalysisMethod targetMethod;
     protected boolean isContextInsensitive;
 
+    /**
+     * The multi-method key for the method which contains this invoke type flow.
+     */
+    protected final MultiMethodKey callerMultiMethodKey;
+
+    /**
+     * Flag to monitor whether all callees are original or not. This is used for to optimize
+     * {@link #getOriginalCallees}.
+     */
+    protected volatile boolean allOriginalCallees = true;
+
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
         super(invokeLocation, null);
         this.originalInvoke = null;
         this.receiverType = receiverType;
         this.targetMethod = targetMethod;
         this.actualParameters = actualParameters;
         this.actualReturn = actualReturn;
+        this.callerMultiMethodKey = callerMultiMethodKey;
 
         getTargetMethod().registerAsInvoked(this);
     }
@@ -73,6 +88,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         this.originalInvoke = original;
         this.receiverType = original.receiverType;
         this.targetMethod = original.targetMethod;
+        this.callerMultiMethodKey = original.callerMultiMethodKey;
 
         actualReturn = original.getActualReturn() != null ? (ActualReturnTypeFlow) methodFlows.lookupCloneOf(bb, original.getActualReturn()) : null;
 
@@ -151,71 +167,92 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         return invokeState;
     }
 
-    protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraph calleeFlows, AnalysisObject receiverObject) {
+    protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, AnalysisObject receiverObject) {
         TypeState receiverTypeState = TypeState.forExactType(bb, receiverObject, false);
         updateReceiver(bb, calleeFlows, receiverTypeState);
     }
 
-    protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraph calleeFlows, TypeState receiverTypeState) {
-        FormalReceiverTypeFlow formalReceiverFlow = calleeFlows.getFormalReceiver();
-        if (formalReceiverFlow != null) {
-            formalReceiverFlow.addReceiverState(bb, receiverTypeState);
-        }
+    protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, TypeState receiverTypeState) {
+        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performParameterLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+            FormalReceiverTypeFlow formalReceiverFlow = calleeFlows.getFormalReceiver();
+            if (formalReceiverFlow != null) {
+                formalReceiverFlow.addReceiverState(bb, receiverTypeState);
+            }
 
-        if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
-            int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
-            if (actualReturn != null && paramIndex == 0) {
-                actualReturn.addState(bb, receiverTypeState);
+            if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
+                int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
+                if (actualReturn != null && paramIndex == 0) {
+                    actualReturn.addState(bb, receiverTypeState);
+                }
             }
         }
 
     }
 
-    protected void linkCallee(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraph calleeFlows) {
+    protected void linkCallee(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
 
-        // iterate over the actual parameters in caller context
-        for (int i = 0; i < actualParameters.length; i++) {
-            TypeFlow<?> actualParam = actualParameters[i];
+        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performParameterLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+            // iterate over the actual parameters in caller context
+            for (int i = 0; i < actualParameters.length; i++) {
+                TypeFlow<?> actualParam = actualParameters[i];
 
-            // get the formal parameter from the specific clone
-            TypeFlow<?> formalParam = calleeFlows.getParameter(i);
-            /*
-             * The link between the receiver object and 'this' parameter of instance methods is a
-             * non-state-transfer link. The link only exists for a proper iteration of type flow
-             * graphs, but the state update of 'this' parameters is achieved through direct state
-             * update in VirtualInvokeTypeFlow.update and SpecialInvokeTypeFlow.update by calling
-             * FormalReceiverTypeFlow.addReceiverState. This happens because the formal receiver ,
-             * i.e., 'this' parameter, state must ONLY reflect those objects of the actual receiver
-             * that generated the context for the method clone which it belongs to. A direct link
-             * would instead transfer all the objects of compatible type from the actual receiver to
-             * the formal receiver.
-             */
-            if (actualParam != null && formalParam != null /* && (i != 0 || isStatic) */) {
-                // create the use link:
-                // (formalParam, callerContext) -> (actualParam, calleeContext)
-                // Note: the callerContext is an implicit property of the current InvokeTypeFlow
-                // clone
-                actualParam.addUse(bb, formalParam);
+                // get the formal parameter from the specific clone
+                TypeFlow<?> formalParam = calleeFlows.getParameter(i);
+                /*
+                 * The link between the receiver object and 'this' parameter of instance methods is
+                 * a non-state-transfer link. The link only exists for a proper iteration of type
+                 * flow graphs, but the state update of 'this' parameters is achieved through direct
+                 * state update in VirtualInvokeTypeFlow.update and SpecialInvokeTypeFlow.update by
+                 * calling FormalReceiverTypeFlow.addReceiverState. This happens because the formal
+                 * receiver , i.e., 'this' parameter, state must ONLY reflect those objects of the
+                 * actual receiver that generated the context for the method clone which it belongs
+                 * to. A direct link would instead transfer all the objects of compatible type from
+                 * the actual receiver to the formal receiver.
+                 */
+                if (actualParam != null && formalParam != null /* && (i != 0 || isStatic) */) {
+                    // create the use link:
+                    // (formalParam, callerContext) -> (actualParam, calleeContext)
+                    // Note: the callerContext is an implicit property of the current InvokeTypeFlow
+                    // clone
+                    actualParam.addUse(bb, formalParam);
+                }
             }
         }
 
         linkReturn(bb, isStatic, calleeFlows);
 
-        bb.analysisPolicy().registerAsImplementationInvoked(this, calleeFlows);
+        /*
+         * Stubs act as placeholders and are not registered as implementation invoked until a full
+         * typeflow is created for the method.
+         */
+        if (!calleeFlows.isStub()) {
+            bb.analysisPolicy().registerAsImplementationInvoked(this, calleeFlows.getMethod());
+        }
     }
 
-    public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraph calleeFlows) {
-        if (actualReturn != null) {
-            if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
-                int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
-                if (paramNodeIndex != -1) {
-                    if (isStatic || paramNodeIndex != 0) {
-                        TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
-                        actualParam.addUse(bb, actualReturn);
+    public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
+        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+            if (actualReturn != null) {
+                if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
+                    int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
+                    if (paramNodeIndex != -1) {
+                        if (isStatic || paramNodeIndex != 0) {
+                            TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
+                            actualParam.addUse(bb, actualReturn);
+                        }
+                        // else {
+                        // receiver object state is transferred in updateReceiver()
+                        // }
+                    } else {
+                        /*
+                         * The callee may have a return type, hence the actualReturn is non-null,
+                         * but it might throw an exception instead of returning, hence the formal
+                         * return is null.
+                         */
+                        if (calleeFlows.getReturnFlow() != null) {
+                            calleeFlows.getReturnFlow().addUse(bb, actualReturn);
+                        }
                     }
-                    // else {
-                    // receiver object state is transfered in updateReceiver()
-                    // }
                 } else {
                     /*
                      * The callee may have a return type, hence the actualReturn is non-null, but it
@@ -225,14 +262,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                     if (calleeFlows.getReturnFlow() != null) {
                         calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                     }
-                }
-            } else {
-                /*
-                 * The callee may have a return type, hence the actualReturn is non-null, but it
-                 * might throw an exception instead of returning, hence the formal return is null.
-                 */
-                if (calleeFlows.getReturnFlow() != null) {
-                    calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                 }
             }
         }
@@ -249,7 +278,20 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
      * original invoke it returns the current registered callees of all clones.
      */
     @Override
-    public abstract Collection<AnalysisMethod> getCallees();
+    public Collection<AnalysisMethod> getOriginalCallees() {
+        if (allOriginalCallees) {
+            return getAllCallees();
+        }
+
+        return getAllCallees().stream().filter(callee -> {
+            boolean originalMethod = callee.isOriginalMethod();
+            assert !originalMethod || callee.isImplementationInvoked();
+            return originalMethod;
+        }).collect(Collectors.toUnmodifiableList());
+    }
+
+    @Override
+    public abstract Collection<AnalysisMethod> getAllCallees();
 
     @Override
     public BytecodePosition getPosition() {
@@ -281,16 +323,42 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
              * The check below is "size <= 1" and not "size == 1" because a method can be reported
              * as trivially statically bound by the host VM but unreachable in the analysis.
              */
-            assert getCallees().size() <= 1 : "Statically bound result mismatch between analysis and host VM.";
+            assert getOriginalCallees().size() <= 1 : "Statically bound result mismatch between analysis and host VM.";
             return true;
         }
-        return getCallees().size() == 1;
+        return getOriginalCallees().size() == 1;
     }
 
     /**
      * Returns the context sensitive method flows for the callees resolved for the invoke type flow.
      * That means that for each callee only those method flows corresponding to contexts reached
-     * from this invoke are returned.
+     * from this invoke are returned. Note that callee flows in this list can have a MultiMethodKey
+     * different from {@link MultiMethod#ORIGINAL_METHOD} and also may not be
+     * {@link AnalysisMethod#isImplementationInvoked()}.
      */
-    public abstract Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb);
+    protected abstract Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb);
+
+    /**
+     * Same as {@link #getAllCalleesFlows}, except that this method only returns calleesFlows whose
+     * multimethodkey is {@link MultiMethod#ORIGINAL_METHOD} and also are guaranteed to be
+     * {@link AnalysisMethod#isImplementationInvoked()}.
+     */
+    public final Collection<MethodFlowsGraph> getOriginalCalleesFlows(PointsToAnalysis bb) {
+        Collection<MethodFlowsGraph> allCalleesFlows = getAllCalleesFlows(bb);
+        assert allCalleesFlows != null;
+
+        if (allOriginalCallees) {
+            return allCalleesFlows;
+        }
+
+        return allCalleesFlows.stream().filter(flow -> {
+            boolean originalMethod = flow.getMethod().isOriginalMethod();
+            assert !(originalMethod && flow.isStub());
+            return originalMethod;
+        }).collect(Collectors.toUnmodifiableList());
+    }
+
+    public MultiMethodKey getCallerMultiMethodKey() {
+        return callerMultiMethodKey;
+    }
 }

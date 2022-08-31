@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
-    private final SVMHost hostVM;
+    protected final SVMHost hostVM;
 
     public AnalysisGraphBuilderPhase(CoreProviders providers,
                     GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {

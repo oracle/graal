@@ -141,7 +141,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
@@ -291,7 +290,7 @@ import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
-import com.oracle.svm.hosted.phases.VerifyDeoptFrameStatesLIRPhase;
+import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -1088,8 +1087,7 @@ public class NativeImageGenerator {
             Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             if (bb instanceof NativeImagePointsToAnalysis) {
                 for (StructuredGraph graph : snippetGraphs) {
-                    MethodTypeFlowBuilder methodTypeFlowBuilder = HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph);
-                    methodTypeFlowBuilder.registerUsedElements(false);
+                    HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
                 }
             } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
                 NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
@@ -1555,7 +1553,7 @@ public class NativeImageGenerator {
 
     private static boolean addAssertionLIRPhases(LIRSuites lirSuites, boolean hosted) {
         if (hosted) {
-            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyDeoptFrameStatesLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyDeoptLIRFrameStatesPhase());
         }
         return true;
     }

@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -71,8 +72,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod methodFlow) {
-        return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod methodFlow, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow, flowsGraph, graphKind);
     }
 
     @Override

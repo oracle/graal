@@ -50,7 +50,7 @@ public class ReachabilityInvokeInfo implements InvokeInfo {
 
     @Override
     public boolean canBeStaticallyBound() {
-        return getCallees().size() <= 1;
+        return getOriginalCallees().size() <= 1;
     }
 
     @Override
@@ -59,11 +59,16 @@ public class ReachabilityInvokeInfo implements InvokeInfo {
     }
 
     @Override
-    public Collection<AnalysisMethod> getCallees() {
+    public Collection<AnalysisMethod> getOriginalCallees() {
         if (isDirectInvoke) {
             return List.of(targetMethod);
         }
         return Arrays.asList(targetMethod.getImplementations());
+    }
+
+    @Override
+    public Collection<AnalysisMethod> getAllCallees() {
+        return getOriginalCallees();
     }
 
     @Override

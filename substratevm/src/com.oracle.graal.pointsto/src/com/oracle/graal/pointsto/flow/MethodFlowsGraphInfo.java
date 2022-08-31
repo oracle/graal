@@ -22,27 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
-import jdk.vm.ci.code.BytecodePosition;
+/**
+ * Information available about a {@link MethodFlowsGraph} which can be always safely queried. Since
+ * sometimes it is necessary to dynamically change the graph's underlying flow representation, other
+ * information about MethodFlowsGraph can only be queried after the graph's underlying flow
+ * representation is guaranteed to remain unchanged.
+ */
+public interface MethodFlowsGraphInfo {
 
-public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
-    protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
-    }
+    FormalReturnTypeFlow getReturnFlow();
 
-    protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
-    }
+    FormalReceiverTypeFlow getFormalReceiver();
 
-    @Override
-    public String toString() {
-        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
-    }
+    FormalParamTypeFlow getParameter(int idx);
+
+    PointsToAnalysisMethod getMethod();
+
+    boolean isStub();
 }

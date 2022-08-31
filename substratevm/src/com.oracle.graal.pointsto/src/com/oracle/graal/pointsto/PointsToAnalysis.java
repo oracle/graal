@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
@@ -158,8 +159,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return reportAnalysisStatistics;
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
-        return new MethodTypeFlowBuilder(bb, method);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return new MethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
@@ -298,6 +299,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
+        assert aMethod.isOriginalMethod();
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         AnalysisType declaringClass = aMethod.getDeclaringClass();
         boolean isStatic = aMethod.isStatic();
@@ -314,10 +316,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             postTask(() -> {
                 pointsToMethod.registerAsDirectRootMethod();
                 pointsToMethod.registerAsImplementationInvoked("root method");
-                MethodFlowsGraph methodFlowsGraph = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
+                MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                 for (int idx = 0; idx < paramCount; idx++) {
                     AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
-                    FormalParamTypeFlow parameter = methodFlowsGraph.getParameter(idx);
+                    FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
                     if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
                         TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
                         initialParameterFlow.addUse(this, parameter);
@@ -349,7 +351,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 } else {
                     pointsToMethod.registerAsVirtualRootMethod();
                 }
-                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial);
+                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, pointsToMethod.getMultiMethodKey());
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate
@@ -474,7 +476,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 PointsToStats.registerTypeFlowQueuedUpdate(PointsToAnalysis.this, operation);
 
                 operation.inQueue = false;
-                operation.update(PointsToAnalysis.this);
+                if (operation.isValid()) {
+                    operation.update(PointsToAnalysis.this);
+                }
             }
 
             @Override

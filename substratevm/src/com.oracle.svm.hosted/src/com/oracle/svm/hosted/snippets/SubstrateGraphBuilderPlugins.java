@@ -112,6 +112,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
@@ -152,7 +153,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
@@ -471,7 +471,7 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof FullInfopointNode) {
                 successor = ((FullInfopointNode) successor).next();
             } else if (successor instanceof DeoptEntryNode) {
-                assert ((HostedMethod) successor.graph().method()).isDeoptTarget();
+                assert MultiMethod.isDeoptTarget(successor.graph().method());
                 successor = ((DeoptEntryNode) successor).next();
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
@@ -824,21 +824,24 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("isDeoptimizationTarget") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+
+                ResolvedJavaMethod method = b.getGraph().method();
                 if (SubstrateOptions.parseOnce()) {
                     throw VMError.unimplemented("Intrinsification of isDeoptimizationTarget not done yet");
+
+                } else {
+                    if (method instanceof SharedMethod) {
+                        if (MultiMethod.isDeoptTarget(method)) {
+                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                        } else {
+                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                        }
+                    } else {
+                        // In analysis the value is always true.
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                    }
                 }
 
-                if (b.getGraph().method() instanceof SharedMethod) {
-                    SharedMethod method = (SharedMethod) b.getGraph().method();
-                    if (method.isDeoptTarget()) {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                    } else {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                    }
-                } else {
-                    // In analysis the value is always true.
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                }
                 return true;
             }
         });
