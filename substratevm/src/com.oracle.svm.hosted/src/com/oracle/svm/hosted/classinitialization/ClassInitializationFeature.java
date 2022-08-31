@@ -61,6 +61,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 @AutomaticFeature
 public class ClassInitializationFeature implements InternalFeature {
@@ -221,7 +222,7 @@ public class ClassInitializationFeature implements InternalFeature {
     }
 
     private static void reportTrackedClassInitializationTraces(String path) {
-        Map<Class<?>, StackTraceElement[]> initializedClasses = ProvenSafeClassInitializationSupport.getInitializedClasses();
+        Map<Class<?>, StackTraceElement[]> initializedClasses = ClassInitializationTracking.initializedClasses;
         int size = initializedClasses.size();
         if (size > 0) {
             ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt",
