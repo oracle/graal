@@ -140,7 +140,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     private final int codePointLength;
     private final byte codeRange;
-    private TruffleString next;
+    TruffleString next;
 
     private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
         super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0);
@@ -303,6 +303,20 @@ public final class TruffleString extends AbstractTruffleString {
             }
             entry.next = cacheHeadNext == null ? cacheHead : cacheHeadNext;
         } while (!setNextAtomic(cacheHead, cacheHeadNext, entry));
+    }
+
+    /*
+     * Simpler and faster insertion for the case `this` and `entry` were just allocated together and
+     * before they are published. The CAS is not needed in that case since we know nobody could
+     * write to `next` fields before us.
+     */
+    void cacheInsertFirstBeforePublished(TruffleString entry) {
+        assert !entry.isCacheHead();
+        assert isCacheHead();
+        assert next == null;
+        TruffleString cacheHead = this;
+        entry.next = cacheHead;
+        cacheHead.next = entry;
     }
 
     private static boolean hasDuplicateEncoding(TruffleString cacheHead, TruffleString start, TruffleString insertEntry) {
@@ -2024,7 +2038,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.1
          */
         public final TruffleString execute(String value, Encoding encoding) {
-            return execute(value, 0, value.length(), encoding, true);
+            return execute(value, 0, value.length(), encoding, false);
         }
 
         /**
