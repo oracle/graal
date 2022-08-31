@@ -49,6 +49,13 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 
 public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
 
+    /**
+     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
+     */
+    private static boolean isSupportedJavaVersion() {
+        return JavaVersionUtil.JAVA_SPEC == 11 || JavaVersionUtil.JAVA_SPEC == 17 || JavaVersionUtil.JAVA_SPEC >= 19;
+    }
+
     @Before
     public void setup() {
         // Ensure read-only byte buffer subclass is loaded.
@@ -106,14 +113,14 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(isSupportedJavaVersion());
         AbstractTestNode result = new BufferGetPutTestNode(bufferClass());
         testCommon(result, "byteBufferAccess");
     }
 
     @Test
     public void byteBufferAccessIndex() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(isSupportedJavaVersion());
         AbstractTestNode result = new BufferGetPutIndexTestNode(bufferClass());
         testCommon(result, "byteBufferAccessIndex");
     }
@@ -142,7 +149,7 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private void testExceptionSpeculationCommon(AbstractTestNode testNode, String testName, boolean expectException) {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(isSupportedJavaVersion());
         RootNode rootNode = new RootTestNode(testName, testNode);
         OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
         Object[] arguments = {newBuffer()};

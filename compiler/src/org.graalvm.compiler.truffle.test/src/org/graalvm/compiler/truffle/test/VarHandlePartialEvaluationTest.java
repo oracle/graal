@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
 
+    /**
+     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
+     */
+    private static boolean isSupportedJavaVersion() {
+        return JavaVersionUtil.JAVA_SPEC == 11 || JavaVersionUtil.JAVA_SPEC == 17 || JavaVersionUtil.JAVA_SPEC >= 19;
+    }
+
     static final VarHandle byteArrayHandle = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.nativeOrder());
     static final VarHandle byteBufferHandle = MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.nativeOrder());
 
@@ -69,7 +76,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandleGet() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(isSupportedJavaVersion());
         ByteBuffer byteBuffer = ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42);
         testCommon(new VarHandleTestNode(false, false), "byteBufferHandleGetInt", byteBuffer, 0);
     }
@@ -79,7 +86,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandleSet() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(isSupportedJavaVersion());
         ByteBuffer byteBuffer = ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42);
         testCommon(new VarHandleTestNode(false, true), "byteArrayHandleSetInt", byteBuffer, 0, 42);
     }
