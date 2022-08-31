@@ -24,15 +24,11 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +37,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -77,18 +74,6 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      * ground truth about what got initialized during image building.
      */
     final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
-
-    /**
-     * These two are intentionally static to keep the reference to objects and classes that were
-     * initialized in the JDK.
-     */
-    static final Map<Class<?>, StackTraceElement[]> initializedClasses = new ConcurrentHashMap<>();
-    /**
-     * Instantiated objects must be traced using their identities as their hashCode may change
-     * during the execution. We also want two objects of the same class that have the same hash and
-     * are equal to be mapped as two distinct entries.
-     */
-    static final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
 
     boolean configurationSealed;
 
@@ -273,6 +258,8 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     public String objectInstantiationTraceMessage(Object obj, String action) {
+        Map<Object, StackTraceElement[]> instantiatedObjects = ClassInitializationTracking.instantiatedObjects;
+
         if (!isObjectInstantiationForClassTracked(obj.getClass())) {
             return " To see how this object got instantiated use " + SubstrateOptionsParser.commandArgument(TraceObjectInstantiation, obj.getClass().getName()) + ".";
         } else if (instantiatedObjects.containsKey(obj)) {
@@ -311,51 +298,6 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
         }
 
         return b.toString();
-    }
-
-    @Override
-    public void reportClassInitialized(Class<?> clazz, StackTraceElement[] stackTrace) {
-        assert TraceClassInitialization.hasBeenSet();
-        initializedClasses.put(clazz, relevantStackTrace(stackTrace));
-        /*
-         * We don't do early failing here. Lambdas tend to initialize many classes that should not
-         * be initialized, but effectively they do not change the behavior of the final image.
-         *
-         * Failing early here creates many unnecessary constraints and reduces usability.
-         */
-    }
-
-    @Override
-    public void reportObjectInstantiated(Object o, StackTraceElement[] stackTrace) {
-        assert TraceObjectInstantiation.hasBeenSet();
-        instantiatedObjects.putIfAbsent(o, relevantStackTrace(stackTrace));
-    }
-
-    /**
-     * If the stack trace contains class initializaiton takes the stack up to the last
-     * initialization. Otherwise returns the whole stack trace. The method never returns the stack
-     * from the instrumented part.
-     *
-     * This method can be refined on a case-by-case basis to print nicer traces.
-     *
-     * @return a stack trace that led to erroneous situation
-     */
-    private static StackTraceElement[] relevantStackTrace(StackTraceElement[] stack) {
-        ArrayList<StackTraceElement> filteredStack = new ArrayList<>();
-        int lastClinit = 0;
-        boolean containsLambdaMetaFactory = false;
-        for (int i = 0; i < stack.length; i++) {
-            StackTraceElement stackTraceElement = stack[i];
-            if ("<clinit>".equals(stackTraceElement.getMethodName())) {
-                lastClinit = i;
-            }
-            if (stackTraceElement.getClassName().equals("java.lang.invoke.LambdaMetafactory")) {
-                containsLambdaMetaFactory = true;
-            }
-            filteredStack.add(stackTraceElement);
-        }
-        List<StackTraceElement> finalStack = lastClinit != 0 && !containsLambdaMetaFactory ? filteredStack.subList(0, lastClinit + 1) : filteredStack;
-        return finalStack.toArray(new StackTraceElement[0]);
     }
 
     /**

@@ -50,6 +50,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 /**
  * The core class for deciding whether a class should be initialized during image building or class
@@ -110,6 +111,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     }
 
     private static String classInitializationErrorMessage(Class<?> clazz, String action) {
+        Map<Class<?>, StackTraceElement[]> initializedClasses = ClassInitializationTracking.initializedClasses;
         if (!isClassInitializationTracked(clazz)) {
             return "To see why " + clazz.getName() + " got initialized use " + SubstrateOptionsParser.commandArgument(TraceClassInitialization, clazz.getName());
         } else if (initializedClasses.containsKey(clazz)) {
@@ -121,10 +123,11 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
                     culprit = stackTraceElement.getClassName();
                 }
             }
+            String initializationTrace = getTraceString(initializedClasses.get(clazz));
             if (culprit != null) {
-                return culprit + " caused initialization of this class with the following trace: \n" + classInitializationTrace(clazz);
+                return culprit + " caused initialization of this class with the following trace: \n" + initializationTrace;
             } else {
-                return clazz.getTypeName() + " has been initialized through the following trace:\n" + classInitializationTrace(clazz);
+                return clazz.getTypeName() + " has been initialized through the following trace:\n" + initializationTrace;
             }
         } else {
             return clazz.getTypeName() + " has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked. " + action;
@@ -146,14 +149,6 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
         } else {
             throw VMError.shouldNotReachHere("Must be either proven or specified");
         }
-    }
-
-    private static String classInitializationTrace(Class<?> clazz) {
-        return getTraceString(initializedClasses.get(clazz));
-    }
-
-    public static Map<Class<?>, StackTraceElement[]> getInitializedClasses() {
-        return initializedClasses;
     }
 
     @Override
