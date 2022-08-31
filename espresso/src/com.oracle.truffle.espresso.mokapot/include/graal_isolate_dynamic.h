@@ -120,9 +120,9 @@ typedef graal_isolate_t* (*graal_get_isolate_fn_t)(graal_isolatethread_t* thread
 typedef int (*graal_detach_thread_fn_t)(graal_isolatethread_t* thread);
 
 /*
- * Tears down the passed isolate, waiting for any attached threads to detach from
- * it, then discards the isolate's objects, threads, and any other state or context
- * that is associated with it.
+ * Tears down the isolate of the passed (and still attached) isolate thread,
+ * waiting for any attached threads to detach from it, then discards its objects,
+ * threads, and any other state or context that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
  */
 typedef int (*graal_tear_down_isolate_fn_t)(graal_isolatethread_t* isolateThread);
