@@ -325,7 +325,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         COUNTER_PROCESSED_NODES.increment(tool.debug);
         StructuredGraph graph = (StructuredGraph) node.graph();
         if (GraphUtil.tryKillUnused(node)) {
-            graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "UnusedNodeRemoval", node);
+            graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "UnusedNodeRemoval", node);
             return true;
         }
         NodeClass<?> nodeClass = node.getNodeClass();
@@ -340,7 +340,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(NodeView.DEFAULT), constant, tool.context.getMetaAccess(), graph);
                 valueNode.replaceAtUsages(stampConstant, InputType.Value);
                 GraphUtil.tryKillUnused(valueNode);
-                graph.getOptimizationLog().report(getClass(), "ConstantStampReplacement", valueNode);
+                graph.getOptimizationLog().report(CanonicalizerPhase.class, "ConstantStampReplacement", valueNode);
                 return true;
             } else if (improvedStamp) {
                 // the improved stamp may enable additional canonicalization
@@ -404,7 +404,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     StructuredGraph graph = (StructuredGraph) node.graph();
                     graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shortName)
                                     .withLazyProperty("canonicalNodeClass", () -> (finalCanonical == null) ? null : finalCanonical.getNodeClass().shortName())
-                                    .report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "CanonicalReplacement", node);
+                                    .report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CanonicalReplacement", node);
                     return true;
                 }
             }
@@ -418,7 +418,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     customSimplification.simplify(node, tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                         StructuredGraph graph = (StructuredGraph) node.graph();
-                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "CfgSimplificationCustom", node);
+                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CfgSimplificationCustom", node);
                         return true;
                     }
                 }
@@ -430,7 +430,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     ((Simplifiable) node).simplify(tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                         StructuredGraph graph = (StructuredGraph) node.graph();
-                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, getClass(), "CfgSimplification", node);
+                        graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, CanonicalizerPhase.class, "CfgSimplification", node);
                         return true;
                     }
                 }
