@@ -156,6 +156,7 @@ public abstract class VMOperation {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeInProgressAtSafepoint(String message) {
         if (!isInProgressAtSafepoint()) {
             throw VMError.shouldNotReachHere(message);

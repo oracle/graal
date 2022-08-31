@@ -55,9 +55,9 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * <p>
- * Hybrid objects have {@link HubType#Instance} but a {@link LayoutEncoding} like an array. This is
- * important to keep in mind because methods such as {@link Class#isInstance} will return
- * {@code true} and {@link Class#isArray()} will return {@code false}, while
+ * Hybrid objects have one of the instance {@link HubType}s but a {@link LayoutEncoding} like an
+ * array. This is important to keep in mind because methods such as {@link Class#isInstance} will
+ * return {@code true} and {@link Class#isArray()} will return {@code false}, while
  * {@link LayoutEncoding#isPureInstance} will return {@code false} and
  * {@link LayoutEncoding#isArrayLike} will return {@code true} for hybrid objects.
  */

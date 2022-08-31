@@ -33,6 +33,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -43,6 +44,7 @@ import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.PinnedObjectImpl.PinnedObjectSupportImpl;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -54,8 +56,9 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.heap.AllocationFeature;
+import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.HeapFeature;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
@@ -73,20 +76,27 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, PerfDataFeature.class, HeapFeature.class);
+        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        RememberedSet rememberedSet = createRememberedSet();
+        ImageSingletons.add(RememberedSet.class, rememberedSet);
+        ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
         HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
-        ImageSingletons.add(RememberedSet.class, createRememberedSet());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
         managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
 
+        ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());
         }

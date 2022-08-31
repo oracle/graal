@@ -184,6 +184,7 @@ public final class CodeInfoDecoder {
         return -1;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static long lookupStackReferenceMapIndex(CodeInfo info, long ip) {
         long entryIP = lookupEntryIP(ip);
         long entryOffset = loadEntryOffset(info, ip);

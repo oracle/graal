@@ -105,7 +105,6 @@ import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
@@ -129,6 +128,8 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -398,8 +399,8 @@ public class MethodTypeFlowBuilder {
                     if (node.asJavaConstant() == null && constant instanceof VMConstant) {
                         // do nothing
                     } else if (node.asJavaConstant().isNull()) {
-                        TypeFlowBuilder<SourceTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                            SourceTypeFlow constantSource = new SourceTypeFlow(sourcePosition(node), TypeState.forNull());
+                        TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(sourcePosition(node), null, TypeState.forNull());
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });
@@ -413,8 +414,8 @@ public class MethodTypeFlowBuilder {
                         assert StampTool.isExactType(node);
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
                         assert type.isInstantiated();
-                        TypeFlowBuilder<SourceTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                            SourceTypeFlow constantSource = new SourceTypeFlow(sourcePosition(node), TypeState.forConstant(this.bb, node.asJavaConstant(), type));
+                        TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(sourcePosition(node), type, TypeState.forConstant(this.bb, node.asJavaConstant(), type));
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });
@@ -503,13 +504,15 @@ public class MethodTypeFlowBuilder {
                  */
                 ObjectStamp stamp = (ObjectStamp) n.stamp(NodeView.DEFAULT);
                 if (stamp.isEmpty()) {
-                    result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> new SourceTypeFlow(sourcePosition(node), TypeState.forEmpty()));
-                } else if (stamp.isExactType()) {
+                    throw AnalysisError.shouldNotReachHere("Stamp for node " + n + " is empty.");
+                }
+                if (stamp.isExactType()) {
                     /*
                      * We are lucky: the stamp tells us which type the node has.
                      */
                     result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                        SourceTypeFlow src = new SourceTypeFlow(sourcePosition(node), TypeState.forExactType(bb, (AnalysisType) stamp.type(), !stamp.nonNull()));
+                        AnalysisType type = (AnalysisType) stamp.type();
+                        SourceTypeFlow src = new SourceTypeFlow(sourcePosition(node), type, !stamp.nonNull());
                         flowsGraph.addMiscEntryFlow(src);
                         return src;
                     });
@@ -520,22 +523,13 @@ public class MethodTypeFlowBuilder {
                      * to the node's type). Is is a conservative assumption.
                      */
                     AnalysisType type = (AnalysisType) (stamp.type() == null ? bb.getObjectType() : stamp.type());
-
-                    if (type.isJavaLangObject()) {
-                        /* Return a proxy to the all-instantiated type flow. */
-                        result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                            TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), bb.getAllInstantiatedTypeFlow());
-                            flowsGraph.addMiscEntryFlow(proxy);
-                            return proxy;
-                        });
-                    } else {
-                        result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                            TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), type.getTypeFlow(bb, true));
-                            flowsGraph.addMiscEntryFlow(proxy);
-                            return proxy;
-                        });
-                    }
+                    result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
+                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), type.getTypeFlow(bb, true));
+                        flowsGraph.addMiscEntryFlow(proxy);
+                        return proxy;
+                    });
                 }
+
                 flows.put(node, result);
             }
             return result;

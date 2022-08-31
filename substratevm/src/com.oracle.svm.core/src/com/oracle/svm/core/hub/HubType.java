@@ -28,47 +28,37 @@ import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.Uninterruptible;
 
 @DuplicatedInNativeCode
-public enum HubType {
-    // instance hubs
-    Instance(0),
-    InstanceReference(1),
+public class HubType {
+    // Instance hubs.
+    public static final int INSTANCE = 0;
+    public static final int REFERENCE_INSTANCE = 1;
+    public static final int POD_INSTANCE = 2;
+    public static final int STORED_CONTINUATION_INSTANCE = 3;
 
-    // special hubs
-    PodInstance(2),
-    Other(3),
+    // Other hubs (heap objects never reference those hubs).
+    public static final int OTHER = 4;
 
-    // array hubs
-    TypeArray(4),
-    ObjectArray(5);
-
-    private final int value;
-
-    HubType(int value) {
-        this.value = value;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getValue() {
-        return value;
-    }
+    // Array hubs.
+    public static final int PRIMITIVE_ARRAY = 5;
+    public static final int OBJECT_ARRAY = 6;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int hubType) {
-        return hubType <= PodInstance.getValue();
+        return hubType <= STORED_CONTINUATION_INSTANCE;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isReferenceInstance(int hubType) {
-        return hubType == InstanceReference.getValue();
+        return hubType == REFERENCE_INSTANCE;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPodInstance(int hubType) {
-        return hubType == PodInstance.getValue();
+        return hubType == POD_INSTANCE;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArray(int hubType) {
-        return hubType >= TypeArray.getValue();
+        return hubType >= PRIMITIVE_ARRAY;
     }
 }

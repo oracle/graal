@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_16;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -33,29 +33,26 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.replacements.AllocationSnippets;
 import org.graalvm.word.Pointer;
 
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
-    public static final NodeClass<FormatArrayNode> TYPE = NodeClass.create(FormatArrayNode.class);
+@NodeInfo(cycles = CYCLES_16, size = SIZE_16)
+public class FormatStoredContinuationNode extends FixedWithNextNode implements Lowerable {
+    public static final NodeClass<FormatStoredContinuationNode> TYPE = NodeClass.create(FormatStoredContinuationNode.class);
 
     @Input protected ValueNode memory;
     @Input protected ValueNode hub;
     @Input protected ValueNode length;
     @Input protected ValueNode rememberedSet;
     @Input protected ValueNode unaligned;
-    @Input protected ValueNode fillContents;
-    @Input protected ValueNode emitMemoryBarrier;
+    private final boolean emitMemoryBarrier;
 
-    public FormatArrayNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned, ValueNode fillContents, ValueNode emitMemoryBarrier) {
+    public FormatStoredContinuationNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned, boolean emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
         this.length = length;
         this.rememberedSet = rememberedSet;
         this.unaligned = unaligned;
-        this.fillContents = fillContents;
         this.emitMemoryBarrier = emitMemoryBarrier;
     }
 
@@ -79,14 +76,10 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
         return unaligned;
     }
 
-    public ValueNode getFillContents() {
-        return fillContents;
-    }
-
-    public ValueNode getEmitMemoryBarrier() {
+    public boolean getEmitMemoryBarrier() {
         return emitMemoryBarrier;
     }
 
     @NodeIntrinsic
-    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents, boolean emitMemoryBarrier);
+    public static native Object formatStoredContinuation(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, @ConstantNodeParameter boolean emitMemoryBarrier);
 }

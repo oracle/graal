@@ -29,12 +29,12 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 public class MethodFlowsGraphClone extends MethodFlowsGraph {
 
@@ -182,7 +182,7 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
             for (TypeFlow<?> originalUse : original.getUses()) {
                 // only clone the original uses
                 assert !(originalUse instanceof AllInstantiatedTypeFlow);
-                assert !(originalUse.isClone());
+                assert !(originalUse.isClone()) : "Original use " + originalUse + " should not be a clone. Reached from: " + original;
 
                 if (nonCloneableFlow(originalUse)) {
                     clone.addUse(bb, originalUse);

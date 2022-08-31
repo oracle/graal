@@ -334,12 +334,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @UnknownObjectField(types = ReflectionMetadata.class, canBeNull = true) private ReflectionMetadata reflectionMetadata;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub,
+    public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
                     boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
-        this.hubType = hubType.getValue();
+        this.hubType = hubType;
         this.referenceType = referenceType.getValue();
         this.superHub = superType;
         this.componentType = componentHub;
@@ -600,6 +600,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getName() {
         return name;
+    }
+
+    public int getHubType() {
+        return hubType;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
