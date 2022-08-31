@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionUtils;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
@@ -249,8 +250,8 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
         }
     }
 
-    static boolean isClassListedInStringOption(String option, Class<?> clazz) {
-        return Arrays.asList(option.split(",")).contains(clazz.getName());
+    static boolean isClassListedInStringOption(LocatableMultiOptionValue.Strings option, Class<?> clazz) {
+        return OptionUtils.flatten(",", option).contains(clazz.getName());
     }
 
     private static boolean isObjectInstantiationForClassTracked(Class<?> clazz) {

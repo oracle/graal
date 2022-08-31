@@ -264,9 +264,10 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
                 }
             });
 
-            if (!TraceClassInitialization.hasBeenSet()) {
-                String traceClassInitArguments = illegalyInitialized.stream().map(Class::getName).collect(Collectors.joining(","));
-                System.out.println("To see how the classes got initialized, use " + SubstrateOptionsParser.commandArgument(TraceClassInitialization, traceClassInitArguments));
+
+            String traceClassInitArguments = illegalyInitialized.stream().filter(c -> !isClassInitializationTracked(c)).map(Class::getName).collect(Collectors.joining(","));
+            if (!"".equals(traceClassInitArguments)) {
+                detailedMessage.append("To see how the classes got initialized, use ").append(SubstrateOptionsParser.commandArgument(TraceClassInitialization, traceClassInitArguments));
             }
 
             throw UserError.abort("%s", detailedMessage);
