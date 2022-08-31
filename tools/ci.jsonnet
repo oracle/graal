@@ -15,6 +15,9 @@
     name: 'gate-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
+    guard: {
+        includes: ["<graal>/sdk/**", "<graal>/truffle/**", "<graal>/tools/**", "**.jsonnet"],
+    }
   },
 
   local tools_gate_lite = tools_common + {
