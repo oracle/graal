@@ -51,9 +51,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 
-import java.awt.*;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
@@ -96,8 +95,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ValueHostInteropTest extends AbstractPolyglotTest {
-
-    public static final boolean Java9OrLater = System.getProperty("java.specification.version").compareTo("1.9") >= 0;
 
     public static class Data {
         public int x;
@@ -143,13 +140,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         TruffleTestAssumptions.assumeNotAOT();
         try {
             languageEnv.lookupHostSymbol("sun.awt.image.OffScreenImage");
-            if (Java9OrLater) {
-                fail("On >= Java9 sun.awt.image should not be visible.");
-            }
+            fail("On >= Java9 sun.awt.image should not be visible.");
         } catch (RuntimeException e) {
-            if (!Java9OrLater) {
-                fail("On < Java9 sun.awt.image should be visible.");
-            }
         }
     }
 
@@ -545,7 +537,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Ignore("Interface not accessible")
     @Test
     public void executableAsFunctionalInterface3() throws Exception {
-        assumeTrue("JDK 9 or later", System.getProperty("java.specification.version").compareTo("1.9") >= 0);
         TruffleObject executable = new FunctionObject();
         FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(42, f.call((Object) 13, (Object) 29));
