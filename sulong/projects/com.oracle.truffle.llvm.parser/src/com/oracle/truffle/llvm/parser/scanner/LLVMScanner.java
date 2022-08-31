@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -281,6 +281,10 @@ public final class LLVMScanner {
 
     private void defineAbbreviation() {
         final long operandCount = read(Primitive.ABBREVIATED_RECORD_OPERANDS);
+
+        if (operandCount < 0 || operandCount != (int) operandCount) {
+            throw new LLVMParserException("Invalid operand count!");
+        }
 
         AbbreviatedRecord[] operandScanners = new AbbreviatedRecord[(int) operandCount];
 
