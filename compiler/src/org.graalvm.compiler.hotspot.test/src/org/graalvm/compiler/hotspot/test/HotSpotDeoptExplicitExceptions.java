@@ -33,11 +33,12 @@ import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.stubs.CreateExceptionStub;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.junit.Assume;
 import org.junit.Test;
 
 /**
- * This test exercises the deoptimization in the BytecodeExceptioNode foreign call path.
+ * This test exercises the deoptimization in the {@link BytecodeExceptionMode} foreign call path.
  */
 public class HotSpotDeoptExplicitExceptions extends SubprocessTest {
 
