@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 
-@EspressoSubstitutions
-final class Target_com_oracle_truffle_espresso_hotswap_HotSwapHandler {
+public abstract class AbstractCachedKlassProvider {
+    private final TruffleLogger logger;
 
-    @Substitution
-    static boolean registerHandler(@JavaType(Object.class) StaticObject handler, @Inject Meta meta) {
-        assert handler != null;
-        if (meta.getContext().getEspressoEnv().JDWPOptions == null) {
-            // only allow HotSwap handler registration when running in debug mode
-            return false;
-        }
+    protected AbstractCachedKlassProvider(TruffleLogger logger) {
+        this.logger = logger;
+    }
 
-        try {
-            meta.getContext().registerExternalHotSwapHandler(handler);
-        } catch (IllegalArgumentException ex) {
-            return false;
-        }
-        return true;
+    public TruffleLogger getLogger() {
+        return logger;
+    }
+
+    protected static boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info) {
+        /*
+         * Cached class representations must not contain context-dependent objects that cannot be
+         * shared on a language level. Anonymous classes, by definition, contain a Klass
+         * self-reference in the constant pool.
+         */
+        return !info.isAnonymousClass() && !info.isHidden();
     }
 }

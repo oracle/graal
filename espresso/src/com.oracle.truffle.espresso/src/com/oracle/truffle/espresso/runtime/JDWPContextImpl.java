@@ -102,13 +102,13 @@ public final class JDWPContextImpl implements JDWPContext {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
         vmEventListener.activate(mainThread, control, this);
-        setup.setup(debugger, control, context.JDWPOptions, this, mainThread, vmEventListener);
+        setup.setup(debugger, control, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
         classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
-        if (context.JDWPOptions != null) {
+        if (context.getEspressoEnv().JDWPOptions != null) {
             setup.finalizeSession();
         }
     }

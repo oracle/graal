@@ -53,13 +53,25 @@ final class ImageBuildTimeOptions {
     @Option(name = PREINITIALIZE_CONTEXTS_NAME, category = OptionCategory.EXPERT, help = "Pre-initialize language contexts for the given languages.")//
     static final OptionKey<String> PreinitializeContexts = new OptionKey<>(null, OptionType.defaultType(String.class));
 
+    static final String PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME = "PreinitializeContextsWithNative";
+    @Option(name = PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME, category = OptionCategory.EXPERT, help = "Pre-initialize language contexts with native access privileges.")//
+    static final OptionKey<Boolean> PreinitializeContextsWithNative = new OptionKey<>(false);
+
     static final String DISABLE_PRIVILEGES_NAME = "DisablePrivileges";
     @Option(name = DISABLE_PRIVILEGES_NAME, category = OptionCategory.EXPERT, help = "Disable Context privileges so the related code can be excluded from the image.")//
     static final OptionKey<String> DisablePrivileges = new OptionKey<>("");
 
     static String get(String optionName) {
-        String property = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.OPTION_GROUP_IMAGE_BUILD_TIME + "." + optionName;
+        String property = getPropertyName(optionName);
         return System.getProperty(property, "");
     }
 
+    static Boolean getBoolean(String optionName) {
+        String property = getPropertyName(optionName);
+        return Boolean.getBoolean(property);
+    }
+
+    private static String getPropertyName(String optionName) {
+        return OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.OPTION_GROUP_IMAGE_BUILD_TIME + "." + optionName;
+    }
 }

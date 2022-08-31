@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.ContextDescription;
+import com.oracle.truffle.espresso.impl.LinkedKlass;
+import com.oracle.truffle.espresso.impl.ParserKlass;
 
-@EspressoSubstitutions
-final class Target_com_oracle_truffle_espresso_hotswap_HotSwapHandler {
-
-    @Substitution
-    static boolean registerHandler(@JavaType(Object.class) StaticObject handler, @Inject Meta meta) {
-        assert handler != null;
-        if (meta.getContext().getEspressoEnv().JDWPOptions == null) {
-            // only allow HotSwap handler registration when running in debug mode
-            return false;
-        }
-
-        try {
-            meta.getContext().registerExternalHotSwapHandler(handler);
-        } catch (IllegalArgumentException ex) {
-            return false;
-        }
-        return true;
+public final class DefaultLinkedKlassProvider implements LinkedKlassProvider {
+    @Override
+    public LinkedKlass getLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
+        return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
     }
 }
