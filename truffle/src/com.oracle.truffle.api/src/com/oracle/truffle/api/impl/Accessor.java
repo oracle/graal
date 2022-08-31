@@ -189,6 +189,8 @@ public abstract class Accessor {
 
         public abstract boolean isTrivial(RootNode rootNode);
 
+        public abstract FrameDescriptor getParentFrameDescriptor(RootNode rootNode);
+
         public abstract Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement);
 
         public abstract ExecutionSignature prepareForAOT(RootNode rootNode);
