@@ -46,6 +46,6 @@ public enum ExperimentId {
             case TWO:
                 return "2";
         }
-        return null;
+        throw new RuntimeException();
     }
 }

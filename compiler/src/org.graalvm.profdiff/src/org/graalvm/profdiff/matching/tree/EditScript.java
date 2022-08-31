@@ -67,7 +67,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
             if (this == obj) {
                 return true;
             }
-            if (!getClass().equals(obj.getClass())) {
+            if (obj == null || !getClass().equals(obj.getClass())) {
                 return false;
             }
 
