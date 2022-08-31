@@ -27,7 +27,7 @@ package com.oracle.svm.core.reflect.target;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownObjectField;
 
 public class ReflectionMetadataEncoding {
     @UnknownObjectField(types = {byte[].class}) private byte[] encoding;

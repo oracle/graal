@@ -31,7 +31,7 @@ import com.oracle.svm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 import jdk.vm.ci.code.CodeUtil;

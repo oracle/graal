@@ -27,7 +27,7 @@ package com.oracle.svm.core.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * A collection of static methods for error reporting of fatal error. A fatal error leaves the VM in

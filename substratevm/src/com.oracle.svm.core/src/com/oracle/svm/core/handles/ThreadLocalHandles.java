@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Implementation of local object handles, which are bound to a specific thread and can be created

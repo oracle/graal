@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jvmstat;
 
+import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -37,14 +39,12 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
-
-import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
 
 /**
  * Provides access to the underlying OS-specific memory that stores the performance data.

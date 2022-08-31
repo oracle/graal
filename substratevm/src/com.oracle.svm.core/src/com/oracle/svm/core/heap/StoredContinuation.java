@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.hub.Hybrid;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
-
-import com.oracle.svm.core.annotate.Hybrid;
 
 /** Execution state of a continuation, use via {@link StoredContinuationAccess}. */
 @Hybrid(componentType = Word.class)

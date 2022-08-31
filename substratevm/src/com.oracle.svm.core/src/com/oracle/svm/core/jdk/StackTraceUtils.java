@@ -37,7 +37,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.snippets.KnownIntrinsics;

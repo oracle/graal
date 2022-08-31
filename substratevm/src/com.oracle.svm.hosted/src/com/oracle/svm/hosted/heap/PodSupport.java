@@ -49,13 +49,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.Builder;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodInfo;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
+import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
