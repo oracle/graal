@@ -43,8 +43,8 @@ import com.oracle.truffle.llvm.parser.coff.ExportTable.ExportRVA;
 import com.oracle.truffle.llvm.runtime.ExportSymbolsMapper;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 
 import org.graalvm.collections.Pair;
 
@@ -70,6 +70,9 @@ public class PEExportSymbolsMapper extends ExportSymbolsMapper {
             if (symbol.isFunction() && symbol.hasValidSectionNumber()) {
                 ImageSectionHeader sectionHeader = file.getSectionByNumber(symbol.sectionNumber);
                 symbolMappings.put(symbol.value + sectionHeader.virtualAddress, symbol.name);
+            } else if (symbol.sectionNumber > 0) {
+                ImageSectionHeader sectionHeader = file.getSectionByNumber(symbol.sectionNumber);
+                symbolMappings.put(symbol.value + sectionHeader.virtualAddress, symbol.name);
             }
         }
 
@@ -81,28 +84,28 @@ public class PEExportSymbolsMapper extends ExportSymbolsMapper {
                 if (symbol != null) {
                     mappings.add(Pair.create(entry.getLeft(), symbol));
                 } else {
-                    LLVMContext.llvmLogger().warning(
-                                    String.format("No symbol found at relative virtual address '%d' for export '%s'. The entry will be ignored.\n", rvaExport.getRVA(), entry.getLeft()));
+                    mappings.add(Pair.create(entry.getLeft(), entry.getLeft()));
                 }
             } else if (export instanceof ExportName) {
                 ExportName nameExport = (ExportName) export;
                 // TODO: The forwarder RVA can be a symbol such as MYDLL.expfunc, specifying that
                 // the function should be reexported from MYDLL.
                 LLVMContext.llvmLogger().warning(
-                                String.format("This library exports '%s' as '%s', but this is not yet supported. The entry will be ignored.\n", entry.getRight(), nameExport.getName()));
+                                String.format("This library exports '%s' as '%s', but this is not yet supported. The entry will be ignored.", entry.getRight(), nameExport.getName()));
             }
         }
     }
 
     @Override
     public void registerExports(LLVMScope fileScope, LLVMScope publicFileScope) {
+
         for (Pair<String, String> pair : mappings) {
-            LLVMFunction function = fileScope.getFunction(pair.getRight());
-            if (function != null) {
-                publicFileScope.register(pair.getLeft().equals(function.getName()) ? function : new LLVMAlias(pair.getLeft(), function, true));
+            LLVMSymbol symbol = fileScope.get(pair.getRight());
+            if (symbol != null) {
+                publicFileScope.register(pair.getLeft().equals(symbol.getName()) ? symbol : new LLVMAlias(pair.getLeft(), symbol, true));
             } else {
                 LLVMContext.llvmLogger().warning(
-                                String.format("Could not map %s to %s. Target symbol not found, ignoring export.\n", pair.getLeft(), pair.getRight()));
+                                String.format("Could not map %s to %s. Target symbol not found, ignoring export.", pair.getLeft(), pair.getRight()));
             }
         }
     }
