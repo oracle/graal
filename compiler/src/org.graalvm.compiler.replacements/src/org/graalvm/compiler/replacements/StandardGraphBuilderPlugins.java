@@ -163,6 +163,7 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
@@ -2094,6 +2095,25 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             return true;
+        }
+    }
+
+    public static class GHASHPlugin extends InvocationPlugin {
+
+        public GHASHPlugin() {
+            super("processBlocks", byte[].class, int.class, int.class, long[].class, long[].class);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                        ValueNode data, ValueNode inOffset, ValueNode blocks, ValueNode state, ValueNode hashSubkey) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode dataAddress = helper.arrayElementPointer(data, JavaKind.Byte, inOffset);
+                ValueNode stateAddress = helper.arrayStart(state, JavaKind.Long);
+                ValueNode hashSubkeyAddress = helper.arrayStart(hashSubkey, JavaKind.Long);
+                b.add(new GHASHProcessBlocksNode(stateAddress, hashSubkeyAddress, dataAddress, blocks));
+                return true;
+            }
         }
     }
 }

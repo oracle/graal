@@ -101,6 +101,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
+import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -759,6 +760,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitAESDecrypt(Value from, Value to, Value key) {
         append(new AMD64AESDecryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
+        append(new AMD64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
     }
 
     @SuppressWarnings("unchecked")

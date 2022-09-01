@@ -600,6 +600,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         applyMIOpAndJcc(AMD64MIOp.TEST, DWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
     }
 
+    public final void testqAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyMIOpAndJcc(AMD64MIOp.TEST, QWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
+    }
+
     public final void testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
         applyMIOpAndJcc(AMD64MIOp.TEST, size, src, imm32, cc, branchTarget, isShortJmp, false, applyBeforeFusedPair);
     }

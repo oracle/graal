@@ -33,6 +33,8 @@ import java.util.TreeSet;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
+import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -213,7 +215,7 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore,
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
         }
-        if (!config.useGHASHIntrinsics()) {
+        if (!supportsGHASHPlugins(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
         }
@@ -239,10 +241,14 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         // AES intrinsics
-        if (!config.useAESIntrinsics) {
+        if (!supportsAESPlugins(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V");
+        }
+
+        if (!config.useAESIntrinsics) {
+            add(ignore,
                             "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
         }
@@ -492,5 +498,23 @@ public final class UnimplementedGraalIntrinsics {
      */
     public boolean isDocumented(String method) {
         return isIgnored(method) || isImplementedInEnterprise(method) || isMissing(method) || isIgnored(method);
+    }
+
+    public static boolean supportsAESPlugins(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return AMD64GraphBuilderPlugins.supportsAESPlugins((AMD64) arch);
+        } else if (arch instanceof AArch64) {
+            return AArch64GraphBuilderPlugins.supportsAESPlugins((AArch64) arch);
+        }
+        return false;
+    }
+
+    public static boolean supportsGHASHPlugins(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return AMD64GraphBuilderPlugins.supportsGHASHPlugins((AMD64) arch);
+        } else if (arch instanceof AArch64) {
+            return AArch64GraphBuilderPlugins.supportsGHASHPlugins((AArch64) arch);
+        }
+        return false;
     }
 }

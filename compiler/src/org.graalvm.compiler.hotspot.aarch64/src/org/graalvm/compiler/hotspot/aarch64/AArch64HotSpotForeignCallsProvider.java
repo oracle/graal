@@ -32,6 +32,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_C
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 
@@ -43,9 +44,12 @@ import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.IntrinsicStubsGen;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterValue;
@@ -80,6 +84,17 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
 
         for (ForeignCallDescriptor descriptor : ArrayIndexOfForeignCalls.STUBS_AARCH64) {
             link(new IntrinsicStubsGen(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        }
+
+        if (AArch64GraphBuilderPlugins.supportsAESPlugins((AArch64) target.arch)) {
+            for (ForeignCallDescriptor stub : CryptoForeignCalls.AES_STUBS) {
+                link(new IntrinsicStubsGen(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
+            }
+        }
+
+        if (AArch64GraphBuilderPlugins.supportsGHASHPlugins((AArch64) target.arch)) {
+            link(new IntrinsicStubsGen(options, providers, registerStubCall(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getSignature(),
+                            LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getKilledLocations())));
         }
 
         super.initialize(providers, options);
