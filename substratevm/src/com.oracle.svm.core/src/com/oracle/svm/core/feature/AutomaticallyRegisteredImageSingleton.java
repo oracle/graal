@@ -60,8 +60,8 @@ public @interface AutomaticallyRegisteredImageSingleton {
     Class<?>[] value() default {};
 
     /**
-     * Register only if all provided supplied booleans are true. If no supplier is registered, the
-     * singleton is register unconditionally.
+     * Register only if all provided {@link BooleanSupplier} objects evaluate to true. If there are
+     * no suppliers, the singleton is registered unconditionally.
      */
     Class<? extends BooleanSupplier>[] onlyWith() default {};
 }

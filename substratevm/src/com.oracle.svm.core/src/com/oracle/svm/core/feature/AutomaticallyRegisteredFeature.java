@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.Platforms;
  * Only classes that are part of the image builder can use this annotation. Even parts of GraalVM
  * that are not on the image builder class path, but on the application class path, cannot use this
  * annotation. For example, the "driver" or our JVMTI agent implementations are part of the
- * application class path and therefore need to use explicit feature registrarion via a
+ * application class path and therefore need to use explicit feature registration via a
  * native-image.properties file.
  */
 @Retention(RetentionPolicy.RUNTIME)

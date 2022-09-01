@@ -44,14 +44,14 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
@@ -73,7 +73,7 @@ public class FeatureHandler {
             return OptionUtils.flatten(",", Options.Features.getValue());
         }
 
-        @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
+        @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.")//
         public static final HostedOptionKey<Boolean> AllowDeprecatedAutomaticFeature = new HostedOptionKey<>(true);
     }
 
