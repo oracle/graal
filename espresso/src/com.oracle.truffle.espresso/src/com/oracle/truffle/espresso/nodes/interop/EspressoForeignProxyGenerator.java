@@ -66,9 +66,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -294,6 +296,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         Klass[] parameterTypes = m.resolveParameterKlasses();
         Klass returnType = m.resolveReturnKlass();
         ObjectKlass[] exceptionTypes = m.getCheckedExceptions();
+        Symbol<Symbol.Signature> signature = m.getRawSignature();
 
         String sig = name + getParameterDescriptors(parameterTypes);
         List<ProxyMethod> sigmethods = proxyMethods.get(sig);
@@ -319,7 +322,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             proxyMethods.put(sig, sigmethods);
         }
         sigmethods.add(new ProxyMethod(name, parameterTypes, returnType,
-                        exceptionTypes, isVarArgs(m.getModifiers())));
+                        exceptionTypes, isVarArgs(m.getModifiers()), signature));
     }
 
     private static boolean isVarArgs(int modifiers) {
@@ -428,14 +431,16 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         public Klass returnType;
         public Klass[] exceptionTypes;
         boolean isVarArgs;
+        Symbol<Symbol.Signature> signature;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
-                        Klass returnType, Klass[] exceptionTypes, boolean isVarArgs) {
+                            Klass returnType, Klass[] exceptionTypes, boolean isVarArgs, Symbol<Symbol.Signature> signature) {
             this.methodName = methodName;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.exceptionTypes = exceptionTypes;
             this.isVarArgs = isVarArgs;
+            this.signature = signature;
         }
 
         private void generateMethod(ClassWriter cw) {
@@ -476,7 +481,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             mv.visitLabel(startBlock);
 
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitLdcInsn(methodName);
+            mv.visitLdcInsn(Mangle.truffleJniMethodName(methodName, signature));
 
             if (parameterTypes.length > 0) {
                 // Create an array and fill with the parameters converting primitives to wrappers
