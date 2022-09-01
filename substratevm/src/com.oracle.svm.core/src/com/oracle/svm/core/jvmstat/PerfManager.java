@@ -121,6 +121,12 @@ public class PerfManager {
         return (CLongPointer) Word.objectToUntrackedPointer(entry).add(WordFactory.unsigned(PerfLong.VALUE_OFFSET));
     }
 
+    public boolean hasLongPerfEntry(String name) {
+        waitForInitialization();
+        PerfLong entry = longEntries.get(name);
+        return Heap.getHeap().isInImageHeap(entry);
+    }
+
     public void waitForInitialization() {
         if (!usePerfData() || !perfDataThread.waitForInitialization()) {
             throw new IllegalArgumentException("Performance data support is disabled.");
