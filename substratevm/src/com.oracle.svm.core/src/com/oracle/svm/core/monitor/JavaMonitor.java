@@ -154,7 +154,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     }
 
     // see ReentrantLock.Sync.tryLock()
-    boolean tryLock() {
+    protected boolean tryLock() {
         long current = getCurrentThreadIdentity();
         long c = getState();
         if (c == 0) {
