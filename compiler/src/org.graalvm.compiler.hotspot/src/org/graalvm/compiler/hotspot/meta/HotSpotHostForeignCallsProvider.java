@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CONTINUATION_DO_YIELD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
@@ -565,6 +566,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.electronicCodeBookDecrypt != 0L) {
             registerForeignCall(ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT, c.electronicCodeBookDecrypt, NativeCall);
+        }
+        if (c.contDoYield != 0) {
+            registerForeignCall(CONTINUATION_DO_YIELD, c.contDoYield, NativeCall);
         }
 
         if (c.useAESIntrinsics) {

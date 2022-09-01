@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
@@ -289,11 +290,15 @@ public class HotSpotReplacementsUtil {
         return thread.readObject(threadPendingExceptionOffset(INJECTED_VMCONFIG), PENDING_EXCEPTION_LOCATION);
     }
 
-    /*
-     * As far as Java code is concerned this can be considered immutable: it is set just after the
-     * JavaThread is created, before it is published. After that, it is never changed.
+    /**
+     * The location identity for the {@code JavaThread} field containing the reference to the
+     * current thread. As far as Java code without virtual threads is concerned this can be
+     * considered immutable: it is set just after the JavaThread is created, before it is published.
+     * After that, it is never changed. In the presence of virtual threads from JDK 19 onwards, this
+     * value can change when a virtual thread is unmounted and then mounted again.
      */
-    public static final LocationIdentity JAVA_THREAD_THREAD_OBJECT_LOCATION = NamedLocationIdentity.immutable("JavaThread::_threadObj");
+    public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? NamedLocationIdentity.immutable("JavaThread::_threadObj")
+                    : NamedLocationIdentity.mutable("JavaThread::_vthread");
 
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
@@ -848,6 +853,13 @@ public class HotSpotReplacementsUtil {
      * This represents the contents of OopHandles used for some internal fields.
      */
     public static final LocationIdentity HOTSPOT_OOP_HANDLE_LOCATION = NamedLocationIdentity.immutable("OopHandle contents");
+
+    /**
+     * This represents the contents of the OopHandle used to store the current thread. Virtual
+     * thread support makes this mutable.
+     */
+    public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
+                    : NamedLocationIdentity.mutable("_vthread OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {
