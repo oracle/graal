@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.runtime.types.Type;
+typedef void *_ThrowInfo;
 
-/**
- * Placeholder for operand bundles. For now, we just record their presence. Currently the only place
- * where we support operand bundles is the llvm.assume builtin, and there we ignore its contents.
- */
-public class OperandBundle {
-    private final String tag;
-    private final Type[] argTypes;
-    private final int[] argValues;
+#include <ehdata.h>
+#include <stdio.h>
+#include <typeinfo>
 
-    public OperandBundle(String tag, Type[] argTypes, int[] argValues) {
-        this.tag = tag;
-        this.argTypes = argTypes;
-        this.argValues = argValues;
+extern "C" {
+bool sulong_eh_canCatch_windows(void *thrownObject, ThrowInfo *throwInfo, std::type_info *catchType, char *imageBase) {
+    CatchableTypeArray *catchableTypeArray = reinterpret_cast<CatchableTypeArray *>(imageBase + throwInfo->pCatchableTypeArray);
+
+    for (int i = 0; i < catchableTypeArray->nCatchableTypes; i++) {
+        CatchableType *catchableType = reinterpret_cast<CatchableType *>(imageBase + catchableTypeArray->arrayOfCatchableTypes[i]);
+        TypeDescriptor *typeDescriptor = reinterpret_cast<TypeDescriptor *>(imageBase + catchableType->pType);
+        std::type_info *matchType = (std::type_info *) typeDescriptor;
+
+        if (*matchType == *catchType) {
+            return true;
+        }
     }
 
-    public boolean isFunclet() {
-        return "funclet".equals(tag);
-    }
-
-    Type[] getArgTypes() {
-        return argTypes;
-    }
-
-    int[] getArgValues() {
-        return argValues;
-    }
-
-    public String getTag() {
-        return tag;
-    }
+    return false;
+}
 }

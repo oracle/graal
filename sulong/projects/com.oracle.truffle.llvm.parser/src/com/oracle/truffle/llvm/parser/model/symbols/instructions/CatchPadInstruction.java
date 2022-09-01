@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,36 +29,55 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-/**
- * Placeholder for operand bundles. For now, we just record their presence. Currently the only place
- * where we support operand bundles is the llvm.assume builtin, and there we ignore its contents.
- */
-public class OperandBundle {
-    private final String tag;
+public final class CatchPadInstruction extends ValueInstruction {
+
+    private SymbolImpl within;
     private final Type[] argTypes;
-    private final int[] argValues;
+    private SymbolImpl[] argValues;
 
-    public OperandBundle(String tag, Type[] argTypes, int[] argValues) {
-        this.tag = tag;
+    private CatchPadInstruction(Type[] argTypes) {
+        super(MetaType.TOKEN);
         this.argTypes = argTypes;
-        this.argValues = argValues;
     }
 
-    public boolean isFunclet() {
-        return "funclet".equals(tag);
+    public SymbolImpl getWithinSymbol() {
+        return within;
     }
 
-    Type[] getArgTypes() {
-        return argTypes;
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+        if (within == oldValue) {
+            within = newValue;
+        }
     }
 
-    int[] getArgValues() {
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public SymbolImpl[] getClauseSymbols() {
         return argValues;
     }
 
-    public String getTag() {
-        return tag;
+    public Type[] getArgTypes() {
+        return argTypes;
+    }
+
+    public static CatchPadInstruction generate(SymbolTable table, int withinIndex, Type[] argTypes, int[] argValues) {
+        CatchPadInstruction l = new CatchPadInstruction(argTypes);
+        SymbolImpl[] values = new SymbolImpl[argValues.length];
+        for (int i = 0; i < argValues.length; i++) {
+            values[i] = table.getForwardReferenced(argValues[i], l);
+        }
+        l.within = table.getForwardReferencedOrNull(withinIndex, l);
+        l.argValues = values;
+        return l;
     }
 }
