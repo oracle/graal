@@ -33,7 +33,6 @@ import java.util.Collection;
 public final class HandshakeController {
 
     private static final String JDWP_HANDSHAKE = "JDWP-Handshake";
-    private final Object currentServerSocketLock = new Object();
     private ServerSocket currentServerSocket;
 
     /**
@@ -64,7 +63,7 @@ public final class HandshakeController {
             String address = host != null ? host + ":" + port : "" + port;
             System.out.println("Listening for transport dt_socket at address: " + address);
 
-            synchronized (currentServerSocketLock) {
+            synchronized (this) {
                 assert currentServerSocket == null;
                 currentServerSocket = serverSocket;
             }
@@ -85,18 +84,16 @@ public final class HandshakeController {
         return connection;
     }
 
-    public void close() {
-        synchronized (currentServerSocketLock) {
-            if (currentServerSocket != null) {
-                if (!currentServerSocket.isClosed()) {
-                    try {
-                        currentServerSocket.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException("Unable to close the server socket used to listen for transport dt_socket", e);
-                    }
+    public synchronized void close() {
+        if (currentServerSocket != null) {
+            if (!currentServerSocket.isClosed()) {
+                try {
+                    currentServerSocket.close();
+                } catch (IOException e) {
+                    throw new RuntimeException("Unable to close the server socket used to listen for transport dt_socket", e);
                 }
-                currentServerSocket = null;
             }
+            currentServerSocket = null;
         }
     }
 
