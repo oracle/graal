@@ -191,7 +191,7 @@ public abstract class NativeImageCodeCache {
                 }
             }
         }
-        dataSection.close(HostedOptionValues.singleton());
+        dataSection.close(HostedOptionValues.singleton(), 1);
     }
 
     public void addConstantsToHeap() {
