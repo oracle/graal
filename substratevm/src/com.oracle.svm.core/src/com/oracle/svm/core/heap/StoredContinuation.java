@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.core.hub.Hybrid;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.c.function.CodePointer;
 
 /** Execution state of a continuation, use via {@link StoredContinuationAccess}. */
-@Hybrid(componentType = long.class)
+@Hybrid(componentType = Word.class)
 public final class StoredContinuation {
+    CodePointer ip;
+
     /** Must be allocated via {@link StoredContinuationAccess}. */
     private StoredContinuation() {
     }

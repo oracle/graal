@@ -51,18 +51,18 @@ public abstract class AnalysisElement {
 
     @SuppressWarnings("unused") private volatile Object elementReachableNotifications;
 
-    public void registerReachabilityNotification(ElementReachableNotification notification) {
+    public void registerReachabilityNotification(ElementNotification notification) {
         ConcurrentLightHashSet.addElement(this, reachableNotificationsUpdater, notification);
     }
 
-    public void notifyReachabilityCallback(AnalysisUniverse universe, ElementReachableNotification notification) {
+    public void notifyReachabilityCallback(AnalysisUniverse universe, ElementNotification notification) {
         notification.notifyCallback(universe, this);
         ConcurrentLightHashSet.removeElement(this, reachableNotificationsUpdater, notification);
     }
 
     protected void notifyReachabilityCallbacks(AnalysisUniverse universe, List<AnalysisFuture<Void>> futures) {
-        ConcurrentLightHashSet.forEach(this, reachableNotificationsUpdater, (ElementReachableNotification c) -> futures.add(c.notifyCallback(universe, this)));
-        ConcurrentLightHashSet.removeElementIf(this, reachableNotificationsUpdater, ElementReachableNotification::isNotified);
+        ConcurrentLightHashSet.forEach(this, reachableNotificationsUpdater, (ElementNotification c) -> futures.add(c.notifyCallback(universe, this)));
+        ConcurrentLightHashSet.removeElementIf(this, reachableNotificationsUpdater, ElementNotification::isNotified);
     }
 
     public abstract boolean isReachable();
@@ -74,12 +74,12 @@ public abstract class AnalysisElement {
         return isReachable();
     }
 
-    public static final class ElementReachableNotification {
+    public static final class ElementNotification {
 
         private final Consumer<DuringAnalysisAccess> callback;
         private final AtomicReference<AnalysisFuture<Void>> notified = new AtomicReference<>();
 
-        public ElementReachableNotification(Consumer<DuringAnalysisAccess> callback) {
+        public ElementNotification(Consumer<DuringAnalysisAccess> callback) {
             this.callback = callback;
         }
 
@@ -91,7 +91,7 @@ public abstract class AnalysisElement {
          * Notify the callback exactly once. Note that this callback can be shared by multiple
          * triggers, the one that triggers it is passed into triggeredElement for debugging.
          */
-        private AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
+        AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
             assert triggeredElement.isTriggered();
             var existing = notified.get();
             if (existing != null) {

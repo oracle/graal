@@ -86,6 +86,7 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
+import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
@@ -97,6 +98,8 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -144,8 +147,77 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
+    public Object allocateStoredContinuation(@NonNullParameter DynamicHub hub,
+                    int length,
+                    @ConstantParameter int arrayBaseOffset,
+                    @ConstantParameter int log2ElementSize,
+                    @ConstantParameter long ipOffset,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter AllocationProfilingData profilingData) {
+        Word thread = getTLABInfo();
+        Word top = readTlabTop(thread);
+        Word end = readTlabEnd(thread);
+        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
+
+        // A negative array length will result in an array size larger than the largest possible
+        // TLAB. Therefore, this case will always end up in the stub call.
+        UnsignedWord allocationSize = arrayAllocationSize(length, arrayBaseOffset, log2ElementSize);
+        Word newTop = top.add(allocationSize);
+
+        Object result;
+        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+            writeTlabTop(thread, newTop);
+            emitPrefetchAllocate(newTop, true);
+            result = formatStoredContinuation(encodeAsTLABObjectHeader(hub), allocationSize, length, top, emitMemoryBarrier, ipOffset, profilingData.snippetCounters);
+        } else {
+            profilingData.snippetCounters.stub.inc();
+            result = callSlowNewStoredContinuation(gcAllocationSupport().getNewStoredContinuationStub(), encodeAsTLABObjectHeader(hub), length);
+        }
+        profileAllocation(profilingData, allocationSize);
+        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
+    }
+
+    @Snippet
+    public Object allocatePod(@NonNullParameter DynamicHub hub,
+                    int arrayLength,
+                    byte[] referenceMap,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter boolean maybeUnroll,
+                    @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
+                    @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
+        Word thread = getTLABInfo();
+        Word top = readTlabTop(thread);
+        Word end = readTlabEnd(thread);
+        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
+
+        // A negative array length will result in an array size larger than the largest possible
+        // TLAB. Therefore, this case will always end up in the stub call.
+        int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding());
+        UnsignedWord allocationSize = arrayAllocationSize(arrayLength, arrayBaseOffset, 0);
+        Word newTop = top.add(allocationSize);
+
+        Object result;
+        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+            writeTlabTop(thread, newTop);
+            emitPrefetchAllocate(newTop, true);
+            result = formatPod(encodeAsTLABObjectHeader(hub), hub, allocationSize, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
+                            emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
+        } else {
+            profilingData.snippetCounters.stub.inc();
+            result = callSlowNewPodInstance(gcAllocationSupport().getNewPodInstanceStub(), encodeAsTLABObjectHeader(hub), arrayLength, referenceMap);
+        }
+        profileAllocation(profilingData, allocationSize);
+        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), arrayLength);
+    }
+
+    @Snippet
+    public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub,
+                    @ConstantParameter FillContent fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
+                    @ConstantParameter AllocationProfilingData profilingData) {
         return allocateInstanceDynamicImpl(hub, fillContents, emitMemoryBarrier, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
     }
 
@@ -158,8 +230,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateArrayDynamic(DynamicHub elementType, int length, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
+    public Object allocateArrayDynamic(DynamicHub elementType,
+                    int length,
+                    @ConstantParameter FillContent fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
+                    @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedArrayHub = getCheckedArrayHub(elementType);
 
         int layoutEncoding = checkedArrayHub.getLayoutEncoding();
@@ -269,53 +346,36 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         }
     }
 
-    @Snippet
-    public Object allocatePod(@NonNullParameter DynamicHub hub, int arrayLength, byte[] referenceMap, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean maybeUnroll,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native Object callSlowNewPodInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length, byte[] referenceMap);
 
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
-        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
-
-        int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding());
-        UnsignedWord allocationSize = arrayAllocationSize(arrayLength, arrayBaseOffset, 0);
-        Word newTop = top.add(allocationSize);
-
-        Object instance;
-        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
-            emitPrefetchAllocate(newTop, true);
-            instance = formatPod(encodeAsTLABObjectHeader(hub), hub, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
-                            afterArrayLengthOffset(), emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
-        } else {
-            profilingData.snippetCounters.stub.inc();
-            instance = callSlowNewPodInstance(gcAllocationSupport().getSlowNewPodInstanceStub(), encodeAsTLABObjectHeader(hub), arrayLength, afterArrayLengthOffset(), referenceMap);
-        }
-        profileAllocation(profilingData, allocationSize);
-        return piArrayCastToSnippetReplaceeStamp(verifyOop(instance), arrayLength);
+    public Object formatArray(Word hub, UnsignedWord allocationSize, int length, Word memory, FillContent fillContents, boolean emitMemoryBarrier, boolean maybeUnroll, boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
+        return formatArray(hub, allocationSize, length, memory, fillContents, emitMemoryBarrier, SubstrateAllocationSnippets.afterArrayLengthOffset(), maybeUnroll, supportsBulkZeroing,
+                        supportsOptimizedFilling, snippetCounters);
     }
 
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native Object callSlowNewPodInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length, int fillStartOffset, byte[] referenceMap);
+    public Object formatStoredContinuation(Word objectHeader, UnsignedWord allocationSize, int arrayLength, Word memory, boolean emitMemoryBarrier, long ipOffset,
+                    AllocationSnippetCounters snippetCounters) {
+        Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, FillContent.DO_NOT_FILL, false, false, false, false, snippetCounters);
+        memory.writeWord(WordFactory.unsigned(ipOffset), WordFactory.nullPointer(), LocationIdentity.init());
+        emitMemoryBarrierIf(emitMemoryBarrier);
+        return result;
+    }
 
-    public Object formatPod(Word objectHeader, DynamicHub hub, int arrayLength, byte[] referenceMap, Word memory, FillContent fillContents, int fillStartOffset,
-                    boolean emitMemoryBarrier, boolean maybeUnroll, boolean supportsBulkZeroing, boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
-
-        int layoutEncoding = hub.getLayoutEncoding();
-        UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, arrayLength);
-
-        Object instance = formatArray(objectHeader, allocationSize, arrayLength, memory, fillContents, fillStartOffset,
-                        false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+    public Object formatPod(Word objectHeader, DynamicHub hub, UnsignedWord allocationSize, int arrayLength, byte[] referenceMap, Word memory, FillContent fillContents, boolean emitMemoryBarrier,
+                    boolean maybeUnroll, boolean supportsBulkZeroing, boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
+        Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, fillContents, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
+                        snippetCounters);
 
         int fromOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
-        int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding) + arrayLength - referenceMap.length;
+        int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding()) + arrayLength - referenceMap.length;
         for (int i = 0; i < referenceMap.length; i++) {
             byte b = ObjectAccess.readByte(referenceMap, fromOffset + i, byteArrayIdentity());
-            ObjectAccess.writeByte(instance, toOffset + i, b, LocationIdentity.INIT_LOCATION);
+            ObjectAccess.writeByte(result, toOffset + i, b, LocationIdentity.INIT_LOCATION);
         }
         emitMemoryBarrierIf(emitMemoryBarrier);
-        return instance;
+        return result;
     }
 
     @Fold
@@ -353,7 +413,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Fold
-    protected static int afterArrayLengthOffset() {
+    public static int afterArrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
     }
 
@@ -398,12 +458,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Override
     protected final Object callNewInstanceStub(Word objectHeader) {
-        return callSlowNewInstance(gcAllocationSupport().getSlowNewInstanceStub(), objectHeader);
+        return callSlowNewInstance(gcAllocationSupport().getNewInstanceStub(), objectHeader);
     }
 
     @Override
-    protected final Object callNewArrayStub(Word objectHeader, int length, int fillStartOffset) {
-        return callSlowNewArray(gcAllocationSupport().getSlowNewArrayStub(), objectHeader, length, fillStartOffset);
+    protected final Object callNewArrayStub(Word objectHeader, int length) {
+        return callSlowNewArray(gcAllocationSupport().getNewArrayStub(), objectHeader, length);
     }
 
     @Override
@@ -415,7 +475,10 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callSlowNewInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native Object callSlowNewArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length, int fillStartOffset);
+    private static native Object callSlowNewArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native Object callSlowNewStoredContinuation(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);
@@ -482,6 +545,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         private final SnippetInfo validateNewInstanceClass;
 
+        private final SnippetInfo allocateStoredContinuation;
         private final SnippetInfo allocatePod;
 
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
@@ -495,6 +559,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             allocateArrayDynamic = snippet(SubstrateAllocationSnippets.class, "allocateArrayDynamic", null, receiver, ALLOCATION_LOCATIONS);
             newmultiarray = snippet(SubstrateAllocationSnippets.class, "newmultiarray", null, receiver, ALLOCATION_LOCATIONS);
             validateNewInstanceClass = snippet(SubstrateAllocationSnippets.class, "validateNewInstanceClass", null, receiver, ALLOCATION_LOCATIONS);
+
+            SnippetInfo allocateStoredContinuationSnippet = null;
+            if (Continuation.isSupported()) {
+                allocateStoredContinuationSnippet = snippet(SubstrateAllocationSnippets.class, "allocateStoredContinuation", null, receiver, ALLOCATION_LOCATIONS);
+            }
+            allocateStoredContinuation = allocateStoredContinuationSnippet;
 
             SnippetInfo allocatePodSnippet = null;
             if (Pod.RuntimeSupport.isPresent()) {
@@ -515,6 +585,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
             lowerings.put(ValidateNewInstanceClassNode.class, new ValidateNewInstanceClassLowering());
 
+            if (Continuation.isSupported()) {
+                lowerings.put(NewStoredContinuationNode.class, new NewStoredContinuationLowering());
+            }
             if (Pod.RuntimeSupport.isPresent()) {
                 lowerings.put(NewPodInstanceNode.class, new NewPodInstanceLowering());
             }
@@ -589,7 +662,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 ValueNode length = node.length();
                 DynamicHub hub = instanceClass.getHub();
                 int layoutEncoding = hub.getLayoutEncoding();
-                int arrayBaseOffset = (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
+                int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
                 boolean fillContents = node.fillContents();
                 assert fillContents : "fillContents must be true for hybrid allocations";
@@ -606,6 +679,36 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.addConst("profilingData", getProfilingData(node, instanceClass));
+
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
+            @Override
+            public void lower(NewStoredContinuationNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+                if (graph.getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
+                    return;
+                }
+
+                SharedType instanceClass = (SharedType) node.instanceClass();
+                ValueNode length = node.length();
+                DynamicHub hub = instanceClass.getHub();
+                int layoutEncoding = hub.getLayoutEncoding();
+                int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
+                int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+
+                Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("hub", hubConstant);
+                args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+                args.addConst("arrayBaseOffset", arrayBaseOffset);
+                args.addConst("log2ElementSize", log2ElementSize);
+                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
+                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, instanceClass));
 
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

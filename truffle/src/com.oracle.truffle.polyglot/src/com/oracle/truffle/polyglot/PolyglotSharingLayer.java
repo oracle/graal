@@ -167,10 +167,10 @@ final class PolyglotSharingLayer {
 
         // determine new requested policy
         ContextPolicy newPolicy;
-        if (engine.isSharingEnabled()) {
+        if (engine.isSharingEnabled(context.config)) {
             newPolicy = computeMinContextPolicyPolicy(newLanguageOptions.keySet());
         } else {
-            if (s != null) {
+            if (s != null && !context.config.isCodeSharingDisabled()) {
                 // a layer was loaded from persistence => try to use the layer.
                 newPolicy = s.contextPolicy;
             } else {
@@ -255,7 +255,7 @@ final class PolyglotSharingLayer {
 
     public void preInitialize() {
         assert Thread.holdsLock(engine.lock);
-        assert engine.isSharingEnabled();
+        assert engine.isSharingEnabled(null);
         if (!isClaimed()) {
             // preinitialization does not make sense for layers without initialized languages.
             return;
@@ -277,7 +277,7 @@ final class PolyglotSharingLayer {
 
     public PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
         assert Thread.holdsLock(engine.lock);
-        assert engine.isSharingEnabled();
+        assert engine.isSharingEnabled(null);
 
         Shared s = this.shared;
         if (s == null) {
@@ -688,7 +688,7 @@ final class PolyglotSharingLayer {
                     Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions) {
         trace(context, s, "loading pre-init", String.format("claimedCount:%s sharingEnabled:%s ",
                         success ? (s.claimedCount - 1) : s.claimedCount,
-                        engine.isSharingEnabled()));
+                        engine.isSharingEnabled(context.config)));
         for (Entry<PolyglotLanguage, OptionValuesImpl> entry : newLanguageOptions.entrySet()) {
             traceCompatibility(s, context, previousOptions, entry);
         }
@@ -698,7 +698,7 @@ final class PolyglotSharingLayer {
     private void traceClaimLayer(boolean success, Shared s, PolyglotContextImpl context, Set<PolyglotLanguage> requestingLangauges, Map<PolyglotLanguage, OptionValuesImpl> previousOptions) {
         trace(context, s, "claiming", String.format("claimedCount:%s sharingEnabled:%s ",
                         success ? (s.claimedCount - 1) : s.claimedCount,
-                        engine.isSharingEnabled()));
+                        engine.isSharingEnabled(context.config)));
 
         Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(context.config, requestingLangauges);
         for (Entry<PolyglotLanguage, OptionValuesImpl> entry : newLanguageOptions.entrySet()) {
@@ -713,7 +713,7 @@ final class PolyglotSharingLayer {
         ContextPolicy policy = language.cache.getPolicy();
         languageInfos.append(String.format("%s registration-policy:%s  ", language.getId(), policy));
         boolean optionsCompatible = isContextPolicyCompatible(s.contextPolicy, policy);
-        if (optionsCompatible && engine.isSharingEnabled()) {
+        if (optionsCompatible && engine.isSharingEnabled(context.config)) {
             OptionValuesImpl newOptions = entry.getValue();
             OptionValuesImpl prevOptions = previousOptions != null ? previousOptions.get(language) : newOptions;
             if (prevOptions == null) {

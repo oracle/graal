@@ -42,6 +42,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -92,6 +93,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideReachableNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "overrideReachableNotifications");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> instantiatedNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "typeInstantiatedNotifications");
 
     private static final AtomicIntegerFieldUpdater<AnalysisType> isInHeapUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisType.class, "isInHeap");
@@ -202,6 +206,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * of fields in that type.
      */
     List<AnalysisFuture<Void>> scheduledTypeReachableNotifications;
+
+    @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -483,6 +489,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected void onInstantiated(UsageKind usage) {
         universe.onTypeInstantiated(this, usage);
+        notifyInstantiatedCallbacks();
         processMethodOverrides();
     }
 
@@ -573,6 +580,33 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
+    }
+
+    public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
+        if (this.isInstantiated()) {
+            /* If the type is already instantiated just trigger the callback. */
+            callback.accept(universe.getConcurrentAnalysisAccess());
+        } else {
+            ElementNotification notification = new ElementNotification(callback);
+            ConcurrentLightHashSet.addElement(this, instantiatedNotificationsUpdater, notification);
+            if (this.isInstantiated()) {
+                /*
+                 * If the type became instantiated during registration manually trigger the
+                 * callback.
+                 */
+                notifyInstantiatedCallback(notification);
+            }
+        }
+    }
+
+    private void notifyInstantiatedCallback(ElementNotification notification) {
+        notification.notifyCallback(universe, this);
+        ConcurrentLightHashSet.removeElement(this, instantiatedNotificationsUpdater, notification);
+    }
+
+    protected void notifyInstantiatedCallbacks() {
+        ConcurrentLightHashSet.forEach(this, instantiatedNotificationsUpdater, (ElementNotification c) -> c.notifyCallback(universe, this));
+        ConcurrentLightHashSet.removeElementIf(this, instantiatedNotificationsUpdater, ElementNotification::isNotified);
     }
 
     /**

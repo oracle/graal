@@ -163,10 +163,10 @@ public final class AllocationSite {
         return sortedSites;
     }
 
-    public static void dumpProfilingResultsOnShutdown(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
+    public static RuntimeSupport.Hook getShutdownHook() {
+        return isFirstIsolate -> {
             dumpProfilingResults();
-        }
+        };
     }
 
     public static void dumpProfilingResults() {
@@ -222,7 +222,7 @@ class AllocationProfilingFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResultsOnShutdown);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite.getShutdownHook());
         }
     }
 }

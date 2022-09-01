@@ -45,7 +45,6 @@ import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeF
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -96,10 +95,6 @@ public class MethodFlowsGraph {
 
     public void init(final PointsToAnalysis bb) {
         for (TypeFlow<?> flow : flows()) {
-            if (flow instanceof NewInstanceTypeFlow) {
-                NewInstanceTypeFlow newInstance = (NewInstanceTypeFlow) flow;
-                newInstance.setSourceState(TypeState.forExactType(bb, newInstance.type(), false));
-            }
             if (flow instanceof AbstractUnsafeLoadTypeFlow) {
                 bb.registerUnsafeLoad((AbstractUnsafeLoadTypeFlow) flow);
             }

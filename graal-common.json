@@ -4,9 +4,5 @@
     "overlay": "b84cafb1bb9555b3b13443815280c85df77cfc75"
   },
 
-  "COMMENT.mx": [
-    "This must always point to HEAD in the master branch but can be used to point to",
-    "another branch/commit in a PR when mx changes are required for the PR."
-  ],
-  "mx_version" : "HEAD"
+  "mx_version" : "6.6.2"
 }

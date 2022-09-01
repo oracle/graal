@@ -32,11 +32,9 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   sulong_coverage:: sc.gateTags("build,sulongCoverage") + {
     job::"coverage",
     extra_mx_args +: ["--jacoco-whitelist-package", "com.oracle.truffle.llvm", "--jacoco-exclude-annotation", "@GeneratedBy"],
-    extra_gate_args+: ["--jacocout", "html"],
-    run+: [
-      # $SONAR_HOST_URL might not be set [GR-28642],
-      ["test", "-z", "$SONAR_HOST_URL", "||"] + self.mx + ["sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", "--exclude-generated"],
-      self.mx + ["coverage-upload"],
+    extra_gate_args+: ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+    teardown+: [
+      self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     timelimit: "1:45:00",
   },
@@ -76,7 +74,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-linux-aarch64", timelimit: "30:00" },
 
     # TODO: "llvm" tag requires libgmp to be available
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_aarch64 + sc.llvmBundled + sc.gateTags("build,sulongBasic") + { name: "gate-sulong-basic-jdk17-darwin-aarch64", timelimit: "30:00" },
+    # GR-40713
+    # sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_aarch64 + sc.llvmBundled + sc.gateTags("build,sulongBasic") + { name: "gate-sulong-basic-jdk17-darwin-aarch64", timelimit: "30:00" },
 
     sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
   ]],

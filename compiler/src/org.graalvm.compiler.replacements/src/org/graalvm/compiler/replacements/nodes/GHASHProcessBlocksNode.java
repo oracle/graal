@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package org.graalvm.compiler.replacements.nodes;
+
+import java.util.EnumSet;
+
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+
+import jdk.vm.ci.meta.JavaKind;
+
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_128, size = NodeSize.SIZE_128)
+public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
+
+    public static final NodeClass<GHASHProcessBlocksNode> TYPE = NodeClass.create(GHASHProcessBlocksNode.class);
+    public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Long)};
+
+    @Input protected ValueNode state;
+    @Input protected ValueNode hashSubkey;
+    @Input protected ValueNode data;
+    @Input protected ValueNode blocks;
+
+    public GHASHProcessBlocksNode(ValueNode state, ValueNode hashSubkey, ValueNode data, ValueNode blocks) {
+        this(state,
+                        hashSubkey,
+                        data,
+                        blocks,
+                        null);
+    }
+
+    public GHASHProcessBlocksNode(ValueNode state, ValueNode hashSubkey, ValueNode data, ValueNode blocks, EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
+        this.state = state;
+        this.hashSubkey = hashSubkey;
+        this.data = data;
+        this.blocks = blocks;
+    }
+
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{state, hashSubkey, data, blocks};
+    }
+
+    @Override
+    public LocationIdentity[] getKilledLocationIdentities() {
+        return KILLED_LOCATIONS;
+    }
+
+    @NodeIntrinsic
+    @GenerateStub(name = "ghashProcessBlocks")
+    public static native void apply(Pointer state,
+                    Pointer hashSubkey,
+                    Pointer data,
+                    Pointer blocks);
+
+    @NodeIntrinsic
+    public static native void apply(Pointer state,
+                    Pointer hashSubkey,
+                    Pointer data,
+                    Pointer blocks,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+
+    @Override
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS;
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.getLIRGeneratorTool().emitGHASHProcessBlocks(gen.operand(state), gen.operand(hashSubkey), gen.operand(data), gen.operand(blocks));
+    }
+}

@@ -449,8 +449,6 @@ public interface Frame {
      * use {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing an object value to this slot does not change the underlying primitive value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -463,8 +461,7 @@ public interface Frame {
     /**
      * Static read access to a local variable of type byte. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
-     * implementations have to guarantee that the variable in the given slot can be interpreted as
-     * type byte.
+     * implementations have to guarantee that the variable in the given slot is of type byte.
      *
      * @param slot the slot of the local variable
      * @return the current value of the local variable
@@ -480,8 +477,6 @@ public interface Frame {
      * {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing a primitive value to this slot does not change the underlying object value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -494,12 +489,7 @@ public interface Frame {
     /**
      * Static read access to a local variable of type boolean. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
-     * implementations have to guarantee that the variable in the given slot can be interpreted as
-     * type boolean.
-     *
-     * Reading a boolean value after writing a byte, int, or float value to this slot does not give
-     * any guarantees about the upper 56 respectively 32 bits of the underlying value and can lead
-     * to unexpected results and suboptimal performance.
+     * implementations have to guarantee that the variable in the given slot is of type boolean.
      *
      * @param slot the slot of the local variable
      * @return the current value of the local variable
@@ -515,8 +505,6 @@ public interface Frame {
      * {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing a primitive value to this slot does not change the underlying object value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -529,12 +517,7 @@ public interface Frame {
     /**
      * Static read access to a local variable of type int. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
-     * implementations have to guarantee that the variable in the given slot can be interpreted as
-     * type int.
-     *
-     * Reading an int value after writing a byte value to this slot does not give any guarantees
-     * about the upper 24 bits of the underlying value and can lead to unexpected results and
-     * suboptimal performance.
+     * implementations have to guarantee that the variable in the given slot can is of type int.
      *
      * @param slot the slot of the local variable
      * @return the current value of the local variable
@@ -550,8 +533,6 @@ public interface Frame {
      * {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing a primitive value to this slot does not change the underlying object value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -564,12 +545,7 @@ public interface Frame {
     /**
      * Static read access to a local variable of type long. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
-     * implementations have to guarantee that the variable in the given slot can be interpreted as
-     * type long.
-     *
-     * Reading a long value after writing a byte, int, or float value to this slot does not give any
-     * guarantees about the upper 56 respectively 32 bits of the underlying value and can lead to
-     * unexpected results and suboptimal performance.
+     * implementations have to guarantee that the variable in the given slot is of type long.
      *
      * @param slot the slot of the local variable
      * @return the current value of the local variable
@@ -585,8 +561,6 @@ public interface Frame {
      * {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing a primitive value to this slot does not change the underlying object value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -599,12 +573,7 @@ public interface Frame {
     /**
      * Static read access to a local variable of type float. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
-     * implementations have to guarantee that the variable in the given slot can be interpreted as
-     * type float.
-     *
-     * Reading a float value after writing a byte value to this slot does not give any guarantees
-     * about the upper 24 bits of the underlying value and can lead to unexpected results and
-     * suboptimal performance.
+     * implementations have to guarantee that the variable in the given slot is of type float.
      *
      * @param slot the slot of the local variable
      * @return the current value of the local variable
@@ -620,8 +589,6 @@ public interface Frame {
      * {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing a primitive value to this slot does not change the underlying object value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -634,12 +601,7 @@ public interface Frame {
     /**
      * Static read access to a local variable of type double. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
-     * implementations have to guarantee that the variable in the given slot can be interpreted as
-     * type double.
-     *
-     * Reading a double value after writing a byte, int, or float value to this slot does not give
-     * any guarantees about the upper 56 respectively 32 bits of the underlying value and can lead
-     * to unexpected results and suboptimal performance.
+     * implementations have to guarantee that the variable in the given slot is of type double.
      *
      * @param slot the slot of the local variable
      * @return the current value of the local variable
@@ -655,8 +617,6 @@ public interface Frame {
      * {@link FrameSlotKind#Static}. Since this method does not update the internal slot type,
      * language implementations have to track this information.
      *
-     * Writing a primitive value to this slot does not change the underlying object value.
-     *
      * @param slot the slot of the local variable
      * @param value the new value of the local variable
      * @since 22.2
@@ -670,7 +630,6 @@ public interface Frame {
      * Copies a primitive value from one slot to another. Requires both slots to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
      * implementations have to guarantee that the variable at the source slot is a primitive value.
-     * An existing object value at the destination slot is not overwritten.
      *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
@@ -685,7 +644,6 @@ public interface Frame {
      * Copies an object value from one slot to another. Requires both slots to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
      * implementations have to guarantee that the variable at the source slot is an {@link Object}.
-     * An existing primitive value at the destination slot is not overwritten.
      *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
@@ -700,11 +658,8 @@ public interface Frame {
      * Clears the primitive value at the given slot in the frame. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Writing over a previously cleared slot is still allowed.
      * Subsequent reads to the slot, unless re-written to, will not give any guarantees about the
-     * returned value.
-     *
-     * Since this method does not perform any type checks, language implementations have to
-     * guarantee that the variable at the given slot is a primitive value. An existing object value
-     * at this slot is not cleared.
+     * returned value. Since this method does not perform any type checks, language implementations
+     * have to guarantee that the variable at the given slot is a primitive value.
      *
      * <p>
      * This method is intended to be used for implementations of liveness analysis. As such, the
@@ -726,11 +681,8 @@ public interface Frame {
      * Clears the object value at the given slot in the frame. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Writing over a previously cleared slot is still allowed.
      * Subsequent reads to the slot, unless re-written to, will not give any guarantees about the
-     * returned value.
-     *
-     * Since this method does not perform any type checks, language implementations have to
-     * guarantee that the variable at the given slot is an {@link Object}. An existing primitive
-     * value at this slot is not cleared.
+     * returned value. Since this method does not perform any type checks, language implementations
+     * have to guarantee that the variable at the given slot is an {@link Object}.
      *
      * <p>
      * This method is intended to be used for implementations of liveness analysis. As such, the

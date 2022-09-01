@@ -31,7 +31,7 @@ public final class FixedPointMath {
      * should not be instantiated.
      */
     private FixedPointMath() {
-        throw new IllegalStateException("Should not instantiate" + this.getClass().getName());
+        throw new IllegalStateException("Should not instantiate " + this.getClass().getName());
     }
 
     public static int toFixedPoint(double x) {

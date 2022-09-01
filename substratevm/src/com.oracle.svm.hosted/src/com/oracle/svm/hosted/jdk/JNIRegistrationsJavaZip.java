@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.jdk;
 
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
@@ -50,6 +50,6 @@ class JNIRegistrationsJavaZip extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerJDK11InflaterInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
+        RuntimeJNIAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
     }
 }

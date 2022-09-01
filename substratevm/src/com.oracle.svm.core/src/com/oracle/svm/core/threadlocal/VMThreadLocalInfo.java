@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 import jdk.vm.ci.meta.JavaKind;
 

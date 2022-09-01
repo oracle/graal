@@ -268,24 +268,24 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
                 // and sub the size too
                 masm.sublAndJcc(cnt2, stride2x2, ConditionFlag.NotZero, labelCompareWideVectorsLoopAVX3, true);
 
-                masm.vpxor(vec1, vec1, vec1);
+                masm.vpxor(vec1, vec1, vec1, AVXSize.YMM);
                 masm.jmpb(labelCompareWideTail);
             }
 
             masm.bind(labelCompareWideVectorsLoopAVX2);
             if (strideA == strideB) {
                 masm.vmovdqu(vec1, new AMD64Address(str1, result, maxStride));
-                masm.vpxor(vec1, vec1, new AMD64Address(str2, result, maxStride));
+                masm.vpxor(vec1, vec1, new AMD64Address(str2, result, maxStride), AVXSize.YMM);
             } else {
                 masm.vpmovzxbw(vec1, new AMD64Address(str1, result, scale1));
-                masm.vpxor(vec1, vec1, new AMD64Address(str2, result, scale2));
+                masm.vpxor(vec1, vec1, new AMD64Address(str2, result, scale2), AVXSize.YMM);
             }
-            masm.vptest(vec1, vec1);
+            masm.vptest(vec1, vec1, AVXSize.YMM);
             masm.jcc(ConditionFlag.NotZero, labelVectorNotEqual);
             masm.addq(result, elementsPerYMMVector);
             masm.sublAndJcc(cnt2, elementsPerYMMVector, ConditionFlag.NotZero, labelCompareWideVectorsLoop, false);
             // clean upper bits of YMM registers
-            masm.vpxor(vec1, vec1, vec1);
+            masm.vpxor(vec1, vec1, vec1, AVXSize.YMM);
 
             // compare wide vectors tail
             masm.bind(labelCompareWideTail);
@@ -299,7 +299,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             // Identifies the mismatching (higher or lower)16-bytes in the 32-byte vectors.
             masm.bind(labelVectorNotEqual);
             // clean upper bits of YMM registers
-            masm.vpxor(vec1, vec1, vec1);
+            masm.vpxor(vec1, vec1, vec1, AVXSize.YMM);
             if (strideA == strideB) {
                 masm.leaq(str1, new AMD64Address(str1, result, maxStride));
                 masm.leaq(str2, new AMD64Address(str2, result, maxStride));

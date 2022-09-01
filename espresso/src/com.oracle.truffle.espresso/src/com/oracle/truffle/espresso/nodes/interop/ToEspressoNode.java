@@ -234,7 +234,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "isForeignException(meta, klass)",
+                    "isForeignException(context.getMeta(), klass)",
                     "!isStaticObject(value)",
                     "interop.isException(value)",
                     "!isEspressoException(value)",
@@ -244,9 +244,9 @@ public abstract class ToEspressoNode extends EspressoNode {
     Object doForeignException(Object value, ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached InitCheck initCheck,
-                    @Bind("getMeta()") Meta meta) {
+                    @Bind("getContext()") EspressoContext context) {
         initCheck.execute(klass);
-        return StaticObject.createForeignException(meta, value, interop);
+        return StaticObject.createForeignException(context, value, interop);
     }
 
     @Specialization(guards = {

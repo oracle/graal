@@ -36,11 +36,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class ReferenceAccessImpl implements ReferenceAccess {
     static void initialize() {
@@ -118,7 +117,8 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
             int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             return WordFactory.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
         }
-        return UnsignedUtils.MAX_VALUE;
+        // Assume that 48 bit is the maximum address space that can be used.
+        return WordFactory.unsigned((1L << 48) - 1);
     }
 }
 

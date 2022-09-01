@@ -35,9 +35,9 @@ local jdks = common_json.jdks;
 
   check_structure: {},
 
-  check_graalvm_base_build(os, arch, java_version): [],
+  check_graalvm_base_build(path, os, arch, java_version): [],
 
-  check_graalvm_complete_build: [],
+  check_graalvm_complete_build(mx_command_base, os, arch, java_version): [],
 
   vm_setup:: {
     short_name:: 'ce',

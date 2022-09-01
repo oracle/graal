@@ -132,9 +132,9 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
                  * applies.
                  */
             } else {
-                throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
+                throw HostAccessor.ENGINE.createPolyglotEngineException(new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
                                 "The host access configuration must be the same for all contexts of an engine. " +
-                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
+                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context."));
             }
         } else {
             this.hostClassCache = cache;

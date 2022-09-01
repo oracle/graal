@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.api.test.common.TestUtils;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -54,11 +53,13 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.concurrent.atomic.AtomicReference;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 public class LanguageSystemThreadTest {
 
@@ -157,7 +158,7 @@ public class LanguageSystemThreadTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            TruffleContext truffleContext = env.newContextBuilder().initializeCreatorContext(true).build();
+            TruffleContext truffleContext = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
             ExecutableContext executableContext = null;
             Object prev = truffleContext.enter(node);
             try {
@@ -195,7 +196,7 @@ public class LanguageSystemThreadTest {
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             AtomicReference<Throwable> throwableRef = new AtomicReference<>();
-            TruffleContext truffleContext = env.newContextBuilder().initializeCreatorContext(true).build();
+            TruffleContext truffleContext = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
             Object prev = truffleContext.enter(node);
             Thread systemThread = null;
             try {

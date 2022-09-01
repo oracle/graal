@@ -856,7 +856,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
+                "sdk:GRAAL_SDK",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "11+",

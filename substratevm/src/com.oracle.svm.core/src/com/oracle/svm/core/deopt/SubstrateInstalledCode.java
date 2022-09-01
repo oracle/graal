@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.deopt;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 
 import com.oracle.svm.core.code.CodeInfo;

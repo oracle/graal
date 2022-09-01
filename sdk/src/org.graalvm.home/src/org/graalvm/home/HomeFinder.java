@@ -98,8 +98,19 @@ public abstract class HomeFinder {
         if (ImageInfo.inImageCode() && ImageSingletons.contains(HomeFinder.class)) {
             return ImageSingletons.lookup(HomeFinder.class);
         }
-        final ServiceLoader<HomeFinder> serviceLoader = ServiceLoader.load(HomeFinder.class);
-        final Iterator<HomeFinder> iterator = serviceLoader.iterator();
+        Class<?> lookupClass = HomeFinder.class;
+        ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
+        Iterable<HomeFinder> services;
+        if (moduleLayer != null) {
+            services = ServiceLoader.load(moduleLayer, HomeFinder.class);
+        } else {
+            services = ServiceLoader.load(HomeFinder.class, lookupClass.getClassLoader());
+        }
+        Iterator<HomeFinder> iterator = services.iterator();
+        if (!iterator.hasNext()) {
+            services = ServiceLoader.load(HomeFinder.class);
+            iterator = services.iterator();
+        }
         try {
             return iterator.next();
         } catch (NoSuchElementException e) {

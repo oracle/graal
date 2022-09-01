@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
-import com.oracle.svm.core.annotate.ExplicitCallingConvention;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;

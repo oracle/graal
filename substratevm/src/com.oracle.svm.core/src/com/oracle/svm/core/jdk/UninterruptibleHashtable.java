@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Common interface for all uninterruptible hashtable implementations. Please note that we don't use

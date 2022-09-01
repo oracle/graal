@@ -232,9 +232,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
                 private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
 
                 @Override
-                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean track) {
+                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider) {
                     if (lookupMethod.equals(method)) {
-                        assert !track || encodedGraph.trackNodeSourcePosition();
+                        assert !result.trackNodeSourcePosition() || encodedGraph.trackNodeSourcePosition();
                         return encodedGraph;
                     } else {
                         throw VMError.shouldNotReachHere(method.format("%H.%n(%p)"));
@@ -247,7 +247,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
                 }
             };
 
-            graphDecoder.decode(method, true, trackNodeSourcePosition);
+            graphDecoder.decode(method);
 
             assert result.verify();
             return result;

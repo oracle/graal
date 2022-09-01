@@ -693,6 +693,10 @@ public class SubstrateOptions {
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
         public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, Immutable);
+
+        /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
+        @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
+        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//

@@ -83,7 +83,14 @@ public final class AArch64AESDecryptOp extends AArch64LIRInstruction {
         this.toValue = toValue;
         this.keyValue = keyValue;
         this.lengthOffset = lengthOffset;
-        this.temps = new Value[]{v0.asValue(), v1.asValue(), v2.asValue(), v3.asValue(), v4.asValue(), v5.asValue()};
+        this.temps = new Value[]{
+                        v0.asValue(),
+                        v1.asValue(),
+                        v2.asValue(),
+                        v3.asValue(),
+                        v4.asValue(),
+                        v5.asValue(),
+        };
     }
 
     @Override

@@ -163,6 +163,7 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
@@ -181,6 +182,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNo
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
@@ -1011,6 +1013,15 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC >= 18) {
+            r.register(new InvocationPlugin("unsignedMultiplyHigh", long.class, long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.addPush(JavaKind.Long, new UnsignedMulHighNode(x, y));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerRound(boolean supportsRound, Registration r, String name, RoundingMode mode) {
@@ -1100,7 +1111,7 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                ValueNode folded = GetClassNode.tryFold(b.getMetaAccess(), b.getConstantReflection(), NodeView.DEFAULT, GraphUtil.originalValue(object, true));
+                ValueNode folded = GetClassNode.tryFold(b.getAssumptions(), b.getMetaAccess(), b.getConstantReflection(), NodeView.DEFAULT, GraphUtil.originalValue(object, true));
                 if (folded != null) {
                     b.addPush(JavaKind.Object, folded);
                 } else {
@@ -2084,6 +2095,25 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             return true;
+        }
+    }
+
+    public static class GHASHPlugin extends InvocationPlugin {
+
+        public GHASHPlugin() {
+            super("processBlocks", byte[].class, int.class, int.class, long[].class, long[].class);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                        ValueNode data, ValueNode inOffset, ValueNode blocks, ValueNode state, ValueNode hashSubkey) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode dataAddress = helper.arrayElementPointer(data, JavaKind.Byte, inOffset);
+                ValueNode stateAddress = helper.arrayStart(state, JavaKind.Long);
+                ValueNode hashSubkeyAddress = helper.arrayStart(hashSubkey, JavaKind.Long);
+                b.add(new GHASHProcessBlocksNode(stateAddress, hashSubkeyAddress, dataAddress, blocks));
+                return true;
+            }
         }
     }
 }

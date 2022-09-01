@@ -30,7 +30,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {

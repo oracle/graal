@@ -50,15 +50,14 @@
 
   test:: s.base(no_warning_as_error=true),
 
-  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacocout", "html"]) + {
-    run+: [
-      ["mx", "coverage-upload"],
-      # GR-18258 ["mx", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."jvm-config.default, "-Dsonar.projectName=GraalVM - Compiler ("jvm-config.default")", "--exclude-generated", "--skip-coverage"]
-    ]
+  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"]) + {
+    teardown+: [
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+    ],
   },
 
   test_javabase:: s.base("build,javabasetest"),
-
+  test_jtt_phaseplan_fuzzing:: s.base("build,phaseplan-fuzz-jtt-tests"),
   test_vec16:: s.base(extra_vm_args="-Dgraal.DetailedAsserts=true -XX:MaxVectorSize=16"),
   test_avx0:: s.base(extra_vm_args="-Dgraal.ForceAdversarialLayout=true", jvm_config_suffix="-avx0"),
   test_avx1:: s.base(extra_vm_args="-Dgraal.ForceAdversarialLayout=true", jvm_config_suffix="-avx1"),
@@ -78,10 +77,11 @@
   ctw:: s.base("build,ctw", no_warning_as_error=true),
 
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Dgraal.CompilerConfiguration=economy"),
+  ctw_phaseplan_fuzzing:: s.base("build,ctwphaseplanfuzzing"),
 
-  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacocout", "html"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
-    run+: [
-      ["mx", "coverage-upload"]
+  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
+    teardown+: [
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     timelimit : "1:30:00"
   },
@@ -172,7 +172,7 @@
     "gate-compiler-benchmarktest-labsjdk-11-linux-amd64": {},
     "gate-compiler-benchmarktest-labsjdk-17-linux-amd64": {},
 
-    "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00"),
+    "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00") + {capabilities+: ["!s3_16_32"]}, # TODO Remove !s3_16_32 when GR-39450 is fixed,
 
     "gate-compiler-bootstrap_lite-labsjdk-11-darwin-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
@@ -186,6 +186,8 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
+    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-17-linux-amd64": {},
+
     "weekly-compiler-test-labsjdk-11-windows-amd64": t("55:00"),
     "weekly-compiler-test-labsjdk-11-darwin-amd64": {},
     "weekly-compiler-test-labsjdk-11-darwin-aarch64": {},
@@ -194,6 +196,7 @@
     "weekly-compiler-test_avx0-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_avx1-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_javabase-labsjdk-17-linux-amd64": {},
+    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-17-linux-amd64": {},
     "weekly-compiler-benchmarktest-labsjdk-17Debug-linux-amd64": {},
 
     "weekly-compiler-coverage*": {},
@@ -305,10 +308,12 @@
   # Builds run on only on linux-amd64-jdk17
   local linux_amd64_jdk17_builds = [self.make_build("17", "linux-amd64", task).build
     for task in [
+      "ctw_phaseplan_fuzzing",
       "test_vec16",
       "test_avx0",
       "test_avx1",
       "test_javabase",
+      "test_jtt_phaseplan_fuzzing",
       "style"
     ]
   ],

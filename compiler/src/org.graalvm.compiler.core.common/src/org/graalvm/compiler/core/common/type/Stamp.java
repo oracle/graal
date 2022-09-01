@@ -143,6 +143,13 @@ public abstract class Stamp implements SpeculationContextObject {
     }
 
     /**
+     * Tests whether this stamp represents an integer value.
+     */
+    public boolean isIntegerStamp() {
+        return this instanceof IntegerStamp;
+    }
+
+    /**
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
      *

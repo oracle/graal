@@ -333,6 +333,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @SuppressWarnings("unchecked")
     public void preInitializeEngine(Object hostLanguage) {
         PolyglotEngineImpl engine = createDefaultEngine((TruffleLanguage<Object>) hostLanguage);
+        getAPIAccess().newEngine(engineDispatch, engine, false);
         try {
             engine.preInitialize();
         } finally {
@@ -360,6 +361,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, hostLanguage, false, null);
+        getAPIAccess().newEngine(engineDispatch, engine, false);
         return engine;
     }
 

@@ -40,7 +40,9 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface RuntimeSerializationSupport {
 
@@ -54,6 +56,13 @@ public interface RuntimeSerializationSupport {
 
     void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName);
 
+    default void registerLambdaCapturingClass(ConfigurationCondition condition, Class<?> lambdaCapturingClass) {
+        registerLambdaCapturingClass(condition, lambdaCapturingClass.getName());
+    }
+
     void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces);
 
+    default void registerProxyClass(ConfigurationCondition condition, Class<?>... implementedInterfaces) {
+        registerProxyClass(condition, Arrays.stream(implementedInterfaces).map(Class::getName).collect(Collectors.toList()));
+    }
 }
