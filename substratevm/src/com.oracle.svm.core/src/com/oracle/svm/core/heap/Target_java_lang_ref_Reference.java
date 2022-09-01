@@ -55,9 +55,9 @@ import com.oracle.svm.core.jdk.JDK17_0_2OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+
 
 /**
  * Substitution of {@link Reference}, which is the abstract base class of all non-strong reference
@@ -193,7 +193,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Override
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
+    @TargetElement //
     protected native Object clone() throws CloneNotSupportedException;
 
     @Substitute //
