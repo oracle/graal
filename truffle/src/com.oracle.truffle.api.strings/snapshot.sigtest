@@ -312,7 +312,7 @@ innr public final static !enum ErrorHandling
 innr public final static IllegalByteArrayLengthException
 innr public final static NumberFormatException
 innr public final static WithMask
-meth public com.oracle.truffle.api.strings.TruffleString asNativeUncached(com.oracle.truffle.api.strings.TruffleString$AsNativeNode$NativeAllocator,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public com.oracle.truffle.api.strings.TruffleString asNativeUncached(com.oracle.truffle.api.strings.TruffleString$AsNativeNode$NativeAllocator,boolean,boolean,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUncached(byte[],int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
@@ -340,7 +340,7 @@ supr com.oracle.truffle.api.nodes.Node
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$AsNativeNode
  outer com.oracle.truffle.api.strings.TruffleString
 innr public abstract interface static NativeAllocator
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.TruffleString,com.oracle.truffle.api.strings.TruffleString$AsNativeNode$NativeAllocator,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.TruffleString,com.oracle.truffle.api.strings.TruffleString$AsNativeNode$NativeAllocator,boolean,boolean,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$AsNativeNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$AsNativeNode getUncached()
 supr com.oracle.truffle.api.nodes.Node

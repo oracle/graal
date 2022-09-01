@@ -55,7 +55,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 
 @RunWith(Parameterized.class)
-public class TStringToNativeTest extends TStringTestBase {
+public class TStringAsNativeTest extends TStringTestBase {
 
     @Parameter public TruffleString.AsNativeNode node;
 
@@ -68,16 +68,41 @@ public class TStringToNativeTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             if (a.isImmutable()) {
-                TruffleString nativeString = node.execute((TruffleString) a, PointerObject::create, encoding);
-                assertBytesEqual(nativeString, encoding, array);
-                Assert.assertTrue(nativeString.isNative());
-                Assert.assertSame(nativeString, node.execute((TruffleString) a, PointerObject::create, encoding));
+                TruffleString compactNoCache = node.execute((TruffleString) a, PointerObject::create, true, false, encoding);
+                TruffleString inflateNoCache = node.execute((TruffleString) a, PointerObject::create, false, false, encoding);
+                TruffleString compact = node.execute((TruffleString) a, PointerObject::create, true, true, encoding);
+                TruffleString inflate = node.execute((TruffleString) a, PointerObject::create, false, true, encoding);
+                if (a.isNative()) {
+                    Assert.assertSame(a, compact);
+                    Assert.assertSame(a, inflate);
+                    Assert.assertSame(a, compactNoCache);
+                    Assert.assertSame(a, inflateNoCache);
+                } else {
+                    Assert.assertNotSame(compactNoCache, compact);
+                    Assert.assertNotSame(inflateNoCache, inflate);
+                    assertBytesEqual(compact, encoding, array);
+                    assertBytesEqual(inflate, encoding, array);
+                    assertBytesEqual(compactNoCache, encoding, array);
+                    assertBytesEqual(inflateNoCache, encoding, array);
+                    Assert.assertTrue(compact.isNative());
+                    Assert.assertTrue(inflate.isNative());
+                    Assert.assertTrue(compactNoCache.isNative());
+                    Assert.assertTrue(inflateNoCache.isNative());
+                    Assert.assertEquals(a.getStringCompactionLevelUncached(encoding), compact.getStringCompactionLevelUncached(encoding));
+                    Assert.assertEquals(a.getStringCompactionLevelUncached(encoding), compactNoCache.getStringCompactionLevelUncached(encoding));
+                    Assert.assertEquals(1 << getNaturalStride(encoding), inflate.getStringCompactionLevelUncached(encoding));
+                    Assert.assertEquals(1 << getNaturalStride(encoding), inflateNoCache.getStringCompactionLevelUncached(encoding));
+                    Assert.assertSame(compact, node.execute((TruffleString) a, PointerObject::create, true, true, encoding));
+                    Assert.assertSame(inflate, node.execute((TruffleString) a, PointerObject::create, false, true, encoding));
+                    Assert.assertNotSame(compact, node.execute((TruffleString) a, PointerObject::create, true, false, encoding));
+                    Assert.assertNotSame(inflate, node.execute((TruffleString) a, PointerObject::create, false, false, encoding));
+                }
             }
         });
     }
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute((TruffleString) s, PointerObject::create, e));
+        checkNullSE((s, e) -> node.execute((TruffleString) s, PointerObject::create, true, true, e));
     }
 }

@@ -329,7 +329,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     private static boolean cacheEntryEquals(TruffleString a, TruffleString b) {
-        return b.encoding() == a.encoding() && a.isNative() == b.isNative() && (!isUTF16(a.encoding()) || b.isJavaString() == a.isJavaString());
+        return b.encoding() == a.encoding() && a.isNative() == b.isNative() && a.stride() == b.stride() && (!isUTF16(a.encoding()) || b.isJavaString() == a.isJavaString());
     }
 
     @TruffleBoundary
@@ -342,7 +342,9 @@ public final class TruffleString extends AbstractTruffleString {
         TruffleString head = null;
         TruffleString cur = this;
         boolean javaStringVisited = false;
-        BitSet visitedEncodings = new BitSet(Encoding.values().length);
+        BitSet visitedManaged = new BitSet(Encoding.values().length);
+        BitSet visitedNativeRegular = new BitSet(Encoding.values().length);
+        BitSet visitedNativeCompact = new BitSet(Encoding.values().length);
         EconomicSet<TruffleString> visited = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         do {
             if (cur.isCacheHead()) {
@@ -353,8 +355,19 @@ public final class TruffleString extends AbstractTruffleString {
                 assert !javaStringVisited : "duplicate cached java string";
                 javaStringVisited = true;
             } else {
-                assert !visitedEncodings.get(cur.encoding()) : "duplicate encoding";
-                visitedEncodings.set(cur.encoding());
+                Encoding encoding = Encoding.get(cur.encoding());
+                if (cur.isManaged()) {
+                    assert !visitedManaged.get(cur.encoding()) : "duplicate managed " + encoding;
+                    visitedManaged.set(cur.encoding());
+                } else {
+                    if (cur.stride() == encoding.naturalStride) {
+                        assert !visitedNativeRegular.get(cur.encoding()) : "duplicate native " + encoding;
+                        visitedNativeRegular.set(cur.encoding());
+                    } else {
+                        assert !visitedNativeCompact.get(cur.encoding()) : "duplicate compact native " + encoding;
+                        visitedNativeCompact.set(cur.encoding());
+                    }
+                }
             }
             assert visited.add(cur) : "not a ring structure";
             cur = cur.next;
@@ -5735,45 +5748,74 @@ public final class TruffleString extends AbstractTruffleString {
          * @param allocator a function implementing {@link NativeAllocator}. This parameter is
          *            expected to be {@link CompilerDirectives#isPartialEvaluationConstant(Object)
          *            partial evaluation constant}.
+         * @param useCompaction if set to {@code true}, {@link Encoding#UTF_32} and
+         *            {@link Encoding#UTF_16} - encoded strings may be compacted also in the native
+         *            representation. Otherwise, no string compaction is applied to the native
+         *            string. This parameter is expected to be
+         *            {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
+         *            evaluation constant}.
+         * @param cacheResult if set to {@code true}, the newly created native string will be cached
+         *            in the given managed string's internal transcoding cache ring, guaranteeing
+         *            that subsequent calls on the managed string return the same native string.
+         *            This parameter is expected to be
+         *            {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
+         *            evaluation constant}.
          *
          * @since 22.3
          */
-        public abstract TruffleString execute(TruffleString a, NativeAllocator allocator, Encoding expectedEncoding);
+        public abstract TruffleString execute(TruffleString a, NativeAllocator allocator, boolean useCompaction, boolean cacheResult, Encoding expectedEncoding);
 
         @Specialization
-        TruffleString asNative(TruffleString a, NativeAllocator allocator, Encoding encoding,
+        TruffleString asNative(TruffleString a, NativeAllocator allocator, boolean useCompaction, boolean cacheResult, Encoding encoding,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
                         @Cached ConditionProfile isNativeProfile,
                         @Cached ConditionProfile cacheHit,
+                        @Cached IntValueProfile inflateStrideProfile,
                         @Cached ToIndexableNode toIndexableNode) {
             a.checkEncoding(encoding);
             CompilerAsserts.partialEvaluationConstant(allocator);
+            CompilerAsserts.partialEvaluationConstant(useCompaction);
+            CompilerAsserts.partialEvaluationConstant(cacheResult);
             if (isNativeProfile.profile(a.isNative())) {
                 return a;
             }
             TruffleString cur = a.next;
             assert !a.isJavaString();
-            if (cur != null) {
-                while (cur != a && (!cur.isNative() || !cur.isCompatibleTo(encoding))) {
+            if (cacheResult && cur != null) {
+                while (cur != a && (!cur.isNative() || !cur.isCompatibleTo(encoding) || cur.stride() != (useCompaction ? a.stride() : encoding.naturalStride) || cur.isJavaString())) {
                     cur = cur.next;
                 }
-                if (cacheHit.profile(cur.isNative())) {
+                if (cacheHit.profile(cur != a)) {
                     assert cur.isCompatibleTo(encoding);
                     return cur;
                 }
             }
             int length = a.length();
-            int stride = a.stride();
+            int stride = useCompaction ? a.stride() : encoding.naturalStride;
             int byteSize = length << stride;
             Object buffer = allocator.allocate(byteSize + 4);
             NativePointer nativePointer = NativePointer.create(this, buffer, interopLibrary);
             byte[] arrayA = (byte[]) toIndexableNode.execute(a, a.data());
-            TStringUnsafe.copyToNative(arrayA, a.offset(), nativePointer.pointer, 0, byteSize);
+            if (useCompaction) {
+                TStringUnsafe.copyToNative(arrayA, a.offset(), nativePointer.pointer, 0, byteSize);
+            } else {
+                int offsetA = a.offset();
+                int strideA = a.stride();
+                if (isUTF16(encoding)) {
+                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, inflateStrideProfile.profile(strideA), 0, nativePointer, 0, 1, 0, length);
+                } else if (isUTF32(encoding)) {
+                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, inflateStrideProfile.profile(strideA), 0, nativePointer, 0, 2, 0, length);
+                } else {
+                    TStringUnsafe.copyToNative(arrayA, offsetA, nativePointer.pointer, 0, byteSize);
+                }
+            }
             // zero-terminate the string with four zero bytes, to make absolutely sure any
             // native code expecting zero-terminated strings can deal with the buffer
             TStringUnsafe.putIntNative(nativePointer.pointer, byteSize, 0);
-            TruffleString nativeString = TruffleString.createFromArray(nativePointer, 0, length, stride, encoding, a.codePointLength(), a.codeRange(), false);
-            a.cacheInsert(nativeString);
+            TruffleString nativeString = TruffleString.createFromArray(nativePointer, 0, length, stride, encoding, a.codePointLength(), a.codeRange(), !cacheResult);
+            if (cacheResult) {
+                a.cacheInsert(nativeString);
+            }
             return nativeString;
         }
 
@@ -5801,8 +5843,8 @@ public final class TruffleString extends AbstractTruffleString {
      *
      * @since 22.3
      */
-    public TruffleString asNativeUncached(AsNativeNode.NativeAllocator allocator, Encoding expectedEncoding) {
-        return AsNativeNode.getUncached().execute(this, allocator, expectedEncoding);
+    public TruffleString asNativeUncached(AsNativeNode.NativeAllocator allocator, boolean useCompaction, boolean cacheResult, Encoding expectedEncoding) {
+        return AsNativeNode.getUncached().execute(this, allocator, useCompaction, cacheResult, expectedEncoding);
     }
 
     /**

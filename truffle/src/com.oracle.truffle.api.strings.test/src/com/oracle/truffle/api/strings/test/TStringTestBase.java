@@ -422,7 +422,7 @@ public class TStringTestBase {
         }) {
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
             if ((encoding == UTF_16 || encoding == UTF_32) && string.isImmutable() && string.isManaged()) {
-                test.run(((TruffleString) string).asNativeUncached(PointerObject::create, encoding), array, codeRange, isValid, encoding, codepoints, byteIndices);
+                test.run(((TruffleString) string).asNativeUncached(PointerObject::create, true, false, encoding), array, codeRange, isValid, encoding, codepoints, byteIndices);
             }
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
@@ -684,7 +684,7 @@ public class TStringTestBase {
         return i;
     }
 
-    static int getStride(TruffleString.Encoding encoding) {
+    public static int getNaturalStride(TruffleString.Encoding encoding) {
         if (isUTF32(encoding)) {
             return 2;
         }
