@@ -131,9 +131,9 @@ public class SourceCache {
 
     private void addGraalSources() {
         classPathEntries.stream()
-                .forEach(classPathEntry -> addGraalSourceRoot(classPathEntry, true));
+                        .forEach(classPathEntry -> addGraalSourceRoot(classPathEntry, true));
         modulePathEntries.stream()
-                .forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
+                        .forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
                         .forEach(sourcePathEntry -> addGraalSourceRoot(Paths.get(sourcePathEntry), false));
     }
@@ -188,7 +188,7 @@ public class SourceCache {
         classPathEntries.stream()
                         .forEach(classPathEntry -> addApplicationSourceRoot(classPathEntry, true));
         modulePathEntries.stream()
-                .forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
+                        .forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
                         .forEach(sourcePathEntry -> addApplicationSourceRoot(Paths.get(sourcePathEntry), false));
     }
@@ -514,7 +514,7 @@ public class SourceCache {
     }
 
     /**
-     * Add a path to the list of classpath entries.
+     * Add a path to the list of module path entries.
      *
      * @param path The path to add.
      */
