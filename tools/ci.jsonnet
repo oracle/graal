@@ -12,13 +12,13 @@
   },
 
   local common_guard = {
-    guard: {
-      inludes: ["<graal>/tools/**"]
+    guard+: {
+      includes+: ["<graal>/tools/**"]
     }
   },
   local gate_guard = common_guard + {
     guard+: {
-      inludes+: ["<graal>/sdk/**", "<graal>/truffle/**"]
+      includes+: ["<graal>/sdk/**", "<graal>/truffle/**"]
     }
   },
 
