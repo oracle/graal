@@ -366,7 +366,12 @@ public abstract class ToEspressoNode extends EspressoNode {
             } else {
                 // then check if there's a specific type mapping available
                 // if not a default no-conversion converter is returned
-                return lookupTypeConverterNode.execute(metaObject, metaIdentity).convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
+                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaObject, metaIdentity);
+                if (converter == null) {
+                    return StaticObject.createForeign(getLanguage(), klass, value, interop);
+                } else {
+                    return converter.convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
+                }
             }
         } catch (ClassCastException | UnsupportedMessageException e) {
             errorProfile.enter();

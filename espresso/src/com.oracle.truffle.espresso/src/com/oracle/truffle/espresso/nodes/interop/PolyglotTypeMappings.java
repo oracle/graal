@@ -131,7 +131,7 @@ public class PolyglotTypeMappings {
     @TruffleBoundary
     public TypeConverter mapTypeConversion(Object metaObject, int identity, InteropLibrary interop) {
         if (typeConverterFunctions == null) {
-            return emptyConverter;
+            return null;
         }
         TypeConverter converter = identityConverterCache.get(identity);
         if (converter == null) {
@@ -139,12 +139,12 @@ public class PolyglotTypeMappings {
             converter = typeConverterFunctions.get(metaName);
             if (converter == null) {
                 identityConverterCache.put(identity, emptyConverter);
-                return emptyConverter;
+                return null;
             } else {
                 identityConverterCache.put(identity, converter);
             }
         }
-        return converter;
+        return converter != emptyConverter ? converter : null;
     }
 
     public final class TypeConverter {

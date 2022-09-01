@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -51,6 +52,8 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -1954,6 +1957,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ToEspressoNode toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
             String hostMember = InteropUtils.toHostString(member, memberInterop);
@@ -1964,6 +1968,24 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                exceptionProfile.enter();
+                InteropLibrary exceptionInterop = InteropLibrary.getUncached(ex);
+
+                try {
+                    Object metaObject = exceptionInterop.getMetaObject(ex);
+                    StaticObject foreignException = getAllocator().createForeignException(ex, exceptionInterop);
+                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaObject, exceptionInterop.identityHashCode(ex));
+                    if (converter == null) {
+                        // no conversion, so throw the original exception
+                        throw ex;
+                    }
+                    StaticObject converted = (StaticObject) converter.convert(foreignException);
+                    throw EspressoException.wrap(converted, getMeta());
+                } catch (UnsupportedMessageException e) {
+                    // throw the original exception then
+                }
+                throw ex;
             }
         }
     }
