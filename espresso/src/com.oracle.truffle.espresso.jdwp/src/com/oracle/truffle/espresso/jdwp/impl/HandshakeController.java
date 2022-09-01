@@ -42,7 +42,7 @@ public final class HandshakeController {
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
-    public SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads, JDWPInstrument instrument) throws IOException {
+    public SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads) throws IOException {
         String connectionHost = host;
         if (connectionHost == null) {
             // only allow local host if nothing specified

@@ -175,7 +175,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         SocketConnection socketConnection;
 
         hsController = new HandshakeController();
-        socketConnection = hsController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads, this);
+        socketConnection = hsController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
         hsController.close();
         hsController = null;
 

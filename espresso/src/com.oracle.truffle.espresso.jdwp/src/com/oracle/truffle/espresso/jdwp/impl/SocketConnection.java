@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -33,7 +32,6 @@ import java.util.concurrent.Semaphore;
 
 public final class SocketConnection implements Runnable {
     private final Socket socket;
-    private boolean closed = false;
     private final OutputStream socketOutput;
     private final InputStream socketInput;
     private final Object receiveLock = new Object();
