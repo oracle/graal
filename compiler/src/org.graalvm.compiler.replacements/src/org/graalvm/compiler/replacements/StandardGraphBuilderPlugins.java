@@ -181,6 +181,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNo
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
@@ -1011,6 +1012,15 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC >= 18) {
+            r.register(new InvocationPlugin("unsignedMultiplyHigh", long.class, long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.addPush(JavaKind.Long, new UnsignedMulHighNode(x, y));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerRound(boolean supportsRound, Registration r, String name, RoundingMode mode) {
