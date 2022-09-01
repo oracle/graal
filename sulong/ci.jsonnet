@@ -76,6 +76,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_aarch64 + sc.llvmBundled + sc.requireGMPDarwinAArch64 + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-jdk17-darwin-aarch64", timelimit: "30:00" },
 
+    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulong") + { name: "gate-sulong-basic-jdk17-windows-amd64", timelimit: "30:00" },
+
     sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
   ]],
 }
