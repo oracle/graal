@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -80,11 +81,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final ClassLoader classLoader;
     private final Map<ProxyCacheKey, Object> proxyCache;
 
-    public DynamicProxySupport(ClassLoader classLoader) {
-        this.classLoader = classLoader;
+    public DynamicProxySupport() {
         this.proxyCache = new ConcurrentHashMap<>();
     }
 
@@ -99,34 +98,44 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(intfs);
 
         proxyCache.computeIfAbsent(key, k -> {
-            Class<?> clazz = createProxyClassFromImplementedInterfaces(intfs);
+            try {
+                Class<?> clazz = createProxyClassFromImplementedInterfaces(intfs);
 
-            /*
-             * Treat the proxy as a predefined class so that we can set its class loader to the
-             * loader passed at runtime. If one of the interfaces is a predefined class, this can be
-             * required so that the classes can actually see each other according to the runtime
-             * class loader hierarchy.
-             */
-            PredefinedClassesSupport.registerClass(clazz);
+                boolean isPredefinedProxy = Arrays.stream(interfaces).anyMatch(PredefinedClassesSupport::isPredefined);
 
-            /*
-             * The constructor of the generated dynamic proxy class that takes a
-             * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by
-             * `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[],
-             * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
-             * be allocated at run time.
-             */
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
+                if (isPredefinedProxy) {
+                    /*
+                     * Treat the proxy as a predefined class so that we can set its class loader to
+                     * the loader passed at runtime. If one of the interfaces is a predefined class,
+                     * this can be required so that the classes can actually see each other
+                     * according to the runtime class loader hierarchy.
+                     */
+                    PredefinedClassesSupport.registerClass(clazz);
+                    RuntimeClassInitialization.initializeAtRunTime(clazz);
+                }
 
-            /*
-             * The proxy class reflectively looks up the methods of the interfaces it implements to
-             * pass a Method object to InvocationHandler.
-             */
-            for (Class<?> intf : intfs) {
-                RuntimeReflection.register(intf.getMethods());
+                /*
+                 * The constructor of the generated dynamic proxy class that takes a
+                 * `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively
+                 * invoked by `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[],
+                 * InvocationHandler)`, is registered for reflection so that dynamic proxy instances
+                 * can be allocated at run time.
+                 */
+                RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
+
+                /*
+                 * The proxy class reflectively looks up the methods of the interfaces it implements
+                 * to pass a Method object to InvocationHandler.
+                 */
+                for (Class<?> intf : intfs) {
+                    RuntimeReflection.register(intf.getMethods());
+                }
+
+                return clazz;
+            } catch (Throwable t) {
+                System.err.println("Warning: Could not create a proxy class from list of interfaces: " + Arrays.toString(interfaces) + ". Reason: " + t.getMessage());
+                return t;
             }
-
-            return clazz;
         });
     }
 
@@ -137,34 +146,21 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         return createProxyClassFromImplementedInterfaces(intfs);
     }
 
-    private Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
-        Class<?> clazz;
-        try {
-            clazz = getJdkProxyClass(classLoader, interfaces);
-        } catch (Throwable e) {
-            try {
-                clazz = getJdkProxyClass(getCommonClassLoader(interfaces), interfaces);
-            } catch (Throwable e2) {
-                throw e;
-            }
-        }
-
-        return clazz;
+    private static Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
+        return getJdkProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
     }
 
-    private static ClassLoader getCommonClassLoader(Class<?>... intfs) {
-        ClassLoader classLoader = null;
+    private static ClassLoader getCommonClassLoaderOrFail(ClassLoader loader, Class<?>... intfs) {
+        ClassLoader commonLoader = null;
         for (Class<?> intf : intfs) {
             ClassLoader intfLoader = intf.getClassLoader();
-            if (classLoader == null) {
-                classLoader = intfLoader;
-            } else {
-                if (intfLoader != classLoader) {
-                    return null;
-                }
+            if (ClassUtil.isSameOrParentLoader(commonLoader, intfLoader)) {
+                commonLoader = intfLoader;
+            } else if (!ClassUtil.isSameOrParentLoader(intfLoader, commonLoader)) {
+                throw incompatibleClassLoaders(loader, intfs);
             }
         }
-        return classLoader;
+        return commonLoader;
     }
 
     @Override
@@ -190,20 +186,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
              * common. This prevents that later we would be unable to return the proxy class if we
              * are passed a parent loader of the initially specified loader.
              */
-            ClassLoader commonLoader = null;
-            for (Class<?> intf : interfaces) {
-                ClassLoader intfLoader = intf.getClassLoader();
-                if (ClassUtil.isSameOrParentLoader(commonLoader, intfLoader)) {
-                    commonLoader = intfLoader;
-                } else if (!ClassUtil.isSameOrParentLoader(intfLoader, commonLoader)) {
-                    /*
-                     * This should be caught when the proxy class is generated during the image
-                     * build, but can occur with predefined classes which are "loaded" by different
-                     * class loaders at runtime.
-                     */
-                    throw incompatibleClassLoaders(loader, interfaces);
-                }
-            }
+            ClassLoader commonLoader = getCommonClassLoaderOrFail(loader, interfaces);
             if (!ClassUtil.isSameOrParentLoader(commonLoader, loader)) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
