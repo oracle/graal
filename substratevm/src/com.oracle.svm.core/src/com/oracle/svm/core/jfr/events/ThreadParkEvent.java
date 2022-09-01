@@ -33,8 +33,9 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import org.graalvm.compiler.word.Word;
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.StackValue;
 
 public class ThreadParkEvent {
     public static void emit(long startTicks, Object obj, long timeout, long until) {
@@ -46,17 +47,21 @@ public class ThreadParkEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Object obj, long timeout, long until) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadPark)) {
-            JfrNativeEventWriterData data = org.graalvm.nativeimage.StackValue.get(JfrNativeEventWriterData.class);
+            Class<?> parkedClass = null;
+            if (obj != null) {
+                parkedClass = obj.getClass();
+            }
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadPark);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadPark, 0));
-            JfrNativeEventWriter.putClass(data, obj != null ? obj.getClass() : null);
+            JfrNativeEventWriter.putClass(data, parkedClass);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putLong(data, until);
-            JfrNativeEventWriter.putLong(data, obj != null ? Word.objectToUntrackedPointer(obj).rawValue() : 0L);
+            JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
