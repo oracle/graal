@@ -46,6 +46,7 @@ public final class SocketConnection implements Runnable {
         socketInput = socket.getInputStream();
         socketOutput = socket.getOutputStream();
     }
+
     public void close() throws IOException {
         // send outstanding packets before closing
         while (!queue.isEmpty()) {
