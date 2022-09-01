@@ -88,7 +88,10 @@ final class CardTable {
     }
 
     public static void setDirty(Pointer table, UnsignedWord index) {
-        table.writeByte(indexToTableOffset(index), (byte) DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        UnsignedWord tableOffset = indexToTableOffset(index);
+        if (table.readByte(tableOffset) != DIRTY_ENTRY) {
+            table.writeByte(tableOffset, (byte) DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        }
     }
 
     public static void setClean(Pointer table, UnsignedWord index) {
