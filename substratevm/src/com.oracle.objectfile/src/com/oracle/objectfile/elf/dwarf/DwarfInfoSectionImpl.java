@@ -318,7 +318,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
         pos = writeAttrStrp(fieldName, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, valueTypeIdx, valueType.getTypeName());
-        pos = writeAttrRefAddr(valueTypeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(valueTypeIdx, buffer, pos);
         byte offset = (byte) fieldEntry.getOffset();
         int size = fieldEntry.getSize();
         log(context, "  [0x%08x]     offset 0x%x (size 0x%x)", pos, offset, size);
@@ -443,7 +443,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Only write stmt_list if the entry actually has line number info. */
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
             log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
-            pos = writeAttrSecOffset(lineIndex, buffer, pos);
+            pos = writeLineSectionOffset(lineIndex, buffer, pos);
         }
 
         /* Now write the child DIEs starting with the layout and pointer type. */
@@ -568,7 +568,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, superTypeOffset, superName);
-        pos = writeAttrRefAddr(superTypeOffset, buffer, pos);
+        pos = writeInfoSectionOffset(superTypeOffset, buffer, pos);
         /* Parent layout is embedded at start of object. */
         log(context, "  [0x%08x]     data_member_location (super) 0x%x", pos, 0);
         pos = writeAttrData1((byte) 0, buffer, pos);
@@ -629,7 +629,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* use the indirect type for the field so pointers get translated if needed */
         int typeIdx = getIndirectTypeIndex(valueType);
         log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeIdx, valueType.getTypeName());
-        pos = writeAttrRefAddr(typeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         if (!isStatic) {
             int memberOffset = fieldEntry.getOffset();
             log(context, "  [0x%08x]     member offset 0x%x", pos, memberOffset);
@@ -688,7 +688,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         TypeEntry returnType = method.getValueType();
         int retTypeIdx = getTypeIndex(returnType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnType.getTypeName());
-        pos = writeAttrRefAddr(retTypeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(retTypeIdx, buffer, pos);
         log(context, "  [0x%08x]     artificial %s", pos, method.isDeopt() ? "true" : "false");
         pos = writeFlag((method.isDeopt() ? (byte) 1 : (byte) 0), buffer, pos);
         log(context, "  [0x%08x]     accessibility %s", pos, "public");
@@ -697,19 +697,21 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         int typeIdx = getLayoutIndex(classEntry);
         log(context, "  [0x%08x]     containing_type 0x%x (%s)", pos, typeIdx, classEntry.getTypeName());
-        pos = writeAttrRefAddr(typeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_declaration) {
             /* Record the current position so we can back patch the object pointer. */
             int objectPointerIndex = pos;
             /*
              * Write a dummy ref address to move pos on to where the first parameter gets written.
+             * 
+             * n.b. buffer is passed as null so we don't attempt to create a reloc!
              */
-            pos = writeAttrRefAddr(0, buffer, pos);
+            pos = writeInfoSectionOffset(0, null, pos);
             /*
              * Now backpatch object pointer slot with current pos, identifying the first parameter.
              */
             log(context, "  [0x%08x]     object_pointer 0x%x", objectPointerIndex, pos);
-            writeAttrRefAddr(pos, buffer, objectPointerIndex);
+            writeInfoSectionOffset(pos, buffer, objectPointerIndex);
         }
         /* Write method parameter declarations. */
         pos = writeMethodParameterDeclarations(context, method, fileIdx, 3, buffer, pos);
@@ -766,7 +768,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
         int typeIdx = getTypeIndex(paramType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramType.getTypeName());
-        pos = writeAttrRefAddr(typeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_declaration1) {
             log(context, "  [0x%08x]     artificial true", pos);
             pos = writeFlag((byte) 1, buffer, pos);
@@ -813,7 +815,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
         int typeIdx = getTypeIndex(paramType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramType.getTypeName());
-        pos = writeAttrRefAddr(typeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
         pos = writeFlag((byte) 1, buffer, pos);
         return pos;
@@ -888,7 +890,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrStrp(name, buffer, pos);
         int layoutOffset = getLayoutIndex(classEntry);
         log(context, "  [0x%08x]     type  0x%x (%s)", pos, layoutOffset, classEntry.getTypeName());
-        pos = writeAttrRefAddr(layoutOffset, buffer, pos);
+        pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
         int modifiers = Modifier.PUBLIC;
         log(context, "  [0x%08x]     modifiers %s", pos, "public");
         pos = writeAttrAccessibility(modifiers, buffer, pos);
@@ -910,7 +912,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData1((byte) pointerSize, buffer, pos);
         int layoutOffset = getLayoutIndex(classEntry);
         log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
-        pos = writeAttrRefAddr(layoutOffset, buffer, pos);
+        pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
 
         if (dwarfSections.useHeapBase()) {
             /* Define an indirect pointer type referring to the indirect layout. */
@@ -924,7 +926,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeAttrData1((byte) oopReferenceSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(classEntry);
             log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
-            pos = writeAttrRefAddr(layoutOffset, buffer, pos);
+            pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
         } else {
             setIndirectTypeIndex(classEntry, typeIdx);
         }
@@ -947,7 +949,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData1((byte) pointerSize, buffer, pos);
         int layoutOffset = getLayoutIndex(interfaceClassEntry);
         log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
-        pos = writeAttrRefAddr(layoutOffset, buffer, pos);
+        pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
 
         if (dwarfSections.useHeapBase()) {
             /* Define an indirect pointer type referring to the indirect layout. */
@@ -961,7 +963,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             layoutOffset = getIndirectLayoutIndex(interfaceClassEntry);
             log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
-            pos = writeAttrRefAddr(layoutOffset, buffer, pos);
+            pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
         } else {
             setIndirectTypeIndex(interfaceClassEntry, typeIdx);
         }
@@ -1059,7 +1061,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     specification  0x%x", pos, fieldDefinitionOffset);
-        pos = writeAttrRefAddr(fieldDefinitionOffset, buffer, pos);
+        pos = writeInfoSectionOffset(fieldDefinitionOffset, buffer, pos);
         /* Field offset needs to be relocated relative to static primitive or static object base. */
         int offset = fieldEntry.getOffset();
         log(context, "  [0x%08x]     location  heapbase + 0x%x (%s)", pos, offset, (fieldEntry.getValueType().isPrimitive() ? "primitive" : "object"));
@@ -1186,7 +1188,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* use the indirect type for the element type so pointers get translated */
         int elementTypeIdx = getIndirectTypeIndex(elementType);
         log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeIdx, elementTypeName);
-        pos = writeAttrRefAddr(elementTypeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(elementTypeIdx, buffer, pos);
         return pos;
     }
 
@@ -1200,7 +1202,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
         pos = writeAttrStrp(fieldName, buffer, pos);
         log(context, "  [0x%08x]     type idx 0x%x", pos, arrayDataTypeIdx);
-        pos = writeAttrRefAddr(arrayDataTypeIdx, buffer, pos);
+        pos = writeInfoSectionOffset(arrayDataTypeIdx, buffer, pos);
         int size = 0;
         log(context, "  [0x%08x]     offset 0x%x (size 0x%x)", pos, offset, size);
         pos = writeAttrData1((byte) offset, buffer, pos);
@@ -1236,7 +1238,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     byte_size  0x%x", pos, pointerSize);
         pos = writeAttrData1((byte) pointerSize, buffer, pos);
         log(context, "  [0x%08x]     type (pointer) 0x%x (%s)", pos, layoutOffset, name);
-        pos = writeAttrRefAddr(layoutOffset, buffer, pos);
+        pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
 
         if (dwarfSections.useHeapBase()) {
             setIndirectTypeIndex(arrayTypeEntry, pos);
@@ -1249,7 +1251,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x]     byte_size  0x%x", pos, byteSize);
             pos = writeAttrData1((byte) byteSize, buffer, pos);
             log(context, "  [0x%08x]     type (pointer) 0x%x (%s)", pos, indirectLayoutOffset, name);
-            pos = writeAttrRefAddr(indirectLayoutOffset, buffer, pos);
+            pos = writeInfoSectionOffset(indirectLayoutOffset, buffer, pos);
         } else {
             setIndirectTypeIndex(arrayTypeEntry, typeIdx);
         }
@@ -1315,7 +1317,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String methodKey = primary.getSymbolName();
         int methodSpecOffset = getMethodDeclarationIndex(primary.getMethodEntry());
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
-        pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
+        pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
         HashMap<DebugLocalInfo, List<Range>> varRangeMap = primary.getVarRangeMap();
         pos = writeMethodParameterLocations(context, varRangeMap, primary, 2, buffer, pos);
         pos = writeMethodLocalLocations(context, varRangeMap, primary, 2, buffer, pos);
@@ -1410,12 +1412,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, depth, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     specification  0x%x", pos, refAddr);
-        pos = writeAttrRefAddr(refAddr, buffer, pos);
+        pos = writeInfoSectionOffset(refAddr, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2 ||
                         abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2) {
             int locRefAddr = getRangeLocalIndex(range, localInfo);
             log(context, "  [0x%08x]     loc list  0x%x", pos, locRefAddr);
-            pos = writeAttrLocList(locRefAddr, buffer, pos);
+            pos = writeLocSectionOffset(locRefAddr, buffer, pos);
         }
         return pos;
     }
@@ -1436,7 +1438,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag(DwarfDebugInfo.DW_FLAG_true, buffer, pos);
         int methodSpecOffset = getMethodDeclarationIndex(method);
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
-        pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
+        pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
         /*
          * Write a terminating null attribute.
          */
@@ -1500,7 +1502,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* DWARF version. */
         pos = writeShort(DwarfDebugInfo.DW_VERSION_4, buffer, pos);
         /* Abbrev offset. */
-        pos = writeInt(0, buffer, pos);
+        pos = writeAbbrevSectionOffset(0, buffer, pos);
         /* Address size. */
         return writeByte((byte) 8, buffer, pos);
     }
@@ -1548,7 +1550,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeAttrStrp(String value, byte[] buffer, int p) {
         int pos = p;
         int idx = debugStringIndex(value);
-        return writeInt(idx, buffer, pos);
+        return writeStrSectionOffset(idx, buffer, pos);
     }
 
     @SuppressWarnings("unused")
