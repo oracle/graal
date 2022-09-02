@@ -288,6 +288,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -387,7 +388,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
+public final class BytecodeNode extends AbstractInstrumentableBytecodeNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -442,10 +443,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private final FrameDescriptor frameDescriptor;
 
+    private final MethodVersion methodVersion;
+
     public BytecodeNode(MethodVersion methodVersion) {
-        super(methodVersion);
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
+        assert method.hasBytecodes();
+        this.methodVersion = methodVersion;
         this.bs = new BytecodeStream(methodVersion.getCode());
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
@@ -463,6 +467,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     public FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
+    }
+
+    Source getSource() {
+        return getMethodVersion().getSource();
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {
@@ -1497,6 +1505,16 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         for (int slot = top - 1; slot >= stackStart; --slot) {
             clear(frame, slot);
         }
+    }
+
+
+    @Override
+    MethodVersion getMethodVersion() {
+        return methodVersion;
+    }
+
+    private ObjectKlass getDeclaringKlass() {
+        return methodVersion.getDeclaringKlass();
     }
 
     private EspressoRootNode getRoot() {
@@ -2649,7 +2667,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     public String toString() {
-        return getRootNode().getName();
+        return getRootNode().getQualifiedName();
     }
 
     public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
@@ -2730,7 +2748,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             enterAt(frame, nextStatementIndex);
         }
 
-        public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame, EspressoInstrumentableNode instrumentableNode) {
+        public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode) {
             if (context.shouldReportVMEvents() && method.hasActiveHook()) {
                 if (context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true))) {
                     enterAt(frame, 0);
