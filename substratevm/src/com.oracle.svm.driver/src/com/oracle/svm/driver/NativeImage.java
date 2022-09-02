@@ -543,10 +543,6 @@ public class NativeImage {
             return false;
         }
 
-        public Path getAgentJAR() {
-            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar"));
-        }
-
         /**
          * ResourcesJar packs resources files needed for some jdk services such as xml
          * serialization.
@@ -1191,7 +1187,7 @@ public class NativeImage {
         if (!agentOptions.isEmpty()) {
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
         }
-        args.add("-javaagent:" + config.getAgentJAR().toAbsolutePath() + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
+
         return args;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.agent;
+package com.oracle.svm.diagnosticsagent;
 
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ASM5;
-import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
+import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 
 import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 
 public class ClinitGenerationVisitor extends ClassVisitor {
+    private boolean hasClinit = false;
+    private boolean shouldInstrument = true;
 
-    private boolean hasClinit;
+    public ClinitGenerationVisitor(int api, ClassWriter writer) {
+        super(api, writer);
+    }
 
-    public ClinitGenerationVisitor(ClassWriter writer) {
-        super(ASM5, writer);
-        this.hasClinit = false;
+    public boolean didGeneration() {
+        return shouldInstrument && !hasClinit;
+    }
+
+    @Override
+    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        super.visit(version, access, name, signature, superName, interfaces);
+        NativeImageDiagnosticsAgent agent = JvmtiAgentBase.singleton();
+
+        if (!agent.advisor.shouldTraceClassInitialization(name.replace("/", "."))) {
+            shouldInstrument = false;
+        }
     }
 
     @Override
     public void visitEnd() {
-        if (!hasClinit) {
-            MethodVisitor mv = visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
-            mv.visitInsn(RETURN);
+        if (!this.hasClinit) {
+            MethodVisitor mv = super.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", (String) null, (String[]) null);
+            mv.visitInsn(Opcodes.RETURN);
             mv.visitEnd();
         }
+
         super.visitEnd();
     }
 
@@ -55,8 +68,7 @@ public class ClinitGenerationVisitor extends ClassVisitor {
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
         MethodVisitor methodVisitor = super.visitMethod(access, name, desc, signature, exceptions);
         boolean isClinitMethod = "<clinit>".equals(name);
-        hasClinit = hasClinit || isClinitMethod;
+        this.hasClinit = this.hasClinit || isClinitMethod;
         return methodVisitor;
     }
-
 }
