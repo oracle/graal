@@ -409,7 +409,9 @@ public final class GraphEffectList extends EffectList {
                         replacementNode = graph.unique(new PiNode(replacementNode, node.stamp(NodeView.DEFAULT)));
                     }
                     node.replaceAtUsages(replacementNode);
-                    if (node instanceof FixedWithNextNode) {
+                    if (node instanceof WithExceptionNode) {
+                        GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                    } else if (node instanceof FixedWithNextNode) {
                         GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
                     }
                     obsoleteNodes.add(node);
