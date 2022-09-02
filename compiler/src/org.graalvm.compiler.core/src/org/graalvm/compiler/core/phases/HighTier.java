@@ -96,7 +96,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (EarlyGVN.getValue(options)) {
-            appendPhase(new DominatorBasedGlobalValueNumberingPhase());
+            appendPhase(new DominatorBasedGlobalValueNumberingPhase(canonicalizer));
         }
 
         LoopPolicies loopPolicies = createLoopPolicies(options);

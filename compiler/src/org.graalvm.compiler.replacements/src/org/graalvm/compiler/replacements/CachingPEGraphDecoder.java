@@ -123,7 +123,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
             new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graphToEncode, providers);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
-                new DominatorBasedGlobalValueNumberingPhase().apply(graphToEncode, providers);
+                new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graphToEncode, providers);
             }
         } catch (Throwable t) {
             throw debug.handle(t);
