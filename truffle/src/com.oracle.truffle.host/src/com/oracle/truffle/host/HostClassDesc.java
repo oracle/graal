@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -182,10 +183,11 @@ final class HostClassDesc {
         }
 
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
-            collectPublicMethods(hostAccess, type, methodMap, staticMethodMap, new HashSet<>(), type);
+            collectPublicMethods(hostAccess, type, methodMap, staticMethodMap, new HashMap<>(), type);
         }
 
-        private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited,
+        private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap,
+                        Map<Object, Object> visited,
                         Class<?> startType) {
             boolean isPublicType = isClassAccessible(type, hostAccess) && !Proxy.isProxyClass(type);
             boolean includeInherited = hostAccess.allowsPublicAccess || hostAccess.allowsAccessInheritance;
@@ -219,8 +221,19 @@ final class HostClassDesc {
                         bridgeMethods.add(m);
                         continue;
                     }
-                    if (hostAccess.allowsAccess(m) && visited.add(methodInfo(m))) {
-                        putMethod(hostAccess, m, methodMap, staticMethodMap);
+                    MethodInfo methodInfo = methodInfo(m);
+                    if (hostAccess.allowsAccess(m)) {
+                        if (!visited.containsKey(methodInfo)) {
+                            visited.put(methodInfo, methodInfo);
+                            putMethod(hostAccess, m, methodMap, staticMethodMap, false);
+                        } else {
+                            // could be inherited method with different return type
+                            // include those for jni-naming scheme lookup too
+                            MethodInfo info = (MethodInfo) visited.get(methodInfo);
+                            if (info.returnType != methodInfo.returnType) {
+                                putMethod(hostAccess, m, methodMap, staticMethodMap, true);
+                            }
+                        }
                     }
                 }
                 if (hostAccess.isArrayAccess() && type.isArray()) {
@@ -234,7 +247,7 @@ final class HostClassDesc {
                     collectPublicMethods(hostAccess, type.getSuperclass(), methodMap, staticMethodMap, visited, startType);
                 }
                 for (Class<?> intf : type.getInterfaces()) {
-                    if (visited.add(intf)) {
+                    if (visited.put(intf, intf) == null) {
                         collectPublicMethods(hostAccess, intf, methodMap, staticMethodMap, visited, startType);
                     }
                 }
@@ -244,46 +257,64 @@ final class HostClassDesc {
             if (bridgeMethods != null && !bridgeMethods.isEmpty()) {
                 for (Method m : bridgeMethods) {
                     assert hostAccess.allowsAccess(m); // already checked above
-                    if (visited.add(methodInfo(m))) {
-                        putMethod(hostAccess, m, methodMap, staticMethodMap);
-                    }
-                }
-            }
-        }
-
-        private static Object methodInfo(Method m) {
-            class MethodInfo {
-                private final boolean isStatic = Modifier.isStatic(m.getModifiers());
-                private final String name = m.getName();
-                private final Class<?>[] parameterTypes = m.getParameterTypes();
-
-                @Override
-                public boolean equals(Object obj) {
-                    if (obj instanceof MethodInfo) {
-                        MethodInfo other = (MethodInfo) obj;
-                        return isStatic == other.isStatic && name.equals(other.name) && Arrays.equals(parameterTypes, other.parameterTypes);
+                    MethodInfo methodInfo = methodInfo(m);
+                    if (!visited.containsKey(methodInfo)) {
+                        visited.put(methodInfo, methodInfo);
+                        putMethod(hostAccess, m, methodMap, staticMethodMap, false);
                     } else {
-                        return false;
+                        // could be inherited method with different return type
+                        // include those for jni-naming scheme lookup too
+                        MethodInfo info = (MethodInfo) visited.get(methodInfo);
+                        if (info.returnType != methodInfo.returnType) {
+                            putMethod(hostAccess, m, methodMap, staticMethodMap, true);
+                        }
                     }
                 }
-
-                @Override
-                public int hashCode() {
-                    final int prime = 31;
-                    int result = 1;
-                    result = prime * result + (isStatic ? 1 : 0);
-                    result = prime * result + name.hashCode();
-                    result = prime * result + Arrays.hashCode(parameterTypes);
-                    return result;
-                }
             }
-            return new MethodInfo();
         }
 
-        private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
+        private static MethodInfo methodInfo(Method m) {
+            return new MethodInfo(m);
+        }
+
+        private static class MethodInfo {
+            private final boolean isStatic;
+            private final String name;
+            private final Class<?>[] parameterTypes;
+            private final Class<?> returnType; // only used for jni name lookup
+
+            MethodInfo(Method m) {
+                this.isStatic = Modifier.isStatic(m.getModifiers());
+                this.name = m.getName();
+                this.parameterTypes = m.getParameterTypes();
+                this.returnType = m.getReturnType();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (obj instanceof MethodInfo) {
+                    MethodInfo other = (MethodInfo) obj;
+                    return isStatic == other.isStatic && name.equals(other.name) && Arrays.equals(parameterTypes, other.parameterTypes);
+                } else {
+                    return false;
+                }
+            }
+
+            @Override
+            public int hashCode() {
+                final int prime = 31;
+                int result = 1;
+                result = prime * result + (isStatic ? 1 : 0);
+                result = prime * result + name.hashCode();
+                result = prime * result + Arrays.hashCode(parameterTypes);
+                return result;
+            }
+        }
+
+        private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, boolean onlyVisibleFromJniName) {
             assert hostAccess.allowsAccess(m);
             boolean scoped = hostAccess.methodScoped(m);
-            SingleMethod method = SingleMethod.unreflect(m, scoped);
+            SingleMethod method = SingleMethod.unreflect(m, scoped, onlyVisibleFromJniName);
             Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
             map.merge(m.getName(), method, MERGE);
         }
@@ -293,7 +324,7 @@ final class HostClassDesc {
             if (existing instanceof SingleMethod) {
                 return new OverloadedMethod(new SingleMethod[]{(SingleMethod) existing, (SingleMethod) other});
             } else {
-                SingleMethod[] oldOverloads = ((OverloadedMethod) existing).getOverloads();
+                SingleMethod[] oldOverloads = existing.getOverloads();
                 SingleMethod[] newOverloads = Arrays.copyOf(oldOverloads, oldOverloads.length + 1);
                 newOverloads[oldOverloads.length] = (SingleMethod) other;
                 return new OverloadedMethod(newOverloads);
@@ -470,7 +501,9 @@ final class HostClassDesc {
                 }
                 for (SingleMethod m : method.getOverloads()) {
                     assert m.isMethod();
-                    methodMap.put(HostInteropReflect.toNameAndSignature((Method) m.getReflectionMethod()), m);
+                    if (!m.isOnlyVisibleFromJniName()) {
+                        methodMap.put(HostInteropReflect.toNameAndSignature((Method) m.getReflectionMethod()), m);
+                    }
                 }
             }
             return methodMap;

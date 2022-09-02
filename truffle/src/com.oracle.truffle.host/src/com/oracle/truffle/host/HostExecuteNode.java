@@ -664,6 +664,31 @@ abstract class HostExecuteNode extends Node {
 
                     return best;
                 }
+                // last resort, filter out methods that were
+                // included only for jni naming lookups
+                int candidatesSize = candidates.size();
+                Iterator<SingleMethod> it = candidates.iterator();
+                while (it.hasNext()) {
+                    SingleMethod sm = it.next();
+                    if (sm.isOnlyVisibleFromJniName()) {
+                        it.remove();
+                    }
+                }
+                if (candidates.size() == 0) {
+                    return null;
+                }
+                if (candidates.size() == 1) {
+                    return candidates.get(0);
+                } else if (candidatesSize > candidates.size()) {
+                    // try on reduced set of candidates
+                    best = findMostSpecificOverload(hostContext, candidates, args, varArgs, priority);
+                    if (best != null) {
+                        if (cachedArgTypes != null) {
+                            fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
+                        }
+                        return best;
+                    }
+                }
                 throw ambiguousOverloadsException(candidates, args);
             }
         }

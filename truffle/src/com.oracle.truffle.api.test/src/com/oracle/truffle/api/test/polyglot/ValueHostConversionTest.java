@@ -193,6 +193,28 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals(42, context.asValue(new FortyTwoSuplier()).execute().asInt());
     }
 
+    public interface SupplierExtension extends Supplier<Integer> {
+        @Override
+        Integer get();
+    }
+
+    private class SuplierExtensionImpl implements SupplierExtension {
+        @Override
+        public Integer get() {
+            return 42;
+        }
+    }
+
+    @Test
+    public void testSpecificJniNameCall() {
+        assertEquals(42, context.asValue(new SuplierExtensionImpl()).invokeMember("get__Ljava_lang_Integer_2").asInt());
+    }
+
+    @Test
+    public void testSpecificJniNameCallSuper() {
+        assertEquals(42, context.asValue(new SuplierExtensionImpl()).invokeMember("get__Ljava_lang_Object_2").asInt());
+    }
+
     public static class JavaRecord {
         public int x = 42;
         public double y = 42.0;
