@@ -67,32 +67,39 @@ import com.oracle.svm.util.ReflectionUtil;
 /**
  * This feature:
  * <ul>
- * <li>synthesizes the runtime boot module layer</li>
- * <li>replicates build-time module relations at runtime</li>
- * <li>replaces references to hosted modules with runtime modules</li>
+ * <li>synthesizes the runtime boot module layer and all reachable module layers initialized at
+ * image-build time</li>
+ * <li>replicates build-time module relations at runtime (i.e., reads, opens and exports)</li>
+ * <li>an object replacer that replaces references to hosted modules with appropriate runtime module
+ * instances</li>
  * </ul>
  * <p>
- * This feature synthesizes the runtime boot module layer by using type reachability information. If
- * a type is reachable, its module is also reachable and therefore should be included in the runtime
- * boot module layer. If those modules require any additional modules, they will also be marked as
- * reachable.
+ * This feature synthesizes the runtime module layers by using type reachability information. If a
+ * type is reachable, its module is also reachable and therefore that module should be included in
+ * the runtime module layer corresponding to the hosted module layer. Additionally, any required
+ * modules (e.g., via {@code requires} keyword) will also be included.
  * </p>
  * <p>
- * The configuration for the runtime boot module layer is resolved using the module reachability
- * data provided to us by the analysis as resolve roots.
+ * Modules with the same module name can be loaded by different classloaders, therefore this feature
+ * keeps track of the runtime modules, separately for every loader. Mappings from module name to
+ * module loader are calculated based on the hosted module layer information. This ensures that the
+ * mapping is correct, i.e., there cannot exist two different mappings for the same module name,
+ * otherwise the mapping used in the hosted module layer would have the same problem.
  * </p>
  * <p>
- * We are purposefully avoiding public API for module layer creation, such as
+ * The configuration for the runtime boot module layer is synthesized using the module reachability
+ * data provided to us by the analysis as resolve roots. Runtime boot module configuration is
+ * special because it needs to include modules from the module layer used for image build. For all
+ * other module layers, it is sufficient to reuse hosted configurations.
+ * </p>
+ * <p>
+ * This feature purposefully avoids public API for module layer creation, such as
  * {@link ModuleLayer#defineModulesWithOneLoader(Configuration, ClassLoader)}, because as a side
- * effect this will create a new class loader. Instead, we use a private constructor to construct
- * the {@link ModuleLayer} instance, which we then patch using the module reachability data provided
- * to us by the analysis. This should be updated if JDK-8277013 gets resolved.
- * </p>
- * <p>
- * Because the result of this feature is dependant on the analysis results, and because this feature
- * will add reachable object(s) as its result, it is necessary to perform the logic during the
- * analysis, for lack of a better option (even though only the last analysis cycle is sufficient,
- * but that cannot be known in advance).
+ * effect these methods create a new class loader. Instead, this feature uses a private
+ * {@link ModuleLayer} constructor to construct the {@link ModuleLayer} instance. This instance
+ * needs to be patched to use the runtime module layer configuration and name-to-module mappings.
+ * This behavior should be updated if JDK-8277013 gets resolved, which will greatly simplify
+ * name-to-module mapping synthesizing.
  * </p>
  */
 @AutomaticallyRegisteredFeature
@@ -103,17 +110,23 @@ public final class ModuleLayerFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
+
+        /*
+         * Generate a temporary module layer to serve as a runtime boot module layer until the
+         * analysis is finished.
+         */
         Set<String> baseModules = ModuleLayer.boot().modules()
                         .stream()
                         .map(Module::getName)
                         .collect(Collectors.toSet());
-        Function<String, ClassLoader> clf = n -> {
-            Optional<Module> module = ModuleLayer.boot().findModule(n);
-            assert module.isPresent();
-            return module.get().getClassLoader();
-        };
+        Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
         ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(List.of(ModuleLayer.empty()), accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+
+        /*
+         * Register an object replacer that will ensure all references to hosted module instances
+         * are replaced with the appropriate runtime module instance.
+         */
         access.registerObjectReplacer(this::replaceHostedModules);
     }
 
@@ -168,6 +181,11 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .filter(ModuleLayerFeatureUtils::isModuleSynthetic)
                         .collect(Collectors.toSet());
 
+        /*
+         * Find reachable module layers and process them in order of distance from the boot module
+         * layer. This order is important because in order to synthesize a module layer, all of its
+         * parent module layers also need to be synthesized as well.
+         */
         List<ModuleLayer> reachableModuleLayers = analysisReachableNamedModules
                         .stream()
                         .map(Module::getLayer)
@@ -179,6 +197,11 @@ public final class ModuleLayerFeature implements InternalFeature {
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, analysisReachableNamedModules, analysisReachableSyntheticModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+
+        /*
+         * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
+         * the originals.
+         */
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
     }
 
@@ -192,15 +215,29 @@ public final class ModuleLayerFeature implements InternalFeature {
 
     private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
                     Collection<Module> reachableSyntheticModules) {
+        /*
+         * Module layer for image build contains modules from the module path that need to be
+         * included in the runtime boot module layer. Furthermore, this module layer is not needed
+         * at runtime. Because of that, we find its modules ahead of time to include it in the
+         * runtime boot module layer.
+         */
         ModuleLayer moduleLayerForImageBuild = accessImpl.imageClassLoader.classLoaderSupport.moduleLayerForImageBuild;
         Set<String> moduleLayerForImageBuildModules = moduleLayerForImageBuild
                         .modules()
                         .stream()
                         .map(Module::getName)
                         .collect(Collectors.toSet());
+
+        /*
+         * A mapping from hosted to runtime module layers. Used when looking up runtime module layer
+         * instances for hosted parent module layers.
+         */
         Map<ModuleLayer, ModuleLayer> moduleLayerPairs = new HashMap<>(hostedModuleLayers.size());
         moduleLayerPairs.put(ModuleLayer.empty(), ModuleLayer.empty());
 
+        /*
+         * Include explicitly required modules that are not necessarily reachable
+         */
         Set<String> allReachableAndRequiredModuleNames = reachableNamedModules
                         .stream()
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
@@ -226,10 +263,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
             reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
 
-            Function<String, ClassLoader> clf = name -> {
-                Optional<Module> module = hostedModuleLayer.findModule(name);
-                return module.isPresent() ? module.get().getClassLoader() : accessImpl.imageClassLoader.getClassLoader();
-            };
+            Function<String, ClassLoader> clf = name -> moduleLayerFeatureUtils.getClassLoaderForModuleInModuleLayer(hostedModuleLayer, name);
 
             Set<Module> syntheticModules = new HashSet<>();
             if (hostedLayerIsBootModuleLayer) {
@@ -764,6 +798,17 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         void patchModuleLayerParentsField(ModuleLayer moduleLayer, List<ModuleLayer> parents) throws IllegalAccessException {
             moduleLayerParentsField.set(moduleLayer, parents);
+        }
+
+        ClassLoader getClassLoaderForBootLayerModule(String name) {
+            Optional<Module> module = ModuleLayer.boot().findModule(name);
+            assert module.isPresent();
+            return module.get().getClassLoader();
+        }
+
+        ClassLoader getClassLoaderForModuleInModuleLayer(ModuleLayer hostedModuleLayer, String name) {
+            Optional<Module> module = hostedModuleLayer.findModule(name);
+            return module.isPresent() ? module.get().getClassLoader() : imageClassLoader.getClassLoader();
         }
     }
 }
