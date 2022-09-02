@@ -66,7 +66,7 @@ public abstract class LLVMAArch64_NeonNodes {
             }
 
             /* Unpack two vectors from memory and store them into return struct */
-            for (int i = 0; i < vectorSize; i += 2 * elementSize) {
+            for (int i = 0; i < 2 * vectorSize; i += 2 * elementSize) {
                 byte v1 = memory.getI8(this, currentPtr + i);
                 memory.putI8(this, targetPtr, v1);
                 byte v2 = memory.getI8(this, currentPtr + i + elementSize);
@@ -122,16 +122,12 @@ public abstract class LLVMAArch64_NeonNodes {
             byte[] result = new byte[vectorSize];
             for (int i = 0; i < vectorSize; i++) {
                 int index = selector.getValue(i);
-                if (index < 0) {
+                if (index < 0 || index >= 2 * vectorSize) {
                     result[i] = 0;
-                } else if (index >= vectorSize) {
-                    if ((index - vectorSize) < vectorSize) {
-                        result[i] = source2.getValue(index - vectorSize);
-                    } else {
-                        result[i] = 0;
-                    }
-                } else {
+                } else if (index < vectorSize) {
                     result[i] = source1.getValue(index);
+                } else {
+                    result[i] = source2.getValue(index - vectorSize);
                 }
             }
             return LLVMI8Vector.create(result);
