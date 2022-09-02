@@ -167,6 +167,13 @@ public abstract class BinaryOutput {
     public abstract void write(byte[] array, int off, int len);
 
     /**
+     * Reserves a buffer space. The reserved space can be used for out parameters.
+     *
+     * @param numberOfBytes number of bytes to reserve.
+     */
+    public abstract void skip(int numberOfBytes);
+
+    /**
      * Writes a string using a modified UTF-8 encoding in a machine-independent manner.
      *
      * @throws IllegalArgumentException if the {@code string} cannot be encoded using modified UTF-8
@@ -361,6 +368,12 @@ public abstract class BinaryOutput {
             pos += len;
         }
 
+        @Override
+        public void skip(int numberOfBytes) {
+            ensureCapacity(pos + numberOfBytes);
+            pos += numberOfBytes;
+        }
+
         /**
          * Returns the byte array containing the marshalled data.
          */
@@ -437,6 +450,12 @@ public abstract class BinaryOutput {
                 address.write(pos + i, b[off + i]);
             }
             pos += len;
+        }
+
+        @Override
+        public void skip(int numberOfBytes) {
+            ensureCapacity(pos + numberOfBytes);
+            pos += numberOfBytes;
         }
 
         /**

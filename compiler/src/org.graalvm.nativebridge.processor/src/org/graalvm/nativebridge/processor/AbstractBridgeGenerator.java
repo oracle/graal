@@ -257,7 +257,7 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters) {
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters, boolean addReferenceArrayLength) {
         builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
         boolean first = true;
         for (MarshalledParameter e : marshalledParameters) {
@@ -280,10 +280,12 @@ abstract class AbstractBridgeGenerator {
                 if (arrayLength == null) {
                     arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
                 }
-                TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
                 TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
-                builder.memberSelect(boxedInt, "BYTES", false).write(" + (").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(
-                                boxedLong, "BYTES", false).write(" : 0)");
+                if (addReferenceArrayLength) {
+                    TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
+                    builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
+                }
+                builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
             } else {
                 throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
             }
@@ -295,7 +297,7 @@ abstract class AbstractBridgeGenerator {
         return parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
     }
 
-    private static AnnotationMirror find(List<? extends AnnotationMirror> annotations, DeclaredType requiredAnnotation, Types types) {
+    static AnnotationMirror find(List<? extends AnnotationMirror> annotations, DeclaredType requiredAnnotation, Types types) {
         for (AnnotationMirror annotation : annotations) {
             if (types.isSameType(annotation.getAnnotationType(), requiredAnnotation)) {
                 return annotation;
@@ -352,15 +354,22 @@ abstract class AbstractBridgeGenerator {
         }
 
         @SuppressWarnings("unused")
-        void postMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName, CharSequence resultVariableName) {
+        void postMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence receiver, CharSequence marshalledParametersInput,
+                        CharSequence jniEnvFieldName, CharSequence resultVariableName) {
         }
 
         @SuppressWarnings("unused")
-        void postUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence jniEnvFieldName, CharSequence resultVariableName) {
+        void postUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName,
+                        CharSequence resultVariableName) {
         }
 
         @SuppressWarnings("unused")
-        CharSequence preMarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+        CharSequence preMarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName) {
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet) {
             return null;
         }
 

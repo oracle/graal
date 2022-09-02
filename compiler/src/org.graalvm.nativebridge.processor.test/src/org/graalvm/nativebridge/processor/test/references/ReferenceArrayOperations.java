@@ -24,6 +24,8 @@
  */
 package org.graalvm.nativebridge.processor.test.references;
 
+import java.util.List;
+
 public interface ReferenceArrayOperations {
 
     void acceptHost(Handler[] handlers);
@@ -43,6 +45,22 @@ public interface ReferenceArrayOperations {
     void acceptGuest(Record[] records);
 
     void acceptGuestSubArray(Record[] records, int offset, int length);
+
+    void fillGuest(Record[] records);
+
+    List<String> fillGuestWithMarshalledResult(Record[] records);
+
+    int fillGuestSubArray(Record[] records, int offset, int length);
+
+    List<String> fillGuestSubArrayWithMarshalledResult(Record[] records, int offset, int length);
+
+    void exchangeGuest(Record[] records);
+
+    List<String> exchangeGuestWithMarshalledResult(Record[] records);
+
+    int exchangeGuestSubArray(Record[] records, int offset, int length);
+
+    List<String> exchangeGuestSubArrayWithMarshalledResult(Record[] records, int offset, int length);
 
     Record[] getGuestObjects();
 }

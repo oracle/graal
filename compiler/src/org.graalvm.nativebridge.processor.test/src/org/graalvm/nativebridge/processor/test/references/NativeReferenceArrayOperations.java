@@ -33,6 +33,8 @@ import org.graalvm.nativebridge.Out;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
+import java.util.List;
+
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
 abstract class NativeReferenceArrayOperations extends NativeObject implements ReferenceArrayOperations {
 
@@ -70,6 +72,36 @@ abstract class NativeReferenceArrayOperations extends NativeObject implements Re
 
     @Override
     public abstract void acceptGuestSubArray(@In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(NativeRecord.class) Record[] records, int offset, int length);
+
+    @Override
+    public abstract void fillGuest(@Out @ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract List<String> fillGuestWithMarshalledResult(@Out @ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract int fillGuestSubArray(@Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(NativeRecord.class) Record[] records, int offset,
+                    int length);
+
+    @Override
+    public abstract List<String> fillGuestSubArrayWithMarshalledResult(@Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(NativeRecord.class) Record[] records,
+                    int offset, int length);
+
+    @Override
+    public abstract void exchangeGuest(@In @Out @ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract List<String> exchangeGuestWithMarshalledResult(@In @Out @ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract int exchangeGuestSubArray(
+                    @In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(NativeRecord.class) Record[] records,
+                    int offset, int length);
+
+    @Override
+    public abstract List<String> exchangeGuestSubArrayWithMarshalledResult(
+                    @In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(NativeRecord.class) Record[] records,
+                    int offset, int length);
 
     @Override
     @ByReference(NativeRecord.class)
