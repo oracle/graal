@@ -112,6 +112,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ProfileData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -899,14 +900,21 @@ public class SnippetTemplate {
             return result;
         }
 
+        /**
+         * Finds the unique method in {@code declaringClass} named {@code methodName} annotated by
+         * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
+         * exactly one snippet method in {@code declaringClass} with a given name.
+         *
+         * The snippet found must have {@link ProfileSource#isTrusted(ProfileSource)} known profiles
+         * for all {@link IfNode} in the {@link StructuredGraph}.
+         */
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
             return snippet(declaringClass, methodName, null, null, initialPrivateLocations);
         }
 
         /**
-         * Finds the unique method in {@code declaringClass} named {@code methodName} annotated by
-         * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
-         * exactly one snippet method in {@code declaringClass} with a given name.
+         * See {@link #snippet(Class, String, LocationIdentity...)} for details.
+         *
          */
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver,
                         LocationIdentity... initialPrivateLocations) {
@@ -1314,6 +1322,7 @@ public class SnippetTemplate {
                     this.memoryAnchor = null;
                 }
             }
+
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
             if (returnNodes.isEmpty()) {

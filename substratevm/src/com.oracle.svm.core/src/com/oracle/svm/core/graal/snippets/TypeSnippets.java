@@ -26,6 +26,9 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Map;
 
@@ -64,19 +67,19 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                     @Snippet.ConstantParameter boolean allowsNull,
                     DynamicHub exactType) {
         if (allowsNull) {
-            if (object == null) {
+            if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
                 return trueValue;
             }
             GuardingNode guard = SnippetAnchorNode.anchor();
             Object nonNullObject = PiNode.piCastNonNull(object, guard);
             DynamicHub nonNullHub = loadHub(nonNullObject);
-            if (nonNullHub != exactType) {
+            if (probability(NOT_FREQUENT_PROBABILITY, nonNullHub != exactType)) {
                 return falseValue;
             }
             return trueValue;
         } else {
             Object hubOrNull = loadHubOrNull(object);
-            if (hubOrNull != exactType) {
+            if (probability(NOT_FREQUENT_PROBABILITY, hubOrNull != exactType)) {
                 return falseValue;
             }
             return trueValue;
@@ -91,7 +94,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                     @Snippet.ConstantParameter boolean allowsNull,
                     short start, short range, short slot,
                     @Snippet.ConstantParameter int typeIDSlotOffset) {
-        if (object == null) {
+        if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             if (allowsNull) {
                 return trueValue;
             }
@@ -111,7 +114,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                     SubstrateIntrinsics.Any falseValue,
                     @Snippet.ConstantParameter boolean allowsNull,
                     @Snippet.ConstantParameter int typeIDSlotOffset) {
-        if (object == null) {
+        if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             if (allowsNull) {
                 return trueValue;
             }
@@ -146,7 +149,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
         // No need to guard reading from hub as `checkedHub` is guaranteed to be non-null.
         final GuardingNode guard = null;
         int checkedTypeID = Short.toUnsignedInt(DynamicHubAccess.readShort(checkedHub, typeIDSlotOffset + typeCheckSlot, NamedLocationIdentity.FINAL_LOCATION, guard));
-        if (UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange)) {
+        if (probability(LIKELY_PROBABILITY, UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange))) {
             return trueValue;
         }
 
@@ -181,7 +184,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(FloatingNode node, LoweringTool tool) {
-            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.MID_TIER) {
                 return;
             }
             super.lower(node, tool);
@@ -229,7 +232,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(FloatingNode node, LoweringTool tool) {
-            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.MID_TIER) {
                 return;
             }
             super.lower(node, tool);
@@ -270,7 +273,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(FloatingNode node, LoweringTool tool) {
-            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.MID_TIER) {
                 return;
             }
             super.lower(node, tool);

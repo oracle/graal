@@ -45,6 +45,14 @@ public @interface Snippet {
     boolean allowPartialIntrinsicArgumentMismatch() default false;
 
     /**
+     * Marks a method as known to be missing injected branch probabilities. Normally snippets are
+     * required to have at least probabilities in their top level method but sometimes this is not
+     * feasible either because the code is outside of our control or there aren't clear
+     * probabilities that could be chosen.
+     */
+    boolean allowMissingProbabilities() default false;
+
+    /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during
      * snippet template instantiation. During snippet template creation, its value must be an array
      * whose length specifies the number of arguments (the contents of the array are ignored) bound

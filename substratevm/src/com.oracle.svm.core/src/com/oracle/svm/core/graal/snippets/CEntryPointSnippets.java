@@ -179,7 +179,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
             writeCurrentVMThread(WordFactory.nullPointer());
@@ -352,7 +352,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int attachThreadSnippet(Isolate isolate, boolean startedByIsolate, boolean ensureJavaThread,
                     boolean inCrashHandler, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
@@ -438,7 +438,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         PlatformThreads.ensureCurrentAssigned();
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int detachThreadSnippet() {
         int result = CEntryPointErrors.NO_ERROR;
         if (MultiThreaded.getValue()) {
@@ -464,7 +464,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int tearDownIsolateSnippet() {
         return runtimeCallTearDownIsolate(TEAR_DOWN_ISOLATE);
     }
@@ -485,7 +485,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int enterIsolateSnippet(Isolate isolate) {
         int result;
         if (MultiThreaded.getValue()) {
@@ -526,7 +526,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int enterSnippet(IsolateThread thread) {
         Isolate isolate;
         if (MultiThreaded.getValue()) {
@@ -585,7 +585,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int reportExceptionSnippet(Throwable exception) {
         return runtimeCall(REPORT_EXCEPTION, exception);
     }
@@ -612,7 +612,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int returnFromJavaToCSnippet() {
         if (MultiThreaded.getValue()) {
             VMThreads.StatusSupport.setStatusNative();
@@ -620,7 +620,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static boolean isAttachedSnippet(Isolate isolate) {
         return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
                         (!MultiThreaded.getValue() || runtimeCallIsAttached(IS_ATTACHED_MT, isolate));
@@ -635,7 +635,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadForCurrentOSThread(false).isNonNull();
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static void failFatallySnippet(int code, CCharPointer message) {
         runtimeCallFailFatally(FAIL_FATALLY, code, message);
     }

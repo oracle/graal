@@ -70,7 +70,7 @@ public class ForeignCallSnippets implements Snippets {
     /**
      * See {@link ForeignCallStub#getGraph}.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static void handlePendingException(Word thread, boolean shouldClearException, boolean isObjectResult) {
         if ((shouldClearException && clearPendingException(thread) != null) || (!shouldClearException && getPendingException(thread) != null)) {
             if (isObjectResult) {
@@ -83,7 +83,7 @@ public class ForeignCallSnippets implements Snippets {
     /**
      * Verifies that a given object value is well formed if {@code -XX:+VerifyOops} is enabled.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object verifyObject(Object object) {
         if (HotSpotReplacementsUtil.verifyOops(INJECTED_VMCONFIG)) {
             Word verifyOopCounter = WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopCounterAddress(INJECTED_VMCONFIG));

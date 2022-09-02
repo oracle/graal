@@ -422,7 +422,7 @@ public class HotSpotReplacementsUtil {
          */
         final int layoutHelper = readLayoutHelper(klassNonNull);
         final int layoutHelperNeutralValue = klassLayoutHelperNeutralValue(INJECTED_VMCONFIG);
-        return (layoutHelper < layoutHelperNeutralValue);
+        return layoutHelper < layoutHelperNeutralValue;
     }
 
     public static final LocationIdentity ARRAY_KLASS_COMPONENT_MIRROR = NamedLocationIdentity.immutable("ArrayKlass::_component_mirror");

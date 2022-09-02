@@ -232,8 +232,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
          * knownElementKind.
          */
         staticAssert(knownElementKind != JavaKind.Void, "unsupported knownElementKind");
-        if (knownElementKind == JavaKind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType, voidClass))) {
-            DeoptimizeNode.deopt(None, RuntimeConstraint);
+
+        if (knownElementKind == JavaKind.Illegal) {
+            if (probability(SLOW_PATH_PROBABILITY, elementType == null)) {
+                DeoptimizeNode.deopt(None, RuntimeConstraint);
+            }
+            if (probability(SLOW_PATH_PROBABILITY, DynamicNewArrayNode.throwsIllegalArgumentException(elementType, voidClass))) {
+                DeoptimizeNode.deopt(None, RuntimeConstraint);
+            }
         }
 
         KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(INJECTED_VMCONFIG), CLASS_ARRAY_KLASS_LOCATION);

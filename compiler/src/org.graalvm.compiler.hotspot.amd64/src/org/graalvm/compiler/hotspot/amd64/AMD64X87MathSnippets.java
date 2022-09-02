@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -48,7 +50,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
     @Snippet
     public static double sin(double input) {
-        if (Math.abs(input) < PI_4) {
+        if (probability(LIKELY_PROBABILITY, Math.abs(input) < PI_4)) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.SIN);
         }
         return callDouble1(UnaryOperation.SIN.foreignCallSignature, input);
@@ -56,7 +58,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
     @Snippet
     public static double cos(double input) {
-        if (Math.abs(input) < PI_4) {
+        if (probability(LIKELY_PROBABILITY, Math.abs(input) < PI_4)) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.COS);
         }
         return callDouble1(UnaryOperation.COS.foreignCallSignature, input);
@@ -64,7 +66,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
     @Snippet
     public static double tan(double input) {
-        if (Math.abs(input) < PI_4) {
+        if (probability(LIKELY_PROBABILITY, Math.abs(input) < PI_4)) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.TAN);
         }
         return callDouble1(UnaryOperation.TAN.foreignCallSignature, input);

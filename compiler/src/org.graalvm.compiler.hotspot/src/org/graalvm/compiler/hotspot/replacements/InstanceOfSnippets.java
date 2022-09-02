@@ -35,10 +35,12 @@ import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.T
 import static org.graalvm.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkSecondarySubType;
 import static org.graalvm.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkUnknownSubType;
 import static org.graalvm.compiler.hotspot.replacements.TypeCheckSnippetUtils.createHints;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -60,7 +62,6 @@ import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.TypeCheckHints;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
@@ -116,7 +117,7 @@ public class InstanceOfSnippets implements Snippets {
             boolean positive = hintIsPositive[i];
             if (probability(LIKELY_PROBABILITY, hintHub.equal(objectHub))) {
                 counters.hintsHit.inc();
-                return positive ? trueValue : falseValue;
+                return unknownProbability(positive) ? trueValue : falseValue;
             }
             counters.hintsMiss.inc();
         }
@@ -164,7 +165,7 @@ public class InstanceOfSnippets implements Snippets {
     /**
      * A test against a restricted secondary type type.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object instanceofSecondary(KlassPointer hub, Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
                     @ConstantParameter Counters counters) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
@@ -193,7 +194,7 @@ public class InstanceOfSnippets implements Snippets {
     /**
      * Type test used when the type being tested against is not known at compile time.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean allowNull, @ConstantParameter boolean exact,
                     @ConstantParameter Counters counters) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
@@ -215,7 +216,7 @@ public class InstanceOfSnippets implements Snippets {
             return trueValue;
         }
         // The hub of a primitive type can be null => always return false in this case.
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !hub.isNull())) {
+        if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             if (checkUnknownSubType(hub, nonNullObjectHub, counters)) {
                 return trueValue;
             }
@@ -223,17 +224,17 @@ public class InstanceOfSnippets implements Snippets {
         return falseValue;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object isAssignableFrom(@NonNullParameter Class<?> thisClassNonNull, @NonNullParameter Class<?> otherClassNonNull, Object trueValue, Object falseValue,
                     @ConstantParameter Counters counters) {
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, thisClassNonNull == otherClassNonNull)) {
+        if (probability(NOT_LIKELY_PROBABILITY, thisClassNonNull == otherClassNonNull)) {
             return trueValue;
         }
 
         KlassPointer thisHub = ClassGetHubNode.readClass(thisClassNonNull);
         KlassPointer otherHub = ClassGetHubNode.readClass(otherClassNonNull);
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !thisHub.isNull())) {
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !otherHub.isNull())) {
+        if (probability(FAST_PATH_PROBABILITY, !thisHub.isNull())) {
+            if (probability(FAST_PATH_PROBABILITY, !otherHub.isNull())) {
                 GuardingNode guardNonNull = SnippetAnchorNode.anchor();
                 KlassPointer nonNullOtherHub = ClassGetHubNode.piCastNonNull(otherHub, guardNonNull);
                 if (TypeCheckSnippetUtils.checkUnknownSubType(thisHub, nonNullOtherHub, counters)) {

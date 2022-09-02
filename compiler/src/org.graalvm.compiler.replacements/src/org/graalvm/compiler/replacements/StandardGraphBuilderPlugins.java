@@ -1332,7 +1332,11 @@ public class StandardGraphBuilderPlugins {
                 FixedWithNextNode[] accessNodes = new FixedWithNextNode[]{objectAccess, memoryAccess};
 
                 LogicNode condition = graph.addOrUniqueWithInputs(IsNullNode.create(value));
-                IfNode ifNode = b.add(new IfNode(condition, memoryAccess, objectAccess, BranchProbabilityData.unknown()));
+                // We do not know the probability of this being a native memory or object, thus we
+                // inject 0.5. We still inject it to ensure no code verifying profiles reports
+                // missing ones.
+                BranchProbabilityData probability = BranchProbabilityData.injected(0.5, true);
+                IfNode ifNode = b.add(new IfNode(condition, memoryAccess, objectAccess, probability));
                 nonNullObject.setGuard(ifNode.falseSuccessor());
 
                 MergeNode merge = b.append(new MergeNode());

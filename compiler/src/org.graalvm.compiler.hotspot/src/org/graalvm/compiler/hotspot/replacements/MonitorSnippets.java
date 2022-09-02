@@ -480,7 +480,7 @@ public class MonitorSnippets implements Snippets {
                 traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
                 counters.inflatedFailedCas.inc();
             }
-        } else if (owner.equal(registerAsWord(threadRegister))) {
+        } else if (probability(NOT_LIKELY_PROBABILITY, owner.equal(registerAsWord(threadRegister)))) {
             int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
             Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
             monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);

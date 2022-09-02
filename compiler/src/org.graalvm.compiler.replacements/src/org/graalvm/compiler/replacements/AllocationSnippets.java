@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED;
@@ -167,13 +169,13 @@ public abstract class AllocationSnippets implements Snippets {
                     AllocationSnippetCounters snippetCounters) {
         ReplacementsUtil.dynamicAssert(endOffset.and(0x7).equal(0), "unaligned object size");
         UnsignedWord offset = WordFactory.unsigned(startOffset);
-        if (offset.and(0x7).notEqual(0)) {
+        if (probability(SLOW_PATH_PROBABILITY, offset.and(0x7).notEqual(0))) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
             offset = offset.add(4);
         }
         ReplacementsUtil.dynamicAssert(offset.and(0x7).equal(0), "unaligned offset");
         UnsignedWord remainingSize = endOffset.subtract(offset);
-        if (manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
+        if (probability(LIKELY_PROBABILITY, manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES))) {
             ReplacementsUtil.staticAssert(!isEndOffsetConstant, "size shouldn't be constant at instantiation time");
             fillMemoryAlignedUnrollable(value, memory, offset, endOffset, supportsOptimizedFilling, snippetCounters);
         } else {
@@ -226,7 +228,7 @@ public abstract class AllocationSnippets implements Snippets {
                 snippetCounters.loopInit.inc();
             }
             UnsignedWord offset = fromOffset;
-            for (; offset.belowThan(endOffset); offset = offset.add(8)) {
+            for (; injectBranchProbability(FAST_PATH_PROBABILITY, offset.belowThan(endOffset)); offset = offset.add(8)) {
                 memory.initializeLong(offset, value, LocationIdentity.init());
             }
         }
