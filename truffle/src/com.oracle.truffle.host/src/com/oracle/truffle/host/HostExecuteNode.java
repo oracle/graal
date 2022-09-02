@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -585,8 +586,11 @@ abstract class HostExecuteNode extends Node {
                     TypeCheckNode[] cachedArgTypes) throws UnsupportedTypeException {
         List<SingleMethod> candidates = new ArrayList<>();
 
+        // filter methods that were only added to support jni names
+        List<SingleMethod> filtered = applicableByArity.stream().filter(s -> !s.isOnlyVisibleFromJniName()).collect(Collectors.toList());
+
         if (!varArgs) {
-            for (SingleMethod candidate : applicableByArity) {
+            for (SingleMethod candidate : filtered) {
                 int paramCount = candidate.getParameterCount();
                 if (!candidate.isVarArgs() || paramCount == args.length) {
                     assert paramCount == args.length;
@@ -601,13 +605,13 @@ abstract class HostExecuteNode extends Node {
                             break;
                         }
                     }
-                    if (applicable) {
+                    if (applicable && !candidate.isOnlyVisibleFromJniName()) {
                         candidates.add(candidate);
                     }
                 }
             }
         } else {
-            for (SingleMethod candidate : applicableByArity) {
+            for (SingleMethod candidate : filtered) {
                 if (candidate.isVarArgs()) {
                     int parameterCount = candidate.getParameterCount();
                     Class<?>[] parameterTypes = candidate.getParameterTypes();
@@ -638,7 +642,7 @@ abstract class HostExecuteNode extends Node {
                                 break;
                             }
                         }
-                        if (applicable) {
+                        if (applicable && !candidate.isOnlyVisibleFromJniName()) {
                             candidates.add(candidate);
                         }
                     }
@@ -651,7 +655,7 @@ abstract class HostExecuteNode extends Node {
                 SingleMethod best = candidates.get(0);
 
                 if (cachedArgTypes != null) {
-                    fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
+                    fillArgTypesArray(args, cachedArgTypes, best, varArgs, filtered, priority, hostContext);
                 }
 
                 return best;
@@ -659,35 +663,10 @@ abstract class HostExecuteNode extends Node {
                 SingleMethod best = findMostSpecificOverload(hostContext, candidates, args, varArgs, priority);
                 if (best != null) {
                     if (cachedArgTypes != null) {
-                        fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
+                        fillArgTypesArray(args, cachedArgTypes, best, varArgs, filtered, priority, hostContext);
                     }
 
                     return best;
-                }
-                // last resort, filter out methods that were
-                // included only for jni naming lookups
-                int candidatesSize = candidates.size();
-                Iterator<SingleMethod> it = candidates.iterator();
-                while (it.hasNext()) {
-                    SingleMethod sm = it.next();
-                    if (sm.isOnlyVisibleFromJniName()) {
-                        it.remove();
-                    }
-                }
-                if (candidates.size() == 0) {
-                    return null;
-                }
-                if (candidates.size() == 1) {
-                    return candidates.get(0);
-                } else if (candidatesSize > candidates.size()) {
-                    // try on reduced set of candidates
-                    best = findMostSpecificOverload(hostContext, candidates, args, varArgs, priority);
-                    if (best != null) {
-                        if (cachedArgTypes != null) {
-                            fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
-                        }
-                        return best;
-                    }
                 }
                 throw ambiguousOverloadsException(candidates, args);
             }
