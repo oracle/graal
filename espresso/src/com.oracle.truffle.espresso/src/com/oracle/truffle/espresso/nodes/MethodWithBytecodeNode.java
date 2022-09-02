@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -35,11 +36,11 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * This class exists to conform to the Truffle instrumentation APIs, namely {@link RootTag} and
  * {@link RootBodyTag} in order to support proper unwind and re-enter.
  */
-public final class EspressoMethodWithBytecodeNode extends EspressoMethodNode {
+final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
 
-    @Child EspressoBaseMethodNode bytecodeNode;
+    @Child AbstractInstrumentableBytecodeNode bytecodeNode;
 
-    public EspressoMethodWithBytecodeNode(BytecodeNode bytecodeNode) {
+    MethodWithBytecodeNode(BytecodeNode bytecodeNode) {
         super(bytecodeNode.getMethodVersion());
         this.bytecodeNode = bytecodeNode;
     }
@@ -50,18 +51,21 @@ public final class EspressoMethodWithBytecodeNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    Object execute(VirtualFrame frame) {
         bytecodeNode.initializeFrame(frame);
         return bytecodeNode.execute(frame);
     }
 
     @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == RootTag.class;
+    boolean isTrivial() {
+        return bytecodeNode.isTrivial();
     }
 
     @Override
-    protected boolean isTrivial() {
-        return bytecodeNode.isTrivial();
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.RootTag.class) {
+            return true;
+        }
+        return false;
     }
 }

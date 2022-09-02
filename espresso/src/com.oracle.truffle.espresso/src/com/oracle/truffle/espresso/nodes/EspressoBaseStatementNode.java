@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -77,7 +77,7 @@ public abstract class EspressoBaseStatementNode extends EspressoNode implements 
         return getScopeSlowPath(frame != null ? frame.materialize() : null, nodeEnter);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private Object getScopeSlowPath(MaterializedFrame frame, boolean nodeEnter) {
         return getBytecodeNode().getScope(frame, nodeEnter);
     }
