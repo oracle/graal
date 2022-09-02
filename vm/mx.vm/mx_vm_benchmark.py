@@ -129,17 +129,17 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.vm_args, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
-            self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
-            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
-            self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
+            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(image_run_args))
+            self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(image_run_args))
             for option in self.extra_agentlib_options:
                 if option.startswith('config-output-dir'):
                     mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
-            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
-            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args))
+            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
             self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
@@ -186,6 +186,8 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
             if vm.no_inlining_before_analysis:
                 self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
+            if self.image_vm_args is not None:
+                self.base_image_build_args += self.image_vm_args
             self.base_image_build_args += self.extra_image_build_arguments
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
@@ -758,8 +760,8 @@ class NativeImageVM(GraalVm):
         if mx.cpu_count() > 8:
             hotspot_vm_args += ['-XX:ActiveProcessorCount=8']
 
-        if config.vm_args is not None:
-            hotspot_vm_args += config.vm_args
+        if config.image_vm_args is not None:
+            hotspot_vm_args += config.image_vm_args
 
         hotspot_args = hotspot_vm_args + config.classpath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
