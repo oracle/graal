@@ -39,6 +39,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -96,6 +98,7 @@ import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.vm.annotation.Contended;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
@@ -390,7 +393,7 @@ public class UniverseBuilder {
     }
 
     private void layoutInstanceFields() {
-        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0]);
+        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0], false);
     }
 
     private static boolean mustReserveLengthField(HostedInstanceClass clazz) {
@@ -405,7 +408,7 @@ public class UniverseBuilder {
         return false;
     }
 
-    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields) {
+    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields, boolean superFieldsContendedPadding) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
@@ -433,30 +436,45 @@ public class UniverseBuilder {
             }
         }
 
-        // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(rawFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
-
         int nextOffset = startSize;
-        while (rawFields.size() > 0) {
-            boolean progress = false;
-            for (int i = 0; i < rawFields.size(); i++) {
-                HostedField field = rawFields.get(i);
-                int fieldSize = layout.sizeInBytes(field.getStorageKind());
 
-                if (nextOffset % fieldSize == 0) {
-                    field.setLocation(nextOffset);
-                    nextOffset += fieldSize;
+        boolean hasLeadingPadding = superFieldsContendedPadding;
+        boolean isClassContended = clazz.isAnnotationPresent(Contended.class);
+        if (!hasLeadingPadding && (isClassContended || (clazz.getSuperclass() != null && clazz.getSuperclass().isAnnotationPresent(Contended.class)))) {
+            nextOffset += getContendedPadding();
+            hasLeadingPadding = true;
+        }
 
-                    rawFields.remove(i);
-                    orderedFields.add(field);
-                    progress = true;
-                    break;
-                }
+        int beginOfFieldsOffset = nextOffset;
+
+        /*
+         * Sort and group fields so that fields marked @Contended(tag) are grouped by their tag,
+         * placing unannotated fields first in the object, and so that within groups, a) all Object
+         * fields are consecutive, and b) bigger types come first.
+         */
+        Object uncontendedSentinel = new Object();
+        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(field.getAnnotation(Contended.class)).<Object> map(Contended::value).orElse(uncontendedSentinel);
+        Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
+                        .sorted(HostedUniverse.FIELD_COMPARATOR_RELAXED)
+                        .collect(Collectors.groupingBy(getAnnotationGroup, Collectors.toCollection(ArrayList::new)));
+
+        ArrayList<HostedField> uncontendedFields = contentionGroups.remove(uncontendedSentinel);
+        if (uncontendedFields != null) {
+            assert !uncontendedFields.isEmpty();
+            nextOffset = placeFields(uncontendedFields, nextOffset, orderedFields, layout);
+        }
+
+        for (ArrayList<HostedField> groupFields : contentionGroups.values()) {
+            boolean placedFieldsBefore = (nextOffset != beginOfFieldsOffset);
+            if (placedFieldsBefore || !hasLeadingPadding) {
+                nextOffset += getContendedPadding();
             }
-            if (!progress) {
-                // Insert padding byte and try again.
-                nextOffset++;
-            }
+            nextOffset = placeFields(groupFields, nextOffset, orderedFields, layout);
+        }
+
+        boolean fieldsTrailingPadding = !contentionGroups.isEmpty();
+        if (fieldsTrailingPadding) {
+            nextOffset += getContendedPadding();
         }
 
         int endOfFieldsOffset = nextOffset;
@@ -465,8 +483,6 @@ public class UniverseBuilder {
          * Compute the offsets of the "synthetic" fields for this class (but not subclasses).
          * Synthetic fields are put after all the instance fields. They are included in the instance
          * size, but not in the offset passed to subclasses.
-         *
-         * TODO: Should there be a list of synthetic fields for a class?
          */
 
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
@@ -476,6 +492,11 @@ public class UniverseBuilder {
             nextOffset = NumUtil.roundUp(nextOffset, referenceFieldAlignmentAndSize);
             clazz.setMonitorFieldOffset(nextOffset);
             nextOffset += referenceFieldAlignmentAndSize;
+        }
+
+        boolean placedSyntheticFields = (nextOffset != endOfFieldsOffset);
+        if (isClassContended && (contentionGroups.isEmpty() || placedSyntheticFields)) {
+            nextOffset += getContendedPadding();
         }
 
         clazz.instanceFieldsWithoutSuper = orderedFields.toArray(new HostedField[orderedFields.size()]);
@@ -499,9 +520,40 @@ public class UniverseBuilder {
                  * possible because each class that needs a synthetic field gets its own synthetic
                  * field at the end of its instance fields.
                  */
-                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset, clazz.instanceFieldsWithSuper);
+                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset, clazz.instanceFieldsWithSuper, fieldsTrailingPadding);
             }
         }
+    }
+
+    private static int getContendedPadding() {
+        Integer value = SubstrateOptions.ContendedPaddingWidth.getValue();
+        return (value > 0) ? value : 0; // no alignment required, placing fields takes care of it
+    }
+
+    private static int placeFields(ArrayList<HostedField> fields, int firstOffset, ArrayList<HostedField> orderedFields, ObjectLayout layout) {
+        int nextOffset = firstOffset;
+        while (!fields.isEmpty()) {
+            boolean progress = false;
+            for (int i = 0; i < fields.size(); i++) {
+                HostedField field = fields.get(i);
+                int fieldSize = layout.sizeInBytes(field.getStorageKind());
+
+                if (nextOffset % fieldSize == 0) {
+                    field.setLocation(nextOffset);
+                    nextOffset += fieldSize;
+
+                    fields.remove(i);
+                    orderedFields.add(field);
+                    progress = true;
+                    break;
+                }
+            }
+            if (!progress) {
+                // Insert padding byte and try again.
+                nextOffset++;
+            }
+        }
+        return nextOffset;
     }
 
     private void layoutStaticFields() {

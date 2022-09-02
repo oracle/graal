@@ -448,6 +448,9 @@ public class SubstrateOptions {
     @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(64);
 
+    @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
+    public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
+
     /*
      * Isolate tear down options.
      */
