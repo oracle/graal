@@ -516,13 +516,13 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "amd64", java_version) + vm.collect_profiles() +  $.build_base_graalvm_image + [
+    ] + vm.collect_profiles() +  $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "amd64", java_version) ,
+    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "amd64", java_version) + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
@@ -536,12 +536,12 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
+    ] + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
-    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "aarch64", java_version),
+    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "aarch64", java_version) + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
   },
