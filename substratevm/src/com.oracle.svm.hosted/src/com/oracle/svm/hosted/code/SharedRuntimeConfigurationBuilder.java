@@ -112,7 +112,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
         BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(metaAccess);
-        PlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
+        PlatformConfigurationProvider platformConfig = createPlatformConfigProvider(barrierSet);
         MetaAccessExtensionProvider metaAccessExtensionProvider = HostedConfiguration.instance().createCompilationMetaAccessExtensionProvider(metaAccess);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
         LoweringProvider lowerer = createLoweringProvider(p);
@@ -169,6 +169,10 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected LoweringProvider createLoweringProvider(Providers p) {
         return SubstrateLoweringProvider.createForRuntime(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
+    }
+
+    protected SubstratePlatformConfigurationProvider createPlatformConfigProvider(BarrierSet barrierSet) {
+        return new SubstratePlatformConfigurationProvider(barrierSet);
     }
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
