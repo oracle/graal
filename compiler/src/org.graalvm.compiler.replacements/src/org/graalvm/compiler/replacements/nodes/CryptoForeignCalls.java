@@ -35,12 +35,20 @@ public class CryptoForeignCalls {
 
     public static final ForeignCallDescriptor STUB_GHASH_PROCESS_BLOCKS = foreignCallDescriptor("ghashProcessBlocks", GHASHProcessBlocksNode.KILLED_LOCATIONS,
                     Pointer.class, Pointer.class, Pointer.class, Pointer.class);
+    public static final ForeignCallDescriptor STUB_CTR_AES_CRYPT = foreignCallDescriptorWithReturnType("ctrAESCrypt", CounterModeAESNode.KILLED_LOCATIONS,
+                    int.class, Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class, Pointer.class, Pointer.class);
 
     public static final ForeignCallDescriptor[] AES_STUBS = {
                     STUB_AES_ENCRYPT,
-                    STUB_AES_DECRYPT};
+                    STUB_AES_DECRYPT,
+                    STUB_CTR_AES_CRYPT,
+    };
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name, LocationIdentity[] killLocations, Class<?>... argTypes) {
         return new ForeignCallDescriptor(name, void.class, argTypes, false, killLocations, false, false);
+    }
+
+    private static ForeignCallDescriptor foreignCallDescriptorWithReturnType(String name, LocationIdentity[] killLocations, Class<?> returnType, Class<?>... argTypes) {
+        return new ForeignCallDescriptor(name, returnType, argTypes, false, killLocations, false, false);
     }
 }

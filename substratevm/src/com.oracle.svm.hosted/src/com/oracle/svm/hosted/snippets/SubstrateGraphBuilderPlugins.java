@@ -46,6 +46,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
+import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
@@ -80,8 +81,11 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.InvocationPluginHelper;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
@@ -103,13 +107,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
@@ -147,6 +151,7 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.DirectAnnotationAccess;
 
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -155,6 +160,7 @@ import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPlugins {
 
@@ -164,8 +170,13 @@ public class SubstrateGraphBuilderPlugins {
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
     }
 
-    public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, MetaAccessProvider metaAccess,
-                    SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements, ParsingReason parsingReason) {
+    public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
+                    MetaAccessProvider metaAccess,
+                    SnippetReflectionProvider snippetReflection,
+                    InvocationPlugins plugins,
+                    Replacements replacements,
+                    ParsingReason parsingReason,
+                    Architecture architecture) {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
@@ -186,6 +197,7 @@ public class SubstrateGraphBuilderPlugins {
         registerSizeOfPlugins(snippetReflection, plugins);
         registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
+        registerAESPlugins(plugins, replacements, architecture);
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
@@ -1025,7 +1037,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerReferencePlugins(InvocationPlugins plugins, ParsingReason parsingReason) {
         Registration r = new Registration(plugins, Reference.class);
-        r.register(new StandardGraphBuilderPlugins.ReachabilityFencePlugin() {
+        r.register(new ReachabilityFencePlugin() {
             @Override
             protected boolean useExplicitReachabilityFence(GraphBuilderContext b) {
                 return parsingReason != ParsingReason.JITCompilation;
@@ -1063,6 +1075,28 @@ public class SubstrateGraphBuilderPlugins {
                     b.addPush(JavaKind.Object, WordCastNode.wordToObject(wordNode, FrameAccess.getWordKind()));
                 }
                 return true;
+            }
+        });
+    }
+
+    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
+        r.registerConditional(AESCryptPlugin.isSupported(arch), new CounterModeCryptPlugin() {
+            @Override
+            protected boolean canApply(GraphBuilderContext b) {
+                return b instanceof BytecodeParser;
+            }
+
+            @Override
+            protected ValueNode getFieldOffset(InvocationPluginHelper helper, ResolvedJavaType type, String fieldName) {
+                AnalysisField analysisField = (AnalysisField) helper.getField(type, fieldName);
+                return ConstantNode.forInt(analysisField.wrapped.getOffset());
+            }
+
+            @Override
+            protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
+                Class<?> classAESCrypt = Class.forName("com.sun.crypto.provider.AESCrypt", true, ClassLoader.getSystemClassLoader());
+                return metaAccess.lookupJavaType(classAESCrypt);
             }
         });
     }

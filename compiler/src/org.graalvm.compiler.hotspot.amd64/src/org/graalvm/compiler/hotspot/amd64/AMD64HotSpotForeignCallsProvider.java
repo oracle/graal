@@ -58,17 +58,14 @@ import org.graalvm.compiler.hotspot.stubs.SnippetStub;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterValue;
@@ -110,17 +107,6 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCopyWithConversionsForeignCalls.STUBS);
         linkSnippetStubs(providers, options, AMD64HotspotIntrinsicStubsGen::new, AMD64ArrayEqualsWithMaskForeignCalls.STUBS);
         linkSnippetStubs(providers, options, AMD64HotspotIntrinsicStubsGen::new, AMD64CalcStringAttributesForeignCalls.STUBS);
-
-        if (AMD64GraphBuilderPlugins.supportsAESPlugins((AMD64) target.arch)) {
-            for (ForeignCallDescriptor stub : CryptoForeignCalls.AES_STUBS) {
-                link(new IntrinsicStubsGen(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
-            }
-        }
-
-        if (AMD64GraphBuilderPlugins.supportsGHASHPlugins((AMD64) target.arch)) {
-            link(new IntrinsicStubsGen(options, providers, registerStubCall(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getSignature(),
-                            LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getKilledLocations())));
-        }
 
         super.initialize(providers, options);
     }

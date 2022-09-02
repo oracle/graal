@@ -49,14 +49,16 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3590,
-          lineEnd   = 3681,
-          commit    = "61e072d11c8e0cb5879bb733ed1fdd2144326bfd",
+          lineStart = 3581,
+          lineEnd   = 3672,
+          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
           sha1      = "05aff5a50178ceef327feac219b55e354241a77b")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64AESEncryptOp> TYPE = LIRInstructionClass.create(AMD64AESEncryptOp.class);
+
+    public static final int AES_BLOCK_SIZE = 16;
 
     private final int lengthOffset;
 

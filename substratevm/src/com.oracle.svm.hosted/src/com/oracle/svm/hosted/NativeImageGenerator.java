@@ -1312,8 +1312,13 @@ public class NativeImageGenerator {
         }
 
         assert pluginsMetaAccess != null;
-        SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor, pluginsMetaAccess,
-                        hostedSnippetReflection, plugins.getInvocationPlugins(), replacements, reason);
+        SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor,
+                        pluginsMetaAccess,
+                        hostedSnippetReflection,
+                        plugins.getInvocationPlugins(),
+                        replacements,
+                        reason,
+                        architecture);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins, reason));
 
