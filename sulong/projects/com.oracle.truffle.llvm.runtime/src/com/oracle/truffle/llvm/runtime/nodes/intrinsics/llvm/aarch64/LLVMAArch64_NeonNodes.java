@@ -2,7 +2,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -16,7 +15,8 @@ public abstract class LLVMAArch64_NeonNodes {
     public LLVMAArch64_NeonNodes() {
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAArch64_Ld1x2 extends LLVMBuiltin {
         final int vectorSize;
 
@@ -41,7 +41,8 @@ public abstract class LLVMAArch64_NeonNodes {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAArch64_Ld2 extends LLVMBuiltin {
         final int vectorSize;
         final int elementSize;
@@ -79,7 +80,8 @@ public abstract class LLVMAArch64_NeonNodes {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAArch64_Tbl1 extends LLVMBuiltin {
         final int vectorSize;
 
@@ -105,7 +107,9 @@ public abstract class LLVMAArch64_NeonNodes {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAArch64_Tbl2 extends LLVMBuiltin {
         final int vectorSize;
 
@@ -134,7 +138,7 @@ public abstract class LLVMAArch64_NeonNodes {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAArch64_Umaxv extends LLVMBuiltin {
         final int vectorSize;
 
@@ -155,7 +159,8 @@ public abstract class LLVMAArch64_NeonNodes {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAArch64_Uqsub extends LLVMBuiltin {
         final int vectorSize;
 
