@@ -332,7 +332,8 @@ hcls ToIndexableNode
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$AsManagedNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,boolean,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$AsManagedNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$AsManagedNode getUncached()
 supr com.oracle.truffle.api.nodes.Node

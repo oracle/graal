@@ -243,10 +243,14 @@ final class TStringInternalNodes {
     @GenerateUncached
     abstract static class FromBufferWithStringCompactionKnownAttributesNode extends Node {
 
-        abstract TruffleString execute(Object arrayA, Encoding encoding);
+        final TruffleString execute(AbstractTruffleString a, Encoding encoding) {
+            return execute(a, true, encoding);
+        }
+
+        abstract TruffleString execute(AbstractTruffleString a, boolean isCacheHead, Encoding encoding);
 
         @Specialization
-        TruffleString fromBufferWithStringCompaction(AbstractTruffleString a, Encoding encoding,
+        TruffleString fromBufferWithStringCompaction(AbstractTruffleString a, boolean isCacheHead, Encoding encoding,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached ConditionProfile utf16Profile,
@@ -292,7 +296,7 @@ final class TStringInternalNodes {
                 array = TStringOps.arraycopyOfWithStride(this, arrayA, offsetA, length, 0, length, 0);
             }
             int codePointLength = getCodePointLengthNode.execute(a);
-            return TruffleString.createFromArray(array, offset, length, stride, encoding, codePointLength, codeRange, true);
+            return TruffleString.createFromArray(array, offset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
         }
 
         static FromBufferWithStringCompactionKnownAttributesNode getUncached() {

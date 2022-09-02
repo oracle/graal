@@ -2374,18 +2374,64 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract TruffleString execute(AbstractTruffleString a, Encoding expectedEncoding);
+        public final TruffleString execute(AbstractTruffleString a, Encoding expectedEncoding) {
+            return execute(a, false, expectedEncoding);
+        }
+
+        /**
+         * If the given string is already a managed (i.e. not backed by a native pointer) string,
+         * return it. Otherwise, copy the string's native pointer content into a Java byte array and
+         * return a new string backed by the byte array.
+         * 
+         * @param cacheResult if set to {@code true}, managed strings created from native
+         *            {@link TruffleString} instances are cached in the native string's internal
+         *            transcoding cache. Note that this will keep the native string alive and
+         *            reachable via {@link AsNativeNode}! Subsequent calls of {@link AsManagedNode}
+         *            with {@code cacheResult=true} on the same native string are guaranteed to
+         *            return the same managed string. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation
+         *            constant}.
+         *
+         * @since 22.3
+         */
+        public abstract TruffleString execute(AbstractTruffleString a, boolean cacheResult, Encoding expectedEncoding);
 
         @Specialization(guards = "!a.isNative()")
-        static TruffleString managedImmutable(TruffleString a, Encoding expectedEncoding) {
+        static TruffleString managedImmutable(TruffleString a, @SuppressWarnings("unused") boolean cacheResult, Encoding expectedEncoding) {
+            CompilerAsserts.partialEvaluationConstant(cacheResult);
             a.checkEncoding(expectedEncoding);
             assert !(a.data() instanceof NativePointer);
             return a;
         }
 
-        @Specialization(guards = "a.isNative() || a.isMutable()")
-        static TruffleString nativeOrMutable(AbstractTruffleString a, Encoding expectedEncoding,
+        @Specialization(guards = "a.isNative()")
+        static TruffleString nativeImmutable(TruffleString a, boolean cacheResult, Encoding encoding,
+                        @Cached ConditionProfile cacheHit,
                         @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode fromBufferWithStringCompactionNode) {
+            CompilerAsserts.partialEvaluationConstant(cacheResult);
+            a.checkEncoding(encoding);
+            TruffleString cur = a.next;
+            assert !a.isJavaString();
+            if (cacheResult && cur != null) {
+                while (cur != a && (!cur.isManaged() || !cur.isCompatibleTo(encoding) || cur.isJavaString())) {
+                    cur = cur.next;
+                }
+                if (cacheHit.profile(cur != a)) {
+                    assert cur.isCompatibleTo(encoding) && cur.isManaged() && !cur.isJavaString();
+                    return cur;
+                }
+            }
+            TruffleString managed = fromBufferWithStringCompactionNode.execute(a, !cacheResult, encoding);
+            if (cacheResult) {
+                a.cacheInsert(managed);
+            }
+            return managed;
+        }
+
+        @Specialization
+        static TruffleString mutable(MutableTruffleString a, @SuppressWarnings("unused") boolean cacheResult, Encoding expectedEncoding,
+                        @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode fromBufferWithStringCompactionNode) {
+            CompilerAsserts.partialEvaluationConstant(cacheResult);
             a.checkEncoding(expectedEncoding);
             return fromBufferWithStringCompactionNode.execute(a, expectedEncoding);
         }
@@ -5757,7 +5803,8 @@ public final class TruffleString extends AbstractTruffleString {
          * @param cacheResult if set to {@code true}, the newly created native string will be cached
          *            in the given managed string's internal transcoding cache ring, guaranteeing
          *            that subsequent calls on the managed string return the same native string.
-         *            This parameter is expected to be
+         *            Note that this ties the lifetime of the native string to that of the managed
+         *            string. This parameter is expected to be
          *            {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
          *            evaluation constant}.
          *
@@ -5786,7 +5833,7 @@ public final class TruffleString extends AbstractTruffleString {
                     cur = cur.next;
                 }
                 if (cacheHit.profile(cur != a)) {
-                    assert cur.isCompatibleTo(encoding);
+                    assert cur.isCompatibleTo(encoding) && cur.isNative() && !cur.isJavaString() && cur.stride() == (useCompaction ? a.stride() : encoding.naturalStride);
                     return cur;
                 }
             }
