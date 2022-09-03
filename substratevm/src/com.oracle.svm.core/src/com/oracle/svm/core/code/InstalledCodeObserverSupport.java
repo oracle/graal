@@ -39,7 +39,9 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {
     private static final InstalledCodeObserverHandleAction ACTION_ATTACH = h -> getAccessor(h).attachToCurrentIsolate(h);
     private static final InstalledCodeObserverHandleAction ACTION_DETACH = h -> getAccessor(h).detachFromCurrentIsolate(h);

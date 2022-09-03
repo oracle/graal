@@ -32,7 +32,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton
 public class VMOperationListenerSupport {
     private VMOperationListener[] listeners;
 

@@ -24,21 +24,6 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.posix.headers.Pthread;
-import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
-import com.oracle.svm.core.stack.StackOverflowCheck;
-
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_PROT_READ;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_PROT_WRITE;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_REGION_BASIC_INFO_64;
@@ -47,6 +32,20 @@ import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_region;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.vm_region_basic_info_data_64_t;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.util.VMError;
+
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.OSSupport.class)
 class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
@@ -121,13 +120,5 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
             }
         }
         return stackaddr.subtract(stacksize);
-    }
-}
-
-@AutomaticFeature
-class DarwinStackOverflowSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StackOverflowCheck.OSSupport.class, new DarwinStackOverflowSupport());
     }
 }

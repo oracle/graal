@@ -40,7 +40,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
@@ -66,11 +65,6 @@ public class StubPortProcessor extends AbstractProcessor {
     static final String HTTPS_PROXY_ENV_VAR = "HTTPS_PROXY";
 
     static final int SEARCH_RANGE = 100;
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {

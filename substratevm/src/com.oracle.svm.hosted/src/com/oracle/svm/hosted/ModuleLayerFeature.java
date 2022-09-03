@@ -51,14 +51,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.BootModuleLayerSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -94,9 +92,8 @@ import com.oracle.svm.util.ReflectionUtil;
  * but that cannot be known in advance).
  * </p>
  */
-@AutomaticFeature
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class ModuleLayerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class ModuleLayerFeature implements InternalFeature {
     private Constructor<ModuleLayer> moduleLayerConstructor;
     private Field moduleLayerNameToModuleField;
     private Field moduleLayerParentsField;

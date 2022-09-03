@@ -28,13 +28,13 @@ import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.HOSTED_ONLY.class)
-class ForkJoinPoolFeature implements Feature {
+class ForkJoinPoolFeature implements InternalFeature {
 
     private final DeferredCommonPool commonPool = new DeferredCommonPool();
 

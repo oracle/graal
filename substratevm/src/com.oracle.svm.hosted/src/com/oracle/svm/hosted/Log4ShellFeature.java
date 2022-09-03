@@ -24,27 +24,26 @@
  */
 package com.oracle.svm.hosted;
 
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.stream.Stream;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * A feature that detects whether a native image may be vulnerable to Log4Shell.
@@ -53,8 +52,8 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
  * If a vulnerable version is detected, the feature will then check whether any vulnerable methods
  * are reachable.
  */
-@AutomaticFeature
-public class Log4ShellFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class Log4ShellFeature implements InternalFeature {
     private static final String log4jClassName = "org.apache.logging.log4j.Logger";
     private static final String log4jVulnerableErrorMessage = "Warning: A vulnerable version of log4j has been detected. Please update to log4j version 2.17.1 or later.%nVulnerable Method(s):";
     private static final String log4jUnknownVersion = "Warning: The log4j library has been detected, but the version is unavailable. Due to Log4Shell, please ensure log4j is at version 2.17.1 or later.";

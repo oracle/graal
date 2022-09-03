@@ -44,9 +44,9 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -300,7 +300,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(AARCH64.class)
 final class AArch64ArithmeticForeignCallsFeature implements InternalFeature {
     @Override

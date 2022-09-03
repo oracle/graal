@@ -26,20 +26,21 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.FatalErrorState;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-@AutomaticFeature
-class SubstrateDiagnosticFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class SubstrateDiagnosticFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(FatalErrorState.class, new FatalErrorState());

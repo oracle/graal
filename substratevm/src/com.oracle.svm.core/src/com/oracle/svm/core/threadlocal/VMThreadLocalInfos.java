@@ -33,17 +33,17 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.log.Log;
 
+@AutomaticallyRegisteredImageSingleton
 public class VMThreadLocalInfos {
     private VMThreadLocalInfo[] infos;
 
@@ -121,13 +121,5 @@ public class VMThreadLocalInfos {
             }
         }
         return -1;
-    }
-}
-
-@AutomaticFeature
-class VMThreadLocalInfosFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(VMThreadLocalInfos.class, new VMThreadLocalInfos());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,21 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.List;
+
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
-@AutomaticFeature
-public class IsolateListenerFeature implements Feature {
+/**
+ * For compatibility with legacy code.
+ */
+@AutomaticallyRegisteredFeature
+@Deprecated
+public class IsolateListenerFeature implements InternalFeature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(IsolateListenerSupport.class, new IsolateListenerSupport());
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(IsolateListenerSupportFeature.class);
     }
 }

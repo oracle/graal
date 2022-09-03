@@ -26,13 +26,13 @@ package com.oracle.svm.graal.isolated;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
@@ -75,8 +75,8 @@ final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality
     }
 }
 
-@AutomaticFeature
-final class IsolateAwareObjectConstantEqualityFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class IsolateAwareObjectConstantEqualityFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.supportCompileInIsolates();

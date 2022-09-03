@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.handles;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.impl.ObjectHandlesSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
-@AutomaticFeature
-public class ThreadListenerFeature implements Feature {
+@AutomaticallyRegisteredImageSingleton(ObjectHandlesSupport.class)
+class ObjectHandlesSupportImpl implements ObjectHandlesSupport {
+    final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl();
+
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ThreadListenerSupport.class, new ThreadListenerSupport());
+    public ObjectHandles getGlobalHandles() {
+        return globalHandles;
+    }
+
+    @Override
+    public ObjectHandles createHandles() {
+        return new ObjectHandlesImpl();
     }
 }

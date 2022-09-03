@@ -40,13 +40,10 @@ import java.util.Set;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
@@ -1756,18 +1753,4 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
             return DynamicHub.fromClass(clazz).getTypeID();
         }
     }
-}
-
-@AutomaticFeature
-class HeapDumpWriterFeature implements Feature {
-
-    @Override
-    public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            ImageSingletons.add(HeapDumpWriter.class, new UnimplementedHeapDumpWriter("Currently not supported for " + ImageSingletons.lookup(Platform.class)));
-        } else {
-            ImageSingletons.add(HeapDumpWriter.class, new HeapDumpWriterImpl());
-        }
-    }
-
 }

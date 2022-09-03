@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal;
+package com.oracle.svm.core.feature;
 
 import java.util.Map;
 

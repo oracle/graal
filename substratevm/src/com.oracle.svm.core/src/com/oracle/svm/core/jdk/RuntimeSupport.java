@@ -37,8 +37,10 @@ import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
 public final class RuntimeSupport implements VMRuntimeSupport {
     @FunctionalInterface
     public interface Hook {
@@ -63,13 +65,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     private final AtomicReference<Hook[]> tearDownHooks = new AtomicReference<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private RuntimeSupport() {
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void initializeRuntimeSupport() {
-        assert ImageSingletons.contains(RuntimeSupport.class) == false : "Initializing RuntimeSupport again.";
-        ImageSingletons.add(RuntimeSupport.class, new RuntimeSupport());
+    RuntimeSupport() {
     }
 
     @Fold

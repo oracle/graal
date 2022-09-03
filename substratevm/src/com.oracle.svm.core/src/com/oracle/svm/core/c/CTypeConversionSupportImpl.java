@@ -29,12 +29,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CTypeConversionSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -42,9 +39,11 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
 class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     static final CCharPointerHolder NULL_HOLDER = new CCharPointerHolder() {
@@ -184,13 +183,5 @@ final class CCharPointerHolderImpl implements CCharPointerHolder {
     @Override
     public void close() {
         cstring.close();
-    }
-}
-
-@AutomaticFeature
-class CTypeConversionFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CTypeConversionSupport.class, new CTypeConversionSupportImpl());
     }
 }

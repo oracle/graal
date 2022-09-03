@@ -35,22 +35,14 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
-@AutomaticFeature
-class NativeLibrarySupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        NativeLibrarySupport.initialize();
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton
 public final class NativeLibrarySupport {
     // Essentially a revised implementation of the relevant methods in OpenJDK's ClassLoader
 
@@ -58,10 +50,6 @@ public final class NativeLibrarySupport {
         boolean isBuiltinLibrary(String name);
 
         void initialize(NativeLibrary lib);
-    }
-
-    static void initialize() {
-        ImageSingletons.add(NativeLibrarySupport.class, new NativeLibrarySupport());
     }
 
     public static NativeLibrarySupport singleton() {
@@ -78,7 +66,7 @@ public final class NativeLibrarySupport {
 
     private LibraryInitializer libraryInitializer;
 
-    private NativeLibrarySupport() {
+    NativeLibrarySupport() {
     }
 
     @Platforms(HOSTED_ONLY.class)

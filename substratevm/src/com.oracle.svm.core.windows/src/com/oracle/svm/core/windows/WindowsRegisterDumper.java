@@ -26,14 +26,12 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.amd64.AMD64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
@@ -41,17 +39,13 @@ import com.oracle.svm.core.windows.headers.ErrHandlingAPI.CONTEXT;
 
 import jdk.vm.ci.amd64.AMD64;
 
-@AutomaticFeature
-class WindowsRegisterDumperFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+@AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
+class WindowsRegisterDumper implements RegisterDumper {
+    WindowsRegisterDumper() {
         VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
         VMError.guarantee(AMD64.r15.equals(AMD64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
-        ImageSingletons.add(RegisterDumper.class, new WindowsRegisterDumper());
     }
-}
 
-public class WindowsRegisterDumper implements RegisterDumper {
     @Override
     public void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         dumpRegisters(log, (CONTEXT) context, printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);

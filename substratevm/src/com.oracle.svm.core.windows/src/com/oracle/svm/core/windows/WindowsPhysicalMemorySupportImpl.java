@@ -24,35 +24,23 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 
-class WindowsPhysicalMemory extends PhysicalMemory {
+@AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
+class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
-    static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
-
-        @Override
-        public UnsignedWord size() {
-            SysinfoAPI.MEMORYSTATUSEX memStatusEx = StackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
-            memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));
-            SysinfoAPI.GlobalMemoryStatusEx(memStatusEx);
-            return WordFactory.unsigned(memStatusEx.ullTotalPhys());
-        }
-    }
-
-    @AutomaticFeature
-    static class PhysicalMemoryFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PhysicalMemorySupport.class, new WindowsPhysicalMemorySupportImpl());
-        }
+    @Override
+    public UnsignedWord size() {
+        SysinfoAPI.MEMORYSTATUSEX memStatusEx = StackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
+        memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));
+        SysinfoAPI.GlobalMemoryStatusEx(memStatusEx);
+        return WordFactory.unsigned(memStatusEx.ullTotalPhys());
     }
 }

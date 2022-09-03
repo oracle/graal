@@ -46,11 +46,11 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(AMD64.class)
 public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
 

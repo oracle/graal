@@ -1150,8 +1150,8 @@ libgraal_build_args = [
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.annotate=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
     ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
-    # LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature (needed to be able to instantiate LibGraalFeature)
-    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.graal=ALL-UNNAMED',
+    # LibGraalFeature implements com.oracle.svm.core.feature.InternalFeature (needed to be able to instantiate LibGraalFeature)
+    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
     # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
     '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
 

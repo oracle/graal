@@ -33,17 +33,18 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heapdump.HeapDumpUtils;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public class HeapDumpHostedUtils {
+class HeapDumpHostedUtils {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static byte[] dumpFieldsMap(Collection<? extends SharedType> types) {
@@ -143,8 +144,8 @@ public class HeapDumpHostedUtils {
     }
 }
 
-@AutomaticFeature
-class HeapDumpFieldsMapFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class HeapDumpFieldsMapFeature implements InternalFeature {
 
     /**
      * Write out fields info and their offsets.

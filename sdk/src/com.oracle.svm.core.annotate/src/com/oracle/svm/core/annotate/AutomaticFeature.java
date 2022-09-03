@@ -53,11 +53,16 @@ import org.graalvm.nativeimage.Platforms;
  * use {@code "--features <fqn.of.FeatureClass>"} in the {@code Args} of a
  * {@code native-image.properties} file to ensure a user-provided feature gets processed.
  *
- * Feature classes can use this annotation are unconditionally added when they are reachable on the
+ * Feature classes that use this annotation are unconditionally added when they are reachable on the
  * class path.
+ *
+ * This annotation is deprecated because a full scan of the class path is necessary to find
+ * annotated classes. This full classpath scanning will be removed in a future version of GraalVM,
+ * which means that this annotation needs to be removed then too.
  *
  * @since 22.3
  */
+@Deprecated(forRemoval = true)
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 @Platforms(Platform.HOSTED_ONLY.class)

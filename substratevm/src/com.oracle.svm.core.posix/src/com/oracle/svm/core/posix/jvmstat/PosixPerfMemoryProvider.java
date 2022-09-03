@@ -59,12 +59,11 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
@@ -72,6 +71,7 @@ import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
@@ -276,9 +276,9 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-class PosixPerfMemoryFeature implements Feature {
+class PosixPerfMemoryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return VMInspectionOptions.hasJvmstatSupport() && PerfDataMemoryMappedFile.getValue();

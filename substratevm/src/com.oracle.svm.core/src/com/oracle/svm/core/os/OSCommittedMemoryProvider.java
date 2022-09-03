@@ -32,16 +32,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
 public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -73,8 +73,8 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     }
 }
 
-@AutomaticFeature
-class OSCommittedMemoryProviderFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class OSCommittedMemoryProviderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {

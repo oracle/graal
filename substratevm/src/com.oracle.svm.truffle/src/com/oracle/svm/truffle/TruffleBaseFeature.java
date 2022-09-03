@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.feature.InternalFeature;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -130,7 +131,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link TruffleFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to the
  * {@link DefaultTruffleRuntime}.
  */
-public final class TruffleBaseFeature implements com.oracle.svm.core.graal.InternalFeature {
+public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public String getURL() {

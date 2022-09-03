@@ -24,24 +24,22 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -51,14 +49,7 @@ import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-class PosixSubstrateSegfaultHandlerFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateSegfaultHandler.class, new PosixSubstrateSegfaultHandler());
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton(SubstrateSegfaultHandler.class)
 class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)

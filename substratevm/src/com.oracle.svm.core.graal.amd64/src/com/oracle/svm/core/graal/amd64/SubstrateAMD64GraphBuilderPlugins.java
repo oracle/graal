@@ -39,13 +39,13 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
 public class SubstrateAMD64GraphBuilderPlugins implements InternalFeature {
 

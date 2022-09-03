@@ -31,14 +31,12 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedPatcher;
@@ -47,6 +45,8 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 
+@AutomaticallyRegisteredImageSingleton(HostedDirectCallTrampolineSupport.class)
+@Platforms(Platform.AMD64.class)
 public class AMD64HostedTrampolineSupport implements HostedDirectCallTrampolineSupport {
 
     @Override
@@ -114,15 +114,5 @@ public class AMD64HostedTrampolineSupport implements HostedDirectCallTrampolineS
         patcher.patch(trampolineStart, relativeAddress, code);
 
         return code;
-    }
-}
-
-@AutomaticFeature
-@Platforms({Platform.AMD64.class})
-class HostedTrampolineFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(HostedDirectCallTrampolineSupport.class, new AMD64HostedTrampolineSupport());
     }
 }

@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-@AutomaticFeature
-public class AnnotationTypeFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class AnnotationTypeFeature implements InternalFeature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {

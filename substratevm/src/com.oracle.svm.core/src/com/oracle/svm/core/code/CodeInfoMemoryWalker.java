@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton
 final class CodeInfoMemoryWalker implements MemoryWalker.CodeAccess<CodeInfo> {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -57,13 +56,5 @@ final class CodeInfoMemoryWalker implements MemoryWalker.CodeAccess<CodeInfo> {
     @Override
     public String getName(CodeInfo codeInfo) {
         return CodeInfoAccess.getName(codeInfo);
-    }
-}
-
-@AutomaticFeature
-class CodeInfoMemoryWalkerFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageSingletons.add(CodeInfoMemoryWalker.class, new CodeInfoMemoryWalker());
     }
 }

@@ -31,20 +31,20 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@AutomaticFeature
-public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {

@@ -36,21 +36,21 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-@AutomaticFeature
-public class ReachabilityHandlerFeature implements Feature, ReachabilityHandler {
+@AutomaticallyRegisteredFeature
+public class ReachabilityHandlerFeature implements InternalFeature, ReachabilityHandler {
 
     private final IdentityHashMap<Object, Set<Object>> activeHandlers = new IdentityHashMap<>();
     private final IdentityHashMap<Object, Map<Object, Set<Object>>> triggeredHandlers = new IdentityHashMap<>();

@@ -50,6 +50,7 @@ import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.feature.InternalFeature;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
@@ -164,7 +165,7 @@ class LibGraalOptions {
     static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
 }
 
-public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeature {
+public class LibGraalFeature implements InternalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 

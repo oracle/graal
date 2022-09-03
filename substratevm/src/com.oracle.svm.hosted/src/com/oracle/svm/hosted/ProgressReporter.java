@@ -73,13 +73,14 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
@@ -860,16 +861,6 @@ public class ProgressReporter {
         }
     }
 
-    @AutomaticFeature
-    public static class ProgressReporterFeature implements Feature {
-        private final ProgressReporter reporter = ProgressReporter.singleton();
-
-        @Override
-        public void duringAnalysis(DuringAnalysisAccess access) {
-            reporter.reportStageProgress();
-        }
-    }
-
     public abstract static class ReporterClosable implements AutoCloseable {
         @Override
         public void close() {
@@ -1406,5 +1397,15 @@ public class ProgressReporter {
         static final String YELLOW_BOLD = ESCAPE + "[1;33m";
         static final String BLUE_BOLD = ESCAPE + "[1;34m";
         static final String MAGENTA_BOLD = ESCAPE + "[1;35m";
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class ProgressReporterFeature implements InternalFeature {
+    private final ProgressReporter reporter = ProgressReporter.singleton();
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        reporter.reportStageProgress();
     }
 }

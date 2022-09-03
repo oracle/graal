@@ -28,11 +28,11 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * Tracks fields with constant values which could be inlined, but which must exist in memory -- for
@@ -69,8 +69,8 @@ public class MaterializedConstantFields {
     }
 }
 
-@AutomaticFeature
-class MaterializedConstantFieldsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class MaterializedConstantFieldsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         MaterializedConstantFields.initialize();

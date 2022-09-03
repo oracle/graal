@@ -33,9 +33,9 @@ import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(AARCH64.class)
 public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
 

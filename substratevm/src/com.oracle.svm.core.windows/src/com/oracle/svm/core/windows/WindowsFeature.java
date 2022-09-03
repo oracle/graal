@@ -25,16 +25,24 @@
 package com.oracle.svm.core.windows;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.headers.LibCSupport;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-class WindowsImageSingletonsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class WindowsFeature implements InternalFeature {
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(LibCSupport.class, new WindowsLibCSupport());
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new WindowsImageHeapProvider());
+        }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        Log.finalizeDefaultLogHandler(new WindowsLogHandler());
     }
 }

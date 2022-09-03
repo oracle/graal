@@ -33,15 +33,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.oracle.svm.core.jdk.RuntimeFeature;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.MetricsLogUtils;
 
 public final class AllocationSite {
@@ -212,11 +213,11 @@ public final class AllocationSite {
     }
 }
 
-@AutomaticFeature
-class AllocationProfilingFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class AllocationProfilingFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(RuntimeFeature.class);
+        return Collections.singletonList(RuntimeSupportFeature.class);
     }
 
     @Override

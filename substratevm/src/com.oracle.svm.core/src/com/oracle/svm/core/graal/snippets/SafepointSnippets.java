@@ -49,9 +49,9 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
@@ -100,7 +100,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 class SafepointFeature implements InternalFeature {
 
     @Override
