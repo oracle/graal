@@ -228,25 +228,27 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 killLoopLocations(thisLoopKilledLocations, blockMap);
             }
 
-            boolean insideLoop = hirLoop != null;
-            boolean unconditionallyInsideLoop = true;
-            if (insideLoop) {
+            boolean tryLICM = false;
+            LoopEx loopCandidate = null;
+            if (hirLoop != null && considerLICM) {
                 /*
                  * Check if LICM can be applied because we are in a tail counted loop or have code
                  * dominating the exit conditions.
                  */
+                tryLICM = true;
                 for (LoopExitNode lex : ((LoopBeginNode) hirLoop.getHeader().getBeginNode()).loopExits()) {
                     Block lexBLock = cfg.blockFor(lex);
-                    unconditionallyInsideLoop &= AbstractControlFlowGraph.strictlyDominates(b, lexBLock);
+                    tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, lexBLock);
                 }
                 for (Block loopBlock : hirLoop.getBlocks()) {
                     // if(sth) deopt patterns are also exits
                     if (loopBlock.getEndNode() instanceof ControlSinkNode) {
-                        unconditionallyInsideLoop &= AbstractControlFlowGraph.strictlyDominates(b, loopBlock);
+                        tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, loopBlock);
                     }
                 }
-            } else {
-                unconditionallyInsideLoop = false;
+                if (tryLICM) {
+                    loopCandidate = ld.loop(hirLoop);
+                }
             }
 
             // begin nodes can be memory kills
@@ -263,7 +265,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     FixedWithNextNode fwn = nodes.get(i);
                     // a previous GVN can remove this node
                     if (fwn != null) {
-                        procesNode(fwn, insideLoop, unconditionallyInsideLoop, considerLICM, thisLoopKilledLocations, hirLoop, blockMap, licmNodes, ld);
+                        procesNode(fwn, thisLoopKilledLocations, loopCandidate, blockMap, licmNodes, ld.getCFG());
                     }
                 }
             }
@@ -286,9 +288,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             }
         }
 
-        private static void procesNode(FixedWithNextNode cur, boolean insideLoop, boolean unconditionallyInsideLoop, boolean considerLICM, LocationSet thisLoopKilledLocations, Loop<Block> hirLoop,
-                        ValueMap blockMap, NodeBitMap licmNodes, LoopsData ld) {
-            final ControlFlowGraph cfg = ld.getCFG();
+        private static void procesNode(FixedWithNextNode cur, LocationSet thisLoopKilledLocations,
+                        LoopEx loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
+
             if (cur instanceof LoopExitNode) {
                 /*
                  * We exit a loop down this path, we have to account for the effects of the loop
@@ -297,13 +299,34 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                  * it touches.
                  */
                 final LoopBeginNode exitedLoop = ((LoopExitNode) cur).loopBegin();
-                final Loop<Block> loop = cfg.blockFor(exitedLoop).getLoop();
-                killLoopLocations(((HIRLoop) loop).getKillLocations(), blockMap);
+                killLoopLocations(((HIRLoop) cfg.blockFor(exitedLoop).getLoop()).getKillLocations(), blockMap);
             }
 
             if (MemoryKill.isMemoryKill(cur)) {
                 blockMap.killValuesByPotentialMemoryKill(cur);
                 return;
+            }
+
+            if (!canGVN(cur)) {
+                return;
+            }
+
+            boolean canSubsitute = blockMap.hasSubstitute(cur);
+            boolean canLICM = loopCandidate != null;
+            if (cur instanceof MemoryAccess) {
+                MemoryAccess access = (MemoryAccess) cur;
+                if (loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
+                    if (canSubsitute) {
+                        // loop kills this location, do not bother trying to figure out if parts can
+                        // be GVNed, let floating reads later handle that
+                        return;
+                    }
+                    canLICM = false;
+                }
+            }
+
+            if (canLICM) {
+                canLICM = nodeCanBeLifted(cur, loopCandidate, licmNodes);
             }
 
             /*
@@ -312,41 +335,14 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
              * a limited form of LICM for nodes that are dominated by the loop header and dominate
              * all exits. Such operations that are unconditionally executed in the particular loop.
              */
-            boolean canSubsitute = blockMap.hasSubstitute(cur);
             if (canSubsitute) {
-                if (cur instanceof MemoryAccess) {
-                    MemoryAccess access = (MemoryAccess) cur;
-                    if (insideLoop && loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                        // loop kills this location, do not bother trying to figure out if parts can
-                        // be GVNed, let floating reads later handle that
-                        return;
-                    } else {
-                        // GVN node
-                        blockMap.substitute(cur, cfg, licmNodes);
-                    }
-                } else {
-                    // GVN node
-                    if (canGVN(cur)) {
-                        blockMap.substitute(cur, cfg, licmNodes);
-                    }
-                }
+                // GVN node
+                blockMap.substitute(cur, cfg, licmNodes, canLICM ? loopCandidate : null);
             } else {
-                if (unconditionallyInsideLoop && considerLICM) {
-                    if (canGVN(cur)) {
-                        if (cur instanceof MemoryAccess) {
-                            MemoryAccess access = (MemoryAccess) cur;
-                            if (!loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                                // LICM of node
-                                tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
-                            }
-                        } else {
-                            tryPerformLICM(ld.loop(hirLoop), cur, licmNodes);
-                        }
-                    }
+                if (canLICM) {
+                    tryPerformLICM(loopCandidate, cur, licmNodes);
                 }
-                if (canGVN(cur)) {
-                    blockMap.rememberNodeForGVN(cur);
-                }
+                blockMap.rememberNodeForGVN(cur);
             }
         }
 
@@ -396,7 +392,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             fwn.setNext(next);
             n.graph().addBeforeFixed(loop.loopBegin().forwardEnd(), toLift);
             liftedNodes.checkAndMarkInc(toLift);
-            loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s", n);
+            loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s for loop %s", n, loop);
             earlyGVNLICM.increment(loop.loopBegin().getDebug());
             if (loop.loopBegin().getDebug().isCountEnabled()) {
                 DebugContext.counter(earlyGVNLICM.getName() + "_" + n.getClass().getSimpleName()).increment(n.graph().getDebug());
@@ -575,7 +571,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          * Perform actual global value numbering. Replace node {@code n} with an equal node (inputs
          * and data fields) up in the dominance chain.
          */
-        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes) {
+        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, LoopEx invariantInLoop) {
             Node edgeDataEqual = find(n);
             if (edgeDataEqual != null) {
                 assert edgeDataEqual.graph() != null;
@@ -591,6 +587,22 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                      */
                     assert defBlock.getLoop() != null;
                     defBlock = defBlock.getLoop().getHeader().getDominator();
+                }
+
+                if (invariantInLoop != null) {
+                    Block loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
+                    if (AbstractControlFlowGraph.strictlyDominates(loopDefBlock, defBlock)) {
+                        /*
+                         * The LICM location strictly dominates the GVN location so it must be the
+                         * final location. Move the GVN node to the LICM location and then perform
+                         * the substitution normally.
+                         */
+                        if (!tryPerformLICM(invariantInLoop, (FixedNode) edgeDataEqual, licmNodes)) {
+                            GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual);
+                        }
+                    } else {
+                        GraalError.guarantee(AbstractControlFlowGraph.dominates(defBlock, loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);
+                    }
                 }
 
                 Block useBlock = cfg.blockFor(n);
