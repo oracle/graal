@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.hotspot.meta.UnimplementedGraalIntrinsics;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Assume;
@@ -54,7 +54,7 @@ public class HotSpotGHASHTest extends HotSpotGraalCompilerTest {
     @Before
     public void init() {
         Architecture arch = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget().arch;
-        Assume.assumeTrue(UnimplementedGraalIntrinsics.supportsGHASHPlugins(arch));
+        Assume.assumeTrue(GHASHPlugin.isSupported(arch));
         try {
             classGHASH = Class.forName("com.sun.crypto.provider.GHASH");
             ghashConstructor = classGHASH.getDeclaredConstructor(byte[].class);

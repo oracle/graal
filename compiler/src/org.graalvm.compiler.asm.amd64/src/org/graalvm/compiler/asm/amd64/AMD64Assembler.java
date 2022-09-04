@@ -2150,6 +2150,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexRVMIOp extends VexOp {
         // @formatter:off
+        public static final VexRVMIOp VPINSRB      = new VexRVMIOp("VPINSRB",      P_66, M_0F3A, W0,  0x20, VEXOpAssertion.XMM_XMM_CPU);
+        public static final VexRVMIOp VPINSRW      = new VexRVMIOp("VPINSRW",      P_66, M_0F,   W0,  0xC4, VEXOpAssertion.XMM_XMM_CPU);
+        public static final VexRVMIOp VPINSRD      = new VexRVMIOp("VPINSRD",      P_66, M_0F3A, W0,  0x22, VEXOpAssertion.XMM_XMM_CPU);
+        public static final VexRVMIOp VPINSRQ      = new VexRVMIOp("VPINSRQ",      P_66, M_0F3A, W1,  0x22, VEXOpAssertion.XMM_XMM_CPU);
+
         public static final VexRVMIOp VSHUFPS      = new VexRVMIOp("VSHUFPS",      P_,   M_0F,   WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      W0);
         public static final VexRVMIOp VSHUFPD      = new VexRVMIOp("VSHUFPD",      P_66, M_0F,   WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      W1);
         public static final VexRVMIOp VPTERNLOGD   = new VexRVMIOp("VPTERNLOGD",   P_66, M_0F3A, W0,  0x25, VEXOpAssertion.AVX512F_VL,               EVEXTuple.FVM,      W0);
@@ -4464,6 +4469,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(src, Register.None, dst, SS, P_0F, false);
         emitByte(0x7F);
         emitOperandHelper(src, dst, 0);
+    }
+
+    public final void movdqa(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        simdPrefix(dst, Register.None, src, PD, P_0F, false);
+        emitByte(0x6F);
+        emitModRM(dst, src);
     }
 
     public final void movslq(AMD64Address dst, int imm32) {

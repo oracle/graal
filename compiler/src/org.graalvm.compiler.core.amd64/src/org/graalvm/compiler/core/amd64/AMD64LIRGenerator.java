@@ -100,6 +100,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
 import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
@@ -760,6 +761,21 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitAESDecrypt(Value from, Value to, Value key) {
         append(new AMD64AESDecryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public Variable emitCTRAESCrypt(Value inAddr, Value outAddr, Value kAddr, Value counterAddr, Value len, Value encryptedCounterAddr, Value usedPtr) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AMD64CounterModeAESCryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(counterAddr),
+                        asAllocatable(len),
+                        asAllocatable(encryptedCounterAddr),
+                        asAllocatable(usedPtr),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
     }
 
     @Override
