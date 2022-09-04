@@ -502,6 +502,7 @@ public class CompileQueue {
             phaseSuite.appendPhase(CanonicalizerPhase.create());
             phaseSuite.appendPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_PARSE_CANONICALIZATION));
         }
+        phaseSuite.appendPhase(CanonicalizerPhase.create());
         return phaseSuite;
     }
 
