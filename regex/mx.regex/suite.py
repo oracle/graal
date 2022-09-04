@@ -43,7 +43,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "20.3.8",
+  "version" : "20.3.7.1",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
