@@ -55,6 +55,16 @@ final class Target_jdk_internal_vm_Continuation__WithoutLoom {
     static boolean yield(Target_jdk_internal_vm_ContinuationScope scope) {
         throw VMError.shouldNotReachHere();
     }
+
+    @Substitute
+    static void pin() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Substitute
+    static void unpin() {
+        throw VMError.shouldNotReachHere();
+    }
 }
 
 @TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = LoomJDK.class)

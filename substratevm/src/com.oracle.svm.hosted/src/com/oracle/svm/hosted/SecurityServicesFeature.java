@@ -462,8 +462,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class));
+        } else {
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        }
         a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
                         method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
         a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
@@ -612,10 +617,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         Map<String, Set<Service>> availableServices = new HashMap<>();
         for (Provider provider : Security.getProviders()) {
             for (Service s : provider.getServices()) {
-                availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                if (isValid(s)) {
+                    availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                }
             }
         }
         return availableServices;
+    }
+
+    /**
+     * Check is service is valid. See {@code java.security.Provider.Service#isValid()}.
+     *
+     * Presumably, this is only needed due to an upstream bug introduced in JDK 19 [GR-40544].
+     */
+    private static boolean isValid(Service s) {
+        return (s.getType() != null) && (s.getAlgorithm() != null) && (s.getClassName() != null);
     }
 
     /**

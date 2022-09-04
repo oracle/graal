@@ -26,6 +26,7 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -37,16 +38,29 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
+
+@AutomaticallyRegisteredFeature
+@Platforms(Platform.WINDOWS.class)
+class WindowsNativeLibraryFeature implements InternalFeature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
+        }
+    }
+}
 
 @AutomaticallyRegisteredImageSingleton(PlatformNativeLibrarySupport.class)
 class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
@@ -85,6 +99,10 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
              */
         } else {
             NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
+        }
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
+            System.loadLibrary("extnet");
         }
     }
 

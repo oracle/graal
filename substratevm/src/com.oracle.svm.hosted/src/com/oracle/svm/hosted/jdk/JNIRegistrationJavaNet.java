@@ -50,66 +50,40 @@ import com.oracle.svm.util.ReflectionUtil;
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticallyRegisteredFeature
 class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeature {
-
-    private boolean hasExtendedOptionsImpl;
     private boolean hasPlatformSocketOptions;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        hasExtendedOptionsImpl = a.findClassByName("sun.net.ExtendedOptionsImpl") != null;
-        hasPlatformSocketOptions = a.findClassByName("jdk.net.ExtendedSocketOptions$PlatformSocketOptions") != null;
-
+        /* jdk.net.ExtendedSocketOptions is only available if the jdk.net module is loaded. */
+        this.hasPlatformSocketOptions = a.findClassByName("jdk.net.ExtendedSocketOptions$PlatformSocketOptions") != null;
         rerunClassInit(a, "java.net.DatagramPacket", "java.net.InetAddress", "java.net.NetworkInterface",
                         /* Stores a default SSLContext in a static field. */
                         "javax.net.ssl.SSLContext");
-        if (JavaVersionUtil.JAVA_SPEC <= 17) {
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
             /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
             rerunClassInit(a, "java.net.SocketInputStream", "java.net.SocketOutputStream",
                             /* Caches networking properties. */
                             "java.net.DefaultDatagramSocketImplFactory");
-        }
-        if (isWindows()) {
-            rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC <= 17) {
-                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+            if (isWindows()) {
                 /* Caches networking properties. */
-                rerunClassInit(a, "java.net.PlainSocketImpl");
-            }
-        } else {
-            assert isPosix();
-            if (JavaVersionUtil.JAVA_SPEC <= 17) {
-                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
+                rerunClassInit(a, "java.net.PlainSocketImpl", "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
+            } else {
+                assert isPosix();
                 rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
-            }
-            if (hasExtendedOptionsImpl) {
-                rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
-            }
-
-            if (JavaVersionUtil.JAVA_SPEC <= 17) {
-                /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
                 rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
             }
+        }
 
-            if (hasPlatformSocketOptions) {
-                /*
-                 * The libextnet was actually introduced in Java 9, but the support for Linux and
-                 * Darwin was added later in Java 10 and Java 11 respectively.
-                 */
-                rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
-                /*
-                 * Different JDK versions are not consistent about the "ext" in the package name. We
-                 * need to support both variants.
-                 */
-                if (a.findClassByName("sun.net.ext.ExtendedSocketOptions") != null) {
-                    rerunClassInit(a, "sun.net.ext.ExtendedSocketOptions");
-                } else {
-                    rerunClassInit(a, "sun.net.ExtendedSocketOptions");
-                }
-            }
-            if (isDarwin()) {
-                /* Caches the default interface. */
-                rerunClassInit(a, "java.net.DefaultInterface");
-            }
+        if (this.hasPlatformSocketOptions && (isPosix() || JavaVersionUtil.JAVA_SPEC >= 19)) {
+            /*
+             * The libextnet was actually introduced in Java 9, but the support for Linux, Darwin
+             * and Windows was added later in Java 10, Java 11 and Java 19 respectively.
+             */
+            rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "sun.net.ext.ExtendedSocketOptions");
+        }
+        if (isDarwin()) {
+            /* Caches the default interface. */
+            rerunClassInit(a, "java.net.DefaultInterface");
         }
     }
 
@@ -184,16 +158,10 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                                 method(a, "java.net.PlainSocketImpl", "localAddress", int.class, clazz(a, "java.net.InetAddressContainer")));
             }
         }
-        if (isPosix()) {
-            if (hasExtendedOptionsImpl) {
-                a.registerReachabilityHandler(JNIRegistrationJavaNet::registerExtendedOptionsImplInit,
-                                method(a, "sun.net.ExtendedOptionsImpl", "init"));
-            }
-            if (hasPlatformSocketOptions) {
-                /* Support for the libextnet. */
-                a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
-                                method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
-            }
+        if (this.hasPlatformSocketOptions && (isPosix() || JavaVersionUtil.JAVA_SPEC >= 19)) {
+            /* Support for the libextnet. */
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
+                            method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
         }
 
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit, method(a, "sun.net.spi.DefaultProxySelector", "init"));
@@ -310,14 +278,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         RuntimeJNIAccess.register(fields(a, "java.net.InetAddressContainer", "addr"));
     }
 
-    private static void registerExtendedOptionsImplInit(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "jdk.net.SocketFlow"));
-        RuntimeJNIAccess.register(fields(a, "jdk.net.SocketFlow", "status", "priority", "bandwidth"));
-
-        RuntimeJNIAccess.register(clazz(a, "jdk.net.SocketFlow$Status"));
-        RuntimeJNIAccess.register(fields(a, "jdk.net.SocketFlow$Status", "NO_STATUS", "OK", "NO_PERMISSION", "NOT_CONNECTED", "NOT_SUPPORTED", "ALREADY_CREATED", "IN_PROGRESS", "OTHER"));
-    }
-
     private static void registerPlatformSocketOptionsCreate(DuringAnalysisAccess a) {
         String implClassName;
         if (isLinux()) {
@@ -325,7 +285,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         } else if (isDarwin()) {
             implClassName = "jdk.net.MacOSXSocketOptions";
         } else {
-            throw VMError.shouldNotReachHere("Unexpected platform");
+            VMError.guarantee(isWindows(), "Unexpected platform");
+            implClassName = "jdk.net.WindowsSocketOptions";
         }
         RuntimeReflection.register(clazz(a, implClassName));
         RuntimeReflection.register(constructor(a, implClassName));
