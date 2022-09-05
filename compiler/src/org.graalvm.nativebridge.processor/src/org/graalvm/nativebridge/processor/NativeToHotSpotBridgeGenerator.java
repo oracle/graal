@@ -44,6 +44,7 @@ import org.graalvm.nativebridge.processor.NativeToHotSpotBridgeParser.TypeCache;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -942,11 +943,101 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             }
 
             @Override
+            boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput, CharSequence jniEnvFieldName,
+                            Map<String, CharSequence> parameterValueOverrides) {
+                if (parameterType.getKind() == TypeKind.ARRAY) {
+                    TypeMirror hsParameterType = jniTypeForJavaType(getEndPointMethodParameterType(parameterType), types, cache);
+                    CharSequence targetArrayVariable = Utilities.javaMemberName("hs", parameterName);
+                    currentBuilder.lineStart().write(hsParameterType).space().write(targetArrayVariable).lineEnd(";");
+                    currentBuilder.lineStart("if (").write(parameterName).write(" != null) ").lineEnd("{");
+                    currentBuilder.indent();
+                    TypeMirror componentType = ((ArrayType) parameterType).getComponentType();
+                    AnnotationMirror in = findIn(marshallerData.annotations);
+                    AnnotationMirror out = findOut(marshallerData.annotations);
+                    CharSequence arrayLength = null;
+                    CharSequence arrayOffsetParameter = null;
+                    if (in != null) {
+                        arrayLength = getArrayLengthParameterName(in);
+                        arrayOffsetParameter = getArrayOffsetParameterName(in);
+                    } else if (out != null) {
+                        arrayLength = getArrayLengthParameterName(out);
+                        arrayOffsetParameter = getArrayOffsetParameterName(out);
+                    }
+                    if (arrayLength == null) {
+                        arrayLength = new CodeBuilder(currentBuilder).memberSelect(parameterName, "length", false).build();
+                    }
+                    if (arrayOffsetParameter != null) {
+                        parameterValueOverrides.put(arrayOffsetParameter.toString(), "0");
+                    }
+                    boolean needsCopy = out == null || in != null;
+                    if (marshallerData.sameDirection) {
+                        generateCopyHSObjectArrayToHotSpot(currentBuilder, componentType, targetArrayVariable, needsCopy, parameterName, arrayOffsetParameter, arrayLength, jniEnvFieldName,
+                                        (arrayElement) -> marshallParameter(currentBuilder, componentType, arrayElement, null, jniEnvFieldName));
+                    } else {
+                        // TODO
+                    }
+                    currentBuilder.dedent();
+                    currentBuilder.line("} else {");
+                    currentBuilder.indent();
+                    currentBuilder.lineStart(targetArrayVariable).write(" = ").invokeStatic(cache.wordFactory, "nullPointer").lineEnd(";");
+                    currentBuilder.dedent();
+                    currentBuilder.line("}");
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
             CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence marshalledParametersOutput, CharSequence jniEnvFieldName) {
+                if (parameterType.getKind() == TypeKind.ARRAY) {
+                    if (marshallerData.sameDirection) {
+                        // Already marshalled by preMarshallParameter, return the target hotspot
+                        // object array.
+                        return Utilities.javaMemberName("hs", formalParameter);
+                    } else {
+                        return formalParameter;
+                    }
+                }
                 if (marshallerData.sameDirection) {
                     return marshallNativeToHotSpotProxyInNative(currentBuilder, formalParameter);
                 } else {
                     return marshallHotSpotToNativeProxyInNative(currentBuilder, formalParameter);
+                }
+            }
+
+            @Override
+            void postMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence receiver, CharSequence marshalledParametersInput,
+                            CharSequence jniEnvFieldName, CharSequence resultVariableName) {
+                if (parameterType.getKind() == TypeKind.ARRAY) {
+                    if (parameterType.getKind() == TypeKind.ARRAY) {
+                        AnnotationMirror out = findOut(marshallerData.annotations);
+                        if (out != null) {
+                            // Out parameter. We need to copy the content from buffer to array.
+                            currentBuilder.lineStart("if (").write(parameterName).write(" != null) ").lineEnd("{");
+                            currentBuilder.indent();
+                            CharSequence sourceArrayVariable = Utilities.javaMemberName("hs", parameterName);
+                            TypeMirror componentType = ((ArrayType) parameterType).getComponentType();
+                            boolean trimToResult = trimToResult(out);
+                            CharSequence arrayLength;
+                            if (trimToResult) {
+                                arrayLength = resultVariableName;
+                            } else {
+                                arrayLength = getArrayLengthParameterName(out);
+                            }
+                            if (arrayLength == null) {
+                                arrayLength = new CodeBuilder(currentBuilder).memberSelect(parameterName, "length", false).build();
+                            }
+                            CharSequence arrayOffsetParameter = getArrayOffsetParameterName(out);
+                            if (marshallerData.sameDirection) {
+                                generateCopyHotSpotToHSObjectArray(currentBuilder, parameterName, arrayOffsetParameter, arrayLength, sourceArrayVariable, null, jniEnvFieldName,
+                                                (element) -> unmarshallResult(currentBuilder, componentType, element, receiver, null, jniEnvFieldName));
+                            } else {
+                                // TODO
+                            }
+                            currentBuilder.dedent();
+                            currentBuilder.line("}");
+                        }
+                    }
                 }
             }
 

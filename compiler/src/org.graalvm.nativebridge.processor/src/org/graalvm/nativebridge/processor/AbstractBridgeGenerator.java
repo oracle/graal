@@ -44,6 +44,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
@@ -522,6 +523,55 @@ abstract class AbstractBridgeGenerator {
         static boolean trimToResult(AnnotationMirror annotation) {
             Boolean value = (Boolean) AbstractBridgeParser.getAnnotationValue(annotation, "trimToResult");
             return value != null && value;
+        }
+
+        final void generateCopyHSObjectArrayToHotSpot(CodeBuilder currentBuilder, TypeMirror guestArrayComponentType,
+                        CharSequence hsTargetArrayVariable, boolean copyContent, CharSequence guestArray,
+                        CharSequence guestArrayOffsetSnippet, CharSequence guestArrayLengthSnippet,
+                        CharSequence jniEnvFieldName, Function<CharSequence, CharSequence> marshallFunction) {
+            CharSequence nullptr = new CodeBuilder(currentBuilder).invokeStatic(cache.wordFactory, "nullPointer").build();
+            CharSequence componentTypeCanonicalName = new CodeBuilder(currentBuilder).invoke(new CodeBuilder(currentBuilder).classLiteral(guestArrayComponentType).build(),
+                            "getCanonicalName").build();
+            CharSequence componentTypeBinaryName = new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "getBinaryName", componentTypeCanonicalName).build();
+            CharSequence hsArrayComponentType = new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "findClass", jniEnvFieldName, nullptr, componentTypeBinaryName, "true").build();
+            currentBuilder.lineStart(hsTargetArrayVariable).write(" = ").invokeStatic(cache.jniUtil, "NewObjectArray", jniEnvFieldName, guestArrayLengthSnippet, hsArrayComponentType,
+                            nullptr).lineEnd(";");
+            if (copyContent) {
+                CharSequence indexVariable = hsTargetArrayVariable + "Index";
+                currentBuilder.lineStart().forLoop(List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(indexVariable).write(" = 0").build()),
+                                new CodeBuilder(currentBuilder).write(indexVariable).write(" < ").write(guestArrayLengthSnippet).build(),
+                                List.of(new CodeBuilder(currentBuilder).write(indexVariable).write("++").build())).lineEnd(" {");
+                currentBuilder.indent();
+                CharSequence hsResultElementVariable = hsTargetArrayVariable + "Element";
+                CharSequence guestArrayPosition = guestArrayOffsetSnippet != null ? new CodeBuilder(currentBuilder).write(guestArrayOffsetSnippet).write(" + ").write(indexVariable).build()
+                                : indexVariable;
+                CharSequence arrayElement = new CodeBuilder(currentBuilder).arrayElement(guestArray, guestArrayPosition).build();
+                CharSequence value = marshallFunction.apply(arrayElement);
+                currentBuilder.lineStart().write(cache.jObject).space().write(hsResultElementVariable).write(" = ").write(value).lineEnd(";");
+                currentBuilder.lineStart().invokeStatic(cache.jniUtil, "SetObjectArrayElement", jniEnvFieldName, hsTargetArrayVariable, indexVariable, hsResultElementVariable).lineEnd(";");
+                currentBuilder.dedent();
+                currentBuilder.line("}");
+            }
+        }
+
+        final void generateCopyHotSpotToHSObjectArray(CodeBuilder currentBuilder, CharSequence guestTargetArrayVariable, CharSequence guestArrayOffsetSnippet, CharSequence guestArrayLengthSnippet,
+                        CharSequence hsArray, CharSequence hsArrayOffsetSnippet, CharSequence jniEnvFieldName, Function<CharSequence, CharSequence> marshallFunction) {
+            String arrayIndexVariable = guestTargetArrayVariable + "Index";
+            currentBuilder.lineStart().forLoop(
+                            List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(arrayIndexVariable).write(" = 0").build()),
+                            new CodeBuilder(currentBuilder).write(arrayIndexVariable).write(" < ").write(guestArrayLengthSnippet).build(),
+                            List.of(new CodeBuilder(currentBuilder).write(arrayIndexVariable).write("++").build())).lineEnd(" {");
+            currentBuilder.indent();
+            String arrayElementVariable = guestTargetArrayVariable + "Element";
+            CharSequence sourceIndex = hsArrayOffsetSnippet == null ? arrayIndexVariable
+                            : new CodeBuilder(currentBuilder).write(hsArrayOffsetSnippet).write(" + ").write(arrayIndexVariable).build();
+            CharSequence sinkIndex = guestArrayOffsetSnippet == null ? arrayIndexVariable
+                            : new CodeBuilder(currentBuilder).write(guestArrayOffsetSnippet).write(" + ").write(arrayIndexVariable).build();
+            currentBuilder.lineStart().write(cache.jObject).space().write(arrayElementVariable).write(" = ").invokeStatic(cache.jniUtil, "GetObjectArrayElement", jniEnvFieldName, hsArray,
+                            sourceIndex).lineEnd(";");
+            currentBuilder.lineStart().arrayElement(guestTargetArrayVariable, sinkIndex).write(" = ").write(marshallFunction.apply(arrayElementVariable)).lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
         }
     }
 
