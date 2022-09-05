@@ -49,38 +49,38 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     LookupProxyKlassNode() {
     }
 
-    public abstract ObjectKlass execute(Object metaObject, int metaIdentity, Klass targetType) throws ClassCastException;
+    public abstract ObjectKlass execute(Object metaObject, String metaName, Klass targetType) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"targetType == cachedTargetType", "metaIdentity == cachedIdentity", "interop.isIdentical(metaObject, cachedMetaObject, interop)"}, limit = "LIMIT")
-    ObjectKlass doCached(Object metaObject, int metaIdentity, Klass targetType,
+    @Specialization(guards = {"targetType == cachedTargetType", "metaName == cachedMetaName"}, limit = "LIMIT")
+    ObjectKlass doCached(Object metaObject, String metaName, Klass targetType,
                     @Cached("metaObject") Object cachedMetaObject,
                     @Cached("targetType") Klass cachedTargetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached("metaIdentity") int cachedIdentity,
-                    @Cached("doUncached(metaObject, metaIdentity, targetType, interop)") ObjectKlass cachedProxyKlass) throws ClassCastException {
-        assert cachedProxyKlass == doUncached(metaObject, metaIdentity, targetType, interop);
+                    @Cached("metaName") String cachedMetaName,
+                    @Cached("doUncached(metaObject, metaName, targetType, interop)") ObjectKlass cachedProxyKlass) throws ClassCastException {
+        assert cachedProxyKlass == doUncached(metaObject, metaName, targetType, interop);
         return cachedProxyKlass;
     }
 
     @TruffleBoundary
     @Specialization(replaces = "doCached")
-    ObjectKlass doUncached(Object metaObject, int metaIdentity, Klass targetType,
+    ObjectKlass doUncached(Object metaObject, String metaName, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
         if (!getContext().interfaceMappingsEnabled()) {
             return null;
         }
         assert interop.isMetaObject(metaObject);
-        EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes = getContext().getProxyBytesOrNull(metaIdentity);
+        EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes = getContext().getProxyBytesOrNull(metaName);
         if (proxyBytes == null) {
             // cache miss
             Set<ObjectKlass> parentInterfaces = new HashSet<>();
             fillParentInterfaces(metaObject, interop, getContext().getPolyglotInterfaceMappings(), parentInterfaces);
             if (parentInterfaces.isEmpty()) {
-                getContext().registerProxyBytes(metaIdentity, null);
+                getContext().registerProxyBytes(metaName, null);
                 return null;
             }
-            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaIdentity, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), getContext());
+            proxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(metaName, parentInterfaces.toArray(new ObjectKlass[parentInterfaces.size()]), getContext());
         }
 
         Klass proxyKlass = lookupOrDefineInBindingsLoader(proxyBytes, getContext());

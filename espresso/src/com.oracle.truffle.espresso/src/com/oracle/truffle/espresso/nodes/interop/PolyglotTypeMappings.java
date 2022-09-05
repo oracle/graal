@@ -43,21 +43,17 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class PolyglotTypeMappings {
 
-    private final TypeConverter emptyConverter = new TypeConverter(null, null);
-
     private static final String GUEST_TYPE_CONVERSION_INTERFACE = "com.oracle.truffle.espresso.polyglot.GuestTypeConversion";
     private final boolean hasInterfaceMappings;
     private final List<String> interfaceMappings;
     private UnmodifiableEconomicMap<String, ObjectKlass> resolvedKlasses;
     private final OptionMap<String> typeConverters;
     private UnmodifiableEconomicMap<String, TypeConverter> typeConverterFunctions;
-    private Map<Integer, TypeConverter> identityConverterCache;
 
     public PolyglotTypeMappings(List<String> interfaceMappings, OptionMap<String> typeConverters) {
         this.interfaceMappings = interfaceMappings;
         this.hasInterfaceMappings = !interfaceMappings.isEmpty();
         this.typeConverters = typeConverters;
-        this.identityConverterCache = new ConcurrentHashMap<>(typeConverters.entrySet().size());
     }
 
     @TruffleBoundary
@@ -133,22 +129,11 @@ public class PolyglotTypeMappings {
     }
 
     @TruffleBoundary
-    public TypeConverter mapTypeConversion(Object metaObject, int identity, InteropLibrary interop) {
+    public TypeConverter mapTypeConversion(String metaName) {
         if (typeConverterFunctions == null) {
             return null;
         }
-        TypeConverter converter = identityConverterCache.get(identity);
-        if (converter == null) {
-            String metaName = ToEspressoNode.getMetaName(metaObject, interop);
-            converter = typeConverterFunctions.get(metaName);
-            if (converter == null) {
-                identityConverterCache.put(identity, emptyConverter);
-                return null;
-            } else {
-                identityConverterCache.put(identity, converter);
-            }
-        }
-        return converter != emptyConverter ? converter : null;
+        return typeConverterFunctions.get(metaName);
     }
 
     public final class TypeConverter {
@@ -161,9 +146,6 @@ public class PolyglotTypeMappings {
         }
 
         public Object convert(StaticObject foreign) {
-            if (this == emptyConverter) {
-                return foreign;
-            }
             return callNode.call(receiver, foreign);
         }
     }

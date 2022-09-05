@@ -1094,17 +1094,17 @@ public final class EspressoContext {
         return getEspressoEnv().getPolyglotTypeMappings();
     }
 
-    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(int metaIdentity) {
+    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String metaName) {
         if (getEspressoEnv().getProxyCache() != null) {
-            return getEspressoEnv().getProxyCache().get(metaIdentity);
+            return getEspressoEnv().getProxyCache().get(metaName);
         } else {
             return null;
         }
     }
 
-    public void registerProxyBytes(int metaIdentity, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
+    public void registerProxyBytes(String metaName, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
         if (getEspressoEnv().getProxyCache() != null) {
-            getEspressoEnv().getProxyCache().put(metaIdentity, generatedProxyBytes);
+            getEspressoEnv().getProxyCache().put(metaName, generatedProxyBytes);
         } else {
             throw EspressoError.shouldNotReachHere();
         }

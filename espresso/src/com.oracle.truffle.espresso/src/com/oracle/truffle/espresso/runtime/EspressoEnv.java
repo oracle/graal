@@ -102,7 +102,7 @@ public final class EspressoEnv {
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode JImageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
-    private final HashMap<Integer, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
+    private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -223,7 +223,7 @@ public final class EspressoEnv {
         return polyglotTypeMappings;
     }
 
-    public HashMap<Integer, EspressoForeignProxyGenerator.GeneratedProxyBytes> getProxyCache() {
+    public HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> getProxyCache() {
         return proxyCache;
     }
 

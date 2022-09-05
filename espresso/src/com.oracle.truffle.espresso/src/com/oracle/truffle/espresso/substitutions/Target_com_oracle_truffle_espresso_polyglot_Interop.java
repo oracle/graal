@@ -1972,7 +1972,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 try {
                     Object metaObject = exceptionInterop.getMetaObject(ex);
-                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaObject, exceptionInterop.identityHashCode(ex));
+                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
                     if (converter == null) {
                         // no conversion, so throw the original exception
                         throw ex;
@@ -2199,7 +2199,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 try {
                     Object metaObject = exceptionInterop.getMetaObject(ex);
-                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaObject, exceptionInterop.identityHashCode(ex));
+                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
                     if (converter == null) {
                         // no conversion, so throw the original exception
                         throw ex;
