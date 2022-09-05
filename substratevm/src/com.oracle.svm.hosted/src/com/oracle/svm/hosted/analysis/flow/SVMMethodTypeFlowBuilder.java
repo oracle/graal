@@ -38,19 +38,15 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
-import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
@@ -174,38 +170,13 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
     @Override
     protected boolean delegateNodeProcessing(FixedNode n, TypeFlowsOfNodes state) {
-        if (n instanceof LoadVMThreadLocalNode) {
-            LoadVMThreadLocalNode node = (LoadVMThreadLocalNode) n;
-            Stamp stamp = node.stamp(NodeView.DEFAULT);
-            if (stamp instanceof ObjectStamp) {
-                ObjectStamp objStamp = (ObjectStamp) stamp;
-                VMError.guarantee(!objStamp.isEmpty());
-
-                TypeFlowBuilder<?> result;
-                if (objStamp.isExactType()) {
-                    /*
-                     * The node has an exact type. Create a source type flow. This works with
-                     * allocation site sensitivity because the StoreVMThreadLocal is modeled by
-                     * writing the objects to the all-instantiated.
-                     */
-                    result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                        SourceTypeFlow src = new SourceTypeFlow(sourcePosition(node), TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
-                        flowsGraph.addMiscEntryFlow(src);
-                        return src;
-                    });
-                } else {
-                    /* Use a type state which consists of the entire node's type hierarchy. */
-                    AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
-                    result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), type.getTypeFlow(bb, true));
-                        flowsGraph.addMiscEntryFlow(proxy);
-                        return proxy;
-                    });
-                }
-                state.add(node, result);
-                return true;
-            }
-        } else if (n instanceof StoreVMThreadLocalNode) {
+        /*
+         * LoadVMThreadLocalNode is handled by the default node processing in
+         * MethodTypeFlowBuilder.TypeFlowsOfNodes.lookup(), i.e., it creates a source type flow when
+         * the node has an exact type. This works with allocation site sensitivity because the
+         * StoreVMThreadLocal is modeled by writing the objects to the all-instantiated.
+         */
+        if (n instanceof StoreVMThreadLocalNode) {
             StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getValue());
             return true;

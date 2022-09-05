@@ -32,7 +32,6 @@ import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -55,11 +54,6 @@ public class ServiceProviderProcessor extends AbstractProcessor {
     private static final String SERVICE_PROVIDER_CLASS_NAME = "org.graalvm.compiler.serviceprovider.ServiceProvider";
     private final Set<TypeElement> processed = new HashSet<>();
     private final Map<TypeElement, String> serviceProviders = new HashMap<>();
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     private boolean verifyAnnotation(TypeMirror serviceInterface, TypeElement serviceProvider) {
         if (!processingEnv.getTypeUtils().isSubtype(serviceProvider.asType(), serviceInterface)) {

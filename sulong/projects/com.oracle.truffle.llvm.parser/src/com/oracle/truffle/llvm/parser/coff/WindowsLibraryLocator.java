@@ -69,6 +69,12 @@ public final class WindowsLibraryLocator extends LibraryLocator {
             return file;
         }
 
+        // finally try the global directory
+        file = DefaultLibraryLocator.locateGlobal(context, lib);
+        if (file != null) {
+            return file;
+        }
+
         return null;
     }
 }

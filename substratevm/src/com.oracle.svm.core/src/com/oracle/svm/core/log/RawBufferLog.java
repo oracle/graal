@@ -28,7 +28,7 @@ package com.oracle.svm.core.log;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 
 public class RawBufferLog extends RealLog {
 

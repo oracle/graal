@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,7 @@ public class InsightInstrument extends TruffleInstrument {
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
     final IgnoreSources ignoreSources = new IgnoreSources();
-    final ContextLocal<InsightPerContext> perContextData;
+    private final ContextLocal<InsightPerContext> perContextData;
     private Env env;
     /** @GuardedBy("keys" */
     private final BitSet keys = new BitSet();
@@ -82,7 +82,7 @@ public class InsightInstrument extends TruffleInstrument {
 
     public InsightInstrument() {
         this.perContextData = createContextLocal((context) -> {
-            return new InsightPerContext(this, context);
+            return new InsightPerContext(this);
         });
         this.keysUnchanged = Truffle.getRuntime().createAssumption();
     }

@@ -96,10 +96,14 @@ import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.MetricKey;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.CompilationTask;
+import org.graalvm.compiler.hotspot.CompileTheWorldFuzzedSuitesCompilationTask;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotFuzzedSuitesProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotLoadedSuitesProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibGraalParams.OptionsBuffer;
 import org.graalvm.compiler.hotspot.test.CompileTheWorld.LibGraalParams.StackTraceBuffer;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -1370,7 +1374,12 @@ public final class CompileTheWorld {
             } else {
                 int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
-                CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+                CompilationTask task;
+                if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
+                    task = new CompileTheWorldFuzzedSuitesCompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+                } else {
+                    task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+                }
                 task.runCompilation(compilerOptions);
                 installedCode = task.getInstalledCode();
             }
@@ -1418,6 +1427,8 @@ public final class CompileTheWorld {
         public static final OptionKey<Integer> MetricsReportLimit = new OptionKey<>(10);
         public static final OptionKey<Integer> Threads = new OptionKey<>(0);
         public static final OptionKey<Boolean> InvalidateInstalledCode = new OptionKey<>(true);
+        public static final OptionKey<Boolean> FuzzPhasePlan = new OptionKey<>(false);
+        public static final OptionKey<String> LoadPhasePlan = new OptionKey<>(null);
 
         // @formatter:off
         static final ReflectionOptionDescriptors DESCRIPTORS = new ReflectionOptionDescriptors(Options.class,
@@ -1448,7 +1459,10 @@ public final class CompileTheWorld {
                   "StatsInterval", "Report progress stats every N seconds.",
              "MetricsReportLimit", "Max number of entries to show in per-metric reports.",
                         "Threads", "Number of threads to use for multithreaded execution. Defaults to Runtime.getRuntime().availableProcessors().",
-        "InvalidateInstalledCode", "Invalidate the generated code so the code cache doesn't fill up.");
+        "InvalidateInstalledCode", "Invalidate the generated code so the code cache doesn't fill up.",
+                  "FuzzPhasePlan", "Use a different fuzzed phase plan for each compilation.",
+                  "LoadPhasePlan", "Load the phase plan from the given file." +
+                                   "This requires MethodFilter to have a defined value.");
         // @formatter:on
     }
 
@@ -1474,8 +1488,19 @@ public final class CompileTheWorld {
 
     public static void main(String[] args) throws Throwable {
         HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         OptionValues harnessOptions = loadHarnessOptions();
+
+        String phasePlanFile = Options.LoadPhasePlan.getValue(harnessOptions);
+        if (phasePlanFile != null) {
+            assert Options.MethodFilter.getValue(harnessOptions) != null : "A MethodFilter should be provided.";
+            graalRuntime.getHostBackend().getProviders().setSuites(
+                            new HotSpotLoadedSuitesProvider((HotSpotSuitesProvider) graalRuntime.getHostBackend().getProviders().getSuites(), phasePlanFile));
+        } else if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
+            graalRuntime.getHostBackend().getProviders().setSuites(new HotSpotFuzzedSuitesProvider((HotSpotSuitesProvider) graalRuntime.getHostBackend().getProviders().getSuites()));
+        }
 
         int iterations = Options.Iterations.getValue(harnessOptions);
         for (int i = 0; i < iterations; i++) {

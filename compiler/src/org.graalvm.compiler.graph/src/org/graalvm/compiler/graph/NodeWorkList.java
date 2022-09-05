@@ -73,6 +73,36 @@ public abstract class NodeWorkList implements Iterable<Node> {
         }
     }
 
+    /**
+     * A data structure for visiting nodes in a graph iteratively. Each node added to the worklist
+     * can be visited multiple times. New nodes to visit can be added during the iteration.
+     * </p>
+     *
+     * Nodes are only re-added to the worklist if they are not already enqueued for a future visit.
+     * Therefore calling {@link #add} with a node ensures that that node will be visited in the
+     * future, but the total number of visits may be less than the number of {@link #add} calls.
+     * </p>
+     *
+     * Iteration stops after enumeration of {@code iterationLimitPerNode * graph.getNodeCount()}
+     * nodes. The limit is thus an average limit over all nodes, and individual nodes may be visited
+     * more than {@code iterationLimitPerNode} times.
+     * </p>
+     *
+     * A typical use of this class looks like:
+     *
+     * <pre>
+     * NodeWorkList worklist = graph.createIterativeNodeWorkList(fill, iterationLimitPerNode);
+     * worklist.add(initialNodeOfInterest);
+     * for (Node n : worklist) {
+     *     processNode(n);
+     *     if (inputsAreOfInterest(n)) {
+     *         worklist.addAll(n.inputs());
+     *     }
+     * }
+     * </pre>
+     *
+     * Deleted nodes are ignored both when adding and when enumerating nodes.
+     */
     public static final class IterativeNodeWorkList extends NodeWorkList {
         private static final int EXPLICIT_BITMAP_THRESHOLD = 10;
         protected NodeBitMap inQueue;
@@ -195,6 +225,29 @@ public abstract class NodeWorkList implements Iterable<Node> {
         }
     }
 
+    /**
+     * A data structure for visiting nodes in a graph iteratively. Each node added to the worklist
+     * will be visited exactly once. New nodes to visit can be added during the iteration.
+     * </p>
+     *
+     * A typical use of this class looks like:
+     *
+     * <pre>
+     * NodeWorkList worklist = graph.createNodeWorkList();
+     * worklist.add(initialNodeOfInterest);
+     * for (Node n : worklist) {
+     *     processNode(n);
+     *     if (inputsAreOfInterest(n)) {
+     *         worklist.addAll(n.inputs());
+     *     }
+     * }
+     * </pre>
+     *
+     * This class is equivalent to {@link NodeFlood}, except that {@link SingletonNodeWorkList}
+     * ignores deleted nodes both when adding and enumerating nodes. In contrast, it is an error to
+     * try to add deleted nodes to a {@link NodeFlood}, but {@link NodeFlood} will enumerate nodes
+     * that are deleted while they are enqueued for enumeration.
+     */
     public static final class SingletonNodeWorkList extends NodeWorkList {
         protected final NodeBitMap visited;
 

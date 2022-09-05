@@ -215,6 +215,7 @@ SUNWprivate_1.1 {
                 JVM_LatestUserDefinedLoader;
                 JVM_Listen;
                 JVM_LoadClass0;
+                JVM_LoadZipLibrary;
                 JVM_LoadLibrary;
                 JVM_Lseek;
                 JVM_MaxObjectInspectionAge;

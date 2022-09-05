@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;

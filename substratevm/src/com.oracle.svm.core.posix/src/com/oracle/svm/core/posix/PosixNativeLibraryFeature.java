@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -38,8 +37,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
@@ -49,9 +48,10 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-class PosixNativeLibraryFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixNativeLibrarySupport.initialize();

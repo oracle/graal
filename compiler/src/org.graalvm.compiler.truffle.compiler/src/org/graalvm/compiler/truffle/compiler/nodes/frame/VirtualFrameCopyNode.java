@@ -69,15 +69,14 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectVirtual.entryCount() && frameSlotIndex < primitiveVirtual.entryCount()) {
                 if (targetSlotIndex < tagVirtual.entryCount() && targetSlotIndex < objectVirtual.entryCount() && targetSlotIndex < primitiveVirtual.entryCount()) {
+                    tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
                     if (staticAccess) {
-                        // Copy the value without updating the slot kind.
                         if (primitiveAccess) {
                             tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                         } else {
                             tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
                         }
                     } else {
-                        tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
                         tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
                         tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                     }

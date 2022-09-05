@@ -171,10 +171,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             return;
         }
         ResolvedJavaType contextType = (invoke().stateAfter() == null && invoke().stateDuring() == null) ? null : invoke().getContextType();
-        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
-        if (specialCallTarget != null) {
-            this.setTargetMethod(specialCallTarget);
-            setInvokeKind(InvokeKind.Special);
+        if (trySimplifyToSpecial(contextType)) {
             return;
         }
 
@@ -184,7 +181,18 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
     }
 
-    public static MethodCallTargetNode tryDevirtualizeInterfaceCall(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile, Assumptions assumptions, ResolvedJavaType contextType,
+    private boolean trySimplifyToSpecial(ResolvedJavaType contextType) {
+        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
+        if (specialCallTarget != null) {
+            this.setTargetMethod(specialCallTarget);
+            setInvokeKind(InvokeKind.Special);
+            return true;
+        }
+        return false;
+    }
+
+    public static MethodCallTargetNode tryDevirtualizeInterfaceCall(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile,
+                    Assumptions assumptions, ResolvedJavaType contextType,
                     MethodCallTargetNode callTarget, FixedNode insertionPoint) {
         if (assumptions == null) {
             /*
@@ -233,6 +241,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 }
             }
         }
+
+        callTarget.trySimplifyToSpecial(contextType);
         return callTarget;
     }
 
@@ -277,6 +287,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     arguments[0] = valueNode;
                     callTargetResult = new MethodCallTargetNode(invokeKind, singleImplementorMethod, arguments, callTarget.returnStamp, profile);
                 }
+                // Virtual calls can be further de-virtualized.
+                callTargetResult.trySimplifyToSpecial(contextType);
                 return callTargetResult;
             }
         }

@@ -35,7 +35,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
@@ -43,44 +44,59 @@ import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
+import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.heap.AllocationFeature;
+import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.HeapFeature;
 import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.core.jdk.RuntimeFeature;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jvmstat.PerfDataFeature;
+import com.oracle.svm.core.jvmstat.PerfDataHolder;
+import com.oracle.svm.core.jvmstat.PerfManager;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
+        return new com.oracle.svm.core.genscavenge.UseSerialOrEpsilonGC().getAsBoolean();
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, HeapFeature.class);
+        return Arrays.asList(RuntimeSupportFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        RememberedSet rememberedSet = createRememberedSet();
+        ImageSingletons.add(RememberedSet.class, rememberedSet);
+        ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
         HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
-        ImageSingletons.add(RememberedSet.class, createRememberedSet());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
         managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
+
+        if (ImageSingletons.contains(PerfManager.class)) {
+            ImageSingletons.lookup(PerfManager.class).register(createPerfData());
+        }
     }
 
     @Override
@@ -135,6 +151,15 @@ class GenScavengeGCFeature implements InternalFeature {
             return new CardTableBasedRememberedSet();
         } else {
             return new NoRememberedSet();
+        }
+    }
+
+    private static PerfDataHolder createPerfData() {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
+            return new SerialGCPerfData();
+        } else {
+            assert SubstrateOptions.UseEpsilonGC.getValue();
+            return new EpsilonGCPerfData();
         }
     }
 }

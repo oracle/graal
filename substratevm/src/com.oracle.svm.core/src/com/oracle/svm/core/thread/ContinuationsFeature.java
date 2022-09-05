@@ -24,22 +24,24 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-public class ContinuationsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ContinuationsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!Continuation.isSupported()) {
@@ -73,10 +75,22 @@ public class ContinuationsFeature implements Feature {
                 ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
             }
 
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            access.registerAsAccessed(ipField);
+
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
         } else {
             access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
+        }
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (Continuation.isSupported()) {
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            long offset = access.objectFieldOffset(ipField);
+            ContinuationSupport.singleton().setIPOffset(offset);
         }
     }
 

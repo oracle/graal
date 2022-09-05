@@ -36,6 +36,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -55,9 +56,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 5760,
-          lineEnd   = 5918,
-          commit    = "d00e7b92b4a6d33f5db6e2aedce5e058832a23de",
+          lineStart = 5890,
+          lineEnd   = 6048,
+          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
           sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
@@ -161,7 +162,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
                 masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -64));
                 masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Stride.S2, -32));
                 masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, YMM);
-                masm.vptest(vectorTemp2, vectorTemp1);
+                masm.vptest(vectorTemp2, vectorTemp1, AVXKind.AVXSize.YMM);
                 masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
                 masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, YMM);
                 masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, YMM);
@@ -184,7 +185,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
             if (supportsAVX2AndYMM()) {
                 masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Stride.S2, -32));
-                masm.vptest(vectorTemp2, vectorTemp1);
+                masm.vptest(vectorTemp2, vectorTemp1, AVXKind.AVXSize.YMM);
                 masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
                 masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, YMM);
                 masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, YMM);

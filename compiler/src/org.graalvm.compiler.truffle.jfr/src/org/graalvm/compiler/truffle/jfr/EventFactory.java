@@ -46,7 +46,7 @@ public interface EventFactory {
 
     void removePeriodicEvent(Class<? extends Event> event, Runnable producer);
 
-    public interface Provider {
+    interface Provider {
         EventFactory getEventFactory();
     }
 }

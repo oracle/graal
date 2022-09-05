@@ -251,7 +251,9 @@ final class HeapGenerator {
 
             ObjectInstance sourceId = dumpSource(iop, seg, source);
             ObjectInstance sectionId = dumpSourceSection(seg, sourceId, charIndex, charLength);
-            ObjectInstance localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth);
+            // The depth is applied to the variables of the frame's object,
+            // hence the frame object is dumped with depth + 1
+            ObjectInstance localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth + 1);
             threadBuilder.addStackFrame(language, rootName, srcName, line == null ? -1 : line, localFrame, sectionId);
         }
         if (threadBuilder != null) {
@@ -274,9 +276,6 @@ final class HeapGenerator {
         if (id != null) {
             return id;
         }
-        if (depth <= 0) {
-            return unreachable;
-        }
         if (iop.isString(obj)) {
             try {
                 return seg.dumpString(iop.asString(obj));
@@ -286,6 +285,9 @@ final class HeapGenerator {
         }
         if (!(obj instanceof TruffleObject)) {
             return seg.dumpPrimitive(obj);
+        }
+        if (depth <= 0) {
+            return unreachable;
         }
         ClassInstance clazz = findClass(iop, seg, metaName, obj);
         if (clazz == null) {

@@ -39,13 +39,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -54,8 +53,8 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
-public class FallbackFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class FallbackFeature implements InternalFeature {
     private static final String ABORT_MSG_PREFIX = "Aborting stand-alone image build";
 
     private final List<ReflectionInvocationCheck> reflectionInvocationChecks = new ArrayList<>();

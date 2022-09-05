@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -57,10 +57,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -68,6 +68,7 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
@@ -1076,6 +1077,27 @@ public final class JNIFunctions {
         }
         Module module = ((Class<?>) obj).getModule();
         return JNIObjectHandles.createLocal(module);
+    }
+
+    /*
+     * jclass DefineClass(JNIEnv *env, const char *name, jobject loader, const jbyte *buf, jsize
+     * bufLen);
+     */
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
+    static JNIObjectHandle DefineClass(JNIEnvironment env, CCharPointer cname, JNIObjectHandle loader, CCharPointer buf, int bufLen) {
+        if (buf.isNull() || bufLen < 0) {
+            throw new ClassFormatError();
+        }
+        String name = Utf8.utf8ToString(cname);
+        if (name != null) { // inverse to HotSpot fixClassname():
+            name = name.replace('/', '.');
+        }
+        ClassLoader classLoader = JNIObjectHandles.getObject(loader);
+        byte[] data = new byte[bufLen];
+        CTypeConversion.asByteBuffer(buf, bufLen).get(data);
+        Class<?> clazz = PredefinedClassesSupport.loadClass(classLoader, name, data, 0, data.length, null);
+        return JNIObjectHandles.createLocal(clazz);
     }
 
     // Checkstyle: resume

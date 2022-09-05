@@ -33,6 +33,8 @@ import java.util.TreeSet;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -209,11 +211,7 @@ public final class UnimplementedGraalIntrinsics {
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I");
         }
 
-        if (!config.useAESCTRIntrinsics) {
-            add(ignore,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
-        }
-        if (!config.useGHASHIntrinsics()) {
+        if (!GHASHPlugin.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
         }
@@ -239,10 +237,15 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         // AES intrinsics
-        if (!config.useAESIntrinsics) {
+        if (!AESCryptPlugin.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
                             "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
+        }
+
+        if (!config.useAESIntrinsics) {
+            add(ignore,
                             "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
         }
@@ -301,6 +304,9 @@ public final class UnimplementedGraalIntrinsics {
         }
         if (config.sha3ImplCompress == 0L) {
             add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
+        }
+        if (config.contDoYield == 0L) {
+            add(ignore, "jdk/internal/vm/Continuation.doYield()I");
         }
 
         if (isJDK16OrHigher()) {
@@ -397,7 +403,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setCurrentThread(Ljava/lang/Thread;)V",
                             "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V",
-                            "jdk/internal/vm/Continuation.doYield()I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V",
                             "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;" +

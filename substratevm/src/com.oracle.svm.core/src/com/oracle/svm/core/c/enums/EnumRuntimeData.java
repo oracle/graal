@@ -26,7 +26,7 @@ package com.oracle.svm.core.c.enums;
 
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 public abstract class EnumRuntimeData {
     private static final NullPointerException CACHED_NULL_EXCEPTION = new NullPointerException(

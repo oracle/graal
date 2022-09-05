@@ -56,11 +56,6 @@ import org.graalvm.compiler.processor.AbstractProcessor;
 public class GraphNodeProcessor extends AbstractProcessor {
     private static final String NODE_INFO_CLASS_NAME = "org.graalvm.compiler.nodeinfo.NodeInfo";
 
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
-
     /**
      * Node class currently being processed.
      */

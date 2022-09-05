@@ -295,7 +295,7 @@ public class NFINativeAccess implements NativeAccess {
             @Specialization(limit = "INLINE_CACHE_SIZE", guards = "receiver == cachedReceiver")
             @SuppressWarnings("unused")
             protected static Object doCached(NativeToJavaWrapper receiver, Object[] arguments,
-                            @Cached("receiver") NativeToJavaWrapper cachedReceiver,
+                            @Cached(value = "receiver", weak = true) NativeToJavaWrapper cachedReceiver,
                             @CachedLibrary("cachedReceiver.delegate") InteropLibrary delegateInterop) throws ArityException {
                 return cachedReceiver.doExecute(arguments, delegateInterop);
             }
@@ -408,7 +408,7 @@ public class NFINativeAccess implements NativeAccess {
             @Specialization(limit = "INLINE_CACHE_SIZE", guards = "receiver == cachedReceiver")
             @SuppressWarnings("unused")
             protected static Object doCached(JavaToNativeWrapper receiver, Object[] arguments,
-                            @Cached("receiver") JavaToNativeWrapper cachedReceiver,
+                            @Cached(value = "receiver", weak = true) JavaToNativeWrapper cachedReceiver,
                             @CachedLibrary("cachedReceiver.delegate") InteropLibrary delegateInterop) throws ArityException {
                 return cachedReceiver.doExecute(arguments, delegateInterop);
             }

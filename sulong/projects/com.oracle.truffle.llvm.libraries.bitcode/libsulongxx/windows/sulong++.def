@@ -33,3 +33,4 @@ EXPORTS
   _Init_thread_epoch
   _Init_thread_header
   _Init_thread_footer
+  sulong_eh_canCatch_windows

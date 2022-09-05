@@ -35,10 +35,12 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -111,6 +113,10 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.probability = probability;
         this.condition = condition;
+    }
+
+    public BranchProbabilityNode(ValueNode condition) {
+        this(ConstantNode.forDouble(0.5D), condition);
     }
 
     public ValueNode getProbability() {
@@ -225,7 +231,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 }
             } else {
                 if (!isSubstitutionGraph()) {
-                    throw new GraalError("Wrong usage of branch probability injection!");
+                    throw new GraalError("Wrong usage of branch probability injection " + this);
                 }
             }
         }
@@ -248,6 +254,18 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
      */
     @NodeIntrinsic
     public static native boolean probability(double probability, boolean condition);
+
+    /**
+     * This intrinsic can be used to inject a truly unknown probability (0.5 for both true and false
+     * successor) for an {@link IfNode}. While the probability will be 0.5 for both successors this
+     * method ensures the {@link ProfileSource} is {@link ProfileSource#isTrusted(ProfileSource)},
+     * i.e., the compiler can trust it.
+     *
+     * This intrinsic should be used with great caution only for cases, e.g. inside snippets, for
+     * which absolutely now probability guess can be made.
+     */
+    @NodeIntrinsic
+    public static native boolean unknownProbability(boolean condition);
 
     @Override
     public void lower(LoweringTool tool) {

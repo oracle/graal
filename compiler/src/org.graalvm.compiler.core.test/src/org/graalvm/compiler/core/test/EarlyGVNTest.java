@@ -25,16 +25,19 @@
 package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.core.test.EarlyGVNTest.NodeCount.count;
+import static org.graalvm.compiler.core.test.EarlyGVNTest.NodeCount.invariantCount;
 import static org.junit.Assume.assumeTrue;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.List;
 import java.util.ListIterator;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -44,6 +47,8 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -80,17 +85,37 @@ public class EarlyGVNTest extends GraalCompilerTest {
         super.checkHighTierGraph(graph);
     }
 
+    /**
+     * Helper class for assertion checking.
+     */
     static class NodeCount {
-        NodeClass<?> nodeClass;
-        int count;
+        /**
+         * Expected node class to be checked.
+         */
+        final NodeClass<?> nodeClass;
 
-        NodeCount(NodeClass<?> nodeClass, int count) {
+        /**
+         * Expected count of nodes to be found in the graph.
+         */
+        final int count;
+
+        /**
+         * Expected count of nodes which are outside all loops.
+         */
+        final int invariantCount;
+
+        NodeCount(NodeClass<?> nodeClass, int count, int invariantCount) {
             this.nodeClass = nodeClass;
             this.count = count;
+            this.invariantCount = invariantCount;
+        }
+
+        static NodeCount invariantCount(NodeClass<?> nodeClass, int count) {
+            return new NodeCount(nodeClass, count, count);
         }
 
         static NodeCount count(NodeClass<?> nodeClass, int count) {
-            return new NodeCount(nodeClass, count);
+            return new NodeCount(nodeClass, count, 0);
         }
     }
 
@@ -99,13 +124,28 @@ public class EarlyGVNTest extends GraalCompilerTest {
         Suites suites = super.createSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
         PhaseSuite<HighTierContext> ht = suites.getHighTier().copy();
         ListIterator<BasePhase<? super HighTierContext>> position = ht.findPhase(LoopFullUnrollPhase.class);
-        position.add(new TestBasePhase<HighTierContext>() {
+        position.add(new TestBasePhase<>() {
 
             @Override
             protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {
+                LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
+
                 for (NodeCount count : counts) {
-                    int realCount = graph.getNodes().filter(x -> x.getNodeClass().equals(count.nodeClass)).count();
+                    List<Node> nodes = graph.getNodes().filter(x -> x.getNodeClass().equals(count.nodeClass)).snapshot();
+                    int realCount = nodes.size();
                     Assert.assertEquals("Wrong node count for node class " + count.nodeClass, count.count, realCount);
+                    if (count.invariantCount != 0) {
+                        int invariantCount = count.count;
+                        for (Node node : nodes) {
+                            for (LoopEx loop : loops.loops()) {
+                                if (loop.whole().contains(node)) {
+                                    invariantCount--;
+                                    break;
+                                }
+                            }
+                        }
+                        Assert.assertEquals("Wrong number of invariant nodes for node class " + count.nodeClass.getClazz(), count.invariantCount, invariantCount);
+                    }
                 }
             }
         });
@@ -123,7 +163,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test00() {
         String s = "snippet00";
         test(s, new int[]{1, 2, 3});
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
+        checkHighTierGraph(s, invariantCount(ArrayLengthNode.TYPE, 1));
     }
 
     @MustFold
@@ -144,8 +184,8 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test01() {
         String s = "snippet01";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0));
+        checkHighTierGraph(s, invariantCount(ArrayLengthNode.TYPE, 1),
+                        count(LoopBeginNode.TYPE, 0));
     }
 
     public static int field = 0;
@@ -192,8 +232,8 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test03() {
         String s = "snippet03";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0));
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
+        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0),
+                        invariantCount(ArrayLengthNode.TYPE, 1));
     }
 
     static class X {
@@ -223,9 +263,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test04() {
         String s = "snippet04";
         test(s, new X(new int[0]));
-        checkHighTierGraph(s, count(LoadFieldNode.TYPE, 1));
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0));
+        checkHighTierGraph(s, invariantCount(LoadFieldNode.TYPE, 1),
+                        invariantCount(ArrayLengthNode.TYPE, 1),
+                        count(LoopBeginNode.TYPE, 0));
     }
 
     static class Y {
@@ -258,9 +298,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
                 return new Y();
             }
         });
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 1));
-        checkHighTierGraph(s, count(LoadFieldNode.TYPE, 1));
-        checkHighTierGraph(s, count(StoreFieldNode.TYPE, 1));
+        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 1),
+                        count(LoadFieldNode.TYPE, 1),
+                        count(StoreFieldNode.TYPE, 1));
     }
 
     @MustFold
@@ -284,9 +324,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test06() {
         String s = "snippet06";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0));
-        checkHighTierGraph(s, count(FixedGuardNode.TYPE, 1));
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
+        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0),
+                        invariantCount(FixedGuardNode.TYPE, 1),
+                        invariantCount(ArrayLengthNode.TYPE, 1));
     }
 
     @MustFold
@@ -311,10 +351,10 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test07() {
         String s = "snippet07";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0));
         // will only be one guard later but we would need a canon and another run of gvn to capture
         // that since we need a canonicalizer in between
-        checkHighTierGraph(s, count(FixedGuardNode.TYPE, 2));
+        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0),
+                        invariantCount(FixedGuardNode.TYPE, 2));
     }
 
     public static int field2;
@@ -333,9 +373,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test08() {
         String s = "snippet08";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(LoadFieldNode.TYPE, 2));
-        checkHighTierGraph(s, count(StoreFieldNode.TYPE, 2));
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
+        checkHighTierGraph(s, invariantCount(LoadFieldNode.TYPE, 2),
+                        invariantCount(StoreFieldNode.TYPE, 2),
+                        invariantCount(ArrayLengthNode.TYPE, 1));
     }
 
     @MustFold
@@ -357,8 +397,8 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test09() {
         String s = "snippet09";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 0));
+        checkHighTierGraph(s, invariantCount(ArrayLengthNode.TYPE, 1),
+                        count(LoopBeginNode.TYPE, 0));
     }
 
     @MustFold(noLoopLeft = false)
@@ -397,8 +437,8 @@ public class EarlyGVNTest extends GraalCompilerTest {
                 return new Y();
             }
         });
-        checkHighTierGraph(s, count(FixedGuardNode.TYPE, 0));
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 1));
+        checkHighTierGraph(s, invariantCount(FixedGuardNode.TYPE, 0),
+                        count(LoopBeginNode.TYPE, 1));
     }
 
     @MustFold
@@ -428,7 +468,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test11() {
         String s = "snippet11";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
+        checkHighTierGraph(s, invariantCount(ArrayLengthNode.TYPE, 1));
     }
 
     @MustFold
@@ -467,7 +507,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
     public void test12() {
         String s = "snippet12";
         test(s, new int[0]);
-        checkHighTierGraph(s, count(LoadFieldNode.TYPE, 1));
+        checkHighTierGraph(s, invariantCount(LoadFieldNode.TYPE, 1));
     }
 
     public static int f3;
@@ -510,10 +550,31 @@ public class EarlyGVNTest extends GraalCompilerTest {
         }
         String s = "snippet13";
         test(s, new int[]{123}, new F());
-        checkHighTierGraph(s, count(FixedGuardNode.TYPE, 0));
-        checkHighTierGraph(s, count(LoopBeginNode.TYPE, 1));
-        checkHighTierGraph(s, count(ArrayLengthNode.TYPE, 1));
-        checkHighTierGraph(s, count(LoadFieldNode.TYPE, 2));
+        checkHighTierGraph(s, invariantCount(FixedGuardNode.TYPE, 0),
+                        count(LoopBeginNode.TYPE, 1),
+                        invariantCount(ArrayLengthNode.TYPE, 1),
+                        invariantCount(LoadFieldNode.TYPE, 2));
     }
 
+    public static int snippetNestLoops(int[] arr) {
+        int limit = 10;
+        int len1 = 0;
+        int len2 = 0;
+        int i = 0;
+        do {
+            int j = 0;
+            do {
+                len2 += arr.length;
+            } while (j++ <= limit);
+            len1 += arr.length;
+        } while (i++ <= limit);
+        return len1 + len2;
+    }
+
+    @Test
+    public void testNested() {
+        String s = "snippetNestLoops";
+        test(s, new int[0]);
+        checkHighTierGraph(s, invariantCount(ArrayLengthNode.TYPE, 1));
+    }
 }

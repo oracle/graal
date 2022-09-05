@@ -146,8 +146,10 @@
     truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + {
       name: "weekly-truffle-coverage-11-linux-amd64",
       run: [
-        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
-        ["mx", "coverage-upload"],
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+      ],
+      teardown+: [
+        ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
       ],
       targets: ["weekly"],
     },

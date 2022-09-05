@@ -39,7 +39,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;

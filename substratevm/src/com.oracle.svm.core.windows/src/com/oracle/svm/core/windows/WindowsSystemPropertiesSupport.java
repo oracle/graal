@@ -38,14 +38,14 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -386,8 +386,8 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 }
 
 @Platforms(Platform.WINDOWS.class)
-@AutomaticFeature
-class WindowsSystemPropertiesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());

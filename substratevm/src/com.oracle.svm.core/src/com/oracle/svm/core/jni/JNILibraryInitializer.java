@@ -31,6 +31,8 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
@@ -85,6 +87,10 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
         // TODO: This check should be removed when all static libs will have JNI_OnLoad function
         ArrayList<String> localStaticLibNames = new ArrayList<>(staticLibNames);
         localStaticLibNames.retainAll(libsWithOnLoad);
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && Platform.includedIn(Platform.WINDOWS.class)) {
+            /* libextnet on Windows (introduced in Java 19) does not contain an OnLoad method. */
+            localStaticLibNames.remove("extnet");
+        }
         boolean mapIsChanged = false;
         for (String libName : localStaticLibNames) {
             if (!onLoadCGlobalDataMap.containsKey(libName)) {

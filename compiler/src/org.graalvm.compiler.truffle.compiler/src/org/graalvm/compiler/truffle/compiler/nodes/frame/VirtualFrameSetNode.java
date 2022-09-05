@@ -46,17 +46,20 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
     @Input private ValueNode value;
 
     private final boolean staticAccess;
+    private final boolean setTag;
 
     public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, boolean staticAccess) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type);
         this.value = value;
         this.staticAccess = staticAccess;
+        this.setTag = true;
     }
 
-    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, boolean staticAccess) {
+    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, boolean staticAccess, boolean setTag) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type);
         this.value = value;
         this.staticAccess = staticAccess;
+        this.setTag = setTag;
     }
 
     public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type) {
@@ -90,8 +93,12 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                 VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
                 if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
-                    if (!staticAccess) {
-                        tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
+                    if (setTag) {
+                        if (staticAccess) {
+                            tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag));
+                        } else {
+                            tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
+                        }
                     }
                     if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, valueKind == JavaKind.Object ? JavaKind.Object : JavaKind.Long, -1)) {
                         if (valueKind == JavaKind.Object) {

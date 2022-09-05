@@ -126,7 +126,7 @@ public final class Pod<T> {
         private Builder(Class<?> superClass, Class<?> factoryInterface, Pod<T> superPod) {
             assert superPod == null || (superClass == null && factoryInterface == null);
             if (!RuntimeSupport.isPresent()) {
-                throw new UnsupportedOperationException("Pods are not available in this native image. Only SerialGC currently supports pods.");
+                throw new UnsupportedOperationException("Pods are not available in this native image.");
             }
             if (superPod != null) {
                 this.podInfo = superPod.podInfo;

@@ -76,7 +76,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -4845,12 +4844,15 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
+                        @Cached ConditionProfile lengthAndCodeRangeCheckProfile,
+                        @Cached ConditionProfile compareHashProfile,
+                        @Cached ConditionProfile checkFirstByteProfile) {
             final int codeRangeA = getCodeRangeANode.execute(a);
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(expectedEncoding, codeRangeA);
             b.looseCheckEncoding(expectedEncoding, codeRangeB);
-            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, this);
+            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, lengthAndCodeRangeCheckProfile, compareHashProfile, checkFirstByteProfile, this);
         }
 
         static boolean checkContentEquals(
@@ -4858,17 +4860,36 @@ public final class TruffleString extends AbstractTruffleString {
                         AbstractTruffleString b, int codeRangeB,
                         ToIndexableNode toIndexableNodeA,
                         ToIndexableNode toIndexableNodeB,
+                        ConditionProfile lengthAndCodeRangeCheckProfile,
+                        ConditionProfile compareHashProfile,
+                        ConditionProfile checkFirstByteProfile,
                         EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
-            if (a.length() != b.length() || codeRangeA != codeRangeB ||
-                            !CompilerDirectives.isCompilationConstant(a) && !CompilerDirectives.isCompilationConstant(b) &&
-                                            a.isHashCodeCalculated() && b.isHashCodeCalculated() &&
-                                            a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+            int lengthCMP = a.length();
+            if (lengthAndCodeRangeCheckProfile.profile(lengthCMP != b.length() || codeRangeA != codeRangeB)) {
                 return false;
             }
+            if (compareHashProfile.profile(a.isHashCodeCalculated() && b.isHashCodeCalculated()) && a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+                return false;
+            }
+            if (lengthCMP == 0) {
+                return true;
+            }
+            Object arrayA = toIndexableNodeA.execute(a, a.data());
+            Object arrayB = toIndexableNodeB.execute(b, b.data());
+            int strideA = a.stride();
+            int strideB = b.stride();
+            if (checkFirstByteProfile.profile(arrayA instanceof byte[] && arrayB instanceof byte[] && (strideA | strideB) == 0)) {
+                // fast path: check first byte
+                if (((byte[]) arrayA)[a.offset()] != ((byte[]) arrayB)[b.offset()]) {
+                    return false;
+                } else if (lengthCMP == 1) {
+                    return true;
+                }
+            }
             return TStringOps.regionEqualsWithOrMaskWithStride(equalNode,
-                            a, toIndexableNodeA.execute(a, a.data()), a.stride(), 0,
-                            b, toIndexableNodeB.execute(b, b.data()), b.stride(), 0, null, a.length());
+                            a, arrayA, strideA, 0,
+                            b, arrayB, strideB, 0, null, lengthCMP);
         }
 
         /**

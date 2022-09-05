@@ -671,7 +671,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         final LogicNode isNull = graph.addOrUniqueWithInputs(IsNullNode.create(value));
         final EndNode trueEnd = graph.add(new EndNode());
         final EndNode falseEnd = graph.add(new EndNode());
-        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, BranchProbabilityData.unknown()));
+        // We do not know the probability of this object being null. Assuming null is uncommon and
+        // can be wrong for exact type checks and cause performance degradations.
+        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, BranchProbabilityData.injected(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY)));
         final MergeNode merge = graph.add(new MergeNode());
         merge.addForwardEnd(trueEnd);
         merge.addForwardEnd(falseEnd);

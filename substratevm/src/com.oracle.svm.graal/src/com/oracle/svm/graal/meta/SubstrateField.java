@@ -31,8 +31,8 @@ import java.lang.annotation.Annotation;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;

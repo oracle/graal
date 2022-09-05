@@ -24,20 +24,21 @@
  */
 package com.oracle.svm.truffle;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jfr.JfrFeature;
-import com.oracle.svm.core.util.UserError;
+import java.util.Iterator;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.jfr.EventFactory;
 import org.graalvm.compiler.truffle.jfr.EventFactory.Provider;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.Iterator;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jfr.JfrFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.util.UserError;
 
-@AutomaticFeature
-public class TruffleJFRFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class TruffleJFRFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Method;
 
@@ -34,10 +34,8 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.StubCallingConvention;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;

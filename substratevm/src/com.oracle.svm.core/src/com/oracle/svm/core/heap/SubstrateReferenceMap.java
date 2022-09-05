@@ -45,12 +45,6 @@ import jdk.vm.ci.meta.Value;
 import org.graalvm.nativeimage.ImageInfo;
 
 public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapEncoder.Input {
-
-    /**
-     * Special reference map for {@link StoredContinuation}.
-     */
-    public static final SubstrateReferenceMap STORED_CONTINUATION_REFERENCE_MAP = new SubstrateReferenceMap();
-
     /**
      * Stores the reference map data. 3 bits are currently required per entry: the first bit at
      * "offset" marks the offset in the reference map. The following bit at offset + 1 stores the

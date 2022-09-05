@@ -79,7 +79,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return (StaticObject) value;
             }
             // Wrap foreign object as ForeignException.
-            return StaticObject.createForeignException(context.getMeta(), value, valueInterop);
+            return StaticObject.createForeignException(context, value, valueInterop);
         }
 
         static String toHostString(Object value, InteropLibrary valueInterop) {
@@ -96,10 +96,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             return receiver.isForeignObject() ? receiver.rawForeignObject(language) : receiver;
         }
 
-        static StaticObject wrapForeignException(Throwable throwable, Meta meta) {
+        static StaticObject wrapForeignException(Throwable throwable, EspressoContext context) {
             assert InteropLibrary.getUncached().isException(throwable);
             assert throwable instanceof AbstractTruffleException;
-            return StaticObject.createForeignException(meta, throwable, InteropLibrary.getUncached());
+            return StaticObject.createForeignException(context, throwable, InteropLibrary.getUncached());
         }
 
         @TruffleBoundary

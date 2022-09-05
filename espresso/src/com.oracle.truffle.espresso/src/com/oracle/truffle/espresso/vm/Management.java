@@ -140,7 +140,7 @@ public final class Management extends NativeEnv {
 
     public Management(EspressoContext context, TruffleObject mokapotLibrary) {
         super(context);
-        assert context.EnableManagement;
+        assert context.getEspressoEnv().EnableManagement;
         this.initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeManagementContext",
                         NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
 
@@ -563,7 +563,7 @@ public final class Management extends NativeEnv {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
-            threadIds = getAllocator().createNewPrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
+            threadIds = getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Long.getBasicType(), activeThreads.length);
             for (int j = 0; j < activeThreads.length; ++j) {
                 long tid = getThreadAccess().getThreadId(activeThreads[j]);
                 getInterpreterToVM().setArrayLong(language, tid, j, threadIds);

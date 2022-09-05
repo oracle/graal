@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.configure;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-
 import java.util.Collection;
 import java.util.Locale;
 
-public interface ResourcesRegistry {
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+
+public interface ResourcesRegistry extends RuntimeResourceSupport {
 
     /**
-     * @deprecated Use
-     *             {@link ResourcesRegistry#addResources(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     * @deprecated Use {@link RuntimeResourceSupport#addResources(ConfigurationCondition, String)}
      *             instead.
      */
     @Deprecated
@@ -43,7 +43,7 @@ public interface ResourcesRegistry {
 
     /**
      * @deprecated Use
-     *             {@link ResourcesRegistry#ignoreResources(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             {@link RuntimeResourceSupport#ignoreResources(ConfigurationCondition, String)}
      *             instead.
      */
     @Deprecated
@@ -53,7 +53,7 @@ public interface ResourcesRegistry {
 
     /**
      * @deprecated Use
-     *             {@link ResourcesRegistry#addResourceBundles(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             {@link RuntimeResourceSupport#addResourceBundles(ConfigurationCondition, String)}
      *             instead.
      */
     @Deprecated
@@ -61,13 +61,22 @@ public interface ResourcesRegistry {
         addResourceBundles(ConfigurationCondition.alwaysTrue(), name);
     }
 
+    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
+
+    /**
+     * Although the interface-methods below are already defined in the super-interface
+     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
+     * reflectively.
+     */
+    @Override
     void addResources(ConfigurationCondition condition, String pattern);
 
+    @Override
     void ignoreResources(ConfigurationCondition condition, String pattern);
 
+    @Override
     void addResourceBundles(ConfigurationCondition condition, String name);
 
+    @Override
     void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
-
-    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
 }

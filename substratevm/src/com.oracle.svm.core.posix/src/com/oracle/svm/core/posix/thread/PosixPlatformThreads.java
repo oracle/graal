@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -39,16 +38,14 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -71,9 +68,11 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 public final class PosixPlatformThreads extends PlatformThreads {
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -325,18 +324,10 @@ class PosixParkEvent extends ParkEvent {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 class PosixParkEventFactory implements ParkEventFactory {
     @Override
     public ParkEvent create() {
         return new PosixParkEvent();
-    }
-}
-
-@AutomaticFeature
-class PosixThreadsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PlatformThreads.class, new PosixPlatformThreads());
-        ImageSingletons.add(ParkEventFactory.class, new PosixParkEventFactory());
     }
 }

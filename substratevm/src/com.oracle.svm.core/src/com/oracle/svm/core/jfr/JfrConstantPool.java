@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Epoch-based storage for metadata. Switching the epoch and iterating the collected data may only

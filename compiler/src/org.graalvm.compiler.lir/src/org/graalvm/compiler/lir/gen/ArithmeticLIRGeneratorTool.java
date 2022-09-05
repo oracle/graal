@@ -156,6 +156,16 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
+    default Value emitMathUnsignedMax(Value x, Value y) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitMathUnsignedMin(Value x, Value y) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default Value emitRound(Value operand, RoundingMode mode) {
         throw GraalError.unimplemented("No specialized implementation available");
     }

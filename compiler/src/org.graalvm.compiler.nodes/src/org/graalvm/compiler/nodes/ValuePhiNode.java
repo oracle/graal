@@ -26,10 +26,13 @@ package org.graalvm.compiler.nodes;
 
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -80,7 +83,53 @@ public class ValuePhiNode extends PhiNode {
         } else if (stamp.isCompatible(valuesStamp)) {
             valuesStamp = stamp.join(valuesStamp);
         }
+
+        Stamp maybeNonNullStamp = tryInferNonNullStamp(valuesStamp);
+        if (maybeNonNullStamp != valuesStamp) {
+            valuesStamp = maybeNonNullStamp;
+        }
+
         return updateStamp(valuesStamp);
+    }
+
+    /**
+     * See if this phi has a pointer stamp and is part of a set of mutually recursive phis that only
+     * have each other or non-null values as inputs. In this case we can infer a non-null stamp.
+     *
+     * @return a non-null version of the original {@code valuesStamp} if it could be improved, the
+     *         unchanged {@code valuesStamp} otherwise
+     */
+    private Stamp tryInferNonNullStamp(Stamp valuesStamp) {
+        if (isAlive() && isLoopPhi() && valuesStamp instanceof AbstractPointerStamp) {
+            AbstractPointerStamp pointerStamp = (AbstractPointerStamp) valuesStamp;
+            if (!pointerStamp.alwaysNull() && !pointerStamp.nonNull() && StampTool.isPointerNonNull(firstValue())) {
+                // Fail early if this phi already has possibly null non-phi inputs.
+                for (ValueNode value : values()) {
+                    if (value == this || value instanceof ValuePhiNode) {
+                        continue;
+                    } else if (!StampTool.isPointerNonNull(value)) {
+                        return valuesStamp;
+                    }
+                }
+                // Check input phis recursively.
+                NodeFlood flood = new NodeFlood(graph());
+                flood.addAll(values().filter(ValuePhiNode.class));
+                for (Node node : flood) {
+                    if (node instanceof ValuePhiNode) {
+                        for (ValueNode value : ((ValuePhiNode) node).values()) {
+                            if (value == this || value instanceof ValuePhiNode) {
+                                flood.add(value);
+                            } else if (!StampTool.isPointerNonNull(value)) {
+                                return valuesStamp;
+                            }
+                        }
+                    }
+                }
+                // All transitive inputs are non-null.
+                return ((AbstractPointerStamp) valuesStamp).asNonNull();
+            }
+        }
+        return valuesStamp;
     }
 
     @Override

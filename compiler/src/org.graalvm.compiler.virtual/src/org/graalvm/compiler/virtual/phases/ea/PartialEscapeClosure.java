@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -124,7 +126,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         for (Block block : cfg.getBlocks()) {
             GraphEffectList effects = blockEffects.get(block);
             if (effects != null) {
-                if (effects.getVirtualizationDelta() != 0) {
+                if (effects.getVirtualizationDelta() != 0 || effects.getAllocationDelta() != 0) {
                     return true;
                 }
             }
@@ -228,6 +230,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return false;
             }
             if (tool.isDeleted()) {
+                // we only consider real allocation nodes here
+                if (node instanceof AbstractNewObjectNode || node instanceof CommitAllocationNode) {
+                    effects.addAllocationDelta(1);
+                }
                 VirtualUtil.trace(node.getOptions(), debug, "deleted virtualizable allocation %s", node);
                 return true;
             }

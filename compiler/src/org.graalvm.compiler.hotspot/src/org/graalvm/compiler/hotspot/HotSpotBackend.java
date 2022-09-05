@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -308,6 +308,8 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(),
                     "_electronicCodeBook_decryptAESCrypt", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor CONTINUATION_DO_YIELD = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "_cont_doYield", int.class);
 
     /**
      * @see VMErrorNode

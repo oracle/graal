@@ -87,7 +87,7 @@ import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
@@ -95,12 +95,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SecurityProvidersFilter;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -116,8 +116,8 @@ import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
-@AutomaticFeature
-public class SecurityServicesFeature extends JNIRegistrationUtil implements Feature, SecurityProvidersFilter {
+@AutomaticallyRegisteredFeature
+public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature, SecurityProvidersFilter {
 
     public static class Options {
         @Option(help = "Enable automatic registration of security services.")//
@@ -462,8 +462,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class));
+        } else {
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        }
         a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
                         method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
         a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
@@ -474,26 +479,26 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(constructor(a, "java.util.ArrayList"));
-        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
-        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
-        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
+        RuntimeJNIAccess.register(constructor(a, "java.util.ArrayList"));
+        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
+        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
+        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
     }
 
     private static void registerGenerateCKeyPair(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
+        RuntimeJNIAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
     }
 
     private static void registerCPrivateKeyOf(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
+        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
     }
 
     private static void registerCPublicKeyOf(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
+        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
     }
 
     private static void linkJaas(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
+        RuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
 
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We can statically link jaas, thus we classify it as builtIn library */
@@ -612,10 +617,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         Map<String, Set<Service>> availableServices = new HashMap<>();
         for (Provider provider : Security.getProviders()) {
             for (Service s : provider.getServices()) {
-                availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                if (isValid(s)) {
+                    availableServices.computeIfAbsent(s.getType(), t -> new HashSet<>()).add(s);
+                }
             }
         }
         return availableServices;
+    }
+
+    /**
+     * Check is service is valid. See {@code java.security.Provider.Service#isValid()}.
+     *
+     * Presumably, this is only needed due to an upstream bug introduced in JDK 19 [GR-40544].
+     */
+    private static boolean isValid(Service s) {
+        return (s.getType() != null) && (s.getAlgorithm() != null) && (s.getClassName() != null);
     }
 
     /**

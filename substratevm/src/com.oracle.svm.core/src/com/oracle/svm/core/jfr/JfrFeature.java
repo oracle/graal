@@ -33,14 +33,15 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
-import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
@@ -92,8 +93,8 @@ import jdk.jfr.internal.jfc.JFC;
  * consistent state).</li>
  * </ul>
  */
-@AutomaticFeature
-public class JfrFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class JfrFeature implements InternalFeature {
     /*
      * Note that we could initialize the native part of JFR at image build time and that the native
      * code sets the FlightRecorder option as a side effect. Therefore, we must ensure that we check
@@ -147,7 +148,7 @@ public class JfrFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ThreadListenerFeature.class);
+        return Collections.singletonList(ThreadListenerSupportFeature.class);
     }
 
     @Override

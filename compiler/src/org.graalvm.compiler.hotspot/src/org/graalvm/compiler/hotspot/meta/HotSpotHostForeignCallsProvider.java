@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,10 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CONTINUATION_DO_YIELD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
@@ -131,6 +130,8 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.compiler.word.Word;
@@ -138,6 +139,7 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -530,9 +532,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.sha3ImplCompressMultiBlock != 0L) {
             registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
         }
-        if (c.useGHASHIntrinsics()) {
-            registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall);
-        }
         if (c.base64EncodeBlock != 0L) {
             registerForeignCall(BASE64_ENCODE_BLOCK, c.base64EncodeBlock, NativeCall);
         }
@@ -573,9 +572,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.electronicCodeBookDecrypt != 0L) {
             registerForeignCall(ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT, c.electronicCodeBookDecrypt, NativeCall);
         }
-
-        for (ForeignCallDescriptor stub : CryptoForeignCalls.STUBS) {
-            link(new IntrinsicStubsGen(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
+        if (c.contDoYield != 0) {
+            registerForeignCall(CONTINUATION_DO_YIELD, c.contDoYield, NativeCall);
         }
 
         if (c.useAESIntrinsics) {
@@ -590,9 +588,17 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             }
         }
 
-        if (c.useAESCTRIntrinsics) {
-            assert (c.counterModeAESCrypt != 0L);
-            registerForeignCall(COUNTERMODE_IMPL_CRYPT, c.counterModeAESCrypt, NativeCall);
+        TargetDescription target = providers.getCodeCache().getTarget();
+
+        if (AESCryptPlugin.isSupported(target.arch)) {
+            for (ForeignCallDescriptor stub : CryptoForeignCalls.AES_STUBS) {
+                link(new IntrinsicStubsGen(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
+            }
+        }
+
+        if (GHASHPlugin.isSupported(target.arch)) {
+            link(new IntrinsicStubsGen(options, providers, registerStubCall(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getSignature(),
+                            LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getKilledLocations())));
         }
 
         registerStubCallFunctions(options, providers, runtime.getVMConfig());

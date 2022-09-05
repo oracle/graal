@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.libc.LibCSpecific;
 import com.oracle.svm.core.posix.PosixLibCSupport;
 import com.oracle.svm.core.posix.headers.linux.LinuxErrno;
