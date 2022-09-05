@@ -7,6 +7,7 @@
 ### Internal changes
 ### Noteworthy fixes
 * Fix some conversions at interop boundaries: when an espresso-to-espresso conversion was seen, then an espresso-to-primitive conversion happens. The latter would fail.  
+* Fix exit status on uncaught exceptions in the main thread.
 
 ## Version 22.1.0
 ### User-visible changes
