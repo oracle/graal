@@ -183,4 +183,16 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     public void setNoDeoptSuccessorPosition(NodeSourcePosition noDeoptSuccessorPosition) {
         this.noDeoptSuccessorPosition = noDeoptSuccessorPosition;
     }
+
+    /**
+     * Determine if the this guard will lead to an unconditional {@link DeoptimizeNode} because its
+     * condition is a constant.
+     */
+    public boolean willDeoptUnconditionally() {
+        if (getCondition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) getCondition();
+            return c.getValue() == negated;
+        }
+        return false;
+    }
 }
