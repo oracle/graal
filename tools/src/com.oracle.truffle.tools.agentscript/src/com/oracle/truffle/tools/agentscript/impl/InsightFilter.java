@@ -32,6 +32,8 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -66,18 +68,22 @@ final class InsightFilter {
     private final URI sourceURI;
     private final int line;
     private final int column;
-    private final boolean rootNameFn;
-    private final boolean sourceFilterFn;
+    private final Reference<Object> rootNameFn;
+    private final int rootNameFnHash;
+    private final Reference<Object> sourceFilterFn;
+    private final int sourceFilterFnHash;
 
-    private InsightFilter(Set<Class<? extends Tag>> allTags, String rootNameRegExp, URI sourceURI, String sourcePathRegExp, int line, int column, boolean rootNameFn, boolean sourceFilterFn) {
+    private InsightFilter(Set<Class<? extends Tag>> allTags, String rootNameRegExp, URI sourceURI, String sourcePathRegExp, int line, int column, Object rootNameFn, Object sourceFilterFn) {
         this.allTags = allTags;
         this.rootNameRegExp = rootNameRegExp;
         this.sourceURI = sourceURI;
         this.sourcePathRegExp = sourcePathRegExp;
         this.line = line;
         this.column = column;
-        this.rootNameFn = rootNameFn;
-        this.sourceFilterFn = sourceFilterFn;
+        this.rootNameFn = new WeakReference<>(rootNameFn);
+        this.rootNameFnHash = (rootNameFn != null) ? rootNameFn.hashCode() : 0;
+        this.sourceFilterFn = new WeakReference<>(sourceFilterFn);
+        this.sourceFilterFnHash = (sourceFilterFn != null) ? sourceFilterFn.hashCode() : 0;
     }
 
     @Override
@@ -89,8 +95,8 @@ final class InsightFilter {
         hash = 79 * hash + Objects.hashCode(this.sourceURI);
         hash = 79 * hash + line;
         hash = 79 * hash + column;
-        hash = 79 * hash + (this.rootNameFn ? 1 : 0);
-        hash = 79 * hash + (this.sourceFilterFn ? 1 : 0);
+        hash = 79 * hash + rootNameFnHash;
+        hash = 79 * hash + sourceFilterFnHash;
         return hash;
     }
 
@@ -106,10 +112,10 @@ final class InsightFilter {
             return false;
         }
         final InsightFilter other = (InsightFilter) obj;
-        if (this.rootNameFn != other.rootNameFn) {
+        if (this.rootNameFn.get() != other.rootNameFn.get()) {
             return false;
         }
-        if (this.sourceFilterFn != other.sourceFilterFn) {
+        if (this.sourceFilterFn.get() != other.sourceFilterFn.get()) {
             return false;
         }
         if (!Objects.equals(this.rootNameRegExp, other.rootNameRegExp)) {
@@ -242,7 +248,7 @@ final class InsightFilter {
             throw new IllegalArgumentException("No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
         }
 
-        InsightFilter filter = new InsightFilter(allTags, rootNameRegExp, sourceURI, sourcePathRegExp, lineIs, columnIs, rootNameFn != null, sourceFilterFn != null);
+        InsightFilter filter = new InsightFilter(allTags, rootNameRegExp, sourceURI, sourcePathRegExp, lineIs, columnIs, rootNameFn, sourceFilterFn);
         return new Data(aType, filter, arr[1], rootNameFn, sourceFilterFn);
     }
 
