@@ -30,13 +30,16 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
@@ -55,16 +58,14 @@ public abstract class LLVMAArch64_NeonNodes {
         }
 
         @Specialization
-        protected LLVMPointer doOp(LLVMNativePointer retStackSpace, LLVMNativePointer address) {
-            LLVMMemory memory = getLanguage().getLLVMMemory();
+        protected LLVMPointer doOp(LLVMPointer retStackSpace, LLVMPointer srcAddress,
+                        @Cached LLVMI64LoadNode.LLVMI64OffsetLoadNode loadNode,
+                        @Cached LLVMI64StoreNode.LLVMI64OffsetStoreNode storeNode) {
 
-            long currentPtr = address.asNative();
-            long targetPtr = retStackSpace.asNative();
             /* load two vectors from memory and store them into return struct */
             for (int i = 0; i < 2 * vectorSize; i += I64_SIZE_IN_BYTES) {
-                memory.putI64(this, targetPtr, memory.getI64(this, currentPtr));
-                currentPtr += I64_SIZE_IN_BYTES;
-                targetPtr += I64_SIZE_IN_BYTES;
+                Object value = loadNode.executeWithTargetGeneric(srcAddress, i);
+                storeNode.executeWithTargetGeneric(retStackSpace, i, value);
             }
             return retStackSpace;
         }
@@ -84,25 +85,27 @@ public abstract class LLVMAArch64_NeonNodes {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointer doOp(LLVMNativePointer retStackSpace, LLVMNativePointer address) {
-            LLVMMemory memory = getLanguage().getLLVMMemory();
-
-            long currentPtr = address.asNative();
-            long targetPtr = retStackSpace.asNative();
+        protected LLVMPointer doOp(LLVMPointer retStackSpace, LLVMPointer srcAddress,
+                        @Cached LLVMI8LoadNode.LLVMI8OffsetLoadNode loadNodeV1,
+                        @Cached LLVMI8LoadNode.LLVMI8OffsetLoadNode loadNodeV2,
+                        @Cached LLVMI8StoreNode.LLVMI8OffsetStoreNode storeNodeV1,
+                        @Cached LLVMI8StoreNode.LLVMI8OffsetStoreNode storeNodeV2) {
 
             if (elementSize != I8_SIZE_IN_BYTES) {
                 CompilerDirectives.transferToInterpreter();
                 throw CompilerDirectives.shouldNotReachHere("Not implemented yet. elementSize=" + elementSize);
             }
 
+            long targetOffset = 0;
             /* Unpack two vectors from memory and store them into return struct */
             for (int i = 0; i < 2 * vectorSize; i += 2 * elementSize) {
-                byte v1 = memory.getI8(this, currentPtr + i);
-                memory.putI8(this, targetPtr, v1);
-                byte v2 = memory.getI8(this, currentPtr + i + elementSize);
-                memory.putI8(this, targetPtr + vectorSize, v2);
+                byte v1 = loadNodeV1.executeWithTarget(srcAddress, i);
+                storeNodeV1.executeWithTarget(retStackSpace, targetOffset, v1);
 
-                targetPtr += I8_SIZE_IN_BYTES;
+                byte v2 = loadNodeV2.executeWithTarget(srcAddress, i + elementSize);
+                storeNodeV2.executeWithTarget(retStackSpace, targetOffset + vectorSize, v2);
+
+                targetOffset += I8_SIZE_IN_BYTES;
             }
 
             return retStackSpace;
