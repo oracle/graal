@@ -67,7 +67,9 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     @Specialization(replaces = "doCached")
     ObjectKlass doUncached(Object metaObject, int metaIdentity, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
-
+        if (!getContext().interfaceMappingsEnabled()) {
+            return null;
+        }
         assert interop.isMetaObject(metaObject);
         EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes = getContext().getProxyBytesOrNull(metaIdentity);
         if (proxyBytes == null) {

@@ -124,6 +124,10 @@ public class PolyglotTypeMappings {
         return resolvedKlasses.get(name);
     }
 
+    public boolean hasMappings() {
+        return hasInterfaceMappings || typeConverterFunctions != null;
+    }
+
     public boolean hasInterfaceMappings() {
         return hasInterfaceMappings;
     }

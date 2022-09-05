@@ -1977,7 +1977,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         // no conversion, so throw the original exception
                         throw ex;
                     }
-                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(ex, exceptionInterop));
+                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(getContext(), ex, exceptionInterop));
                     throw EspressoException.wrap(converted, getMeta());
                 } catch (UnsupportedMessageException e) {
                     // throw the original exception then
@@ -2204,7 +2204,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         // no conversion, so throw the original exception
                         throw ex;
                     }
-                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(ex, exceptionInterop));
+                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(getContext(), ex, exceptionInterop));
                     throw EspressoException.wrap(converted, getMeta());
                 } catch (UnsupportedMessageException e) {
                     // throw the original exception then

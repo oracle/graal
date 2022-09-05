@@ -22,6 +22,13 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.options.OptionMap;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -32,15 +39,10 @@ import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
-import org.graalvm.options.OptionMap;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Represents an immutable holder class for context-specific fields bound to the
@@ -99,8 +101,8 @@ public final class EspressoEnv {
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode JImageMode;
-    private final PolyglotInterfaceMappings polyglotInterfaceMappings;
-    private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
+    private final PolyglotTypeMappings polyglotTypeMappings;
+    private final HashMap<Integer, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -158,8 +160,8 @@ public final class EspressoEnv {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
-        this.polyglotInterfaceMappings = new PolyglotInterfaceMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings));
-        this.proxyCache = polyglotInterfaceMappings.hasMappings() ? new HashMap<>() : null;
+        this.polyglotTypeMappings = new PolyglotTypeMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings), env.getOptions().get(EspressoOptions.PolyglotTypeConverters));
+        this.proxyCache = polyglotTypeMappings.hasMappings() ? new HashMap<>() : null;
         this.UseBindingsLoader = env.getOptions().get(EspressoOptions.UseBindingsLoader);
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
@@ -217,11 +219,11 @@ public final class EspressoEnv {
         return classHierarchyOracle;
     }
 
-    public PolyglotInterfaceMappings getPolyglotInterfaceMappings() {
-        return polyglotInterfaceMappings;
+    public PolyglotTypeMappings getPolyglotTypeMappings() {
+        return polyglotTypeMappings;
     }
 
-    public HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> getProxyCache() {
+    public HashMap<Integer, EspressoForeignProxyGenerator.GeneratedProxyBytes> getProxyCache() {
         return proxyCache;
     }
 

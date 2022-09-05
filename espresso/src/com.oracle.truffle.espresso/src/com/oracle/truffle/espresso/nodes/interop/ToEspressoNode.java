@@ -359,6 +359,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         try {
             Object metaObject = getMetaObjectOrThrow(value, interop);
             int metaIdentity = interop.identityHashCode(metaObject);
+
             // first see if a generated proxy can be used for interface mapped types
             ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaIdentity, klass);
             if (proxyKlass != null) {
@@ -411,7 +412,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Cached LookupProxyKlassNode lookupProxyKlassNode,
                     @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
         try {
-            if (getContext().explicitTypeMappingsEnabled()) {
+            if (getContext().interfaceMappingsEnabled()) {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
                 int metaIdentity = interop.identityHashCode(metaObject);
                 ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaIdentity, klass);
