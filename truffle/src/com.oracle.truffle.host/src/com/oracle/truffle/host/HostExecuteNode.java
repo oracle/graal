@@ -586,13 +586,10 @@ abstract class HostExecuteNode extends Node {
                     TypeCheckNode[] cachedArgTypes) throws UnsupportedTypeException {
         List<SingleMethod> candidates = new ArrayList<>();
 
-        // filter methods that were only added to support jni names
-        List<SingleMethod> filtered = applicableByArity.stream().filter(s -> !s.isOnlyVisibleFromJniName()).collect(Collectors.toList());
-
         if (!varArgs) {
-            for (SingleMethod candidate : filtered) {
+            for (SingleMethod candidate : applicableByArity) {
                 int paramCount = candidate.getParameterCount();
-                if (!candidate.isVarArgs() || paramCount == args.length) {
+                if (!candidate.isOnlyVisibleFromJniName() && (!candidate.isVarArgs() || paramCount == args.length)) {
                     assert paramCount == args.length;
                     Class<?>[] parameterTypes = candidate.getParameterTypes();
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
@@ -605,14 +602,14 @@ abstract class HostExecuteNode extends Node {
                             break;
                         }
                     }
-                    if (applicable && !candidate.isOnlyVisibleFromJniName()) {
+                    if (applicable) {
                         candidates.add(candidate);
                     }
                 }
             }
         } else {
-            for (SingleMethod candidate : filtered) {
-                if (candidate.isVarArgs()) {
+            for (SingleMethod candidate : applicableByArity) {
+                if (candidate.isVarArgs() && !candidate.isOnlyVisibleFromJniName()) {
                     int parameterCount = candidate.getParameterCount();
                     Class<?>[] parameterTypes = candidate.getParameterTypes();
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
@@ -642,7 +639,7 @@ abstract class HostExecuteNode extends Node {
                                 break;
                             }
                         }
-                        if (applicable && !candidate.isOnlyVisibleFromJniName()) {
+                        if (applicable) {
                             candidates.add(candidate);
                         }
                     }
@@ -655,7 +652,7 @@ abstract class HostExecuteNode extends Node {
                 SingleMethod best = candidates.get(0);
 
                 if (cachedArgTypes != null) {
-                    fillArgTypesArray(args, cachedArgTypes, best, varArgs, filtered, priority, hostContext);
+                    fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
                 }
 
                 return best;
@@ -663,7 +660,7 @@ abstract class HostExecuteNode extends Node {
                 SingleMethod best = findMostSpecificOverload(hostContext, candidates, args, varArgs, priority);
                 if (best != null) {
                     if (cachedArgTypes != null) {
-                        fillArgTypesArray(args, cachedArgTypes, best, varArgs, filtered, priority, hostContext);
+                        fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
                     }
 
                     return best;
