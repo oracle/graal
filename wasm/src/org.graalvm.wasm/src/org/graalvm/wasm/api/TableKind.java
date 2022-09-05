@@ -55,4 +55,15 @@ public enum TableKind {
     public byte byteValue() {
         return byteValue;
     }
+
+    public static String toString(byte byteValue) {
+        switch (byteValue) {
+            case WasmType.EXTERNREF_TYPE:
+                return "externref";
+            case WasmType.FUNCREF_TYPE:
+                return "anyfunc";
+            default:
+                return "";
+        }
+    }
 }

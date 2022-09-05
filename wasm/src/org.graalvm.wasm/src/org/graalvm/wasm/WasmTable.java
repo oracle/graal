@@ -86,7 +86,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     private Object[] elements;
 
     @TruffleBoundary
-    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, byte elemType) {
+    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, byte elemType, Object initialValue) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
@@ -99,12 +99,16 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         this.maxAllowedSize = maxAllowedSize;
         this.currentMinSize = declaredMinSize;
         this.elements = new Object[declaredMinSize];
-        Arrays.fill(this.elements, WasmConstant.NULL);
+        Arrays.fill(this.elements, initialValue);
         this.elemType = elemType;
     }
 
     public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType);
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL);
+    }
+
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType, Object initialValue) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, initialValue);
     }
 
     /**

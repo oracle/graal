@@ -200,7 +200,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmTable table = wasm.tableAlloc(4, 8, TableKind.anyfunc);
+            final WasmTable table = wasm.tableAlloc(4, 8, TableKind.anyfunc, WasmConstant.NULL);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
@@ -1339,7 +1339,7 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 // Negative numbers represent unsigned values
-                wasm.tableAlloc(-10, -8, TableKind.anyfunc);
+                wasm.tableAlloc(-10, -8, TableKind.anyfunc, WasmConstant.NULL);
                 Assert.fail("Should have failed - initial table size exceeds implementation limit");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1352,7 +1352,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
-                wasm.tableAlloc(2, 1, TableKind.anyfunc);
+                wasm.tableAlloc(2, 1, TableKind.anyfunc, WasmConstant.NULL);
                 Assert.fail("Should have failed - min table size bigger than max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1365,7 +1365,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
-                WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc);
+                WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL);
                 WebAssembly.tableGrow(table, 1, WasmConstant.NULL);
                 Assert.fail("Should have failed - try to grow table beyond max size");
             } catch (WasmJsApiException e) {
@@ -1379,7 +1379,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
-            final WasmTable table = wasm.tableAlloc(1, 2, TableKind.anyfunc);
+            final WasmTable table = wasm.tableAlloc(1, 2, TableKind.anyfunc, WasmConstant.NULL);
             try {
                 final Object tableGrow = wasm.readMember("table_grow");
                 lib.execute(tableGrow, table, 1);
@@ -1509,7 +1509,7 @@ public class WasmJsApiSuite {
     public void testTableEmbedderData() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc);
+            final WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL);
             checkEmbedderData(table);
         });
     }
@@ -2011,15 +2011,15 @@ public class WasmJsApiSuite {
             WebAssembly wasm = new WebAssembly(context);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "tables", Dictionary.create(new Object[]{
-                                            "table0", wasm.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table1", wasm.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table2", wasm.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table3", wasm.tableAlloc(1, 1, TableKind.anyfunc),
-                                            "table4", wasm.tableAlloc(1, 1, TableKind.externref),
-                                            "table5", wasm.tableAlloc(1, 1, TableKind.externref),
-                                            "table6", wasm.tableAlloc(1, 1, TableKind.externref),
-                                            "table7", wasm.tableAlloc(1, 1, TableKind.externref),
-                                            "table8", wasm.tableAlloc(1, 1, TableKind.externref),
+                                            "table0", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table1", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table2", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table3", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table4", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table5", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table6", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table7", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table8", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
                             })
             });
             WasmInstance instance = moduleInstantiate(wasm, importManyTablesBytes, importObject);
