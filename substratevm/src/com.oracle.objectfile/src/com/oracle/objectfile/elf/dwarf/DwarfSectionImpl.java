@@ -678,7 +678,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * Retrieve the unique object header type notified via the DebugTypeInfo API
+     * Retrieve the unique object header type notified via the DebugTypeInfo API.
      * 
      * @return the unique object header type notified via the DebugTypeInfo API.
      */
