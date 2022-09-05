@@ -1953,7 +1953,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object[].class) StaticObject arguments,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ToEspressoNode toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1961,7 +1960,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
-            String hostMember = InteropUtils.toHostString(member, memberInterop);
+            String hostMember = getMeta().toHostString(member);
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrap(getLanguage(), receiver), hostMember, hostArguments);
