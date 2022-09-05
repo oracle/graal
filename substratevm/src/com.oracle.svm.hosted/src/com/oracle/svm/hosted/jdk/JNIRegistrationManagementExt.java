@@ -29,13 +29,12 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.management.LibManagementExtSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -43,21 +42,16 @@ import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements InternalFeature {
-
-    private static final String OPERATING_SYSTEM_IMPL = "com.sun.management.internal.OperatingSystemImpl";
-    private NativeLibraries nativeLibraries;
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
+        rerunClassInit(access, "com.sun.management.internal.OperatingSystemImpl");
 
-        rerunClassInit(access, OPERATING_SYSTEM_IMPL);
-
-        access.registerReachabilityHandler(this::linkManagementExt, clazz(access, OPERATING_SYSTEM_IMPL));
+        access.registerReachabilityHandler(this::linkManagementExt, clazz(access, "com.sun.management.internal.OperatingSystemImpl"));
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_management_internal_OperatingSystemImpl");
     }
 
-    private void linkManagementExt(@SuppressWarnings("unused") DuringAnalysisAccess access) {
+    private void linkManagementExt(DuringAnalysisAccess access) {
+        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) access).getNativeLibraries();
         /*
          * Note that we register `management_ext` as a non-JNI static library. This avoids pulling
          * in `JNI_OnLoad`, which is fine since we're only interested in the native methods of the
@@ -74,18 +68,6 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
              */
             Method method = ReflectionUtil.lookupMethod(LibManagementExtSupport.class, "throwInternalError", IsolateThread.class, CCharPointer.class);
             CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> CEntryPointData.create(method));
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        boolean managementExtNeeded = access.isReachable(clazz(access, OPERATING_SYSTEM_IMPL));
-        if (managementExtNeeded && NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary("awt_headless")) {
-            /*
-             * Ensure that `management_ext` comes before `awt_headless` on the linker command line.
-             * This is necessary to prevent linker errors such as JDK-8264047.
-             */
-            nativeLibraries.addStaticNonJniLibrary("management_ext", "awt_headless");
         }
     }
 }
