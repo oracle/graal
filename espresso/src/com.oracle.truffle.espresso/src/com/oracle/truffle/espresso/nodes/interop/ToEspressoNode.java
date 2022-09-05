@@ -350,13 +350,12 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isBoxedPrimitive(value)",
                     "isHostObject(getContext(), value)"
     })
-    @SuppressWarnings("unused")
     Object doForeignClassProxy(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached LookupProxyKlassNode lookupProxyKlassNode,
                     @Cached LookupTypeConverterNode lookupTypeConverterNode,
                     @Cached BranchProfile errorProfile,
-                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                    @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             Object metaObject = getMetaObjectOrThrow(value, interop);
             int metaIdentity = interop.identityHashCode(metaObject);
