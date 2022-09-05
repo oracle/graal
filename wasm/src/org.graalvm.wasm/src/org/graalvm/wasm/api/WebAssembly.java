@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.EmbedderDataHolder;
@@ -349,7 +350,8 @@ public class WebAssembly extends Dictionary {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
             } else if (globalIndex != null) {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType));
+                String mutability = module.isGlobalMutable(globalIndex) ? "mut" : "con";
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType + " " + mutability));
             } else {
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
@@ -405,9 +407,15 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ByteArrayBuffer> customSections(WasmModule module, Object sectionName) {
+        Object name;
+        if (sectionName instanceof TruffleString) {
+            name = sectionName.toString();
+        } else {
+            name = sectionName;
+        }
         List<ByteArrayBuffer> sections = new ArrayList<>();
         for (WasmCustomSection section : module.customSections()) {
-            if (section.getName().equals(sectionName)) {
+            if (section.getName().equals(name)) {
                 sections.add(new ByteArrayBuffer(module.data(), section.getOffset(), section.getLength()));
             }
         }
