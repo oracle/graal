@@ -209,8 +209,9 @@ def test():
                       [r"#0%shello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:76"%(spaces_pattern, wildcard_pattern),
                        r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
-                       r"#3%s com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
-                       r"#4%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
+                       r"#3%s com\.oracle\.svm\.core\.JavaMainWrapper::doRun%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#5%s com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s at %sIsolateEnterStub\.java:[0-9]+"%(spaces_pattern, hex_digits_pattern, wildcard_pattern, package_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
 
@@ -410,8 +411,9 @@ def test():
                        r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:76"%(spaces_pattern, address_pattern, wildcard_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
                        r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
-                       r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
-                       r"#5%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
+                       r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#6%s com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s at %sIsolateEnterStub\.java:[0-9]+"%(spaces_pattern, hex_digits_pattern, wildcard_pattern, package_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
 

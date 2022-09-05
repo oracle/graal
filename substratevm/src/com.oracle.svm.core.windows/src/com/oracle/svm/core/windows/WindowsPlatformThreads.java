@@ -38,6 +38,8 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
@@ -91,6 +93,40 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         // Start the thread running
         Process.ResumeThread(osThreadHandle);
         return true;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+        int initFlag = 0;
+
+        // If caller specified a stack size, don't commit it all at once.
+        if (stackSize != 0) {
+            initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
+        }
+
+        WinBase.HANDLE osThreadHandle = Process.NoTransitions._beginthreadex(WordFactory.nullPointer(), stackSize,
+                        threadRoutine, userData, initFlag, WordFactory.nullPointer());
+        return (PlatformThreads.OSThreadHandle) osThreadHandle;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
+        if (SynchAPI.NoTransitions.WaitForSingleObject((WinBase.HANDLE) threadHandle, SynchAPI.INFINITE()) != SynchAPI.WAIT_OBJECT_0()) {
+            return false;
+        }
+        if (Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
+        WinBase.CloseHandle((WinBase.HANDLE) threadHandle);
     }
 
     /**

@@ -809,4 +809,6 @@ public class SubstrateOptions {
     @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
     public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
 
+    @Option(help = "Initializes and runs main entry point in a new native thread.", type = Expert)//
+    public static final HostedOptionKey<Boolean> RunMainInNewThread = new HostedOptionKey<>(false);
 }

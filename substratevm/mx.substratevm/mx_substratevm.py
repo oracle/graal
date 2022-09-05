@@ -360,6 +360,7 @@ def svm_gate_body(args, tasks):
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task()
+                helloworld(["-H:+RunMainInNewThread"])
 
     with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
         if t:
