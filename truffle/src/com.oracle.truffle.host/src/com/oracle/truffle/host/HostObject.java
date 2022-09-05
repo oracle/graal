@@ -1387,6 +1387,10 @@ final class HostObject implements TruffleObject {
         return c == Byte.class || c == Short.class || c == Integer.class || c == Long.class || c == Float.class || c == Double.class;
     }
 
+    private static boolean isJavaPrimitiveNumber(Object value) {
+        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Float || value instanceof Double;
+    }
+
     @ExportMessage
     boolean fitsInByte(@CachedLibrary("this") InteropLibrary thisLibrary,
                     @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
@@ -1784,12 +1788,19 @@ final class HostObject implements TruffleObject {
                     Object hostObject = HostObject.forObject(javaObject, context);
                     try {
                         InteropLibrary thisLib = InteropLibrary.getUncached(hostObject);
-                        if (thisLib.isMemberInvocable(hostObject, "toString")) {
+                        if (thisLib.isBoolean(hostObject)) {
+                            return Boolean.toString(thisLib.asBoolean(hostObject));
+                        } else if (thisLib.isString(hostObject)) {
+                            return thisLib.asString(hostObject);
+                        } else if (thisLib.isNumber(hostObject)) {
+                            assert isJavaPrimitiveNumber(javaObject) : javaObject;
+                            return javaObject.toString();
+                        } else if (thisLib.isMemberInvocable(hostObject, "toString")) {
                             Object result = thisLib.invokeMember(hostObject, "toString");
                             return InteropLibrary.getUncached().asString(result);
                         }
                     } catch (InteropException e) {
-                        // ignore
+                        // ignore exception and fall back to the !allowSideEffects version
                     }
                 }
                 return getTypeNameSafe(javaObject.getClass());
