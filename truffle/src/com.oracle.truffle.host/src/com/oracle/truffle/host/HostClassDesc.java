@@ -221,19 +221,8 @@ final class HostClassDesc {
                         bridgeMethods.add(m);
                         continue;
                     }
-                    MethodInfo methodInfo = methodInfo(m);
                     if (hostAccess.allowsAccess(m)) {
-                        if (!visited.containsKey(methodInfo)) {
-                            visited.put(methodInfo, methodInfo);
-                            putMethod(hostAccess, m, methodMap, staticMethodMap, false);
-                        } else {
-                            // could be inherited method with different return type
-                            // include those for jni-naming scheme lookup too
-                            MethodInfo info = (MethodInfo) visited.get(methodInfo);
-                            if (info.returnType != methodInfo.returnType) {
-                                putMethod(hostAccess, m, methodMap, staticMethodMap, true);
-                            }
-                        }
+                        collectPublicMethod(hostAccess, methodMap, staticMethodMap, visited, m);
                     }
                 }
                 if (hostAccess.isArrayAccess() && type.isArray()) {
@@ -257,18 +246,22 @@ final class HostClassDesc {
             if (bridgeMethods != null && !bridgeMethods.isEmpty()) {
                 for (Method m : bridgeMethods) {
                     assert hostAccess.allowsAccess(m); // already checked above
-                    MethodInfo methodInfo = methodInfo(m);
-                    if (!visited.containsKey(methodInfo)) {
-                        visited.put(methodInfo, methodInfo);
-                        putMethod(hostAccess, m, methodMap, staticMethodMap, false);
-                    } else {
-                        // could be inherited method with different return type
-                        // include those for jni-naming scheme lookup too
-                        MethodInfo info = (MethodInfo) visited.get(methodInfo);
-                        if (info.returnType != methodInfo.returnType) {
-                            putMethod(hostAccess, m, methodMap, staticMethodMap, true);
-                        }
-                    }
+                    collectPublicMethod(hostAccess, methodMap, staticMethodMap, visited, m);
+                }
+            }
+        }
+
+        private static void collectPublicMethod(HostClassCache hostAccess, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Map<Object, Object> visited, Method m) {
+            MethodInfo methodInfo = methodInfo(m);
+            if (!visited.containsKey(methodInfo)) {
+                visited.put(methodInfo, methodInfo);
+                putMethod(hostAccess, m, methodMap, staticMethodMap, false);
+            } else {
+                // could be inherited method with different return type
+                // include those for jni-naming scheme lookup too
+                MethodInfo info = (MethodInfo) visited.get(methodInfo);
+                if (info.returnType != methodInfo.returnType) {
+                    putMethod(hostAccess, m, methodMap, staticMethodMap, true);
                 }
             }
         }
