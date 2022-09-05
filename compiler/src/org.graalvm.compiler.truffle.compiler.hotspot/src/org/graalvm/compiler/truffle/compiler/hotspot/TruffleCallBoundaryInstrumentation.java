@@ -56,7 +56,7 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
 
     public TruffleCallBoundaryInstrumentation(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,

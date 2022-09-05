@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -40,6 +43,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_128, size = NodeSize.SIZE_128)
@@ -79,18 +83,26 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         return KILLED_LOCATIONS;
     }
 
+    public static EnumSet<?> minFeaturesAMD64() {
+        return EnumSet.of(SSSE3, CLMUL);
+    }
+
+    public static EnumSet<?> minFeaturesAARCH64() {
+        return EnumSet.of(AArch64.CPUFeature.PMULL);
+    }
+
     @NodeIntrinsic
-    @GenerateStub(name = "ghashProcessBlocks")
+    @GenerateStub(name = "ghashProcessBlocks", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native void apply(Pointer state,
                     Pointer hashSubkey,
                     Pointer data,
-                    Pointer blocks);
+                    int blocks);
 
     @NodeIntrinsic
     public static native void apply(Pointer state,
                     Pointer hashSubkey,
                     Pointer data,
-                    Pointer blocks,
+                    int blocks,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
