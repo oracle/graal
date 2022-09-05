@@ -185,7 +185,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             pos = writeInt(length, buffer, pos);
             /* DWARF version is always 2. */
             pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
-            pos = writeInt(cuIndex, buffer, pos);
+            pos = writeInfoSectionOffset(cuIndex, buffer, pos);
             /* Address size is always 8. */
             pos = writeByte((byte) 8, buffer, pos);
             /* Segment size is always 0. */
@@ -238,7 +238,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                 pos = writeInt(length, buffer, pos);
                 /* DWARF version is always 2. */
                 pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
-                pos = writeInt(cuIndex, buffer, pos);
+                pos = writeInfoSectionOffset(cuIndex, buffer, pos);
                 /* Address size is always 8. */
                 pos = writeByte((byte) 8, buffer, pos);
                 /* Segment size is always 0. */

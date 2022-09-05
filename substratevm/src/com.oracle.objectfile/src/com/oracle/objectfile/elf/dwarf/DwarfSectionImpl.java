@@ -228,6 +228,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
+    protected int putRelocatableDwarfSectionOffset(int offset, byte[] buffer, String sectionName, int p) {
+        int pos = p;
+        /*
+         * Mark address so it is relocated relative to the start of the info section.
+         */
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_4, sectionName, offset);
+        pos = writeInt(0, buffer, pos);
+        return pos;
+    }
+
     protected int putULEB(long val, byte[] buffer, int p) {
         int pos = p;
         long l = val;
@@ -396,20 +406,12 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return writeRelocatableCodeOffset(address, buffer, pos);
     }
 
-    protected int writeAttrLocList(int offset, byte[] buffer, int pos) {
-        return writeInt(offset, buffer, pos);
-    }
-
     @SuppressWarnings("unused")
     protected int writeAttrData8(long value, byte[] buffer, int pos) {
         return writeLong(value, buffer, pos);
     }
 
     protected int writeAttrData4(int value, byte[] buffer, int pos) {
-        return writeInt(value, buffer, pos);
-    }
-
-    protected int writeAttrSecOffset(int value, byte[] buffer, int pos) {
         return writeInt(value, buffer, pos);
     }
 
@@ -421,8 +423,34 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return writeByte(value, buffer, pos);
     }
 
-    public int writeAttrRefAddr(int value, byte[] buffer, int pos) {
-        return writeInt(value, buffer, pos);
+    public int writeInfoSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_INFO_SECTION_NAME, pos);
+    }
+
+    protected int writeLineSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_LINE_SECTION_NAME, pos);
+    }
+
+    public int writeAbbrevSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_ABBREV_SECTION_NAME, pos);
+    }
+
+    public int writeStrSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_STR_SECTION_NAME, pos);
+    }
+
+    protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfDebugInfo.DW_LOC_SECTION_NAME, pos);
+    }
+
+    public int writeDwarfSectionOffset(int offset, byte[] buffer, String sectionName, int pos) {
+        // offsets to abbrev section DIEs need a relocation
+        // the linker uses this to update the offset when info sections are merged
+        if (buffer != null) {
+            return putRelocatableDwarfSectionOffset(offset, buffer, sectionName, pos);
+        } else {
+            return pos + 4;
+        }
     }
 
     protected int writeAttrNull(byte[] buffer, int pos) {
