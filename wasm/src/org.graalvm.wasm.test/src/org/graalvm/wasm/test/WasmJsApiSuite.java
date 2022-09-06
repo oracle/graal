@@ -1399,7 +1399,8 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                lib.execute(tableAlloc, "anyfunc", 1, 1);
+                final Object tableType = InteropArray.create(new Object[]{1, 1, "anyfunc"});
+                lib.execute(tableAlloc, tableType, WasmConstant.NULL);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -1413,7 +1414,8 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                lib.execute(tableAlloc, "externref", 1, 1);
+                final Object tableType = InteropArray.create(new Object[]{1, 1, "externref"});
+                lib.execute(tableAlloc, tableType, WasmConstant.NULL);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -1427,7 +1429,8 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                lib.execute(tableAlloc, 1, 1);
+                final Object tableType = InteropArray.create(new Object[]{1, 1});
+                lib.execute(tableAlloc, tableType, WasmConstant.NULL);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -1443,23 +1446,6 @@ public class WasmJsApiSuite {
                 final Object tableAlloc = wasm.readMember("table_alloc");
                 lib.execute(tableAlloc, "anyfunc", 1, 1);
                 Assert.fail("Should have failed - 3 arguments, 2 allowed");
-            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw new RuntimeException(e);
-            } catch (WasmJsApiException e) {
-                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
-            }
-        });
-    }
-
-    @Test
-    public void testTableInit2Args() throws IOException {
-        runTest(context -> {
-            final WebAssembly wasm = new WebAssembly(context);
-            final InteropLibrary lib = InteropLibrary.getUncached();
-            try {
-                final Object tableAlloc = wasm.readMember("table_alloc");
-                lib.execute(tableAlloc, 1, 1);
-                Assert.fail("Should have failed - invalid arguments");
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             } catch (WasmJsApiException e) {
@@ -2043,6 +2029,7 @@ public class WasmJsApiSuite {
 
     private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }

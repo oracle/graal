@@ -59,6 +59,7 @@ public abstract class AbstractBinarySuite {
 
     protected static void runRuntimeTest(byte[] binary, Consumer<Value> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binary), "main");
             Source source = sourceBuilder.build();
@@ -69,6 +70,7 @@ public abstract class AbstractBinarySuite {
 
     protected static void runParserTest(byte[] binary, BiConsumer<Context, Source> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binary), "main");
             Source source = sourceBuilder.build();

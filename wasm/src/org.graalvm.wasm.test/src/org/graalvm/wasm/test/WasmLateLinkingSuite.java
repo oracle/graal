@@ -217,6 +217,7 @@ public class WasmLateLinkingSuite {
 
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(firstBinary), "main");

@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.EmbedderDataHolder;
@@ -79,6 +78,7 @@ import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -300,32 +300,6 @@ public class WebAssembly extends Dictionary {
         return (cause == null) ? new WasmJsApiException(kind, message) : new WasmJsApiException(kind, message, cause);
     }
 
-    private static int[] toSizeLimits(Object[] args) {
-        if (args.length == 0) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial argument is required");
-        }
-
-        int initial;
-        try {
-            initial = InteropLibrary.getUncached().asInt(args[0]);
-        } catch (UnsupportedMessageException ex) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial argument must be convertible to int");
-        }
-
-        int maximum;
-        if (args.length == 1) {
-            maximum = -1;
-        } else {
-            try {
-                maximum = InteropLibrary.getUncached().asInt(args[1]);
-            } catch (UnsupportedMessageException ex) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Maximum argument must be convertible to int");
-            }
-        }
-
-        return new int[]{initial, maximum};
-    }
-
     private static WasmModule toModule(Object[] args) {
         checkArgumentCount(args, 1);
         if (args[0] instanceof WasmModule) {
@@ -447,7 +421,24 @@ public class WebAssembly extends Dictionary {
         }
         InteropLibrary lib = InteropLibrary.getUncached();
         if (!lib.hasArrayElements(args[0])) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Table type must be an array");
+            // Support old api
+            final int initialSize;
+            try {
+                initialSize = lib.asInt(args[0]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial size must be convertible to int");
+            }
+            final int maximumSize;
+            if (args.length > 1) {
+                try {
+                    maximumSize = lib.asInt(args[1]);
+                } catch (UnsupportedMessageException e) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Maximum size must be convertible to int");
+                }
+            } else {
+                maximumSize = -1;
+            }
+            return tableAlloc(initialSize, maximumSize, TableKind.anyfunc, WasmConstant.NULL);
         }
         final Object tableType = args[0];
         final Object initialSizeObject;
@@ -670,7 +661,24 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
         if (!lib.hasArrayElements(args[0])) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Memory type must be an array");
+            // Support old api
+            final int initialSize;
+            try {
+                initialSize = lib.asInt(args[0]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial size must be convertible to int");
+            }
+            final int maximumSize;
+            if (args.length > 1) {
+                try {
+                    maximumSize = lib.asInt(args[1]);
+                } catch (UnsupportedMessageException e) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Maximum size must be convertible to int");
+                }
+            } else {
+                maximumSize = -1;
+            }
+            return memAlloc(initialSize, maximumSize);
         }
         final Object memoryType = args[0];
         final Object initialSizeObject;
@@ -788,7 +796,23 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 2);
         InteropLibrary lib = InteropLibrary.getUncached();
         if (!lib.hasArrayElements(args[0])) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type must be an array");
+            // Support old api
+            final ValueType valueType;
+            try {
+                String valueTypeString = lib.asString(args[0]);
+                valueType = ValueType.valueOf(valueTypeString);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (value type) must be convertible to String");
+            } catch (IllegalArgumentException ex) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
+            }
+            final boolean mutable;
+            try {
+                mutable = lib.asBoolean(args[1]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (mutable) must be convertible to boolean");
+            }
+            return globalAlloc(valueType, mutable, args[2]);
         }
         final Object globalType = args[0];
         final Object valueTypeObject;
@@ -804,7 +828,7 @@ public class WebAssembly extends Dictionary {
             throw CompilerDirectives.shouldNotReachHere();
         }
 
-        ValueType valueType;
+        final ValueType valueType;
         try {
             String valueTypeString = lib.asString(valueTypeObject);
             valueType = ValueType.valueOf(valueTypeString);
@@ -814,7 +838,7 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
         }
 
-        boolean mutable;
+        final boolean mutable;
         try {
             mutable = lib.asBoolean(mutableObject);
         } catch (UnsupportedMessageException ex) {

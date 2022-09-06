@@ -292,6 +292,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
             contextBuilder.option("wasm.KeepDataSections", "true");
             contextBuilder.option("wasm.Builtins", includedExternalModules());
+            contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.
