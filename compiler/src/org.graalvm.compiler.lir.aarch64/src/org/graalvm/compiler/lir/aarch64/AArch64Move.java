@@ -394,7 +394,7 @@ public class AArch64Move {
             try (ScratchRegister scratch1 = masm.getScratchRegister()) {
                 AArch64Address address = addressValue.toAddress();
                 final Register addrReg;
-                if (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
+                if (address.isBaseRegisterOnly()) {
                     // Can directly use the base register as the address
                     addrReg = address.getBase();
                 } else {
@@ -500,7 +500,7 @@ public class AArch64Move {
                 try (ScratchRegister scratch1 = masm.getScratchRegister()) {
                     AArch64Address address = addressValue.toAddress();
                     final Register addrReg;
-                    if (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
+                    if (address.isBaseRegisterOnly()) {
                         // Can directly use the base register as the address
                         addrReg = address.getBase();
                     } else {

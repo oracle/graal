@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collection;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -82,7 +83,8 @@ public class DirectByteBufferTest extends GraalCompilerTest {
 
         @Override
         public String toString() {
-            return String.format("0x%02x, 0x%04x, 0x%08x, 0x%016x,0x%08x, 0x%016x", byteValue, shortValue, intValue, Float.floatToRawIntBits(floatValue), Double.doubleToRawLongBits(doubleValue));
+            return String.format("0x%02x, 0x%04x, 0x%08x, 0x%016x,0x%08x, 0x%016x", byteValue, shortValue, intValue, longValue, Float.floatToRawIntBits(floatValue),
+                            Double.doubleToRawLongBits(doubleValue));
         }
     }
 

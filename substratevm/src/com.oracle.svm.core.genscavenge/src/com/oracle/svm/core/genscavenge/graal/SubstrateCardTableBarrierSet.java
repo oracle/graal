@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 
@@ -44,10 +44,10 @@ public class SubstrateCardTableBarrierSet extends CardTableBarrierSet {
     }
 
     @Override
-    public BarrierType fieldStoreBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
         if (field.isStatic() && storageKind == JavaKind.Object) {
-            return arrayStoreBarrierType(storageKind);
+            return arrayWriteBarrierType(storageKind);
         }
-        return super.fieldStoreBarrierType(field, storageKind);
+        return super.fieldWriteBarrierType(field, storageKind);
     }
 }

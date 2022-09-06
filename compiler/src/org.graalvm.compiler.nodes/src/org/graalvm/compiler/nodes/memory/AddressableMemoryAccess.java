@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -44,4 +45,6 @@ public interface AddressableMemoryAccess extends MemoryAccess {
     AddressNode getAddress();
 
     void setAddress(AddressNode address);
+
+    BarrierType getBarrierType();
 }

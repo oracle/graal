@@ -62,6 +62,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.StableMethodNameFormatter;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -1162,7 +1163,8 @@ public class CompileQueue {
                         OptionValues options,
                         DebugContext debug,
                         CompilationResult compilationResult,
-                        Register uncompressedNullRegister) {
+                        Register uncompressedNullRegister,
+                        LIR lir) {
             return new CompilationResultBuilder(providers,
                             frameMap,
                             asm,
@@ -1173,7 +1175,8 @@ public class CompileQueue {
                             compilationResult,
                             uncompressedNullRegister,
                             EconomicMap.wrapMap(dataCache),
-                            CompilationResultBuilder.NO_VERIFIERS);
+                            CompilationResultBuilder.NO_VERIFIERS,
+                            lir);
         }
     }
 

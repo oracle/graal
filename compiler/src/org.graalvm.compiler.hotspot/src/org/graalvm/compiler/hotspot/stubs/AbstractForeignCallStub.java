@@ -28,8 +28,10 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.StackOnlyCallingConvention.StackOnlyCall;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.StackOnlyCallingConvention.StackOnlyCallee;
 import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -103,6 +105,7 @@ public abstract class AbstractForeignCallStub extends Stub {
                     HotSpotProviders providers,
                     long address,
                     HotSpotForeignCallDescriptor descriptor,
+                    HotSpotForeignCallLinkage.RegisterEffect effect,
                     boolean prependThread) {
         super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(),
                         providers.getCodeCache(),
@@ -110,9 +113,9 @@ public abstract class AbstractForeignCallStub extends Stub {
                         providers.getForeignCalls(),
                         descriptor,
                         0L,
-                        COMPUTES_REGISTERS_KILLED,
-                        JavaCall,
-                        JavaCallee));
+                        effect,
+                        effect == KILLS_NO_REGISTERS ? StackOnlyCall : JavaCall,
+                        effect == KILLS_NO_REGISTERS ? StackOnlyCallee : JavaCallee));
         this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -245,7 +248,9 @@ public abstract class AbstractForeignCallStub extends Stub {
             graph.getGraphState().forceDisableFrameStateVerification();
             ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, thread);
-            kit.createIntrinsicInvoke(handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));
+            if (linkage.getDescriptor().getTransition() == Transition.SAFEPOINT) {
+                kit.createIntrinsicInvoke(handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));
+            }
             if (isObjectResult) {
                 InvokeNode object = kit.createIntrinsicInvoke(getAndClearObjectResult, thread);
                 result = kit.createIntrinsicInvoke(verifyObject, object);

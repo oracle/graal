@@ -660,6 +660,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return applyRMOpAndJcc(CMP.getRMOpcode(QWORD), QWORD, src1, src2, cc, branchTarget, isShortJmp, null);
     }
 
+    public final int cmpqAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
+        return applyRMOpAndJcc(CMP.getRMOpcode(QWORD), QWORD, src1, src2, cc, branchTarget, isShortJmp, applyBeforeFusedPair);
+    }
+
     public final void cmpAndJcc(OperandSize size, Register src1, Supplier<AMD64Address> src2, ConditionFlag cc, Label branchTarget) {
         AMD64Address placeHolder = getPlaceholder(position());
         final AMD64RMOp op = CMP.getRMOpcode(size);

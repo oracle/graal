@@ -38,6 +38,7 @@ import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -77,6 +78,7 @@ public class GraalCompiler {
         public final LIRSuites lirSuites;
         public final T compilationResult;
         public final CompilationResultBuilderFactory factory;
+        public final EntryPointDecorator entryPointDecorator;
         public final boolean verifySourcePositions;
 
         /**
@@ -95,7 +97,7 @@ public class GraalCompiler {
          */
         public Request(StructuredGraph graph, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend, PhaseSuite<HighTierContext> graphBuilderSuite,
                         OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory,
-                        boolean verifySourcePositions) {
+                        EntryPointDecorator entryPointDecorator, boolean verifySourcePositions) {
             this.graph = graph;
             this.installedCodeOwner = installedCodeOwner;
             this.providers = providers;
@@ -107,6 +109,7 @@ public class GraalCompiler {
             this.lirSuites = lirSuites;
             this.compilationResult = compilationResult;
             this.factory = factory;
+            this.entryPointDecorator = entryPointDecorator;
             this.verifySourcePositions = verifySourcePositions;
         }
 
@@ -131,8 +134,23 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, Suites suites, LIRSuites lirSuites, T compilationResult,
                     CompilationResultBuilderFactory factory, boolean verifySourcePositions) {
-        return compile(new Request<>(graph, installedCodeOwner, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory,
+        return compile(new Request<>(graph, installedCodeOwner, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory, null,
                         verifySourcePositions));
+    }
+
+    /**
+     * Requests compilation of a given graph.
+     *
+     * @param graph the graph to be compiled
+     * @param installedCodeOwner the method the compiled code will be associated with once
+     *            installed. This argument can be null.
+     * @return the result of the compilation
+     */
+    public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
+                    PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, Suites suites, LIRSuites lirSuites, T compilationResult,
+                    CompilationResultBuilderFactory factory, EntryPointDecorator entryPointDecorator, boolean verifySourcePositions) {
+        return compile(new Request<>(graph, installedCodeOwner, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory,
+                        entryPointDecorator, verifySourcePositions));
     }
 
     /**
@@ -149,7 +167,7 @@ public class GraalCompiler {
                             DebugCloseable a = CompilerTimer.start(debug);
                             DebugCloseable b = CompilerMemory.start(debug)) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
-                r.backend.emitBackEnd(r.graph, null, r.installedCodeOwner, r.compilationResult, r.factory, null, r.lirSuites);
+                r.backend.emitBackEnd(r.graph, null, r.installedCodeOwner, r.compilationResult, r.factory, r.entryPointDecorator, null, r.lirSuites);
                 if (r.verifySourcePositions) {
                     assert r.graph.verifySourcePositions(true);
                 }

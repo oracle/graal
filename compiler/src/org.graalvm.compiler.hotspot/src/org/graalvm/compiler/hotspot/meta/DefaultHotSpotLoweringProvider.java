@@ -50,6 +50,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -169,7 +170,6 @@ import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -658,12 +658,14 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         StructuredGraph graph = n.graph();
         assert !hub.isConstant();
         AddressNode mirrorAddress = createOffsetAddress(graph, hub, vmConfig.classMirrorOffset);
+        Stamp loadStamp = n.stamp(NodeView.DEFAULT);
         FloatingReadNode read = graph.unique(
                         new FloatingReadNode(mirrorAddress, CLASS_MIRROR_LOCATION, null, StampFactory.forKind(target.wordJavaKind),
                                         null, BarrierType.NONE));
         // Read the Object from the OopHandle
         AddressNode address = createOffsetAddress(graph, read, 0);
-        read = graph.unique(new FloatingReadNode(address, HOTSPOT_OOP_HANDLE_LOCATION, null, n.stamp(NodeView.DEFAULT), null, BarrierType.NONE));
+        read = graph.unique(new FloatingReadNode(address, HOTSPOT_OOP_HANDLE_LOCATION, null, loadStamp, null,
+                        barrierSet.readBarrierType(HOTSPOT_OOP_HANDLE_LOCATION, address, loadStamp)));
         n.replaceAtUsagesAndDelete(read);
     }
 

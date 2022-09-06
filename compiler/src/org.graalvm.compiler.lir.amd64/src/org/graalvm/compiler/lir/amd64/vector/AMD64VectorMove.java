@@ -369,7 +369,7 @@ public class AMD64VectorMove {
         }
     }
 
-    private static VexMoveOp getVectorMemMoveOp(AMD64Kind kind) {
+    public static VexMoveOp getVectorMemMoveOp(AMD64Kind kind) {
         switch (AVXKind.getDataSize(kind)) {
             case DWORD:
                 return VMOVD;

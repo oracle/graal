@@ -37,6 +37,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.GraalError;
@@ -91,6 +92,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
+import org.graalvm.compiler.lir.gen.BarrierSetLIRGenerator;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.gen.MoveFactory;
@@ -111,8 +113,9 @@ import jdk.vm.ci.meta.ValueKind;
 
 public abstract class AArch64LIRGenerator extends LIRGenerator {
 
-    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
+    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
     }
 
     /**
@@ -125,6 +128,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             return emitMove(val);
         }
         return val;
+    }
+
+    @Override
+    public AArch64BarrierSetLIRGenerator getBarrierSet() {
+        return (AArch64BarrierSetLIRGenerator) super.getBarrierSet();
     }
 
     /**
@@ -179,8 +187,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder);
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder,
+                    BarrierType barrierType) {
+        emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder, barrierType);
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
         assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0);
         Variable result = newVariable(LIRKind.combine(trueValue, falseValue));
@@ -189,11 +198,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, memoryOrder);
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder, BarrierType barrierType) {
+        return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, memoryOrder, barrierType);
     }
 
-    private Variable emitCompareAndSwap(boolean isLogicVariant, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+    private Variable emitCompareAndSwap(boolean isLogicVariant, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder, BarrierType barrierType) {
         /*
          * Atomic instructions only operate on the general (CPU) registers. Hence, float and double
          * values must temporarily use general registers of the equivalent size.
@@ -216,7 +225,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(toRegisterKind(integerAccessKind));
         AllocatableValue allocatableExpectedValue = asAllocatable(reinterpretedExpectedValue);
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue);
-        append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
+        emitCompareAndSwapOp(isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
         if (isLogicVariant) {
             // the returned value is unused
             return null;
@@ -226,11 +235,24 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
     }
 
+    protected void emitCompareAndSwapOp(boolean isLogicVariant, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result, AllocatableValue allocatableExpectedValue,
+                    AllocatableValue allocatableNewValue, BarrierType barrierType) {
+        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
+            getBarrierSet().emitCompareAndSwapOp(isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
+        } else {
+            append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
+        }
+    }
+
     @Override
-    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
-        Variable result = newVariable(toRegisterKind(accessKind));
-        append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
-        return result;
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
+        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
+            return getBarrierSet().emitAtomicReadAndWrite(accessKind, address, newValue, barrierType);
+        } else {
+            Variable result = newVariable(toRegisterKind(accessKind));
+            append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
+            return result;
+        }
     }
 
     @Override

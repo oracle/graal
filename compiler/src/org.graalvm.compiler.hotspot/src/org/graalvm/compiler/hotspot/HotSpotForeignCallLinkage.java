@@ -42,8 +42,23 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
      * {@linkplain ForeignCallLinkage#getTemporaries() temporary} registers.
      */
     enum RegisterEffect {
+        /**
+         * Acts like a normal call.
+         */
         DESTROYS_ALL_CALLER_SAVE_REGISTERS,
-        COMPUTES_REGISTERS_KILLED
+
+        /**
+         * Compute the set of registers which are killed from the LIR and emits register save and
+         * restore logic around any internal foreign calls to reduce the number of registers which
+         * are killed.
+         */
+        COMPUTES_REGISTERS_KILLED,
+
+        /**
+         * Uses a stack based calling convention and saves and restores all registers around
+         * internal foreign calls.
+         */
+        KILLS_NO_REGISTERS
     }
 
     @Override

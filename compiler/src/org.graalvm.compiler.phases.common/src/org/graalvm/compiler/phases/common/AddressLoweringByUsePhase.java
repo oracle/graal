@@ -43,14 +43,13 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.BasePhase;
 
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Created by adinn on 09/05/17.
  */
-public class AddressLoweringByUsePhase extends BasePhase<CoreProviders> {
+public class AddressLoweringByUsePhase extends AddressLoweringPhase {
     public abstract static class AddressLoweringByUse {
 
         public abstract AddressNode lower(ValueNode use, Stamp stamp, AddressNode address);

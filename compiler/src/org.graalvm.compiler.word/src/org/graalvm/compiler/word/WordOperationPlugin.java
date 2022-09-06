@@ -36,6 +36,7 @@ import org.graalvm.compiler.bytecode.BridgeMethodUtils;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -57,6 +58,7 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -68,7 +70,6 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -92,12 +93,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvokePlugin {
     protected final WordTypes wordTypes;
     protected final JavaKind wordKind;
+    private final BarrierSet barrierSet;
     protected final SnippetReflectionProvider snippetReflection;
 
-    public WordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes) {
+    public WordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes, BarrierSet barrierSet) {
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
         this.wordKind = wordTypes.getWordKind();
+        this.barrierSet = barrierSet;
+        assert barrierSet != null;
     }
 
     @Override
@@ -476,7 +480,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     protected ValueNode readOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
         assert op == Opcode.READ_POINTER || op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED;
-        final BarrierType barrier = (op == Opcode.READ_BARRIERED ? BarrierType.UNKNOWN : BarrierType.NONE);
+        final BarrierType barrier = (op == Opcode.READ_BARRIERED && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE);
         final boolean compressible = (op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED);
 
         return readOp(b, readKind, address, location, barrier, compressible);
@@ -494,7 +498,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
         assert op == Opcode.READ_POINTER_VOLATILE || op == Opcode.READ_BARRIERED_VOLATILE;
-        final BarrierType barrier = op == Opcode.READ_BARRIERED_VOLATILE ? BarrierType.UNKNOWN : BarrierType.NONE;
+        final BarrierType barrier = op == Opcode.READ_BARRIERED_VOLATILE && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE;
         final boolean compressible = op == Opcode.READ_BARRIERED_VOLATILE;
         /*
          * A JavaOrderedReadNode is lowered to an OrderedReadNode that will not float. This means it

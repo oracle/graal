@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
+import static org.junit.Assume.assumeTrue;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -37,6 +38,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.test.TestPhase;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
@@ -48,7 +50,6 @@ import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -60,7 +61,6 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -116,7 +116,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Test
     public void testAllocation() throws Exception {
-        this.expectedBarriers = (config.useG1GC) ? 4 : 2;
+        this.expectedBarriers = (config.useG1GC()) ? 4 : 2;
         testWithoutPEA("testAllocationSnippet");
     }
 
@@ -134,7 +134,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Test
     public void testLoopAllocation1() throws Exception {
-        this.expectedBarriers = config.useG1GC ? 8 : 4;
+        this.expectedBarriers = config.useG1GC() ? 8 : 4;
         testWithoutPEA("test2Snippet", false);
         testWithoutPEA("test2Snippet", true);
     }
@@ -159,7 +159,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Test
     public void testLoopAllocation2() throws Exception {
-        this.expectedBarriers = config.useG1GC ? 8 : 4;
+        this.expectedBarriers = config.useG1GC() ? 8 : 4;
         testWithoutPEA("test3Snippet");
     }
 
@@ -183,7 +183,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Test
     public void testReferenceGet() throws Exception {
-        this.expectedBarriers = config.useG1GC ? 1 : 0;
+        this.expectedBarriers = config.useG1GC() ? 1 : 0;
         test("testReferenceGetSnippet");
     }
 
@@ -214,7 +214,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Test
     public void testReferenceReferent1() throws Exception {
-        this.expectedBarriers = config.useG1GC ? 1 : 0;
+        this.expectedBarriers = config.useG1GC() ? 1 : 0;
         test("testReferenceReferentSnippet");
     }
 
@@ -224,13 +224,12 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     /**
      * The type is known to be WeakReference and the offset is non-constant, so the lowering of the
-     * {@link org.graalvm.compiler.nodes.extended.RawLoadNode} is guarded by a check that the offset
-     * is the same as {@link #referenceReferentFieldOffset} which does a barrier if requires it.
+     * {@link org.graalvm.compiler.nodes.extended.RawLoadNode} doesn't require a barrier even if it
+     * were the referent field. See JDK-8189871 for a discussion.
      */
     @Test
-    @Ignore("GR-31031")
     public void testReferenceReferent2() throws Exception {
-        this.expectedBarriers = config.useG1GC ? 1 : 0;
+        this.expectedBarriers = 0;
         test("testReferenceReferent2Snippet", referenceReferentFieldOffset);
     }
 
@@ -253,15 +252,14 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     /**
-     * The type is a super class of WeakReference and the offset is non-constant, so the lowering of
-     * the {@link org.graalvm.compiler.nodes.extended.RawLoadNode} is guarded by a check that the
-     * offset is the same as {@link #referenceReferentFieldOffset} and the base object is a
-     * subclasses of {@link java.lang.ref.Reference} and does a barrier if requires it.
+     * The type is a super class of WeakReference and the offset is non-constant, so
+     * canonicalization of the {@link org.graalvm.compiler.nodes.extended.RawLoadNode} will raise
+     * this to a {@link org.graalvm.compiler.nodes.java.LoadFieldNode} which will have a barrier
+     * when the node is lowered.
      */
     @Test
-    @Ignore("GR-31031")
     public void testReferenceReferent4() throws Exception {
-        this.expectedBarriers = config.useG1GC ? 1 : 0;
+        this.expectedBarriers = config.useG1GC() ? 1 : 0;
         test("testReferenceReferent4Snippet");
     }
 
@@ -310,7 +308,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         Assert.assertTrue("Unknown collector selected", knownSupport.contains(runtime().getGarbageCollector()));
         Assert.assertNotEquals("test must set expected barrier count", expectedBarriers, -1);
         int barriers = 0;
-        if (config.useG1GC) {
+        if (config.useG1GC()) {
             barriers = graph.getNodes().filter(G1ReferentFieldReadBarrier.class).count() + graph.getNodes().filter(G1PreWriteBarrier.class).count() +
                             graph.getNodes().filter(G1PostWriteBarrier.class).count();
         } else {
@@ -320,7 +318,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
             Assert.assertEquals(expectedBarriers, barriers);
         }
         for (WriteNode write : graph.getNodes().filter(WriteNode.class)) {
-            if (config.useG1GC) {
+            if (config.useG1GC()) {
                 if (write.getBarrierType() != BarrierType.NONE) {
                     Assert.assertEquals(1, write.successors().count());
                     Assert.assertTrue(write.next() instanceof G1PostWriteBarrier);
@@ -342,8 +340,8 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                         Assert.assertEquals(referentOffset(getMetaAccess()), constDisp.asLong());
                     }
                 }
-                Assert.assertTrue(BarrierType.WEAK_FIELD == read.getBarrierType() || BarrierType.PHANTOM_FIELD == read.getBarrierType());
-                if (config.useG1GC) {
+                Assert.assertTrue(BarrierType.REFERENCE_GET == read.getBarrierType() || BarrierType.PHANTOM_REFERS_TO == read.getBarrierType());
+                if (config.useG1GC()) {
                     Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
                 }
             }
@@ -356,6 +354,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void before() {
+        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.Z));
         expectedBarriers = -1;
     }
 

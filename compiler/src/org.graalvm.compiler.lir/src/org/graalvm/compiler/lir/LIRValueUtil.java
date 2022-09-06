@@ -138,9 +138,7 @@ public final class LIRValueUtil {
             Register r1 = registers.get(i);
             for (int j = 0; j < i; j++) {
                 Register r2 = registers.get(j);
-                if (r1.equals(r2)) {
-                    return false;
-                }
+                assert !r1.equals(r2) : r1 + " appears more than once";
             }
         }
         return true;
@@ -153,6 +151,13 @@ public final class LIRValueUtil {
             } else if (o instanceof Value) {
                 if (isRegister((Value) o)) {
                     registers.add(asRegister((Value) o));
+                } else if (o instanceof CompositeValue) {
+                    CompositeValue compositeValue = (CompositeValue) o;
+                    compositeValue.visitEachComponent(null, null, (instruction, value, mode, flags) -> {
+                        if (isRegister((Value) o)) {
+                            registers.add(asRegister((Value) o));
+                        }
+                    });
                 }
             } else if (o instanceof Object[]) {
                 collectRegisters((Object[]) o, registers);

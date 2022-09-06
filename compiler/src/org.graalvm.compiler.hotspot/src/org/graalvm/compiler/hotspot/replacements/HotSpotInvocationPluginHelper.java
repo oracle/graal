@@ -50,8 +50,8 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -70,10 +70,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
 
     private final GraalHotSpotVMConfig config;
+    private final BarrierSet barrierSet;
 
     public HotSpotInvocationPluginHelper(GraphBuilderContext b, ResolvedJavaMethod targetMethod, GraalHotSpotVMConfig config) {
         super(b, targetMethod);
         this.config = config;
+        this.barrierSet = b.getPlatformConfigurationProvider().getBarrierSet();
     }
 
     private Stamp getClassStamp(boolean nonNull) {
@@ -97,7 +99,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     private ValueNode readLocation(ValueNode base, int offset, LocationIdentity location, Stamp stamp, GuardingNode guard) {
         assert StampTool.isPointerNonNull(base) || base.stamp(NodeView.DEFAULT).getStackKind() == getWordKind() : "must be null guarded";
         AddressNode address = makeOffsetAddress(base, asWord(offset));
-        ReadNode value = b.add(new ReadNode(address, location, stamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        ReadNode value = b.add(new ReadNode(address, location, stamp, barrierSet.readBarrierType(location, address, stamp), MemoryOrderMode.PLAIN));
         ValueNode returnValue = ReadNode.canonicalizeRead(value, value.getAddress(), value.getLocationIdentity(), b, NodeView.DEFAULT);
         if (value != returnValue) {
             // We could clean up the dead nodes here
@@ -216,7 +218,8 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         // Read the Object from the OopHandle
         ValueNode handleOffset = ConstantNode.forIntegerKind(getWordKind(), 0, b.getGraph());
         AddressNode handleAddress = b.add(new OffsetAddressNode(value, handleOffset));
-        value = b.add(new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        value = b.add(new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp,
+                        barrierSet.readBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, handleAddress, threadStamp), MemoryOrderMode.PLAIN));
         return value;
     }
 

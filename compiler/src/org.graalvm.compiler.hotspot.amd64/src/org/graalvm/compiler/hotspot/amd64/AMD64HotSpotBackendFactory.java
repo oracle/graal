@@ -44,9 +44,10 @@ import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
@@ -78,7 +79,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
     @Override
     protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, TargetDescription target,
                     HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls, MetaAccessProvider metaAccess,
-                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options) {
+                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options, BarrierSet barrierSet) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(
                         graalRuntime,
                         compilerConfiguration,
@@ -90,7 +91,8 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
                         foreignCalls,
                         replacements,
                         options,
-                        target);
+                        target,
+                        barrierSet);
         AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, options);
         return plugins;
     }
@@ -118,7 +120,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
         return new AddressLoweringHotSpotSuitesProvider(new AMD64SuitesCreator(compilerConfiguration, plugins), config, runtime,
-                        new AddressLoweringPhase(new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister())));
+                        new AddressLoweringByNodePhase(new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister())));
     }
 
     @Override

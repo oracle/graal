@@ -53,7 +53,7 @@ public abstract class BackendTest extends GraalCompilerTest {
             throw debug.handle(e);
         }
 
-        LIRGenerationResult lirGen = LIRCompilerBackend.emitLIR(getBackend(), graph, null, null, createLIRSuites(graph.getOptions()));
+        LIRGenerationResult lirGen = LIRCompilerBackend.emitLIR(getBackend(), graph, null, null, createLIRSuites(graph.getOptions()), null);
         return lirGen;
     }
 

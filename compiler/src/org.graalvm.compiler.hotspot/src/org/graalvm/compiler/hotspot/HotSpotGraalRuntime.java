@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -46,7 +47,6 @@ import org.graalvm.compiler.core.common.CompilerProfiler;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
@@ -105,7 +105,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final GlobalMetrics metricValues = new GlobalMetrics();
     private final List<SnippetCounter.Group> snippetCounterGroups;
-    private final HotSpotGC garbageCollector;
 
     private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = EconomicMap.create(Equivalence.IDENTITY);
 
@@ -137,8 +136,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         } else {
             options = initialOptions;
         }
-
-        garbageCollector = getSelectedGC();
 
         outputDirectory = new DiagnosticsOutputDirectory(options);
         compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
@@ -208,10 +205,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Serial(true, true, "UseSerialGC", true),
         Parallel(true, true, "UseParallelGC", true),
         G1(true, true, "UseG1GC", true),
+        Z(JDK == 17 || JDK >= 20, true, "UseZGC", true),
 
         // Unsupported GCs
         Epsilon(false, true, "UseEpsilonGC", true),
-        Z(false, true, "UseZGC", true),
         Shenandoah(false, true, "UseShenandoahGC", true);
 
         HotSpotGC(boolean supported, boolean expectNamePresent, String flag, boolean expectFlagPresent) {
@@ -260,27 +257,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
             return null;
         }
-    }
-
-    private HotSpotGC getSelectedGC() throws GraalError {
-        HotSpotGC selected = null;
-        for (HotSpotGC gc : HotSpotGC.values()) {
-            if (gc.isSelected(config)) {
-                if (!gc.supported) {
-                    throw new GraalError(gc.name() + " garbage collector is not supported by Graal");
-                }
-                selected = gc;
-                if (!Assertions.assertionsEnabled()) {
-                    // When asserting, check that isSelected works for all HotSpotGC values
-                    break;
-                }
-            }
-        }
-        if (selected == null) {
-            // Exactly one GC flag is guaranteed to be selected.
-            selected = HotSpotGC.Serial;
-        }
-        return selected;
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
@@ -358,7 +334,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     @Override
     public HotSpotGC getGarbageCollector() {
-        return garbageCollector;
+        return config.gc;
     }
 
     @Override

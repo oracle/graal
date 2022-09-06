@@ -1984,6 +1984,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
     }
 
+    @Override
+    public void halt() {
+        illegal();
+    }
+
     /**
      * Patches jump targets when label gets bound.
      */

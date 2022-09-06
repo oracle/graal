@@ -32,6 +32,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -78,6 +79,32 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public CompressEncoding getKlassEncoding() {
         return klassEncoding;
+    }
+
+    public boolean useG1GC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.G1;
+    }
+
+    public final HotSpotGraalRuntime.HotSpotGC gc = getSelectedGC();
+
+    private HotSpotGraalRuntime.HotSpotGC getSelectedGC() throws GraalError {
+        HotSpotGraalRuntime.HotSpotGC selected = null;
+        for (HotSpotGraalRuntime.HotSpotGC value : HotSpotGraalRuntime.HotSpotGC.values()) {
+            if (value.isSelected(this)) {
+                if (!value.supported) {
+                    throw new GraalError(value.name() + " garbage collector is not supported by Graal");
+                }
+                if (selected != null) {
+                    throw new GraalError("Multiple garbage collectors selected: " + selected + " " + value);
+                }
+                selected = value;
+            }
+        }
+        if (selected == null) {
+            // Exactly one GC flag is guaranteed to be selected.
+            selected = HotSpotGraalRuntime.HotSpotGC.Serial;
+        }
+        return selected;
     }
 
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
@@ -155,8 +182,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean useCRC32CIntrinsics() {
         return useCRC32CIntrinsics && updateBytesCRC32C != 0;
     }
-
-    public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
 
     public final int allocatePrefetchStyle = getFlag("AllocatePrefetchStyle", Integer.class);
     public final int allocatePrefetchInstr = getFlag("AllocatePrefetchInstr", Integer.class);
@@ -466,9 +491,30 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
     public final int basicLockDisplacedHeaderOffset = getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
 
+    /**
+     * This indicates whether a JDK is expected to include the export necessary to support ZGC. It
+     * includes other things that are required for ZGC but that aren't actually directly related to
+     * ZGC like nmethod entry barriers and support for concurrent scanning of frames.
+     */
+    private final boolean zgcSupport;
+    {
+        boolean support = false;
+        if (JDK == 19) {
+            // There are still some gates using jdk 19 so we must handle the existence of the
+            // required entries but we don't permit ZGC to be used there.
+            support = JVMCI && jvmciGE(JVMCI_23_0_b05);
+        } else {
+            support = JVMCI ? jvmciGE(JVMCI_23_0_b07) : JDK >= 20;
+        }
+        zgcSupport = support;
+    }
+
     // JDK-8253180 & JDK-8265932
     public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
                     getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
+    public final int threadPollingWordOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
+                    getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
+    public final int savedExceptionPCOffset = getFieldOffset("JavaThread::_saved_exception_pc", Integer.class, "address", -1, zgcSupport);
 
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
     private final int threadLocalAllocBufferTopOffset = getFieldOffset("ThreadLocalAllocBuffer::_top", Integer.class, "HeapWord*");
@@ -492,6 +538,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final long deoptBlobUnpack = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_unpack", Long.class, "address");
     public final long deoptBlobUnpackWithExceptionInTLS = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_unpack_with_exception_in_tls", Long.class, "address");
+    public final long pollingPageReturnHandler = getFieldValue("CompilerToVM::Data::SharedRuntime_polling_page_return_handler", Long.class, "address", 0L,
+                    zgcSupport);
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
     public final long codeCacheLowBound = getFieldValue("CodeCache::_low_bound", Long.class, "address");
@@ -614,6 +662,60 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This flag indicates that support for loom is enabled.
     public final boolean continuationsEnabled = getFieldValue("CompilerToVM::Data::continuations_enabled", Boolean.class, "bool", JDK > 19, JDK >= 19 && jvmciGE(JVMCI_23_0_b04));
 
+    private long getZGCAddressField(String name) {
+        long address = getFieldValue(name, Long.class, "address", 0L, zgcSupport);
+        GraalError.guarantee(!(gc == HotSpotGraalRuntime.HotSpotGC.Z) || address != 0, "Unexpected null value for %s", name);
+        return address;
+    }
+
+    // If the nmethod_entry_barrier field is non-null then an entry barrier must be emitted
+    public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_offset", Integer.class, "int", 0, zgcSupport);
+    public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address", 0L, zgcSupport);
+
+    // ZGC support
+    public final int threadAddressBadMaskOffset = getFieldValue("CompilerToVM::Data::thread_address_bad_mask_offset", Integer.class, "int", 0, zgcSupport);
+    public final long zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_oop_field_preloaded");
+    public final long zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_weak_oop_field_preloaded");
+    public final long zBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_weak_oop_field_preloaded");
+    public final long zBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_phantom_oop_field_preloaded");
+    public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_oop_array");
+    // There are 3 other entry points which we don't seem to need.
+    // CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_phantom_oop_field_preloaded and
+    // CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_oop_field_preloaded don't seem
+    // to correspond to any pattern we actually emit. CompilerToVM::Data::ZBarrierSetRuntime_clone
+    // heals all fields of the passed in object. C2 uses this when cloning because it emit bulk copy
+    // of the object. We always represent cloning as a field by field copy because this is more PEA
+    // friendly.
+
+    {
+        // aarch64 code generation for the entry barrier is complicated and varies by release so
+        // check for the acceptable patterns here.
+        Boolean patchConcurrent = null;
+        if (osArch.equals("aarch64") && nmethodEntryBarrier != 0) {
+            if (JDK >= 20) {
+                Integer patchingType = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int");
+                if (patchingType != null) {
+                    // There currently only 2 variants in use that differ only by the presence of a
+                    // dmb instruction
+                    int stw = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class);
+                    int conc = getConstant("NMethodPatchingType::conc_data_patch", Integer.class);
+                    if (patchingType == stw) {
+                        patchConcurrent = false;
+                    } else if (patchingType == conc) {
+                        patchConcurrent = true;
+                    } else {
+                        throw new IllegalArgumentException("unsupported barrier sequence " + patchingType);
+                    }
+                }
+            } else {
+                // The normal pattern is with a dmb
+                patchConcurrent = true;
+            }
+        }
+        nmethodEntryBarrierConcurrentPatch = patchConcurrent;
+    }
+    public final Boolean nmethodEntryBarrierConcurrentPatch;
+
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
     public final int threadHeldMonitorCountOffset;
@@ -622,10 +724,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     {
         int offset = -1;
         boolean isWord = false;
-        if (JDK == 19) {
-            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int");
-            isWord = false;
-        } else if (JDK >= 20) {
+        if (JDK >= 20) {
             offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
             isWord = true;
         }
@@ -634,7 +733,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     // This should be true when loom is enabled on 19 but that still needs to be exposed by JVMCI
-    public final boolean updateHeldMonitorCount = JDK >= 20;
+    public final boolean updateHeldMonitorCount = JDK >= 20 || continuationsEnabled;
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
@@ -691,6 +790,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             String key = "CodeInstaller::" + markId.name();
             Long result = constants.get(key);
             if (result == null) {
+                if (markId == HotSpotMarkId.ENTRY_BARRIER_PATCH) {
+                    continue;
+                }
                 GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
             }
             markId.setValue(result.intValue());
@@ -721,5 +823,4 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
     }
-
 }

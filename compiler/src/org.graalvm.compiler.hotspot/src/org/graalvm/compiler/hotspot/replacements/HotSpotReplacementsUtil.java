@@ -178,7 +178,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static boolean useG1GC(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useG1GC;
+        return config.useG1GC();
     }
 
     /**
