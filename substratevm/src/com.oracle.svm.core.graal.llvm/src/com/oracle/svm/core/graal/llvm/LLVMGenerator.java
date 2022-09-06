@@ -1741,14 +1741,27 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
-        public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryExtendKind extendKind) {
+        public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
             assert extendKind.isNotExtended();
+            assert memoryOrder != MemoryOrderMode.RELEASE && memoryOrder != MemoryOrderMode.RELEASE_ACQUIRE;
             LLVMValueRef load = builder.buildLoad(getVal(address), getType(kind));
+            if (memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE) {
+                /*
+                 * Ensure subsequent memory operations cannot execute before this load. Additional
+                 * volatile ordering requirements are enforced at stores.
+                 */
+                emitMembar(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE);
+            }
             return new LLVMVariable(load);
         }
 
         @Override
-        public void emitStore(ValueKind<?> kind, Value addr, Value input, LIRFrameState state) {
+        public void emitStore(ValueKind<?> kind, Value addr, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
+            assert memoryOrder != MemoryOrderMode.ACQUIRE && memoryOrder != MemoryOrderMode.RELEASE_ACQUIRE;
+            if (memoryOrder == MemoryOrderMode.RELEASE || memoryOrder == MemoryOrderMode.VOLATILE) {
+                emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
+            }
+
             LLVMValueRef address = getVal(addr);
             LLVMValueRef value = getVal(input);
             LLVMTypeRef addressType = LLVMIRBuilder.typeOf(address);
@@ -1760,42 +1773,11 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             }
             LLVMValueRef castedAddress = builder.buildBitcast(address, builder.pointerType(valueType, LLVMIRBuilder.isObjectType(addressType), false));
             builder.buildStore(castedValue, castedAddress);
-        }
 
-        @Override
-        public Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
-            assert extendKind.isNotExtended();
-            assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE;
-            Variable var = emitLoad(kind, address, state, extendKind);
-            if (memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE) {
-                /*
-                 * Ensure subsequent memory operations cannot execute before this load. Additional
-                 * volatile ordering requirements are enforced at stores.
-                 */
-                emitMembar(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE);
-            }
-            return var;
-        }
-
-        @Override
-        public void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
-            switch (memoryOrder) {
-                case OPAQUE:
-                    emitStore(kind, address, input, state);
-                    break;
-                case RELEASE:
-                    emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
-                    emitStore(kind, address, input, state);
-                    break;
-                case VOLATILE:
-                    emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
-                    emitStore(kind, address, input, state);
-                    // Guarantee subsequent volatile loads cannot be executed before this
-                    // instruction
-                    emitMembar(MemoryBarriers.STORE_LOAD);
-                    break;
-                default:
-                    throw GraalError.shouldNotReachHere();
+            if (memoryOrder == MemoryOrderMode.VOLATILE) {
+                // Guarantee subsequent volatile loads cannot be executed before this
+                // instruction
+                emitMembar(MemoryBarriers.STORE_LOAD);
             }
         }
     }

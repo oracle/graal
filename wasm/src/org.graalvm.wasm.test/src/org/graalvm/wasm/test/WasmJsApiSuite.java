@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.ImportExportKind;
+import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.Sequence;
@@ -587,11 +588,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
@@ -1018,6 +1019,18 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testFuncTypeMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module (type (func (param i32 i64) (result f32 f64))) (func (export \"f\") (type 0) f32.const 0 f64.const 0))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "f");
+            final String fnType = WebAssembly.functionTypeToString(fn.function());
+            Assert.assertEquals("func_type", "0(i32 i64)f32 f64", fnType);
+        });
+    }
+
+    @Test
     public void testInitialMemorySizeOutOfBounds() throws IOException {
         runTest(context -> {
             try {
@@ -1153,6 +1166,221 @@ public class WasmJsApiSuite {
                 Assert.fail("embedderDataSet failed to throw");
             } catch (WasmJsApiException ex) {
                 Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, ex.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] arr = {1, 2, 3};
+                    return InteropArray.create(arr);
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f2);
+                Assert.assertEquals("Return value of function is equal", 6, value);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValueNotArray() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 0;
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                lib.execute(f2);
+                Assert.fail("Should not reach here");
+            } catch (WasmException e) {
+                Assert.assertEquals("Expected runtime error", ExceptionType.RUNTIME_ERROR, e.getExceptionType());
+                Assert.assertEquals("Error expected", "multi-value has to be provided by an array type", e.getMessage());
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValueInvalidArraySize() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return InteropArray.create(new Object[]{1, 2});
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                lib.execute(f2);
+                Assert.fail("Should not reach here");
+            } catch (WasmException e) {
+                Assert.assertEquals("Expected runtime error", ExceptionType.RUNTIME_ERROR, e.getExceptionType());
+                Assert.assertEquals("Error expected", "provided multi-value size does not match function type", e.getMessage());
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValueTypeMismatch() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return InteropArray.create(new Object[]{0, 1.1, 2});
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                lib.execute(f2);
+                Assert.fail("Should not reach here");
+            } catch (WasmException e) {
+                Assert.assertEquals("Expected runtime error", ExceptionType.RUNTIME_ERROR, e.getExceptionType());
+                Assert.assertEquals("Error expected", "type of value in multi-value does not match the function type", e.getMessage());
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32)))" +
+                        "(func $f (type 0)" +
+                        "   i32.const 1" +
+                        "   i32.const 2" +
+                        "   i32.const 3" +
+                        ")" +
+                        "(export \"f\" (func $f))" +
+                        ")");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f);
+                Assert.assertTrue("Must return array", lib.hasArrayElements(value));
+                Assert.assertEquals("First return value of function is equal", 1, lib.readArrayElement(value, 0));
+                Assert.assertEquals("Second return value of function is equal", 2, lib.readArrayElement(value, 1));
+                Assert.assertEquals("Third return value of function is equal", 3, lib.readArrayElement(value, 2));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportExportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32)))" +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(export \"f\" (func $i)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] arr = {1, 2, 3};
+                    return InteropArray.create(arr);
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f2);
+                Assert.assertTrue("Must return array", lib.hasArrayElements(value));
+                Assert.assertEquals("First return value of function is equal", 1, lib.readArrayElement(value, 0));
+                Assert.assertEquals("Second return value of function is equal", 2, lib.readArrayElement(value, 1));
+                Assert.assertEquals("Third return value of function is equal", 3, lib.readArrayElement(value, 2));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
             }
         });
     }

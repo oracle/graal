@@ -28,13 +28,7 @@
     ]
   },
 
-  local truffle_unittest = {
-    environment+: {
-      "MX_TEST_RESULT_TAGS": "truffle"
-    }
-  },
-
-  local gate_lite = truffle_common + truffle_unittest + {
+  local gate_lite = truffle_common + {
     name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_version,
     run: [
       ["mx", "build"],
@@ -102,7 +96,7 @@
     ],
   },
 
-  local truffle_gate = truffle_common + common.eclipse + common.jdt + truffle_unittest {
+  local truffle_gate = truffle_common + common.eclipse + common.jdt {
     name: 'gate-truffle-oraclejdk-' + self.jdk_version,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },
@@ -128,7 +122,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk11 + truffle_unittest {
+    truffle_common + linux_amd64 + common.oraclejdk11 {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -139,7 +133,7 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk11 + truffle_unittest + devkits["windows-jdk11"] +{
+    truffle_common + windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] +{
       name: "gate-truffle-nfi-windows-11",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
@@ -152,8 +146,10 @@
     truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + {
       name: "weekly-truffle-coverage-11-linux-amd64",
       run: [
-        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
-        ["mx", "coverage-upload"],
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+      ],
+      teardown+: [
+        ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
       ],
       targets: ["weekly"],
     },

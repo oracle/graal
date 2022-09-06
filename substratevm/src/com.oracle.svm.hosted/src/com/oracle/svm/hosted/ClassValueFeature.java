@@ -29,15 +29,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-public final class ClassValueFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class ClassValueFeature implements InternalFeature {
     private final Map<ClassValue<?>, Map<Class<?>, Object>> values = new ConcurrentHashMap<>();
 
     @Override

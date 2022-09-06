@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -114,9 +115,13 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
         ClassRegistry registry = context.getRegistries().getClassRegistry(context.getBindings().getBindingsLoader());
 
         Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
-        Klass proxyKlass = registry.findLoadedKlass(proxyName);
+        Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
         if (proxyKlass == null) {
-            proxyKlass = registry.defineKlass(proxyName, proxyBytes.bytes);
+            try {
+                proxyKlass = registry.defineKlass(context, proxyName, proxyBytes.bytes);
+            } catch (EspressoClassLoadingException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
         return proxyKlass;
     }

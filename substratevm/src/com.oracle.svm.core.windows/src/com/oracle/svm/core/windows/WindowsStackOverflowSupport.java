@@ -24,22 +24,21 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.OSSupport.class)
 @Platforms({Platform.WINDOWS.class})
 class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
@@ -102,14 +101,5 @@ class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
         }
 
         return stackEnd;
-    }
-}
-
-@Platforms({Platform.WINDOWS.class})
-@AutomaticFeature
-class WindowsStackOverflowSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StackOverflowCheck.OSSupport.class, new WindowsStackOverflowSupport());
     }
 }

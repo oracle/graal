@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.util.List;
 
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -51,13 +52,17 @@ public class PolyglotInterfaceMappings {
         EconomicMap<String, ObjectKlass> temp = EconomicMap.create(mappings.size());
         StaticObject bindingsLoader = context.getBindings().getBindingsLoader();
 
-        for (String mapping : mappings) {
-            Klass parent = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
-            if (parent.isInterface()) {
-                temp.put(mapping, (ObjectKlass) parent);
-            } else {
-                throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
+        try {
+            for (String mapping : mappings) {
+                Klass parent = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
+                if (parent.isInterface()) {
+                    temp.put(mapping, (ObjectKlass) parent);
+                } else {
+                    throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
+                }
             }
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(context.getMeta());
         }
         resolvedKlasses = EconomicMap.create(temp);
     }

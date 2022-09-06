@@ -32,15 +32,9 @@
     targets: ["gate"],
   },
 
-  local regex_unittest = {
-    environment+: {
-        "MX_TEST_RESULT_TAGS": "regex"
-    }
-  },
-
   builds: std.flattenArrays([
     [
-      common.linux_amd64  + jdk + regex_gate + regex_unittest,
+      common.linux_amd64  + jdk + regex_gate,
       common.linux_amd64  + jdk + regex_downstream_js,
       common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [

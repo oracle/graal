@@ -241,6 +241,11 @@ JNIEXPORT jint JNICALL JVM_ActiveProcessorCount(void) {
   return (*getEnv())->JVM_ActiveProcessorCount();
 }
 
+JNIEXPORT void * JNICALL JVM_LoadZipLibrary(void) {
+  IMPLEMENTED(JVM_LoadZipLibrary);
+  return (*getEnv())->JVM_LoadZipLibrary();
+}
+
 // GR-37925: In some scenarios it can happen that the caller uses JVM_LoadLibrary(const char*) as signature. This is fine by the C ABI, but Sulong does not like it.
 JNIEXPORT void* JNICALL JVM_LoadLibrary(const char *name /*, jboolean throwException*/) {
   IMPLEMENTED(JVM_LoadLibrary);
@@ -1651,26 +1656,37 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
         return NULL;
     }
 
+#define BIND_LIBJAVAVM_SVM_API(X) \
+    graal_ ## X ## _fn_t graal_ ## X = os_dl_sym(libjavavm, "graal_" #X); \
+    if (graal_ ## X == NULL) { \
+        graal_ ## X = os_dl_sym(libjavavm, "truffle_isolate_" #X); \
+        if (graal_ ## X == NULL) { \
+            fprintf(stderr, "%s does not contain the expected libjavavm interface: missing " #X OS_NEWLINE_STR, espresso_path); \
+            return NULL; \
+        } \
+    }
+
 #define BIND_LIBJAVAVM(X) \
-    X ## _fn_t X =  os_dl_sym(libjavavm, #X); \
-    if (X == NULL) {                                \
+    X ## _fn_t X = os_dl_sym(libjavavm, #X); \
+    if (X == NULL) { \
         fprintf(stderr, "%s does not contain the expected libjavavm interface: missing " #X OS_NEWLINE_STR, espresso_path); \
         return NULL; \
     }
 
-    BIND_LIBJAVAVM(graal_create_isolate)
-    BIND_LIBJAVAVM(graal_attach_thread)
-    BIND_LIBJAVAVM(graal_detach_thread)
-    BIND_LIBJAVAVM(graal_get_current_thread)
-    BIND_LIBJAVAVM(graal_tear_down_isolate)
-    BIND_LIBJAVAVM(graal_detach_all_threads_and_tear_down_isolate)
+    BIND_LIBJAVAVM_SVM_API(create_isolate)
+    BIND_LIBJAVAVM_SVM_API(attach_thread)
+    BIND_LIBJAVAVM_SVM_API(detach_thread)
+    BIND_LIBJAVAVM_SVM_API(get_current_thread)
+    BIND_LIBJAVAVM_SVM_API(tear_down_isolate)
+    BIND_LIBJAVAVM_SVM_API(detach_all_threads_and_tear_down_isolate)
     BIND_LIBJAVAVM(Espresso_CreateJavaVM)
     BIND_LIBJAVAVM(Espresso_EnterContext)
     BIND_LIBJAVAVM(Espresso_LeaveContext)
     BIND_LIBJAVAVM(Espresso_ReleaseContext)
     BIND_LIBJAVAVM(Espresso_CloseContext)
-    BIND_LIBJAVAVM(Espresso_Exit)
+    BIND_LIBJAVAVM(Espresso_Shutdown)
 
+#undef BIND_LIBJAVAVM_SVM_API
 #undef BIND_LIBJAVAVM
 
     LibJavaVM *result = malloc(sizeof(LibJavaVM));
@@ -1688,7 +1704,7 @@ LibJavaVM *load_libjavavm(const char* lib_path) {
     result->Espresso_LeaveContext = Espresso_LeaveContext;
     result->Espresso_ReleaseContext = Espresso_ReleaseContext;
     result->Espresso_CloseContext = Espresso_CloseContext;
-    result->Espresso_Exit = Espresso_Exit;
+    result->Espresso_Shutdown = Espresso_Shutdown;
     return result;
 }
 
@@ -1767,18 +1783,11 @@ jint DestroyJavaVM(JavaVM *vm) {
     }
     jint result = (*espressoJavaVM)->DestroyJavaVM(espressoJavaVM);
     remove_java_vm(vm);
-    jint result2;
-    if (espressoIsolate->is_sun_standard_launcher == JNI_TRUE) {
-        libjavavm->Espresso_Exit(thread, (struct JavaVM_ *) espressoJavaVM);
-        fprintf(stderr, "Error: Espresso_Exit didn't exit");
-        result2 = JNI_ERR;
-    } else {
-        result2 = libjavavm->Espresso_CloseContext(thread, (struct JavaVM_ *) espressoJavaVM);
-    }
+    jint result2 = libjavavm->Espresso_CloseContext(thread, (struct JavaVM_ *) espressoJavaVM);
     if (result == JNI_OK && result2 != JNI_OK) {
         result = result2;
     }
-    result2 = libjavavm->detach_thread(thread);
+    result2 = libjavavm->Espresso_Shutdown(thread);
     if (result == JNI_OK && result2 != JNI_OK) {
         result = result2;
     }

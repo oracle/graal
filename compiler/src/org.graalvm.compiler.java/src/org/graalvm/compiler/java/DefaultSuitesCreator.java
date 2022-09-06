@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@ import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 
+import jdk.vm.ci.code.Architecture;
+
 public class DefaultSuitesCreator extends SuitesProviderBase {
 
     private final CompilerConfiguration compilerConfiguration;
@@ -48,8 +50,8 @@ public class DefaultSuitesCreator extends SuitesProviderBase {
     }
 
     @Override
-    public Suites createSuites(OptionValues options) {
-        return Suites.createSuites(compilerConfiguration, options);
+    public Suites createSuites(OptionValues options, Architecture arch) {
+        return Suites.createSuites(compilerConfiguration, options, arch);
     }
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {

@@ -33,7 +33,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -43,17 +42,17 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -94,8 +94,10 @@ import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
  * @see NativeImageResourceFileAttributes
  * @see NativeImageResourceFileAttributesView
  */
-@AutomaticFeature
-public final class ResourcesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class ResourcesFeature implements InternalFeature {
+
+    static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
@@ -172,8 +174,9 @@ public final class ResourcesFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
-        ImageSingletons.add(ResourcesRegistry.class,
-                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader)));
+        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader));
+        ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
+        ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -210,7 +213,7 @@ public final class ResourcesFeature implements Feature {
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
 
             for (ResourcePattern rp : excludePatterns) {
-                if (rp.moduleName != null && !rp.moduleName.equals(moduleName)) {
+                if (!rp.moduleNameMatches(moduleName)) {
                     continue;
                 }
                 if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
@@ -219,7 +222,7 @@ public final class ResourcesFeature implements Feature {
             }
 
             for (ResourcePattern rp : includePatterns) {
-                if (rp.moduleName != null && !rp.moduleName.equals(moduleName)) {
+                if (!rp.moduleNameMatches(moduleName)) {
                     continue;
                 }
                 if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
@@ -281,11 +284,12 @@ public final class ResourcesFeature implements Feature {
         if (moduleNameWithPattern.length < 2) {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
-            Optional<?> optModule = imageClassLoader.findModule(moduleNameWithPattern[0]);
-            if (optModule.isPresent()) {
-                return new ResourcePattern(moduleNameWithPattern[0], Pattern.compile(moduleNameWithPattern[1]));
+            String moduleName = moduleNameWithPattern[0];
+            boolean acceptModuleName = MODULE_NAME_ALL_UNNAMED.equals(moduleName) ? true : imageClassLoader.findModule(moduleName).isPresent();
+            if (acceptModuleName) {
+                return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
             } else {
-                throw UserError.abort("Resource pattern \"" + rawPattern + "\"s specifies unknown module " + moduleNameWithPattern[0]);
+                throw UserError.abort("Resource pattern \"" + rawPattern + "\"s specifies unknown module " + moduleName);
             }
         }
     }
@@ -297,6 +301,18 @@ public final class ResourcesFeature implements Feature {
         private ResourcePattern(String moduleName, Pattern pattern) {
             this.moduleName = moduleName;
             this.pattern = pattern;
+        }
+
+        boolean moduleNameMatches(String resourceContainerModuleName) {
+            if (moduleName == null) {
+                // Accept everything
+                return true;
+            }
+            if (moduleName.equals(MODULE_NAME_ALL_UNNAMED)) {
+                // Only accept if resource is from classpath
+                return resourceContainerModuleName == null;
+            }
+            return moduleName.equals(resourceContainerModuleName);
         }
     }
 

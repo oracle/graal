@@ -43,6 +43,8 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Isolate;
@@ -78,20 +80,6 @@ public final class LibGraalEntryPoints {
      * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider#execute
      */
     static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
-
-    /**
-     * The spin lock field for the
-     * {@code org.graalvm.compiler.hotspot.management.libgraal.MBeanProxy#defineClassesInHotSpot}.
-     */
-    static final CGlobalData<Pointer> MANAGEMENT_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
-
-    /**
-     * A flag used by the
-     * {@code org.graalvm.compiler.hotspot.management.libgraal.LibGraalHotSpotGraalManagement#initialize}
-     * to show a deprecated option warning only once even in case of multiple compiler isolates per
-     * process.
-     */
-    static final CGlobalData<Pointer> MANAGEMENT_OPTION_WARNING = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
     static final CGlobalData<Pointer> GLOBAL_TIMESTAMP = CGlobalDataFactory.createBytes(() -> 8);
 
@@ -211,7 +199,7 @@ public final class LibGraalEntryPoints {
      */
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
-    private static long compileMethod(PointerBase jniEnv,
+    private static long compileMethod(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
                     long methodHandle,
@@ -223,7 +211,7 @@ public final class LibGraalEntryPoints {
                     int optionsHash,
                     long stackTraceAddress,
                     int stackTraceCapacity) {
-        try {
+        try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             HotSpotJVMCIRuntime runtime = runtime();
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
             if (methodHandle == 0L) {

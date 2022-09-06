@@ -63,6 +63,11 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
+    public void throwHostLanguageException(String message) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void addToHostClassPath(Object context, Object truffleFile) {
         throw new UnsupportedOperationException();
     }

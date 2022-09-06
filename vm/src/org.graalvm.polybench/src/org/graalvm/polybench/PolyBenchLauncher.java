@@ -27,6 +27,7 @@ package org.graalvm.polybench;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -101,6 +102,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.consumers.add(new ArgumentConsumer("--class-name", (value, config) -> config.className = value));
             this.consumers.add(new ArgumentConsumer("--mode", (value, config) -> config.mode = Config.Mode.parse(value)));
             this.consumers.add(new ArgumentConsumer("--metric", (value, config) -> (new MetricFactory()).loadMetric(config, value)));
+            this.consumers.add(new ArgumentConsumer("--ctw", (value, config) -> config.compileTheWorld = true));
             this.consumers.add(new ArgumentConsumer("-w", (value, config) -> config.warmupIterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("-i", (value, config) -> config.iterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> config.initMultiEngine().sharedEngine = Boolean.parseBoolean(value)));
@@ -224,23 +226,25 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             }
         }
 
-        // Parse engine options and store them to config.engineOptions
-        HashMap<String, String> polyglotOptions = new HashMap<>();
-        parseUnrecognizedOptions(getLanguageId(config.path), polyglotOptions, engineOptions);
-        if (!polyglotOptions.isEmpty()) {
-            config.initMultiEngine().engineOptions.putAll(polyglotOptions);
-        }
-        // Parse run specific options and store them to config.runOptionsMap
-        for (Map.Entry<Integer, List<String>> runOptionsEntry : runOptionsMap.entrySet()) {
-            Map<String, String> runOptions = config.initMultiEngine().polyglotRunOptionsMap.computeIfAbsent(runOptionsEntry.getKey(), (i) -> new HashMap<>());
-            if (!runOptionsEntry.getValue().isEmpty()) {
-                if (useExperimental) {
-                    // the enabled experimental-options flag must be propagated to runOptions to
-                    // enable
-                    // parsing of run-level experimental options
-                    runOptionsEntry.getValue().add("--experimental-options");
+        if (!config.compileTheWorld) {
+            // Parse engine options and store them to config.engineOptions
+            HashMap<String, String> polyglotOptions = new HashMap<>();
+            parseUnrecognizedOptions(getLanguageId(config.path), polyglotOptions, engineOptions);
+            if (!polyglotOptions.isEmpty()) {
+                config.initMultiEngine().engineOptions.putAll(polyglotOptions);
+            }
+            // Parse run specific options and store them to config.runOptionsMap
+            for (Map.Entry<Integer, List<String>> runOptionsEntry : runOptionsMap.entrySet()) {
+                Map<String, String> runOptions = config.initMultiEngine().polyglotRunOptionsMap.computeIfAbsent(runOptionsEntry.getKey(), (i) -> new HashMap<>());
+                if (!runOptionsEntry.getValue().isEmpty()) {
+                    if (useExperimental) {
+                        // the enabled experimental-options flag must be propagated to runOptions to
+                        // enable
+                        // parsing of run-level experimental options
+                        runOptionsEntry.getValue().add("--experimental-options");
+                    }
+                    parseUnrecognizedOptions(getLanguageId(config.path), runOptions, runOptionsEntry.getValue());
                 }
-                parseUnrecognizedOptions(getLanguageId(config.path), runOptions, runOptionsEntry.getValue());
             }
         }
     }
@@ -248,7 +252,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
         if (config.path == null) {
-            throw abort("Must specify path to the source file with --path.");
+            if (!config.compileTheWorld) {
+                throw abort("Must specify path to the source file with --path.");
+            }
+        } else if (config.compileTheWorld) {
+            throw abort("--ctw does not support --path.");
         }
         try {
             config.metric.validateConfig(config, polyglotOptions);
@@ -348,6 +356,20 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     private EvalResult evalSource(Context context) {
+        if (config.compileTheWorld) {
+            try {
+                Class<?> ctwClass = Class.forName("org.graalvm.compiler.hotspot.test.CompileTheWorld");
+                Method createMethod = ctwClass.getDeclaredMethod("create");
+                Method prepareMethod = ctwClass.getDeclaredMethod("prepare");
+                Object ctw = createMethod.invoke(null);
+                Object compilations = prepareMethod.invoke(ctw);
+                Object[] ctwArgs = {ctw, compilations};
+                return new EvalResult("jvm", "CompileTheWorld", true, 0, ctwArgs);
+            } catch (Exception e) {
+                throw new AssertionError("Error creating CompileTheWorld object", e);
+            }
+        }
+
         final String path = config.path;
         final String language = getLanguageId(config.path);
 
@@ -412,9 +434,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         final String sourceName;
         final boolean isBinarySource;
         final long sourceLength;
-        final Value value;
+        final Object value;
 
-        EvalResult(String languageId, String sourceName, boolean isBinarySource, long sourceLength, Value value) {
+        EvalResult(String languageId, String sourceName, boolean isBinarySource, long sourceLength, Object value) {
             this.languageId = languageId;
             this.sourceName = sourceName;
             this.isBinarySource = isBinarySource;
@@ -434,7 +456,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             contextBuilder.logHandler(handler);
         }
 
-        String extension = getExtension(config.path);
+        String extension = config.path == null ? null : getExtension(config.path);
         if (extension != null) {
             switch (extension) {
                 // Set Java class path before spawning context.
@@ -469,8 +491,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("");
 
             log("::: Bench specific options :::");
-            config.parseBenchSpecificDefaults(evalResult.value);
-            config.metric.parseBenchSpecificOptions(evalResult.value);
+            if (evalResult.value instanceof Value) {
+                Value value = (Value) evalResult.value;
+                config.parseBenchSpecificDefaults(value);
+                config.metric.parseBenchSpecificOptions(value);
+            }
             log(config.toString());
 
             log("Initialization completed.");
@@ -506,7 +531,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         return String.format("%.2f", v);
     }
 
-    private void repeatIterations(Context context, String languageId, String name, Value evalSource, boolean warmup, int iterations) {
+    private void repeatIterations(Context context, String languageId, String name, Object evalSource, boolean warmup, int iterations) {
         Workload workload = lookup(context, languageId, evalSource, "run");
         // Enter explicitly to avoid context switches for each iteration.
         context.enter();
@@ -536,7 +561,29 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private Workload lookup(Context context, String languageId, Value evalSource, String memberName) {
+    private Workload lookup(Context context, String languageId, Object evalSource, String memberName) {
+        if (this.config.compileTheWorld) {
+            // to stub out
+            return new Workload() {
+                @Override
+                public void run() {
+                    Object[] ctwArgs = (Object[]) evalSource;
+                    Object ctw = ctwArgs[0];
+                    Object compilations = ctwArgs[1];
+                    try {
+                        Method compileMethod = ctw.getClass().getDeclaredMethod("compile", compilations.getClass());
+                        compileMethod.invoke(ctw, compilations);
+
+                        // Force a GC to encourage reclamation of nmethods when their InstalledCode
+                        // reference has been dropped.
+                        System.gc();
+                    } catch (Exception e) {
+                        throw new AssertionError(e);
+                    }
+                }
+            };
+        }
+        Value evalSourceValue = (Value) evalSource;
         Value result;
         // language-specific lookup
         switch (languageId) {
@@ -547,11 +594,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             case "java":
                 // Espresso doesn't provide methods as executable values.
                 // It can only invoke methods from the declaring class or receiver.
-                return Workload.createInvoke(evalSource, "main", ProxyArray.fromArray());
+                return Workload.createInvoke(evalSourceValue, "main", ProxyArray.fromArray());
             default:
                 // first try the memberName directly
-                if (evalSource.hasMember(memberName)) {
-                    result = evalSource.getMember(memberName);
+                if (evalSourceValue.hasMember(memberName)) {
+                    result = evalSourceValue.getMember(memberName);
                 } else {
                     // Fallback for other languages: Look for 'memberName' in global scope.
                     result = context.getBindings(languageId).getMember(memberName);

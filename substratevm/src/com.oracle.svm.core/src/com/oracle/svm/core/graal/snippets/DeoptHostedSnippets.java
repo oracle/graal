@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class DeoptHostedSnippets extends SubstrateTemplates implements Snippets {
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static void deoptSnippet(@ConstantParameter DeoptimizationReason reason, @ConstantParameter Boolean mustNotAllocate, String message) {
         /*
          * The snippet cannot (yet) simplify a switch of an Enum, so we use an if-cascade here.

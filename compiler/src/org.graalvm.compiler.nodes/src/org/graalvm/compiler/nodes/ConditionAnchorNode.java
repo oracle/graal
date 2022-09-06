@@ -97,7 +97,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph().getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(null));
             graph().replaceFixedWithFixed(this, newAnchor);
         }

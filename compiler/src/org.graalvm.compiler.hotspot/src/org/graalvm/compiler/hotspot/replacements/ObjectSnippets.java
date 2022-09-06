@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -59,7 +61,7 @@ public class ObjectSnippets implements Snippets {
 
     @Snippet
     public static void fastNotify(Object thisObj) {
-        if (fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY, thisObj)) {
+        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY, thisObj))) {
             return;
         } else {
             PiNode.piCastNonNull(thisObj, SnippetAnchorNode.anchor()).notify();
@@ -68,7 +70,7 @@ public class ObjectSnippets implements Snippets {
 
     @Snippet
     public static void fastNotifyAll(Object thisObj) {
-        if (fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY_ALL, thisObj)) {
+        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY_ALL, thisObj))) {
             return;
         } else {
             PiNode.piCastNonNull(thisObj, SnippetAnchorNode.anchor()).notifyAll();

@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
@@ -44,11 +43,6 @@ import org.graalvm.compiler.processor.AbstractProcessor;
 public class ReplacementsAnnotationProcessor extends AbstractProcessor {
 
     private List<AnnotationHandler> handlers;
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {

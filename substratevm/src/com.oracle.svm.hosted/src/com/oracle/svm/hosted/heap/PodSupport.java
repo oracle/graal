@@ -48,15 +48,15 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.core.deopt.DeoptTest;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.Builder;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodInfo;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
+import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -75,7 +75,7 @@ public interface PodSupport {
 
     static PodSupport singleton() {
         if (!ImageSingletons.contains(PodSupport.class)) {
-            throw UserError.abort("Pods are not available in this native image build. Only SerialGC currently supports pods.");
+            throw UserError.abort("Pods are not available in this native image build.");
         }
         return ImageSingletons.lookup(PodSupport.class);
     }
@@ -98,8 +98,8 @@ public interface PodSupport {
     boolean mustReserveLengthField(Class<?> clazz);
 }
 
-@AutomaticFeature
-final class PodFeature implements PodSupport, Feature {
+@AutomaticallyRegisteredFeature
+final class PodFeature implements PodSupport, InternalFeature {
     private static final AtomicInteger GENERATED_COUNTER = new AtomicInteger();
 
     private final Map<PodSpec, PodInfo> pods = new ConcurrentHashMap<>();
@@ -115,11 +115,6 @@ final class PodFeature implements PodSupport, Feature {
     private BeforeAnalysisAccess analysisAccess;
     private volatile boolean instantiated = false;
     private boolean sealed = false;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
-    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

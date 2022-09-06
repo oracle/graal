@@ -77,12 +77,18 @@ local repo_config = import '../../repo-configuration.libsonnet';
     notify_groups:: ['polybench'],
   },
 
-  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*'): self.vm_bench_polybench_linux_common(env=env) + self.polybench_hpc_linux_common + {
+  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.vm_bench_polybench_linux_common(env=env) + self.polybench_hpc_linux_common + {
     local machine_name = "x52",     // restricting ourselves to x52 machines since we know hardware performance counters work properly there
     machine_name_prefix:: "gate-",
     capabilities+: [machine_name],
     run+: [
-      self.base_cmd + ['benchmark', 'polybench:'+benchmarks, '--fork-count-file', 'ci_includes/polybench-hpc.json', '--results-file', self.result_file, '--machine-name', self.machine_name_prefix + machine_name, '--', '--polybench-vm-config', 'native-interpreter', '--metric='+metric],
+      self.base_cmd + ['benchmark', 'polybench:'+benchmarks,
+                       '--fork-count-file', 'ci_includes/polybench-hpc.json',
+                       '--results-file', self.result_file,
+                       '--machine-name', self.machine_name_prefix + machine_name,
+                       '--',
+                       '--metric=' + metric,
+                       '--polybench-vm-config=' + polybench_vm_config],
       self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!'],
     ],
   },

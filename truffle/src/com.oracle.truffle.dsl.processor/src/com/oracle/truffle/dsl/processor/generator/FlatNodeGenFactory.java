@@ -1835,7 +1835,7 @@ public class FlatNodeGenFactory {
 
         boolean isExecutableInUncached = effectiveEvaluatedCount != node.getExecutionCount() && !node.getChildren().isEmpty();
         if (!isExecutableInUncached) {
-            method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+            GeneratorUtils.addBoundaryOrTransferToInterpreter(method, builder);
         }
 
         if (forType.getMethod() != null) {
@@ -2886,7 +2886,7 @@ public class FlatNodeGenFactory {
                     CodeTree uncachedNode = DSLExpressionGenerator.write(child.getUncachedExpression(), null, null);
                     builder.startReturn().tree(uncachedNode).end();
                 } else {
-                    method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+                    GeneratorUtils.addBoundaryOrTransferToInterpreter(method, null);
                     builder.tree(GeneratorUtils.createShouldNotReachHere("This getter method cannot be used for uncached node versions as it requires child nodes to be present."));
                 }
             } else {
@@ -3922,7 +3922,14 @@ public class FlatNodeGenFactory {
 
         String includeFrameParameter = null;
         if (specialization != null && specialization.getFrame() != null) {
-            includeFrameParameter = FRAME_VALUE;
+            if (ElementUtils.typeEquals(types.MaterializedFrame, specialization.getFrame().getType())) {
+                includeFrameParameter = FRAME_VALUE;
+            } else {
+                includeFrameParameter = FRAME_VALUE + "Materialized";
+                CodeTreeBuilder read = builder.create().startCall(FRAME_VALUE, "materialize").end();
+                LocalVariable materializedFrame = new LocalVariable(types.MaterializedFrame, FRAME_VALUE, read.build());
+                frameState.set(includeFrameParameter, materializedFrame);
+            }
         }
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
         GeneratorUtils.mergeSupressWarnings(boundaryMethod, "static-method");

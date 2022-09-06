@@ -25,15 +25,19 @@
 package com.oracle.graal.pointsto.meta;
 
 import java.lang.reflect.Executable;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
+import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
 public abstract class AnalysisElement {
 
@@ -47,18 +51,18 @@ public abstract class AnalysisElement {
 
     @SuppressWarnings("unused") private volatile Object elementReachableNotifications;
 
-    public void registerReachabilityNotification(ElementReachableNotification notification) {
+    public void registerReachabilityNotification(ElementNotification notification) {
         ConcurrentLightHashSet.addElement(this, reachableNotificationsUpdater, notification);
     }
 
-    public void notifyReachabilityCallback(AnalysisUniverse universe, ElementReachableNotification notification) {
+    public void notifyReachabilityCallback(AnalysisUniverse universe, ElementNotification notification) {
         notification.notifyCallback(universe, this);
         ConcurrentLightHashSet.removeElement(this, reachableNotificationsUpdater, notification);
     }
 
-    protected void notifyReachabilityCallbacks(AnalysisUniverse universe) {
-        ConcurrentLightHashSet.forEach(this, reachableNotificationsUpdater, (ElementReachableNotification c) -> c.notifyCallback(universe, this));
-        ConcurrentLightHashSet.removeElementIf(this, reachableNotificationsUpdater, ElementReachableNotification::isNotified);
+    protected void notifyReachabilityCallbacks(AnalysisUniverse universe, List<AnalysisFuture<Void>> futures) {
+        ConcurrentLightHashSet.forEach(this, reachableNotificationsUpdater, (ElementNotification c) -> futures.add(c.notifyCallback(universe, this)));
+        ConcurrentLightHashSet.removeElementIf(this, reachableNotificationsUpdater, ElementNotification::isNotified);
     }
 
     public abstract boolean isReachable();
@@ -70,45 +74,64 @@ public abstract class AnalysisElement {
         return isReachable();
     }
 
-    public static final class ElementReachableNotification {
+    public static final class ElementNotification {
 
         private final Consumer<DuringAnalysisAccess> callback;
-        private final AtomicBoolean notified = new AtomicBoolean();
+        private final AtomicReference<AnalysisFuture<Void>> notified = new AtomicReference<>();
 
-        public ElementReachableNotification(Consumer<DuringAnalysisAccess> callback) {
+        public ElementNotification(Consumer<DuringAnalysisAccess> callback) {
             this.callback = callback;
         }
 
         public boolean isNotified() {
-            return notified.get();
+            return notified.get() != null;
         }
 
         /**
          * Notify the callback exactly once. Note that this callback can be shared by multiple
          * triggers, the one that triggers it is passed into triggeredElement for debugging.
          */
-        private void notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
+        AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
             assert triggeredElement.isTriggered();
-            if (!notified.getAndSet(true)) {
-                execute(universe, () -> callback.accept(universe.getConcurrentAnalysisAccess()));
+            var existing = notified.get();
+            if (existing != null) {
+                return existing;
             }
+
+            AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
+                callback.accept(universe.getConcurrentAnalysisAccess());
+                return null;
+            });
+
+            existing = notified.compareAndExchange(null, newValue);
+            if (existing != null) {
+                return existing;
+            }
+
+            execute(universe, newValue);
+            return newValue;
         }
     }
 
     public static final class SubtypeReachableNotification {
         private final BiConsumer<DuringAnalysisAccess, Class<?>> callback;
-        private final Set<AnalysisType> seenSubtypes = ConcurrentHashMap.newKeySet();
+        private final Map<AnalysisType, AnalysisFuture<Void>> seenSubtypes = new ConcurrentHashMap<>();
 
         public SubtypeReachableNotification(BiConsumer<DuringAnalysisAccess, Class<?>> callback) {
             this.callback = callback;
         }
 
         /** Notify the callback exactly once for each reachable subtype. */
-        public void notifyCallback(AnalysisUniverse universe, AnalysisType reachableSubtype) {
+        public AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisType reachableSubtype) {
             assert reachableSubtype.isReachable();
-            if (seenSubtypes.add(reachableSubtype)) {
-                execute(universe, () -> callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass()));
-            }
+            return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
+                AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
+                    callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass());
+                    return null;
+                });
+                execute(universe, newValue);
+                return newValue;
+            });
         }
     }
 
@@ -138,4 +161,12 @@ public abstract class AnalysisElement {
         universe.getBigbang().postTask((d) -> task.run());
     }
 
+    private static void execute(AnalysisUniverse universe, AnalysisFuture<?> task) {
+        /*
+         * Post the tasks to the analysis executor. This ensures that even for elements registered
+         * as reachable early, before the analysis is started, the reachability callbacks are run
+         * during the analysis.
+         */
+        universe.getBigbang().postTask((d) -> task.ensureDone());
+    }
 }

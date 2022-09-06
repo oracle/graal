@@ -471,11 +471,21 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> HotSwapAPI = new OptionKey<>(false);
 
+    @Option(help = "Use Custom ClassLoader for Bindings, allowing the addition of new locations for loading.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> UseBindingsLoader = new OptionKey<>(false);
+
     @Option(help = "Expose the <JavaVM> binding.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> ExposeNativeJavaVM = new OptionKey<>(false);
+
+    @Option(help = "User-specified classlist used to warmup Espresso during context pre-initialization. The file should contain one class per line (see lib/classlist for an example).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Path> PreInitializationClasslist = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     private static final OptionType<Long> SIZE_OPTION_TYPE = new OptionType<>("Size", new Function<String, Long>() {
         private static final int K = 1024;

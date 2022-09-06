@@ -147,7 +147,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
-    @Specialization
+    @Specialization(guards = "!isPrimitiveKlass(klass)")
     Object doEspresso(StaticObject value, Klass klass,
                     @Cached BranchProfile exceptionProfile,
                     @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
@@ -155,7 +155,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return value; // pass through, NULL coercion not needed.
         }
         exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
+        throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", klass.getTypeAsString()));
     }
 
     @Specialization
@@ -189,7 +189,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             // fall-through
         }
         exceptionProfile.enter();
-        throw UnsupportedTypeException.create(new Object[]{value}, primitiveKlass.getTypeAsString());
+        throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", interop.toDisplayString(value), " to ", primitiveKlass.getPrimitiveJavaKind().getJavaName()));
     }
 
     @Specialization
@@ -234,7 +234,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "isForeignException(meta, klass)",
+                    "isForeignException(context.getMeta(), klass)",
                     "!isStaticObject(value)",
                     "interop.isException(value)",
                     "!isEspressoException(value)",
@@ -244,9 +244,9 @@ public abstract class ToEspressoNode extends EspressoNode {
     Object doForeignException(Object value, ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached InitCheck initCheck,
-                    @Bind("getMeta()") Meta meta) {
+                    @Bind("getContext()") EspressoContext context) {
         initCheck.execute(klass);
-        return StaticObject.createForeignException(meta, value, interop);
+        return StaticObject.createForeignException(context, value, interop);
     }
 
     @Specialization(guards = {

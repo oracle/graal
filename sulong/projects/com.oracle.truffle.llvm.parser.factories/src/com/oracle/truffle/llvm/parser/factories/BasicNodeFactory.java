@@ -102,6 +102,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoid
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMWritePhisNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
@@ -1179,6 +1180,16 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMLandingpadNodeGen.create(getStack, allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
     }
 
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, getStack, phiWrites);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, int unwindBlock, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, unwindBlock, getStack, phiWrites);
+    }
+
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
         return LLVMLandingpadNode.createCatchEntry(exp);
     }
@@ -1782,10 +1793,49 @@ public class BasicNodeFactory implements NodeFactory {
             case "fptrunc":
                 return CommonNodeFactory.createSignedCast(args[1], retType);
             case "fcmp":
+            case "fcmps":
                 return CommonNodeFactory.createComparison(getCompareOp(args[3]), retType, args[1], args[2]);
             case "fmuladd":
                 LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
                 return createArithmeticOp(ArithmeticOperation.ADD, retType, mulNodeF80, args[3]);
+
+            case "sqrt":
+                if (declaration.getName().endsWith("v2f64")) {
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
+                } else {
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
+                }
+            case "pow":
+            case "powi":
+                return LLVMPowNodeGen.create(args[1], args[2]);
+            case "sin":
+                return LLVMCMathsIntrinsicsFactory.LLVMSinNodeGen.create(args[1]);
+            case "cos":
+                return LLVMCMathsIntrinsicsFactory.LLVMCosNodeGen.create(args[1]);
+            case "exp":
+                return LLVMCMathsIntrinsicsFactory.LLVMExpNodeGen.create(args[1]);
+            case "exp2":
+                return LLVMCMathsIntrinsicsFactory.LLVMExp2NodeGen.create(args[1]);
+            case "log":
+                return LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen.create(args[1]);
+            case "log10":
+                return LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen.create(args[1]);
+            case "log2":
+                return LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen.create(args[1]);
+            case "rint":
+                return LLVMCMathsIntrinsicsFactory.LLVMRintNodeGen.create(args[1]);
+
+            case "minnum":
+                return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2]);
+            case "maxnum":
+                return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2]);
+            case "ceil":
+                return LLVMCMathsIntrinsicsFactory.LLVMCeilNodeGen.create(args[1]);
+            case "floor":
+                return LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen.create(args[1]);
+            case "round":
+                return LLVMCMathsIntrinsicsFactory.LLVMRoundNodeGen.create(args[1]);
+
         }
 
         return LLVMX86_MissingBuiltin.create(declaration.getName());

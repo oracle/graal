@@ -47,19 +47,23 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -75,13 +79,15 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationExtracter;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class ReflectionFeature implements InternalFeature, ReflectionSubstitutionSupport {
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
@@ -90,7 +96,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private ImageClassLoader loader;
     private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
-    private HostedMetaAccess hMetaAccess;
+    HostedMetaAccess hMetaAccess;
 
     final Map<Executable, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
     private final Map<SignatureKey, MethodPointer> expandSignatureMethods = new ConcurrentHashMap<>();
@@ -122,7 +128,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      * {@link SubstrateConstructorAccessor allocating a new instance} using reflection. The accessor
      * instances use function pointer calls to invocation stubs. The invocation stubs unpack the
      * Object[] array arguments and invoke the actual method.
-     * 
+     *
      * The stubs are methods with manually created Graal IR:
      * {@link ReflectionExpandSignatureMethod}. Since they are only invoked via function pointers
      * and never at a normal call site, they need to be registered for compilation manually. From
@@ -130,7 +136,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      *
      * The stubs then perform another function pointer call to the actual target method. This is
      * either a direct target stored in the accessor, or a virtual target loaded from the vtable.
-     * 
+     *
      * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
      * member, so no further synchronization is necessary.
      */
@@ -238,6 +244,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData.flushConditionalConfiguration(access);
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object[].class.getMethods());
+
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
     }
 
     @Override
@@ -254,18 +262,18 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (!ImageSingletons.contains(FallbackFeature.class)) {
-            return;
-        }
-        FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
-        if (reflectionFallback != null && loadedConfigurations == 0) {
-            throw reflectionFallback;
-        }
         hMetaAccess = ((BeforeCompilationAccessImpl) access).getMetaAccess();
+
+        if (ImageSingletons.contains(FallbackFeature.class)) {
+            FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
+            if (reflectionFallback != null && loadedConfigurations == 0) {
+                throw reflectionFallback;
+            }
+        }
     }
 
     @Override
-    public int getFieldOffset(Field field) {
+    public int getFieldOffset(Field field, boolean checkUnsafeAccessed) {
         VMError.guarantee(hMetaAccess != null, "Field offsets are available only for compilation and afterwards.");
 
         /*
@@ -273,12 +281,17 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * reflective access in an image.
          */
         HostedField hostedField = hMetaAccess.optionalLookupJavaField(field);
-        if (hostedField == null || !hostedField.wrapped.isUnsafeAccessed()) {
+        if (hostedField == null || (checkUnsafeAccessed && !hostedField.wrapped.isUnsafeAccessed())) {
             return -1;
         }
-        int location = hostedField.getLocation();
-        VMError.guarantee(location > 0, "Incorrect field location: " + location + " for " + hostedField.format("%H.%n"));
-        return location;
+        return hostedField.getLocation();
+    }
+
+    @Override
+    public String getDeletionReason(Field reflectionField) {
+        ResolvedJavaField field = hMetaAccess.lookupJavaField(reflectionField);
+        Delete annotation = GuardedAnnotationAccess.getAnnotation(field, Delete.class);
+        return annotation != null ? annotation.value() : null;
     }
 
     @Override
@@ -306,7 +319,7 @@ final class SignatureKey {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj.getClass() != SignatureKey.class) {
+        if (obj == null || obj.getClass() != SignatureKey.class) {
             return false;
         }
         SignatureKey other = (SignatureKey) obj;
@@ -335,5 +348,24 @@ final class SignatureKey {
 
     String uniqueShortName() {
         return SubstrateUtil.digest(toString());
+    }
+}
+
+final class ComputeVTableOffset implements FieldValueTransformerWithAvailability {
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
+        if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
+            SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hMetaAccess.lookupJavaMethod(accessor.getMember());
+            return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex());
+        } else {
+            VMError.guarantee(accessor.getVTableOffset() == SubstrateMethodAccessor.STATICALLY_BOUND);
+            return accessor.getVTableOffset();
+        }
     }
 }

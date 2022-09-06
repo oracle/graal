@@ -29,8 +29,8 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
 
 /**

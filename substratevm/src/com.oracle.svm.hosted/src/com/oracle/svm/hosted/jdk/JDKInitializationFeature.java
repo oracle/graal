@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.jdk;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-public class JDKInitializationFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class JDKInitializationFeature implements InternalFeature {
     private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
 
     @Override
@@ -172,9 +172,6 @@ public class JDKInitializationFeature implements Feature {
 
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             rci.rerunInitialization("sun.nio.ch.Poller", "Contains an InnocuousThread.");
-        }
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Not yet supported");
         }
     }
 }

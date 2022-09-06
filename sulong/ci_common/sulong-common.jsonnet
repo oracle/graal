@@ -71,7 +71,9 @@
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64,
   darwin_aarch64:: darwin_aarch64 + sulong_deps.darwin_aarch64,
-  windows_amd64:: windows_amd64 + sulong_deps.windows,
+  windows_amd64:: windows_amd64 + sulong_deps.windows + {
+    packages+: common.devkits["windows-" + self.jdk].packages
+  },
 
   sulong_notifications:: {
     notify_groups:: ["sulong"],
@@ -142,7 +144,6 @@
       CLANG_LLVM_LINK: "llvm-link",
       CLANG_LLVM_DIS: "llvm-dis",
       CLANG_LLVM_OPT: "opt",
-      MX_TEST_RESULT_TAGS: "sulong",
     },
   },
 

@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -167,6 +168,15 @@ public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode impl
     }
 
     @NodeIntrinsic
+    @GenerateStub(name = "arrayRegionCompareToS1S1", parameters = {"S1", "S1"})
+    @GenerateStub(name = "arrayRegionCompareToS1S2", parameters = {"S1", "S2"})
+    @GenerateStub(name = "arrayRegionCompareToS1S4", parameters = {"S1", "S4"})
+    @GenerateStub(name = "arrayRegionCompareToS2S1", parameters = {"S2", "S1"})
+    @GenerateStub(name = "arrayRegionCompareToS2S2", parameters = {"S2", "S2"})
+    @GenerateStub(name = "arrayRegionCompareToS2S4", parameters = {"S2", "S4"})
+    @GenerateStub(name = "arrayRegionCompareToS4S1", parameters = {"S4", "S1"})
+    @GenerateStub(name = "arrayRegionCompareToS4S2", parameters = {"S4", "S2"})
+    @GenerateStub(name = "arrayRegionCompareToS4S4", parameters = {"S4", "S4"})
     public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length,
                     @ConstantNodeParameter Stride strideA,
                     @ConstantNodeParameter Stride strideB);
@@ -178,10 +188,11 @@ public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode impl
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
-    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride);
+    @GenerateStub(name = "arrayRegionCompareToDynamicStrides")
+    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides);
 
     @NodeIntrinsic
-    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride,
+    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     public ValueNode getArrayA() {

@@ -42,9 +42,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
@@ -129,7 +129,7 @@ final class EnumSwitchPlugin implements NodePlugin {
 final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class EnumSwitchFeature implements InternalFeature {
 
     BigBang bb;

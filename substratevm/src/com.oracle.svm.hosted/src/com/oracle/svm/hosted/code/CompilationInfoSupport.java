@@ -28,22 +28,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@AutomaticallyRegisteredImageSingleton
 public class CompilationInfoSupport {
 
     /**
@@ -56,6 +54,8 @@ public class CompilationInfoSupport {
         public final int numLocals;
         public final int numStack;
         public final int numLocks;
+
+        public static final DeoptSourceFrameInfo INVALID_DEOPT_SOURCE_FRAME = new DeoptSourceFrameInfo(null, 0, 0, 0);
 
         private DeoptSourceFrameInfo(JavaKind[] expectedKinds, int numLocals, int numStack, int numLocks) {
             this.expectedKinds = expectedKinds;
@@ -71,14 +71,14 @@ public class CompilationInfoSupport {
         private static JavaKind[] getKinds(FrameState state) {
             JavaKind[] kinds = new JavaKind[state.locksSize() + state.stackSize() + state.localsSize()];
             int index = 0;
-            for (int i = 0; i < state.locksSize(); i++) {
-                kinds[index++] = getKind(state.lockAt(i));
+            for (int i = 0; i < state.localsSize(); i++) {
+                kinds[index++] = getKind(state.localAt(i));
             }
             for (int i = 0; i < state.stackSize(); i++) {
                 kinds[index++] = getKind(state.stackAt(i));
             }
-            for (int i = 0; i < state.localsSize(); i++) {
-                kinds[index++] = getKind(state.localAt(i));
+            for (int i = 0; i < state.locksSize(); i++) {
+                kinds[index++] = getKind(state.lockAt(i));
             }
             return kinds;
         }
@@ -97,6 +97,11 @@ public class CompilationInfoSupport {
          * the intersection of all potential deoptimization points.
          */
         public DeoptSourceFrameInfo mergeStateInfo(FrameState state) {
+            if (this == INVALID_DEOPT_SOURCE_FRAME) {
+                // nothing do to
+                return this;
+            }
+
             JavaKind[] otherKinds = getKinds(state);
 
             boolean matchingSizes = numLocals == state.localsSize() &&
@@ -104,23 +109,7 @@ public class CompilationInfoSupport {
                             numLocks == state.locksSize() &&
                             expectedKinds.length == otherKinds.length;
             if (!matchingSizes) {
-                if (!NativeImageCodeCache.Options.VerifyDeoptimizationEntryPoints.getValue()) {
-                    /*
-                     * If VerifyDeoptimizationEntryPoints is not enabled, then this information does
-                     * not need to be accurate.
-                     */
-                    return this;
-                }
-
-                StringBuilder errorMessage = new StringBuilder();
-                errorMessage.append(
-                                "Unexpected number of values in state to merge. Please report this problem and try building again with -H:-VerifyDeoptimizationEntryPoints " +
-                                                "to check if you are calling methods on the blocklist without a @TruffleBoundary.\n");
-                errorMessage.append(String.format("****Merge FrameState****\n%s************************\n", state.toString(Verbosity.Debugger)));
-                errorMessage.append(String.format("bci: %d, duringCall: %b, rethrowException: %b\n", state.bci, state.duringCall(), state.rethrowException()));
-                errorMessage.append(String.format("DeoptSourceFrameInfo: locals-%d, stack-%d, locks-%d.\n", numLocals, numStack, numLocks));
-                errorMessage.append(String.format("Merge FrameState: locals-%d, stack-%d, locks-%d.\n", state.localsSize(), state.stackSize(), state.locksSize()));
-                throw VMError.shouldNotReachHere(errorMessage.toString());
+                return INVALID_DEOPT_SOURCE_FRAME;
             }
 
             for (int i = 0; i < expectedKinds.length; i++) {
@@ -228,13 +217,5 @@ public class CompilationInfoSupport {
     private boolean seal() {
         sealed = true;
         return true;
-    }
-}
-
-@AutomaticFeature
-class CompilationInfoFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CompilationInfoSupport.class, new CompilationInfoSupport());
     }
 }

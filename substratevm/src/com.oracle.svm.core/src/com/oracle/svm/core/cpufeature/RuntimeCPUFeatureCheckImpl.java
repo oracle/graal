@@ -54,9 +54,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -66,13 +68,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@AutomaticFeature
-class RuntimeCPUFeatureCheckFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCPUFeatureCheckImpl.class, new RuntimeCPUFeatureCheckImpl());
-    }
+@AutomaticallyRegisteredFeature
+class RuntimeCPUFeatureCheckFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -106,6 +103,7 @@ final class RuntimeCPUFeatureCheckInitializer implements RuntimeSupport.Hook {
  * native image startup in a global variable, then consulting this global value for each CPU feature
  * test.
  */
+@AutomaticallyRegisteredImageSingleton
 @NodeIntrinsicFactory
 public final class RuntimeCPUFeatureCheckImpl {
 

@@ -84,9 +84,17 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     @Override
-    protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, TargetDescription target,
-                    HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls, MetaAccessProvider metaAccess,
-                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options) {
+    protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime,
+                    CompilerConfiguration compilerConfiguration,
+                    GraalHotSpotVMConfig config,
+                    TargetDescription target,
+                    HotSpotConstantReflectionProvider constantReflection,
+                    HotSpotHostForeignCallsProvider foreignCalls,
+                    MetaAccessProvider metaAccess,
+                    HotSpotSnippetReflectionProvider snippetReflection,
+                    HotSpotReplacementsImpl replacements,
+                    HotSpotWordTypes wordTypes,
+                    OptionValues options) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(graalRuntime,
                         compilerConfiguration,
                         config,
@@ -98,7 +106,10 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AArch64GraphBuilderPlugins.register(plugins, replacements, /* registerForeignCallMath */true, options);
+        AArch64GraphBuilderPlugins.register(plugins,
+                        replacements,
+                        /* registerForeignCallMath */true,
+                        options);
         return plugins;
     }
 

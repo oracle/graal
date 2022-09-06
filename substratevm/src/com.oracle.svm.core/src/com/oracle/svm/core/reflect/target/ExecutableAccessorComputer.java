@@ -27,11 +27,9 @@ package com.oracle.svm.core.reflect.target;
 import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Computes new values for the accessor fields of {@link Executable} subclasses, to be used instead
@@ -39,14 +37,9 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  *
  * @see RecomputeFieldValue
  */
-public final class ExecutableAccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+public final class ExecutableAccessorComputer implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getOrCreateAccessor((Executable) receiver);
     }
 }

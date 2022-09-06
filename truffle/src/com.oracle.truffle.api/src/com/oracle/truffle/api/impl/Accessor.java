@@ -189,6 +189,8 @@ public abstract class Accessor {
 
         public abstract boolean isTrivial(RootNode rootNode);
 
+        public abstract FrameDescriptor getParentFrameDescriptor(RootNode rootNode);
+
         public abstract Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement);
 
         public abstract ExecutionSignature prepareForAOT(RootNode rootNode);
@@ -228,6 +230,8 @@ public abstract class Accessor {
         public abstract void mergeLoadedSources(Source[] sources);
 
         public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
+
+        public abstract void setURL(SourceBuilder builder, URL url);
 
         public abstract void setPath(SourceBuilder builder, String path);
     }
@@ -385,12 +389,18 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
 
+        public abstract boolean isInnerContextOptionsAllowed(Object polyglotLanguageContext, Env env);
+
         public abstract boolean isCurrentNativeAccessAllowed(Node node);
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext, Runnable onCancelledRunnable,
-                        Consumer<Integer> onExitedRunnable, Runnable onClosedRunnable);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, OutputStream out, OutputStream err, InputStream in,
+                        ZoneId timeZone, String[] permittedLanguages, Map<String, Object> config, Map<String, String> options, Map<String, String[]> arguments,
+                        Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelled, Consumer<Integer> onExited,
+                        Runnable onClosed, boolean inheritAccess, Boolean allowCreateThreads, Boolean allowNativeAccess, Boolean allowIO,
+                        Boolean allowHostLookup, Boolean allowHostClassLoading, Boolean allowCreateProcess, Boolean allowPolyglotAccess,
+                        Boolean allowEnvironmentAccess, Map<String, String> environment, Boolean allowInnerContextOptions);
 
         public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
@@ -403,6 +413,8 @@ public abstract class Accessor {
         public abstract Object enterIfNeeded(Object polyglotContext);
 
         public abstract void leaveIfNeeded(Object polyglotContext, Object prev);
+
+        public abstract boolean initializeInnerContext(Node location, Object polyglotContext, String languageId, boolean allowInternal);
 
         public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source, boolean allowInternal);
 
@@ -535,9 +547,11 @@ public abstract class Accessor {
 
         public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object polyglotLanguageContext, OutputStream stream);
 
-        public abstract boolean isIOAllowed();
+        public abstract boolean isIOAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean isCreateProcessAllowed();
+        public abstract boolean isIOSupported();
+
+        public abstract boolean isCreateProcessSupported();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
 
@@ -564,8 +578,6 @@ public abstract class Accessor {
         public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
-
-        public abstract Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value);
 
         public abstract boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage);
 
@@ -718,6 +730,10 @@ public abstract class Accessor {
         public abstract Context getPolyglotContextAPI(Object polyglotContextImpl);
 
         public abstract EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull);
+
+        public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1191,6 +1207,10 @@ public abstract class Accessor {
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;
         }
+    }
+
+    public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
+        sourceFrame.transferOSRStaticSlot(targetFrame, slot);
     }
 
 // A separate class to break the cycle such that Accessor can fully initialize

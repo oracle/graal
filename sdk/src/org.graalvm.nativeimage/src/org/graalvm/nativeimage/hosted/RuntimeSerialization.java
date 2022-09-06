@@ -100,6 +100,28 @@ public final class RuntimeSerialization {
         ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
     }
 
+    /**
+     * Makes a class available for serialization at runtime that is created for the lambda
+     * expressions (a class that has a $deserializeLambda$ method) specified by the
+     * lambdaCapturingClass.
+     *
+     * @since 22.3
+     */
+    public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClass);
+    }
+
+    /**
+     * Makes a dynamic proxy class (class that extends {@link java.lang.reflect.Proxy}) available
+     * for serialization at runtime that is specified by the given interfaces the proxy class
+     * implements.
+     *
+     * @since 22.3
+     */
+    public static void registerProxyClass(Class<?>... implementedInterfaces) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), implementedInterfaces);
+    }
+
     private RuntimeSerialization() {
     }
 }

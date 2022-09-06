@@ -33,11 +33,13 @@ import org.graalvm.word.UnsignedWord;
  * look like in detail.
  */
 public interface GCAllocationSupport {
-    ForeignCallDescriptor getSlowNewInstanceStub();
+    ForeignCallDescriptor getNewInstanceStub();
 
-    ForeignCallDescriptor getSlowNewArrayStub();
+    ForeignCallDescriptor getNewArrayStub();
 
-    ForeignCallDescriptor getSlowNewPodInstanceStub();
+    ForeignCallDescriptor getNewStoredContinuationStub();
+
+    ForeignCallDescriptor getNewPodInstanceStub();
 
     boolean useTLAB();
 

@@ -46,8 +46,27 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
 
     @Override
     public void accept(ConditionalElement<List<String>> proxies) {
+        Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
+        if (interfaces != null) {
+            registerConditionalConfiguration(proxies.getCondition(), () -> {
+                /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+                dynamicProxySupport.addProxyClass(interfaces);
+            });
+        }
+    }
+
+    public Class<?> createProxyClassForSerialization(ConditionalElement<List<String>> proxies) {
+        Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
+        if (interfaces != null) {
+            return dynamicProxySupport.createProxyClassForSerialization(interfaces);
+        }
+
+        return null;
+    }
+
+    private Class<?>[] checkIfInterfacesAreValid(ConditionalElement<List<String>> proxies) {
         if (typeResolver.resolveType(proxies.getCondition().getTypeName()) == null) {
-            return;
+            return null;
         }
         List<String> interfaceNames = proxies.getElement();
         Class<?>[] interfaces = new Class<?>[interfaceNames.size()];
@@ -55,14 +74,12 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
             String className = interfaceNames.get(i);
             Class<?> clazz = imageClassLoader.findClass(className).get();
             if (!checkClass(interfaceNames, className, clazz)) {
-                return;
+                return null;
             }
             interfaces[i] = clazz;
         }
-        registerConditionalConfiguration(proxies.getCondition(), () -> {
-            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-            dynamicProxySupport.addProxyClass(interfaces);
-        });
+
+        return interfaces;
     }
 
     private static boolean checkClass(List<String> interfaceNames, String className, Class<?> clazz) {

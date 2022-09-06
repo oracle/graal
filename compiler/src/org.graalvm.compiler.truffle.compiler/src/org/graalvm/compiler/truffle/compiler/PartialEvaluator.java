@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Encod
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalGraphSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ParsePEGraphsWithAssumptions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
@@ -46,7 +47,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -128,6 +128,8 @@ public abstract class PartialEvaluator {
     // TODO GR-37097 Move to TruffleCompilerImpl
     protected volatile InstrumentPhase.Instrumentation instrumentation;
     protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
+    protected boolean allowAssumptionsDuringParsing;
+    protected boolean persistentEncodedGraphCache;
 
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
@@ -162,9 +164,14 @@ public abstract class PartialEvaluator {
                         (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
+
+        this.allowAssumptionsDuringParsing = options.get(ParsePEGraphsWithAssumptions);
+        // Graphs with assumptions cannot be cached across compilations, so the persistent cache is
+        // disabled if assumptions are allowed.
+        this.persistentEncodedGraphCache = options.get(EncodedGraphCache) && !options.get(ParsePEGraphsWithAssumptions);
     }
 
-    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache(@SuppressWarnings("unused") boolean persistentEncodedGraphCache) {
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
         return EconomicMap.create();
     }
 
@@ -416,10 +423,11 @@ public abstract class PartialEvaluator {
                         method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
         Providers compilationUnitProviders = config.lastTier().providers().copyWith(compilationLocalConstantProvider);
+
+        assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
         return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
-                        AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, false);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, allowAssumptionsDuringParsing, false);
     }
 
     @SuppressWarnings("try")
@@ -427,17 +435,17 @@ public abstract class PartialEvaluator {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         inlineInvokePlugin
         };
-        boolean persistentEncodedGraphCache = context.options.get(EncodedGraphCache);
         PEGraphDecoder decoder = createGraphDecoder(context,
                         context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
                         inlineInvokePlugins,
                         new InterceptReceiverPlugin(context.compilable),
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(context.task.inliningData()),
-                        graphCache, getCreateCachedGraphScope(persistentEncodedGraphCache));
+                        graphCache, getCreateCachedGraphScope());
         GraphSizeListener listener = new GraphSizeListener(context.options, context.graph);
         try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
-            decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
+            assert !context.graph.isSubstitution();
+            decoder.decode(context.graph.method());
         }
         assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
     }
@@ -449,7 +457,7 @@ public abstract class PartialEvaluator {
      *
      * The default supplier produces null, a no-op try-with-resources/scope.
      */
-    protected Supplier<AutoCloseable> getCreateCachedGraphScope(@SuppressWarnings("unused") boolean persistentEncodedGraphCache) {
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
         return () -> null;
     }
 
@@ -471,20 +479,28 @@ public abstract class PartialEvaluator {
             ResolvedJavaType memorySegmentProxyType = TruffleCompilerRuntime.getRuntime().resolveType(config.lastTier().providers().getMetaAccess(), "jdk.internal.access.foreign.MemorySegmentProxy");
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods()) {
                 if (m.getName().equals("scope")) {
-                    appendMemorySegmentProxyScopePlugin(plugins, m);
+                    appendMemorySegmentScopePlugin(plugins, m);
+                }
+            }
+        } else if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            ResolvedJavaType memorySegmentType = TruffleCompilerRuntime.getRuntime().resolveType(config.lastTier().providers().getMetaAccess(), "jdk.internal.foreign.Scoped");
+            for (ResolvedJavaMethod m : memorySegmentType.getDeclaredMethods()) {
+                if (m.getName().equals("sessionImpl")) {
+                    appendMemorySegmentScopePlugin(plugins, m);
                 }
             }
         }
     }
 
     /**
-     * The calls to MemorySegmentProxy.scope() from {@link Buffer} are problematic for Truffle
-     * because they would remain as non-inlineable invokes after PE. Because these are virtual
-     * calls, we can also not use a {@link InvocationPlugin} during PE to intrinsify the invoke to a
-     * deoptimization. Therefore, we already do the intrinsification during bytecode parsing using a
-     * {@link NodePlugin}, because that is also invoked for virtual calls.
+     * The calls to MemorySegmentProxy.scope() (JDK 17) or Scoped.sessionImpl() (JDK 19) from
+     * {@link Buffer} are problematic for Truffle because they would remain as non-inlineable
+     * invokes after PE. Because these are virtual calls, we can also not use a
+     * {@link InvocationPlugin} during PE to intrinsify the invoke to a deoptimization. Therefore,
+     * we already do the intrinsification during bytecode parsing using a {@link NodePlugin},
+     * because that is also invoked for virtual calls.
      */
-    private static void appendMemorySegmentProxyScopePlugin(Plugins plugins, ResolvedJavaMethod scopeMethod) {
+    private static void appendMemorySegmentScopePlugin(Plugins plugins, ResolvedJavaMethod scopeMethod) {
         plugins.appendNodePlugin(new NodePlugin() {
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {

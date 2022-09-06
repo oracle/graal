@@ -99,10 +99,10 @@ public class SchedulingTest2 extends GraphScheduleTest {
 
         CoreProviders context = getProviders();
         new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
-        new MidTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
         MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
-
         new GuardLoweringPhase().apply(graph, midContext);
+        new MidTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
+
         FrameStateAssignmentPhase phase = new FrameStateAssignmentPhase();
         phase.apply(graph);
 

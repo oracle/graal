@@ -52,10 +52,11 @@ public class LibEspresso {
         // TODO use Launcher infra to parse graalvm specific options
         Context.Builder builder = Context.newBuilder().allowAllAccess(true);
 
+        // These option need to be set before calling `Arguments.setupContext()` so that cmd line
+        // args can override the default behavior.
+
         // Since Espresso has a verifier, the Static Object Model does not need to perform shape
         // checks and can use unsafe casts.
-        // This option needs to be set before calling `Arguments.setupContext()` so that cmd line
-        // args can override the default behavior.
         builder.option("engine.RelaxStaticObjectSafetyChecks", "true");
 
         int result = Arguments.setupContext(builder, args);
@@ -131,27 +132,9 @@ public class LibEspresso {
         return JNIErrors.JNI_OK();
     }
 
-    @CEntryPoint(name = "Espresso_Exit")
-    static void exit(@SuppressWarnings("unused") IsolateThread thread, JNIJavaVM javaVM) {
-        ObjectHandle contextHandle = javaVM.getFunctions().getContext();
-        Context context = ObjectHandles.getGlobal().get(contextHandle);
-        Value exitValue = context.eval("java", "<ExitCode>");
-        int exitCode;
-        if (!exitValue.fitsInInt()) {
-            STDERR.println("Cannot retrieve exit code");
-            exitCode = 1;
-        } else {
-            exitCode = exitValue.asInt();
-        }
-        context.leave();
-        try {
-            context.close();
-        } catch (Throwable t) {
-            t.printStackTrace();
-            if (exitCode == 0) {
-                exitCode = 1;
-            }
-        }
-        System.exit(exitCode);
+    @CEntryPoint(name = "Espresso_Shutdown")
+    static int shutdown(@SuppressWarnings("unused") IsolateThread thread) {
+        VMRuntime.shutdown();
+        return JNIErrors.JNI_OK();
     }
 }

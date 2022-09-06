@@ -32,28 +32,34 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
 public final class SerializationConfiguration extends ConfigurationBase<SerializationConfiguration, SerializationConfiguration.Predicate>
                 implements RuntimeSerializationSupport {
 
     private final Set<SerializationConfigurationType> serializations = ConcurrentHashMap.newKeySet();
     private final Set<SerializationConfigurationLambdaCapturingType> lambdaSerializationCapturingTypes = ConcurrentHashMap.newKeySet();
+    private final ProxyConfiguration proxyConfiguration;
+    private final Set<ConditionalElement<List<String>>> interfaceListsSerializableProxies = ConcurrentHashMap.newKeySet();
 
     public SerializationConfiguration() {
+        proxyConfiguration = new ProxyConfiguration();
     }
 
     public SerializationConfiguration(SerializationConfiguration other) {
         serializations.addAll(other.serializations);
         lambdaSerializationCapturingTypes.addAll(other.lambdaSerializationCapturingTypes);
+        interfaceListsSerializableProxies.addAll(other.interfaceListsSerializableProxies);
+        this.proxyConfiguration = new ProxyConfiguration(other.proxyConfiguration);
     }
 
     @Override
@@ -65,18 +71,21 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     protected void merge(SerializationConfiguration other) {
         serializations.addAll(other.serializations);
         lambdaSerializationCapturingTypes.addAll(other.lambdaSerializationCapturingTypes);
+        proxyConfiguration.merge(other.proxyConfiguration);
     }
 
     @Override
     public void subtract(SerializationConfiguration other) {
         serializations.removeAll(other.serializations);
         lambdaSerializationCapturingTypes.removeAll(other.lambdaSerializationCapturingTypes);
+        proxyConfiguration.subtract(other.proxyConfiguration);
     }
 
     @Override
     protected void intersect(SerializationConfiguration other) {
         serializations.retainAll(other.serializations);
         lambdaSerializationCapturingTypes.retainAll(other.lambdaSerializationCapturingTypes);
+        proxyConfiguration.intersect(other.proxyConfiguration);
     }
 
     @Override
@@ -107,6 +116,8 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
         List<SerializationConfigurationLambdaCapturingType> listOfCapturingClasses = new ArrayList<>(lambdaSerializationCapturingTypes);
         listOfCapturingClasses.sort(new SerializationConfigurationLambdaCapturingType.SerializationConfigurationLambdaCapturingTypesComparator());
         printSerializationClasses(writer, "lambdaCapturingTypes", listOfCapturingClasses);
+        writer.append(",").newline().quote("proxies").append(":");
+        printProxies(writer);
         writer.unindent().newline();
         writer.append('}');
     }
@@ -114,6 +125,11 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     @Override
     public ConfigurationParser createParser() {
         return new SerializationConfigurationParser(this, true);
+    }
+
+    private void printProxies(JsonWriter writer) throws IOException {
+        List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceListsSerializableProxies);
+        ProxyConfiguration.printProxyInterfaces(writer, lists);
     }
 
     private static void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
@@ -165,8 +181,13 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
+    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+        interfaceListsSerializableProxies.add(new ConditionalElement<>(condition, implementedInterfaces));
+    }
+
+    @Override
     public boolean isEmpty() {
-        return serializations.isEmpty() && lambdaSerializationCapturingTypes.isEmpty();
+        return serializations.isEmpty() && lambdaSerializationCapturingTypes.isEmpty() || interfaceListsSerializableProxies.isEmpty();
     }
 
     private static SerializationConfigurationType createConfigurationType(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {

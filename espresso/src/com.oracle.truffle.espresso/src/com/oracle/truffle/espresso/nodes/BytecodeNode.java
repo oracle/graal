@@ -421,7 +421,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
          */
-        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().TrivialMethodSize
+        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().getEspressoEnv().TrivialMethodSize
                         ? TRIVIAL_UNINITIALIZED
                         : TRIVIAL_NO;
     }
@@ -665,7 +665,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     // endregion Local accessors
 
     @Override
-    void initializeBody(VirtualFrame frame) {
+    public void initializeFrame(VirtualFrame frame) {
         initArguments(frame);
         // initialize the bci slot
         setBCI(frame, 0);
@@ -757,7 +757,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     @Override
-    Object executeBody(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         int startTop = EspressoFrame.VALUES_START + getMethodVersion().getMaxLocals();
         return executeBodyFromBCI(frame, 0, startTop, 0, false);
     }
@@ -777,7 +777,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
         if (!frame.isInt(EspressoFrame.BCI_SLOT)) {
-            initializeBody(frame);
+            initializeFrame(frame);
         }
 
         final Counter loopCount = new Counter();
@@ -1485,10 +1485,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             // Tearing down the VM, no need to report loop count.
                             throw e;
                         }
-                        assert getContext().Polyglot;
+                        assert getContext().getEspressoEnv().Polyglot;
                         getMeta().polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        getAllocator().createForeignException(e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1575,7 +1575,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
         GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
-        return getAllocator().createNewPrimitiveArray(jvmPrimitiveType, length);
+        return getAllocator().createNewPrimitiveArray(getMeta(), jvmPrimitiveType, length);
     }
 
     private StaticObject newReferenceArray(Klass componentType, int length) {
@@ -1599,7 +1599,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 char cpi = original.readCPI(curBCI);
                 int nodeOpcode = original.currentBC(curBCI);
                 Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                result = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
+                result = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().InlineFieldAccessors));
                 nodes[readCPI(curBCI)] = result;
             }
         }
@@ -1743,9 +1743,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     // an Espresso object can never be identical to a foreign object
                     if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
-                        return operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
+                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+                        return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
                     }
                     return false;
                 }
@@ -1759,9 +1761,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                     // an Espresso object can never be identical to a foreign object
                     if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(operand1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(operand2);
-                        return !operand1Lib.isIdentical(operand1, operand2, operand2Lib);
+                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
+                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
+                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+                        return !operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
                     }
                     return operand1 != operand2;
                 }
@@ -2076,7 +2080,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
             char cpi = readCPI(curBCI);
             Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().InlineFieldAccessors);
         });
         // Perform the call outside of the lock.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -2189,7 +2193,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     // endregion quickenForeign
 
     private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
-        assert !allowFieldAccessInlining || getContext().InlineFieldAccessors;
+        assert !allowFieldAccessInlining || getContext().getEspressoEnv().InlineFieldAccessors;
         BaseQuickNode invoke;
         Method resolved = resolutionSeed;
         switch (opcode) {

@@ -68,4 +68,8 @@ public abstract class SubstrateAccessor {
         this.directTarget = directTarget;
         this.initializeBeforeInvoke = initializeBeforeInvoke;
     }
+
+    public Executable getMember() {
+        return member;
+    }
 }

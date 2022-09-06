@@ -46,7 +46,7 @@ public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
         OptionValues options = HostInliningTest.createHostInliningOptions(30000, -1);
         StructuredGraph graph = parseForCompile(method, options);
         try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
-            getBackend().getSuites().getDefaultSuites(options).getHighTier().apply(graph, getDefaultHighTierContext());
+            super.createSuites(options).getHighTier().apply(graph, getDefaultHighTierContext());
 
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class)) {
                 ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();

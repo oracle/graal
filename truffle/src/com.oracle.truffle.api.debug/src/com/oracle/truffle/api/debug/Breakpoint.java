@@ -813,6 +813,9 @@ public class Breakpoint {
                     } else {
                         newResult = session.notifyCallback(context, source, frame, anchor, null, newResult, de, failure);
                     }
+                    // We've hit a breakpoint. Stepping need not be disabled on the current thread,
+                    // otherwise user would not be able to step to a next location.
+                    session.restoreSteppingOnCurrentThread();
                 }
             }
             current = current.next;

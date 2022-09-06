@@ -465,6 +465,28 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Checks whether {@code this} has only one usage of type {@code inputType}.
+     *
+     * @param inputType the type of usages to look for
+     */
+    public final boolean hasExactlyOneUsageOfType(InputType inputType) {
+        int numUses = 0;
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() == inputType) {
+                        numUses++;
+                        if (numUses > 1) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return numUses == 1;
+    }
+
+    /**
      * Checks whether {@code this} has only usages of type {@code inputType}.
      *
      * @param inputType the type of usages to look for

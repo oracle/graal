@@ -117,9 +117,17 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
         LogicNode synonym = findSynonym(checkedStamp, forValue, view);
         if (synonym != null) {
             return synonym;
-        } else {
-            return this;
+        } else if (!checkedStamp.isExactType()) {
+            TypeReference checkedType = TypeReference.createTrusted(tool.getAssumptions(), checkedStamp.type());
+            if (checkedType != null && checkedType.isExact()) {
+                // Refine type and exact-ness, preserving other properties of the original stamp.
+                ObjectStamp improvedStamp = (ObjectStamp) checkedStamp.tryImproveWith(StampFactory.object(checkedType));
+                if (improvedStamp != null) {
+                    return createHelper(improvedStamp, forValue, profile, anchor);
+                }
+            }
         }
+        return this;
     }
 
     public static LogicNode findSynonym(ObjectStamp checkedStamp, ValueNode object, NodeView view) {

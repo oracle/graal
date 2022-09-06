@@ -1,0 +1,846 @@
+From c7a4a53c32ccf93dd118fb6c13f2ecf02baeadf4 Mon Sep 17 00:00:00 2001
+From: Sacha Coppey <sacha.coppey@oracle.com>
+Date: Fri, 3 Jun 2022 11:41:20 +0200
+Subject: [PATCH 3/3] [GR-36952][RISCV] Add support for RISC-V
+ Stackmaps/Statepoints/Patchpoints
+
+---
+ llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp     | 188 ++++++++-
+ llvm/lib/Target/RISCV/RISCVISelLowering.cpp   |  13 +
+ llvm/lib/Target/RISCV/RISCVInstrInfo.cpp      |  21 +-
+ llvm/test/CodeGen/RISCV/rv64-patchpoint.ll    |  68 ++++
+ .../RISCV/rv64-stackmap-frame-setup.ll        |  22 +
+ llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll |  18 +
+ llvm/test/CodeGen/RISCV/rv64-stackmap.ll      | 384 ++++++++++++++++++
+ 7 files changed, 710 insertions(+), 4 deletions(-)
+ create mode 100644 llvm/test/CodeGen/RISCV/rv64-patchpoint.ll
+ create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap-frame-setup.ll
+ create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll
+ create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap.ll
+
+diff --git a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
+index 9fed6e7baadc..3f51693ad338 100644
+--- a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
++++ b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
+@@ -13,6 +13,7 @@
+ 
+ #include "MCTargetDesc/RISCVInstPrinter.h"
+ #include "MCTargetDesc/RISCVMCExpr.h"
++#include "MCTargetDesc/RISCVMatInt.h"
+ #include "MCTargetDesc/RISCVTargetStreamer.h"
+ #include "RISCV.h"
+ #include "RISCVTargetMachine.h"
+@@ -23,8 +24,10 @@
+ #include "llvm/CodeGen/MachineFunctionPass.h"
+ #include "llvm/CodeGen/MachineInstr.h"
+ #include "llvm/CodeGen/MachineModuleInfo.h"
++#include "llvm/CodeGen/StackMaps.h"
+ #include "llvm/MC/MCAsmInfo.h"
+ #include "llvm/MC/MCInst.h"
++#include "llvm/MC/MCInstBuilder.h"
+ #include "llvm/MC/MCStreamer.h"
+ #include "llvm/MC/MCSymbol.h"
+ #include "llvm/MC/TargetRegistry.h"
+@@ -38,15 +41,26 @@ STATISTIC(RISCVNumInstrsCompressed,
+ 
+ namespace {
+ class RISCVAsmPrinter : public AsmPrinter {
++  StackMaps SM;
+   const MCSubtargetInfo *STI;
+ 
+ public:
+   explicit RISCVAsmPrinter(TargetMachine &TM,
+                            std::unique_ptr<MCStreamer> Streamer)
+-      : AsmPrinter(TM, std::move(Streamer)), STI(TM.getMCSubtargetInfo()) {}
++      : AsmPrinter(TM, std::move(Streamer)), SM(*this),
++        STI(TM.getMCSubtargetInfo()) {}
+ 
+   StringRef getPassName() const override { return "RISCV Assembly Printer"; }
+ 
++  void LowerSTACKMAP(MCStreamer &OutStreamer, StackMaps &SM,
++                     const MachineInstr &MI);
++
++  void LowerPATCHPOINT(MCStreamer &OutStreamer, StackMaps &SM,
++                       const MachineInstr &MI);
++
++  void LowerSTATEPOINT(MCStreamer &OutStreamer, StackMaps &SM,
++                       const MachineInstr &MI);
++
+   bool runOnMachineFunction(MachineFunction &MF) override;
+ 
+   void emitInstruction(const MachineInstr *MI) override;
+@@ -73,6 +87,160 @@ private:
+ };
+ }
+ 
++void RISCVAsmPrinter::LowerSTACKMAP(MCStreamer &OutStreamer, StackMaps &SM,
++                                    const MachineInstr &MI) {
++  unsigned NOPBytes = STI->getFeatureBits()[RISCV::FeatureStdExtC] ? 2 : 4;
++  unsigned NumNOPBytes = StackMapOpers(&MI).getNumPatchBytes();
++
++  auto &Ctx = OutStreamer.getContext();
++  MCSymbol *MILabel = Ctx.createTempSymbol();
++  OutStreamer.emitLabel(MILabel);
++
++  SM.recordStackMap(*MILabel, MI);
++  assert(NumNOPBytes % NOPBytes == 0 && "Invalid number of NOP bytes requested!");
++
++  // Scan ahead to trim the shadow.
++  const MachineBasicBlock &MBB = *MI.getParent();
++  MachineBasicBlock::const_iterator MII(MI);
++  ++MII;
++  while (NumNOPBytes > 0) {
++    if (MII == MBB.end() || MII->isCall() ||
++        MII->getOpcode() == RISCV::DBG_VALUE ||
++        MII->getOpcode() == TargetOpcode::PATCHPOINT ||
++        MII->getOpcode() == TargetOpcode::STACKMAP)
++      break;
++    ++MII;
++    NumNOPBytes -= 4;
++  }
++
++  // Emit nops.
++  emitNops(NumNOPBytes / NOPBytes);
++}
++
++// Lower a patchpoint of the form:
++// [<def>], <id>, <numBytes>, <target>, <numArgs>
++void RISCVAsmPrinter::LowerPATCHPOINT(MCStreamer &OutStreamer, StackMaps &SM,
++                                      const MachineInstr &MI) {
++  unsigned NOPBytes = STI->getFeatureBits()[RISCV::FeatureStdExtC] ? 2 : 4;
++
++  auto &Ctx = OutStreamer.getContext();
++  MCSymbol *MILabel = Ctx.createTempSymbol();
++  OutStreamer.emitLabel(MILabel);
++  SM.recordPatchPoint(*MILabel, MI);
++
++  PatchPointOpers Opers(&MI);
++
++  const MachineOperand &CalleeMO = Opers.getCallTarget();
++  unsigned EncodedBytes = 0;
++
++  if (CalleeMO.isImm()) {
++    uint64_t CallTarget = CalleeMO.getImm();
++    if (CallTarget) {
++      assert((CallTarget & 0xFFFF'FFFF'FFFF) == CallTarget &&
++             "High 16 bits of call target should be zero.");
++      // Materialize the jump address:
++
++      RISCVMatInt::InstSeq Seq =
++          RISCVMatInt::generateInstSeq(CallTarget, STI->getFeatureBits());
++      assert(!Seq.empty());
++
++      Register SrcReg = RISCV::X0;
++      Register DstReg = RISCV::X1;
++      for (RISCVMatInt::Inst &Inst : Seq) {
++        if (Inst.Opc == RISCV::LUI) {
++          EmitToStreamer(
++              OutStreamer,
++              MCInstBuilder(RISCV::LUI).addReg(DstReg).addImm(Inst.Imm));
++        } else if (Inst.Opc == RISCV::ADD_UW) {
++          EmitToStreamer(OutStreamer, MCInstBuilder(RISCV::ADD_UW)
++                                          .addReg(DstReg)
++                                          .addReg(SrcReg)
++                                          .addReg(RISCV::X0));
++        } else if (Inst.Opc == RISCV::SH1ADD || Inst.Opc == RISCV::SH2ADD ||
++                   Inst.Opc == RISCV::SH3ADD) {
++          EmitToStreamer(
++              OutStreamer,
++              MCInstBuilder(Inst.Opc).addReg(DstReg).addReg(SrcReg).addReg(
++                  SrcReg));
++        } else {
++          EmitToStreamer(
++              OutStreamer,
++              MCInstBuilder(Inst.Opc).addReg(DstReg).addReg(SrcReg).addImm(
++                  Inst.Imm));
++        }
++        EncodedBytes += 4;
++        // Only the first instruction has X0 as its source.
++        SrcReg = DstReg;
++      }
++      EmitToStreamer(OutStreamer, MCInstBuilder(RISCV::JALR)
++                                      .addReg(RISCV::X1)
++                                      .addReg(RISCV::X1)
++                                      .addImm(0));
++      EncodedBytes += 4;
++    }
++  } else if (CalleeMO.isGlobal()) {
++    MCOperand CallTargetMCOp;
++    llvm::LowerRISCVMachineOperandToMCOperand(CalleeMO, CallTargetMCOp, *this);
++    EmitToStreamer(OutStreamer,
++                   MCInstBuilder(RISCV::PseudoCALL).addOperand(CallTargetMCOp));
++    EncodedBytes += 8;
++  }
++
++  // Emit padding.
++  unsigned NumBytes = Opers.getNumPatchBytes();
++  assert(NumBytes >= EncodedBytes &&
++         "Patchpoint can't request size less than the length of a call.");
++  assert((NumBytes - EncodedBytes) % NOPBytes == 0 &&
++         "Invalid number of NOP bytes requested!");
++  emitNops((NumBytes - EncodedBytes) / NOPBytes);
++}
++
++void RISCVAsmPrinter::LowerSTATEPOINT(MCStreamer &OutStreamer, StackMaps &SM,
++                                      const MachineInstr &MI) {
++  unsigned NOPBytes = STI->getFeatureBits()[RISCV::FeatureStdExtC] ? 2 : 4;
++
++  StatepointOpers SOpers(&MI);
++  if (unsigned PatchBytes = SOpers.getNumPatchBytes()) {
++    assert(PatchBytes % NOPBytes == 0 && "Invalid number of NOP bytes requested!");
++    emitNops(PatchBytes / NOPBytes);
++  } else {
++    // Lower call target and choose correct opcode
++    const MachineOperand &CallTarget = SOpers.getCallTarget();
++    MCOperand CallTargetMCOp;
++    switch (CallTarget.getType()) {
++    case MachineOperand::MO_GlobalAddress:
++    case MachineOperand::MO_ExternalSymbol:
++      llvm::LowerRISCVMachineOperandToMCOperand(CallTarget, CallTargetMCOp,
++                                                *this);
++      EmitToStreamer(
++          OutStreamer,
++          MCInstBuilder(RISCV::PseudoCALL).addOperand(CallTargetMCOp));
++      break;
++    case MachineOperand::MO_Immediate:
++      CallTargetMCOp = MCOperand::createImm(CallTarget.getImm());
++      EmitToStreamer(OutStreamer, MCInstBuilder(RISCV::JAL)
++                                      .addReg(RISCV::X1)
++                                      .addOperand(CallTargetMCOp));
++      break;
++    case MachineOperand::MO_Register:
++      CallTargetMCOp = MCOperand::createReg(CallTarget.getReg());
++      EmitToStreamer(OutStreamer, MCInstBuilder(RISCV::JALR)
++                                      .addReg(RISCV::X1)
++                                      .addOperand(CallTargetMCOp)
++                                      .addImm(0));
++      break;
++    default:
++      llvm_unreachable("Unsupported operand type in statepoint call target");
++      break;
++    }
++  }
++
++  auto &Ctx = OutStreamer.getContext();
++  MCSymbol *MILabel = Ctx.createTempSymbol();
++  OutStreamer.emitLabel(MILabel);
++  SM.recordStatepoint(*MILabel, MI);
++}
++
+ #define GEN_COMPRESS_INSTR
+ #include "RISCVGenCompressInstEmitter.inc"
+ void RISCVAsmPrinter::EmitToStreamer(MCStreamer &S, const MCInst &Inst) {
+@@ -93,8 +261,20 @@ void RISCVAsmPrinter::emitInstruction(const MachineInstr *MI) {
+     return;
+ 
+   MCInst TmpInst;
+-  if (!lowerRISCVMachineInstrToMCInst(MI, TmpInst, *this))
+-    EmitToStreamer(*OutStreamer, TmpInst);
++  switch (MI->getOpcode()) {
++  default:
++    if (!lowerRISCVMachineInstrToMCInst(MI, TmpInst, *this))
++      EmitToStreamer(*OutStreamer, TmpInst);
++    return;
++  case TargetOpcode::STACKMAP:
++    return LowerSTACKMAP(*OutStreamer, SM, *MI);
++
++  case TargetOpcode::PATCHPOINT:
++    return LowerPATCHPOINT(*OutStreamer, SM, *MI);
++
++  case TargetOpcode::STATEPOINT:
++    return LowerSTATEPOINT(*OutStreamer, SM, *MI);
++  }
+ }
+ 
+ bool RISCVAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+@@ -188,6 +368,8 @@ void RISCVAsmPrinter::emitEndOfAsmFile(Module &M) {
+ 
+   if (TM.getTargetTriple().isOSBinFormatELF())
+     RTS.finishAttributeSection();
++
++  emitStackMaps(SM);
+ }
+ 
+ void RISCVAsmPrinter::emitAttributes() {
+diff --git a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
+index 274b86593e0f..6adb772343f8 100644
+--- a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
++++ b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
+@@ -8728,6 +8728,19 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+     return emitQuietFCMP(MI, BB, RISCV::FLE_D, RISCV::FEQ_D, Subtarget);
+   case RISCV::PseudoQuietFLT_D:
+     return emitQuietFCMP(MI, BB, RISCV::FLT_D, RISCV::FEQ_D, Subtarget);
++  case TargetOpcode::STATEPOINT:
++    // STATEPOINT is a pseudo instruction which has no implicit defs/uses
++    // while jal call instruction (where statepoint will be lowered at the end)
++    // has implicit def. Add this implicit dead def here as a workaround.
++    MI.addOperand(*MI.getMF(), MachineOperand::CreateReg(RISCV::X1, true, true,
++                                                         false, true));
++    LLVM_FALLTHROUGH;
++  case TargetOpcode::STACKMAP:
++  case TargetOpcode::PATCHPOINT:
++    if (!Subtarget.is64Bit())
++      report_fatal_error("STACKMAP, PATCHPOINT and STATEPOINT are only "
++                         "supported on 64-bit targets");
++    return emitPatchPoint(MI, BB);
+   }
+ }
+ 
+diff --git a/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp b/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
+index 55f4a19b79eb..f2db9c8b39fc 100644
+--- a/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
++++ b/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
+@@ -25,6 +25,7 @@
+ #include "llvm/CodeGen/MachineInstrBuilder.h"
+ #include "llvm/CodeGen/MachineRegisterInfo.h"
+ #include "llvm/CodeGen/RegisterScavenging.h"
++#include "llvm/CodeGen/StackMaps.h"
+ #include "llvm/MC/MCInstBuilder.h"
+ #include "llvm/MC/TargetRegistry.h"
+ #include "llvm/Support/ErrorHandling.h"
+@@ -987,7 +988,25 @@ unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
+     if (isCompressibleInst(MI, &ST, MRI, STI))
+       return 2;
+   }
+-  return get(Opcode).getSize();
++
++  switch (Opcode) {
++  case TargetOpcode::STACKMAP:
++    // The upper bound for a stackmap intrinsic is the full length of its shadow
++    return StackMapOpers(&MI).getNumPatchBytes();
++  case TargetOpcode::PATCHPOINT:
++    // The size of the patchpoint intrinsic is the number of bytes requested
++    return PatchPointOpers(&MI).getNumPatchBytes();
++  case TargetOpcode::STATEPOINT: {
++    // The size of the statepoint intrinsic is the number of bytes requested
++    unsigned NumBytes = StatepointOpers(&MI).getNumPatchBytes();
++    // A statepoint is at least a PSEUDOCALL
++    if (NumBytes < 8)
++      NumBytes = 8;
++    return NumBytes;
++  }
++  default:
++    return get(Opcode).getSize();
++  }
+ }
+ 
+ bool RISCVInstrInfo::isAsCheapAsAMove(const MachineInstr &MI) const {
+diff --git a/llvm/test/CodeGen/RISCV/rv64-patchpoint.ll b/llvm/test/CodeGen/RISCV/rv64-patchpoint.ll
+new file mode 100644
+index 000000000000..1e2fe065b7ed
+--- /dev/null
++++ b/llvm/test/CodeGen/RISCV/rv64-patchpoint.ll
+@@ -0,0 +1,68 @@
++; NOTE: Assertions have been autogenerated by utils/update_llc_test_checks.py
++; RUN: llc -mtriple=riscv64 -debug-entry-values -enable-misched=0 < %s | FileCheck %s
++
++; Trivial patchpoint codegen
++;
++define i64 @trivial_patchpoint_codegen(i64 %p1, i64 %p2, i64 %p3, i64 %p4) {
++; CHECK-LABEL: trivial_patchpoint_codegen:
++; CHECK:       # %bb.0: # %entry
++; CHECK-NEXT:    addi sp, sp, -16
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    sd s0, 8(sp) # 8-byte Folded Spill
++; CHECK-NEXT:    sd s1, 0(sp) # 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_offset s0, -8
++; CHECK-NEXT:    .cfi_offset s1, -16
++; CHECK-NEXT:    mv s0, a0
++; CHECK-NEXT:  .Ltmp0:
++; CHECK-NEXT:    lui ra, 3563
++; CHECK-NEXT:    addiw ra, ra, -577
++; CHECK-NEXT:    slli ra, ra, 12
++; CHECK-NEXT:    addi ra, ra, -259
++; CHECK-NEXT:    slli ra, ra, 12
++; CHECK-NEXT:    addi ra, ra, -1282
++; CHECK-NEXT:    jalr ra
++; CHECK-NEXT:    mv s1, a0
++; CHECK-NEXT:    mv a0, s0
++; CHECK-NEXT:    mv a1, s1
++; CHECK-NEXT:  .Ltmp1:
++; CHECK-NEXT:    lui ra, 3563
++; CHECK-NEXT:    addiw ra, ra, -577
++; CHECK-NEXT:    slli ra, ra, 12
++; CHECK-NEXT:    addi ra, ra, -259
++; CHECK-NEXT:    slli ra, ra, 12
++; CHECK-NEXT:    addi ra, ra, -1281
++; CHECK-NEXT:    jalr ra
++; CHECK-NEXT:    mv a0, s1
++; CHECK-NEXT:    ld s0, 8(sp) # 8-byte Folded Reload
++; CHECK-NEXT:    ld s1, 0(sp) # 8-byte Folded Reload
++; CHECK-NEXT:    addi sp, sp, 16
++; CHECK-NEXT:    ret
++entry:
++  %resolveCall2 = inttoptr i64 244837814094590 to i8*
++  %result = tail call i64 (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.i64(i64 2, i32 28, i8* %resolveCall2, i32 4, i64 %p1, i64 %p2, i64 %p3, i64 %p4)
++  %resolveCall3 = inttoptr i64 244837814094591 to i8*
++  tail call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 3, i32 28, i8* %resolveCall3, i32 2, i64 %p1, i64 %result)
++  ret i64 %result
++}
++
++; Test small patchpoints that don't emit calls.
++define void @small_patchpoint_codegen(i64 %p1, i64 %p2, i64 %p3, i64 %p4) {
++; CHECK-LABEL: small_patchpoint_codegen:
++; CHECK:       # %bb.0: # %entry
++; CHECK-NEXT:    .cfi_def_cfa_offset 0
++; CHECK-NEXT:  .Ltmp2:
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    ret
++entry:
++  %result = tail call i64 (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.i64(i64 5, i32 20, i8* null, i32 2, i64 %p1, i64 %p2)
++  ret void
++}
++
++declare void @llvm.experimental.stackmap(i64, i32, ...)
++declare void @llvm.experimental.patchpoint.void(i64, i32, i8*, i32, ...)
++declare i64 @llvm.experimental.patchpoint.i64(i64, i32, i8*, i32, ...)
++
+diff --git a/llvm/test/CodeGen/RISCV/rv64-stackmap-frame-setup.ll b/llvm/test/CodeGen/RISCV/rv64-stackmap-frame-setup.ll
+new file mode 100644
+index 000000000000..e1bed39a500b
+--- /dev/null
++++ b/llvm/test/CodeGen/RISCV/rv64-stackmap-frame-setup.ll
+@@ -0,0 +1,22 @@
++; NOTE: Assertions have been autogenerated by utils/update_mir_test_checks.py
++; RUN: llc -o - -verify-machineinstrs -mtriple=riscv64 -stop-after machine-sink %s | FileCheck %s --check-prefix=ISEL
++
++define void @caller_meta_leaf() {
++  ; ISEL-LABEL: name: caller_meta_leaf
++  ; ISEL: bb.0.entry:
++  ; ISEL-NEXT:   [[ADDI:%[0-9]+]]:gpr = ADDI $x0, 13
++  ; ISEL-NEXT:   SD killed [[ADDI]], %stack.0.metadata, 0 :: (store (s64) into %ir.metadata)
++  ; ISEL-NEXT:   ADJCALLSTACKDOWN 0, 0, implicit-def $x2, implicit $x2
++  ; ISEL-NEXT:   STACKMAP 4, 0, 0, %stack.0.metadata, 0 :: (load (s64) from %stack.0.metadata)
++  ; ISEL-NEXT:   ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
++  ; ISEL-NEXT:   PseudoRET
++entry:
++  %metadata = alloca i64, i32 3, align 8
++  store i64 11, i64* %metadata
++  store i64 12, i64* %metadata
++  store i64 13, i64* %metadata
++  call void (i64, i32, ...) @llvm.experimental.stackmap(i64 4, i32 0, i64* %metadata)
++  ret void
++}
++
++declare void @llvm.experimental.stackmap(i64, i32, ...)
+diff --git a/llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll b/llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll
+new file mode 100644
+index 000000000000..6edc88de9232
+--- /dev/null
++++ b/llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll
+@@ -0,0 +1,18 @@
++; NOTE: Assertions have been autogenerated by utils/update_llc_test_checks.py
++; RUN: llc < %s -mtriple=riscv64 | FileCheck %s
++
++define void @test_shadow_optimization() {
++; CHECK-LABEL: test_shadow_optimization:
++; CHECK:       # %bb.0: # %entry
++; CHECK-NEXT:    .cfi_def_cfa_offset 0
++; CHECK-NEXT:  .Ltmp0:
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    nop
++; CHECK-NEXT:    ret
++entry:
++  tail call void (i64, i32, ...) @llvm.experimental.stackmap(i64  0, i32  16)
++  ret void
++}
++
++declare void @llvm.experimental.stackmap(i64, i32, ...)
+diff --git a/llvm/test/CodeGen/RISCV/rv64-stackmap.ll b/llvm/test/CodeGen/RISCV/rv64-stackmap.ll
+new file mode 100644
+index 000000000000..e1dde9733731
+--- /dev/null
++++ b/llvm/test/CodeGen/RISCV/rv64-stackmap.ll
+@@ -0,0 +1,384 @@
++; RUN: llc -mtriple=riscv64 < %s | FileCheck %s
++
++; CHECK-LABEL:  .section	.llvm_stackmaps
++; CHECK-NEXT:  __LLVM_StackMaps:
++; Header
++; CHECK-NEXT:   .byte   3
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   0
++; Num Functions
++; CHECK-NEXT:   .word   12
++; Num LargeConstants
++; CHECK-NEXT:   .word   2
++; Num Callsites
++; CHECK-NEXT:   .word   16
++
++; Functions and stack size
++; CHECK-NEXT:   .quad   constantargs
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   osrinline
++; CHECK-NEXT:   .quad   32
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   osrcold
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   propertyRead
++; CHECK-NEXT:   .quad   16
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   propertyWrite
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   jsVoidCall
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   jsIntCall
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   liveConstant
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   spilledValue
++; CHECK-NEXT:   .quad   144
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .quad   directFrameIdx
++; CHECK-NEXT:   .quad   48
++; CHECK-NEXT:   .quad   2
++; CHECK-NEXT:   .quad   longid
++; CHECK-NEXT:   .quad   0
++; CHECK-NEXT:   .quad   4
++; CHECK-NEXT:   .quad   needsStackRealignment
++; CHECK-NEXT:   .quad   -1
++; CHECK-NEXT:   .quad   1
++
++; Num LargeConstants
++; CHECK-NEXT:   .quad   4294967295
++; CHECK-NEXT:   .quad   4294967296
++
++; Constant arguments
++;
++; CHECK-NEXT:   .quad   1
++; CHECK-NEXT:   .word   .L{{.*}}-constantargs
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   4
++; SmallConstant
++; CHECK-NEXT:   .byte   4
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   65535
++; SmallConstant
++; CHECK-NEXT:   .byte   4
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   65536
++; SmallConstant
++; CHECK-NEXT:   .byte   5
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; LargeConstant at index 0
++; CHECK-NEXT:   .byte   5
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   1
++
++define void @constantargs() {
++entry:
++  %0 = inttoptr i64 244837814094590 to i8*
++  tail call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 1, i32 28, i8* %0, i32 0, i64 65535, i64 65536, i64 4294967295, i64 4294967296)
++  ret void
++}
++
++; Inline OSR Exit
++;
++; CHECK:        .word   .L{{.*}}-osrinline
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++define void @osrinline(i64 %a, i64 %b) {
++entry:
++  ; Runtime void->void call.
++  call void inttoptr (i64 244837814094590 to void ()*)()
++  ; Followed by inline OSR patchpoint with 12-byte shadow and 2 live vars.
++  call void (i64, i32, ...) @llvm.experimental.stackmap(i64 3, i32 12, i64 %a, i64 %b)
++  ret void
++}
++
++; Cold OSR Exit
++;
++; 2 live variables in register.
++;
++; CHECK:        .word   .L{{.*}}-osrcold
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++define void @osrcold(i64 %a, i64 %b) {
++entry:
++  %test = icmp slt i64 %a, %b
++  br i1 %test, label %ret, label %cold
++cold:
++  ; OSR patchpoint with 28-byte nop-slide and 2 live vars.
++  %thunk = inttoptr i64 244837814094590 to i8*
++  call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 4, i32 28, i8* %thunk, i32 0, i64 %a, i64 %b)
++  unreachable
++ret:
++  ret void
++}
++
++; Property Read
++; CHECK-LABEL:  .word   .L{{.*}}-propertyRead
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++define i64 @propertyRead(i64* %obj) {
++entry:
++  %resolveRead = inttoptr i64 244837814094590 to i8*
++  %result = call anyregcc i64 (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.i64(i64 5, i32 28, i8* %resolveRead, i32 1, i64* %obj)
++  %add = add i64 %result, 3
++  ret i64 %add
++}
++
++; Property Write
++; CHECK:        .word   .L{{.*}}-propertyWrite
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++define void @propertyWrite(i64 %dummy1, i64* %obj, i64 %dummy2, i64 %a) {
++entry:
++  %resolveWrite = inttoptr i64 244837814094590 to i8*
++  call anyregcc void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 6, i32 28, i8* %resolveWrite, i32 2, i64* %obj, i64 %a)
++  ret void
++}
++
++; Void JS Call
++;
++; 2 live variables in registers.
++;
++; CHECK:        .word   .L{{.*}}-jsVoidCall
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++define void @jsVoidCall(i64 %dummy1, i64* %obj, i64 %arg, i64 %l1, i64 %l2) {
++entry:
++  %resolveCall = inttoptr i64 244837814094590 to i8*
++  call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 7, i32 28, i8* %resolveCall, i32 2, i64* %obj, i64 %arg, i64 %l1, i64 %l2)
++  ret void
++}
++
++; i64 JS Call
++;
++; 2 live variables in registers.
++;
++; CHECK:        .word   .L{{.*}}-jsIntCall
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++; CHECK-NEXT:   .byte   1
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   {{[0-9]+}}
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   0
++define i64 @jsIntCall(i64 %dummy1, i64* %obj, i64 %arg, i64 %l1, i64 %l2) {
++entry:
++  %resolveCall = inttoptr i64 244837814094590 to i8*
++  %result = call i64 (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.i64(i64 8, i32 28, i8* %resolveCall, i32 2, i64* %obj, i64 %arg, i64 %l1, i64 %l2)
++  %add = add i64 %result, 3
++  ret i64 %add
++}
++
++; Map a constant value.
++;
++; CHECK:        .word   .L{{.*}}-liveConstant
++; CHECK-NEXT:   .half   0
++; 1 location
++; CHECK-NEXT:   .half   1
++; Loc 0: SmallConstant
++; CHECK-NEXT:   .byte   4
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word   33
++
++define void @liveConstant() {
++  tail call void (i64, i32, ...) @llvm.experimental.stackmap(i64 15, i32 8, i32 33)
++  ret void
++}
++
++; Spilled stack map values.
++;
++; Verify 28 stack map entries.
++;
++; CHECK-LABEL:  .word   .L{{.*}}-spilledValue
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .half   28
++;
++; Check that at least one is a spilled entry from RBP.
++; Location: Indirect RBP + ...
++; CHECK:        .byte   3
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word
++define void @spilledValue(i64 %arg0, i64 %arg1, i64 %arg2, i64 %arg3, i64 %arg4, i64 %l0, i64 %l1, i64 %l2, i64 %l3, i64 %l4, i64 %l5, i64 %l6, i64 %l7, i64 %l8, i64 %l9, i64 %l10, i64 %l11, i64 %l12, i64 %l13, i64 %l14, i64 %l15, i64 %l16, i64 %l17, i64 %l18, i64 %l19, i64 %l20, i64 %l21, i64 %l22, i64 %l23, i64 %l24, i64 %l25, i64 %l26, i64 %l27) {
++entry:
++  call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 11, i32 28, i8* null, i32 5, i64 %arg0, i64 %arg1, i64 %arg2, i64 %arg3, i64 %arg4, i64 %l0, i64 %l1, i64 %l2, i64 %l3, i64 %l4, i64 %l5, i64 %l6, i64 %l7, i64 %l8, i64 %l9, i64 %l10, i64 %l11, i64 %l12, i64 %l13, i64 %l14, i64 %l15, i64 %l16, i64 %l17, i64 %l18, i64 %l19, i64 %l20, i64 %l21, i64 %l22, i64 %l23, i64 %l24, i64 %l25, i64 %l26, i64 %l27)
++  ret void
++}
++
++; Directly map an alloca's address.
++;
++; Callsite 16
++; CHECK-LABEL:  .word .L{{.*}}-directFrameIdx
++; CHECK-NEXT:   .half   0
++; 1 location
++; CHECK-NEXT:   .half   1
++; Loc 0: Direct RBP - ofs
++; CHECK-NEXT:   .byte   2
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word
++
++; Callsite 17
++; CHECK-LABEL:  .word   .L{{.*}}-directFrameIdx
++; CHECK-NEXT:   .half   0
++; 2 locations
++; CHECK-NEXT:   .half   2
++; Loc 0: Direct RBP - ofs
++; CHECK-NEXT:   .byte   2
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word
++; Loc 1: Direct RBP - ofs
++; CHECK-NEXT:   .byte   2
++; CHECK-NEXT:   .byte   0
++; CHECK-NEXT:   .half   8
++; CHECK-NEXT:   .half   2
++; CHECK-NEXT:   .half   0
++; CHECK-NEXT:   .word
++define void @directFrameIdx() {
++entry:
++  %metadata1 = alloca i64, i32 3, align 8
++  store i64 11, i64* %metadata1
++  store i64 12, i64* %metadata1
++  store i64 13, i64* %metadata1
++  call void (i64, i32, ...) @llvm.experimental.stackmap(i64 16, i32 0, i64* %metadata1)
++  %metadata2 = alloca i8, i32 4, align 8
++  %metadata3 = alloca i16, i32 4, align 8
++  call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 17, i32 4, i8* null, i32 0, i8* %metadata2, i16* %metadata3)
++  ret void
++}
++
++; Test a 64-bit ID.
++;
++; CHECK:        .quad   4294967295
++; CHECK-LABEL:  .word   .L{{.*}}-longid
++; CHECK:        .quad   4294967296
++; CHECK-LABEL:  .word   .L{{.*}}-longid
++; CHECK:        .quad   9223372036854775807
++; CHECK-LABEL:  .word   .L{{.*}}-longid
++; CHECK:        .quad   -1
++; CHECK-LABEL:  .word   .L{{.*}}-longid
++define void @longid() {
++entry:
++  tail call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 4294967295, i32 0, i8* null, i32 0)
++  tail call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 4294967296, i32 0, i8* null, i32 0)
++  tail call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 9223372036854775807, i32 0, i8* null, i32 0)
++  tail call void (i64, i32, i8*, i32, ...) @llvm.experimental.patchpoint.void(i64 -1, i32 0, i8* null, i32 0)
++  ret void
++}
++
++; A stack frame which needs to be realigned at runtime (to meet alignment
++; criteria for values on the stack) does not have a fixed frame size.
++; CHECK-LABEL:  .word   .L{{.*}}-needsStackRealignment
++; CHECK-NEXT:   .half   0
++; 0 locations
++; CHECK-NEXT:   .half   0
++define void @needsStackRealignment() {
++  %val = alloca i64, i32 3, align 128
++  tail call void (...) @escape_values(i64* %val)
++; Note: Adding any non-constant to the stackmap would fail because we
++; expected to be able to address off the frame pointer.  In a realigned
++; frame, we must use the stack pointer instead.  This is a separate bug.
++  tail call void (i64, i32, ...) @llvm.experimental.stackmap(i64 0, i32 0)
++  ret void
++}
++declare void @escape_values(...)
++
++declare void @llvm.experimental.stackmap(i64, i32, ...)
++declare void @llvm.experimental.patchpoint.void(i64, i32, i8*, i32, ...)
++declare i64 @llvm.experimental.patchpoint.i64(i64, i32, i8*, i32, ...)
+-- 
+2.36.0
+

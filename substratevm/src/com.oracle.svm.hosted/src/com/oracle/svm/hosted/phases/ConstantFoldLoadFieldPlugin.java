@@ -30,18 +30,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
-
-    private ClassInitializationSupport classInitializationSupport;
-
-    public ConstantFoldLoadFieldPlugin(ClassInitializationSupport classInitializationSupport) {
-        this.classInitializationSupport = classInitializationSupport;
-    }
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
@@ -57,16 +49,11 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
         return tryConstantFold(b, staticField, null);
     }
 
-    private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
+    private static boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
         ConstantNode result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions());
 
         if (result != null) {
             assert result.asJavaConstant() != null;
-            JavaConstant value = result.asJavaConstant();
-            assert !classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass()) ||
-                            value.isDefaultForKind() : "Fields in classes that are marked for initialization at run time must not be constant folded, unless they are not written in the static initializer, i.e., have the default value: " +
-                                            field.format("%H.%n");
-
             result = b.getGraph().unique(result);
             b.push(field.getJavaKind(), result);
             return true;

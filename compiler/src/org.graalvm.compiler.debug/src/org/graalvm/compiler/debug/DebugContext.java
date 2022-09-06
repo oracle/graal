@@ -386,7 +386,7 @@ public final class DebugContext implements AutoCloseable {
     /**
      * Describes the computation associated with a {@link DebugContext}.
      */
-    public static class Description {
+    public static final class Description {
         /**
          * The primary input to the computation.
          */
@@ -395,7 +395,7 @@ public final class DebugContext implements AutoCloseable {
         /**
          * A runtime based identifier that is most likely to be unique.
          */
-        final String identifier;
+        public final String identifier;
 
         public Description(Object compilable, String identifier) {
             this.compilable = compilable;
@@ -408,7 +408,7 @@ public final class DebugContext implements AutoCloseable {
             return identifier + ":" + compilableName;
         }
 
-        final String getLabel() {
+        String getLabel() {
             if (compilable instanceof JavaMethod) {
                 JavaMethod method = (JavaMethod) compilable;
                 return method.format("%h.%n(%p)%r");
@@ -781,6 +781,14 @@ public final class DebugContext implements AutoCloseable {
 
     public boolean isLogEnabled(int logLevel) {
         return currentScope != null && currentScope.isLogEnabled(logLevel);
+    }
+
+    /**
+     * Check if the current method matches the {@link DebugOptions#MethodFilter method filter} debug
+     * option.
+     */
+    public boolean methodFilterMatchesCurrentMethod() {
+        return currentConfig != null && currentConfig.methodFilterMatchesCurrentMethod(currentScope);
     }
 
     /**

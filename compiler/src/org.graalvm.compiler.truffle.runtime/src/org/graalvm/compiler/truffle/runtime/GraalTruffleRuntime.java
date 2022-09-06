@@ -31,6 +31,7 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.nio.Buffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -50,8 +51,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -121,6 +120,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -402,7 +403,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         TruffleSafepoint.class,
                         BaseOSRRootNode.class,
                         TruffleString.class,
-                        AbstractTruffleString.class
+                        AbstractTruffleString.class,
+                        Buffer.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -416,6 +418,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
         if (JAVA_SPECIFICATION_VERSION >= 16 && JAVA_SPECIFICATION_VERSION < 19) {
             String className = "jdk.internal.access.foreign.MemorySegmentProxy";
+            try {
+                Class<?> c = Class.forName(className);
+                m.put(c.getName(), c);
+            } catch (ClassNotFoundException e) {
+                throw new NoClassDefFoundError(className);
+            }
+        } else if (JAVA_SPECIFICATION_VERSION >= 19) {
+            String className = "jdk.internal.foreign.Scoped";
             try {
                 Class<?> c = Class.forName(className);
                 m.put(c.getName(), c);

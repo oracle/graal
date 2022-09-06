@@ -614,6 +614,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_module_ModuleFinder_array = StaticSymbols.putType("[Ljava/lang/module/ModuleFinder;");
         public static final Symbol<Type> jdk_internal_module_ModulePath = StaticSymbols.putType("Ljdk/internal/module/ModulePath;");
 
+        // URL class loader
+        public static final Symbol<Type> java_net_URLClassLoader = StaticSymbols.putType("Ljava/net/URLClassLoader;");
+        public static final Symbol<Type> java_net_URL = StaticSymbols.putType("Ljava/net/URL;");
+        public static final Symbol<Type> java_net_URL_array = StaticSymbols.putType("[Ljava/net/URL;");
+
         public static final Symbol<Type> java_beans_Introspector = StaticSymbols.putType("Ljava/beans/Introspector;");
         public static final Symbol<Type> java_beans_ThreadGroupContext = StaticSymbols.putType("Ljava/beans/ThreadGroupContext;");
 
@@ -911,6 +916,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.java_lang_Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.java_lang_String);
         public static final Symbol<Signature> ClassLoader = StaticSymbols.putSignature(Type.java_lang_ClassLoader);
+        public static final Symbol<Signature> _void_URL_array_ClassLoader = StaticSymbols.putSignature(Type._void, Type.java_net_URL_array, Type.java_lang_ClassLoader);
         public static final Symbol<Signature> Class_PermissionDomain = StaticSymbols.putSignature(Type._void, Type.java_lang_Class, Type.java_security_ProtectionDomain);
 
         public static final Symbol<Signature> _void_Class = StaticSymbols.putSignature(Type._void, Type.java_lang_Class);

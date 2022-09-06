@@ -33,6 +33,7 @@ import java.util.Collection;
 public final class HandshakeController {
 
     private static final String JDWP_HANDSHAKE = "JDWP-Handshake";
+    private ServerSocket currentServerSocket;
 
     /**
      * Initializes a Socket connection which serves as a transport for jdwp communication.
@@ -40,16 +41,15 @@ public final class HandshakeController {
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
-    public static SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads) throws IOException {
+    public SocketConnection createSocketConnection(boolean server, String host, int port, Collection<Thread> activeThreads) throws IOException {
         String connectionHost = host;
         if (connectionHost == null) {
             // only allow local host if nothing specified
             connectionHost = "localhost";
         }
         Socket connectionSocket;
-        ServerSocket serverSocket = null;
         if (server) {
-            serverSocket = new ServerSocket();
+            ServerSocket serverSocket = new ServerSocket();
             serverSocket.setSoTimeout(0); // no timeout
             serverSocket.setReuseAddress(true);
             if ("*".equals(host)) {
@@ -62,6 +62,11 @@ public final class HandshakeController {
             // print to console that we're listening
             String address = host != null ? host + ":" + port : "" + port;
             System.out.println("Listening for transport dt_socket at address: " + address);
+
+            synchronized (this) {
+                assert currentServerSocket == null;
+                currentServerSocket = serverSocket;
+            }
             // block until a debugger has accepted the socket
             connectionSocket = serverSocket.accept();
         } else {
@@ -71,12 +76,25 @@ public final class HandshakeController {
         if (!handshake(connectionSocket)) {
             throw new IOException("Unable to handshake with debubgger");
         }
-        SocketConnection connection = new SocketConnection(connectionSocket, serverSocket);
+        SocketConnection connection = new SocketConnection(connectionSocket);
         Thread jdwpSender = new Thread(connection, "jdwp-transmitter");
         jdwpSender.setDaemon(true);
         jdwpSender.start();
         activeThreads.add(jdwpSender);
         return connection;
+    }
+
+    public synchronized void close() {
+        if (currentServerSocket != null) {
+            if (!currentServerSocket.isClosed()) {
+                try {
+                    currentServerSocket.close();
+                } catch (IOException e) {
+                    throw new RuntimeException("Unable to close the server socket used to listen for transport dt_socket", e);
+                }
+            }
+            currentServerSocket = null;
+        }
     }
 
     /**

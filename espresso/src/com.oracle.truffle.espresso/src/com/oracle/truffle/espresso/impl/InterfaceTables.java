@@ -51,7 +51,7 @@ final class InterfaceTables {
     private static final Comparator<TableData> SORTER = new Comparator<>() {
         @Override
         public int compare(TableData o1, TableData o2) {
-            return Integer.compare(o1.klass.getKlass().getId(), o2.klass.getKlass().getId());
+            return Long.compare(o1.klass.getKlass().getId(), o2.klass.getKlass().getId());
         }
     };
 

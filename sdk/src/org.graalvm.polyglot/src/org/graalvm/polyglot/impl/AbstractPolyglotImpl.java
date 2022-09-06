@@ -338,9 +338,10 @@ public abstract class AbstractPolyglotImpl {
         getNext().resetPreInitializedEngine();
     }
 
-    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding, String path)
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding, URL url,
+                    String path)
                     throws IOException {
-        return getNext().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding, path);
+        return getNext().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding, url, path);
     }
 
     public String findLanguage(File file) throws IOException {
@@ -559,10 +560,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in,
+                        boolean allowHostLookup,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
-                        boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
+                        boolean allowNativeAccess,
+                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
+                        Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
@@ -764,6 +768,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
                         boolean hostLookupAllowed);
+
+        public abstract void throwHostLanguageException(String message);
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 

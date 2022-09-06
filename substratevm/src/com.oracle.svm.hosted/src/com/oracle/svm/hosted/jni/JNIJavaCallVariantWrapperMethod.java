@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -244,7 +245,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
                 ConstantNode offsetConstant = kit.createConstant(JavaConstant.forIntegerKind(wordKind, offset), wordKind);
                 OffsetAddressNode address = kit.unique(new OffsetAddressNode(array, offsetConstant));
                 Stamp readStamp = StampFactory.forKind(readKind);
-                ValueNode value = kit.append(new CInterfaceReadNode(address, LocationIdentity.any(), readStamp, BarrierType.NONE, "args[" + i + "]"));
+                ValueNode value = kit.append(new CInterfaceReadNode(address, LocationIdentity.any(), readStamp, BarrierType.NONE, MemoryOrderMode.PLAIN, "args[" + i + "]"));
                 if (kind == JavaKind.Float && readKind == JavaKind.Double) {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
                 }

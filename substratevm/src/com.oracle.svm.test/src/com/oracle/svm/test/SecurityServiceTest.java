@@ -28,13 +28,15 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.jca.GetInstance;
 
@@ -48,6 +50,8 @@ public class SecurityServiceTest {
             // register the providers
             Security.addProvider(new NoOpProvider());
             Security.addProvider(new NoOpProviderTwo());
+            // open sun.security.jca.GetInstance
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, JCACompliantNoOpService.class, ReflectionUtil.lookupClass(false, "sun.security.jca.GetInstance"));
         }
 
         @Override
@@ -81,15 +85,12 @@ public class SecurityServiceTest {
 
     @Test
     public void testAutomaticSecurityServiceRegistration() {
-        if (JavaVersionUtil.JAVA_SPEC < 19) {
-            // Does not work on JDK 19 for yet unknown reasons (GR-39827)
-            try {
-                JCACompliantNoOpService service = JCACompliantNoOpService.getInstance("no-op-algo-two");
-                Assert.assertNotNull("No service instance was created", service);
-                Assert.assertThat("Unexpected service implementtation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
-            } catch (NoSuchAlgorithmException e) {
-                Assert.fail("Failed to fetch noop service with exception: " + e);
-            }
+        try {
+            JCACompliantNoOpService service = JCACompliantNoOpService.getInstance("no-op-algo-two");
+            Assert.assertNotNull("No service instance was created", service);
+            Assert.assertThat("Unexpected service implementation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
+        } catch (NoSuchAlgorithmException e) {
+            Assert.fail("Failed to fetch noop service with exception: " + e);
         }
     }
 

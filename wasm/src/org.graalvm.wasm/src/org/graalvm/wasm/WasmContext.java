@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,4 +216,21 @@ public final class WasmContext {
         return REFERENCE.get(node);
     }
 
+    /**
+     * @return The current multi-value stack or null if it has never been resized.
+     */
+    public long[] multiValueStack() {
+        return language.multiValueStack().stack();
+    }
+
+    /**
+     * Updates the size of the multi-value stack if needed. In case of a resize, the values are not
+     * copied. Therefore, resizing should occur before any call to a function that uses the
+     * multi-value stack.
+     * 
+     * @param expectedSize The minimum expected size.
+     */
+    public void resizeMultiValueStack(int expectedSize) {
+        language.multiValueStack().resize(expectedSize);
+    }
 }

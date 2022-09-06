@@ -46,6 +46,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 /**
@@ -54,6 +55,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
  *
  * See {@code ReflectionMetadataEncoderImpl} for details about the emission of the metadata.
  */
+@AutomaticallyRegisteredImageSingleton(ReflectionMetadataDecoder.class)
 public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
     public static final int NO_METHOD_METADATA = -1;
     public static final int NULL_OBJECT = -1;

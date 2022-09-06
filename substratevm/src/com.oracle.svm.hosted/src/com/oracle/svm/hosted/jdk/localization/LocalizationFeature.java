@@ -68,12 +68,11 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
@@ -82,6 +81,7 @@ import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -128,8 +128,8 @@ import sun.util.resources.LocaleData;
  * @see OptimizedLocalizationSupport
  * @see BundleContentSubstitutedLocalizationSupport
  */
-@AutomaticFeature
-public class LocalizationFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class LocalizationFeature implements InternalFeature {
 
     protected final boolean optimizedMode = Options.LocalizationOptimizedMode.getValue();
 
@@ -354,7 +354,14 @@ public class LocalizationFeature implements Feature {
     }
 
     private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {
-        Object localeCache = access.rescanRoot(cacheFieldField);
+        access.rescanRoot(cacheFieldField);
+
+        Object localeCache;
+        try {
+            localeCache = cacheFieldField.get(null);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
         if (localeCache != null) {
             access.rescanField(localeCache, localeObjectCacheMapField);
         }

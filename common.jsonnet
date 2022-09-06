@@ -57,7 +57,7 @@ local add_jdk_version(name) =
   // Job frequencies
   // ***************
   on_demand:: {
-    targets+: [],
+    targets+: ["ondemand"],
   },
   post_merge:: {
     targets+: ["post-merge"],

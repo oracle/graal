@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.monitor;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.ThreadStatus;
 
 /**
  * Without support for threads, there is no need for any monitor operations.
@@ -84,7 +85,7 @@ public class SingleThreadedMonitorSupport extends MonitorSupport {
     }
 
     @Override
-    public int maybeAdjustNewParkStatus(int status) {
-        return status;
+    public int getParkedThreadStatus(Thread thread, boolean timed) {
+        return timed ? ThreadStatus.PARKED_TIMED : ThreadStatus.PARKED;
     }
 }

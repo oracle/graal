@@ -422,6 +422,11 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return false;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getName() + " {" + (isStatic ? "static " : "") + name + argumentsDescriptor + '}';
+    }
+
     public abstract static class InlineOnlyInvocationPlugin extends InvocationPlugin {
 
         public InlineOnlyInvocationPlugin(String name, Type... argumentTypes) {

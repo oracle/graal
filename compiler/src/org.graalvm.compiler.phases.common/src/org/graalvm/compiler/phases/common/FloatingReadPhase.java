@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import static org.graalvm.word.LocationIdentity.init;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -45,6 +46,8 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -53,7 +56,6 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -63,7 +65,6 @@ import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatableAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
-import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
@@ -71,7 +72,6 @@ import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
-import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -84,7 +84,6 @@ import org.graalvm.word.LocationIdentity;
 
 public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
-    private final boolean createFloatingReads;
     private final boolean createMemoryMapNodes;
 
     public static class MemoryMapImpl implements MemoryMap {
@@ -129,20 +128,16 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
     }
 
-    public FloatingReadPhase(CanonicalizerPhase canoncalizer) {
-        this(true, false, canoncalizer);
+    public FloatingReadPhase(CanonicalizerPhase canonicalizer) {
+        this(false, canonicalizer);
     }
 
     /**
-     * @param createFloatingReads specifies whether {@link FloatableAccessNode}s like
-     *            {@link ReadNode} should be converted into floating nodes (e.g.,
-     *            {@link FloatingReadNode}s) where possible
      * @param createMemoryMapNodes a {@link MemoryMapNode} will be created for each return if this
      * @param canonicalizer
      */
-    public FloatingReadPhase(boolean createFloatingReads, boolean createMemoryMapNodes, CanonicalizerPhase canonicalizer) {
+    public FloatingReadPhase(boolean createMemoryMapNodes, CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
-        this.createFloatingReads = createFloatingReads;
         this.createMemoryMapNodes = createMemoryMapNodes;
     }
 
@@ -218,6 +213,16 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FLOATING_READS, graphState),
+                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This phase must run before FSA."))));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         EconomicSet<ValueNode> initMemory = EconomicSet.create(Equivalence.IDENTITY);
@@ -234,7 +239,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
 
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener(EnumSet.of(NODE_ADDED, ZERO_USAGES));
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, createFloatingReads, createMemoryMapNodes, initMemory), graph.start(), new MemoryMapImpl(graph.start()));
+            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, true, createMemoryMapNodes, initMemory), graph.start(), new MemoryMapImpl(graph.start()));
         }
 
         for (Node n : removeExternallyUsedNodes(listener.getNodes())) {
@@ -243,10 +248,12 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
                 GraphUtil.killWithUnusedFloatingInputs(n);
             }
         }
-        if (createFloatingReads) {
-            assert graph.isBeforeStage(StageFlag.FLOATING_READS);
-            graph.setAfterStage(StageFlag.FLOATING_READS);
-        }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.FLOATING_READS);
     }
 
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {

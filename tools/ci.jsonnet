@@ -52,23 +52,23 @@
         "gate", 
         "--strict-mode",
         "--jacoco-omit-excluded",
-        "--jacocout", 
-        "html",
+        "--jacoco-generic-paths",
+        "--jacoco-omit-src-gen",
+        "--jacocout",
+        "coverage",
+        "--jacoco-format",
+        "lcov",
       ],
-      ["mx"] + coverage_whitelisting + ["coverage-upload"],
+    ],
+    teardown+: [
+      ["mx", "sversions", "--print-related-repos", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     targets: ["weekly"],
   },
 
-  local tools_unittest = {
-    environment+: {
-        "MX_TEST_RESULT_TAGS": "tools"
-    }
-  },
-
   builds: [
-    common.linux_amd64   + common.oraclejdk11 + tools_gate + tools_unittest,
-    common.linux_amd64   + common.oraclejdk17 + tools_gate + tools_unittest,
+    common.linux_amd64   + common.oraclejdk11 + tools_gate,
+    common.linux_amd64   + common.oraclejdk17 + tools_gate,
 
     common.linux_amd64   + common.oraclejdk11 + tools_javadoc,
     common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,

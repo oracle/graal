@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class UseSerialOrEpsilonGC implements BooleanSupplier {
+public class UseSerialOrEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
         return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();

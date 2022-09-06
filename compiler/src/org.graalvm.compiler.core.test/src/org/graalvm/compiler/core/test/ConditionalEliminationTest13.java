@@ -313,7 +313,7 @@ public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase
     protected void prepareGraph(StructuredGraph graph, CanonicalizerPhase canonicalizer, CoreProviders context, boolean applyLowering) {
         super.prepareGraph(graph, canonicalizer, context, applyLowering);
         graph.clearAllStateAfterForTestingOnly();
-        graph.setGuardsStage(StructuredGraph.GuardsStage.AFTER_FSA);
+        graph.getGraphState().setAfterFSA();
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After preparation");
         canonicalizer.apply(graph, context);

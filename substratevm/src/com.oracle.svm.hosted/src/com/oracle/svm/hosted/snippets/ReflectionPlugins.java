@@ -107,8 +107,7 @@ public final class ReflectionPlugins {
     /**
      * Marker value for parameters that are null, to distinguish from "not able to {@link #unbox}".
      */
-    private static final Object NULL_MARKER = new Object() {
-    };
+    private static final Object NULL_MARKER = new Object();
 
     private final ImageClassLoader imageClassLoader;
     private final SnippetReflectionProvider snippetReflection;
@@ -254,7 +253,7 @@ public final class ReflectionPlugins {
         } catch (Throwable ex) {
             return throwException(b, targetMethod, targetParameters, ex.getClass(), ex.getMessage());
         }
-        return pushConstant(b, targetMethod, targetParameters, JavaKind.Object, lookup) != null;
+        return pushConstant(b, targetMethod, targetParameters, JavaKind.Object, lookup, false) != null;
     }
 
     /**
@@ -283,7 +282,7 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz);
+        JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz, false);
         if (classConstant == null) {
             return false;
         }
@@ -309,7 +308,7 @@ public final class ReflectionPlugins {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
-        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader()) != null;
+        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
     /**
@@ -399,7 +398,7 @@ public final class ReflectionPlugins {
             return true;
         }
 
-        return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue) != null;
+        return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
     }
 
     private Object unbox(GraphBuilderContext b, ValueNode arg, JavaKind argKind) {
@@ -530,8 +529,9 @@ public final class ReflectionPlugins {
         return false;
     }
 
-    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue) {
-        Object intrinsicValue = getIntrinsic(b, returnValue);
+    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,
+                    boolean allowNullReturnValue) {
+        Object intrinsicValue = getIntrinsic(b, returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
         if (intrinsicValue == null) {
             return null;
         }
@@ -539,6 +539,8 @@ public final class ReflectionPlugins {
         JavaConstant intrinsicConstant;
         if (returnKind.isPrimitive()) {
             intrinsicConstant = JavaConstant.forBoxedPrimitive(intrinsicValue);
+        } else if (intrinsicValue == NULL_MARKER) {
+            intrinsicConstant = JavaConstant.NULL_POINTER;
         } else {
             intrinsicConstant = snippetReflection.forObject(intrinsicValue);
         }

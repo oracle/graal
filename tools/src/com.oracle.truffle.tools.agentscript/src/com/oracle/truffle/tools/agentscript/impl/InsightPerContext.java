@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.source.Source;
@@ -41,19 +40,15 @@ import java.util.WeakHashMap;
 
 final class InsightPerContext {
     final InsightInstrument insight;
-    final TruffleContext context;
     private final Map<InsightInstrument.Key, List<Object>> functionsForBinding = new HashMap<>();
-    @CompilerDirectives.CompilationFinal //
-    private int functionsLen;
     @CompilerDirectives.CompilationFinal(dimensions = 2) //
     private Object[][] functionsArray;
     @CompilerDirectives.CompilationFinal //
     private Assumption functionsArrayValid;
     private final Map<InsightSourceFilter, Map<Source, Boolean>> sourceCache = new HashMap<>(2);
 
-    InsightPerContext(InsightInstrument insight, TruffleContext context) {
+    InsightPerContext(InsightInstrument insight) {
         this.insight = insight;
-        this.context = context;
     }
 
     synchronized void register(InsightInstrument.Key key, Object function) {
@@ -94,10 +89,12 @@ final class InsightPerContext {
         final int index = key.index();
         Object[] functions;
         if (index >= 0) {
-            if (functionsArray == null || !functionsArrayValid.isValid()) {
-                updateFunctionsArraySlow();
+            synchronized (this) {
+                if (functionsArray == null || !functionsArrayValid.isValid()) {
+                    updateFunctionsArraySlow();
+                }
+                functions = functionsArray[index];
             }
-            functions = functionsArray[index];
         } else {
             functions = null;
         }

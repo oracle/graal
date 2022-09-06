@@ -220,6 +220,7 @@ Run `native-image --expert-options-all | grep "BuildOutput"` to see all build ou
 -H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
 -H:±BuildOutputPrefix        Prefix build output with '<pid>:<name of binary>'. Default: - (disabled).
 -H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).
+-H:±BuildOutputSilent        Silence build output. Default: - (disabled).
 ```
 
 ### Related Documentation

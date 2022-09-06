@@ -25,6 +25,7 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -37,6 +38,7 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -77,6 +79,11 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
     public abstract void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition);
 
     public abstract void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     protected void tryUseTrappingVersion(MetaAccessProvider metaAccessProvider, DynamicDeoptimizeNode deopt, LowTierContext context) {
         Node predecessor = deopt.predecessor();

@@ -30,16 +30,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -51,6 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
+@AutomaticallyRegisteredImageSingleton
 public class FactoryMethodSupport {
 
     public static FactoryMethodSupport singleton() {
@@ -102,13 +102,5 @@ public class FactoryMethodSupport {
 
     protected AbstractNewObjectNode createNewInstance(HostedGraphKit kit, ResolvedJavaType type, boolean fillContents) {
         return kit.append(new NewInstanceNode(type, fillContents));
-    }
-}
-
-@AutomaticFeature
-final class FactoryMethodFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        ImageSingletons.add(FactoryMethodSupport.class, new FactoryMethodSupport());
     }
 }

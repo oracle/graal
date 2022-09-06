@@ -24,12 +24,18 @@
  */
 package com.oracle.graal.reachability;
 
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -119,5 +125,38 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     @Override
     public ReachabilityAnalysisType getDeclaringClass() {
         return ((ReachabilityAnalysisType) super.getDeclaringClass());
+    }
+
+    /**
+     * Utility method which contains all the steps that have to be taken when parsing methods for
+     * the analysis.
+     */
+    public static StructuredGraph getDecodedGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
+        AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
+        if (analysisParsedGraph.isIntrinsic()) {
+            method.registerAsIntrinsicMethod();
+        }
+        AnalysisError.guarantee(analysisParsedGraph.getEncodedGraph() != null, "Cannot provide  a summary for %s.", method.getQualifiedName());
+
+        StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
+        AnalysisError.guarantee(decoded != null, "Failed to decode a graph for %s.", method.getQualifiedName());
+
+        bb.getHostVM().methodBeforeTypeFlowCreationHook(bb, method, decoded);
+
+        // to preserve the graphs for compilation
+        method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(decoded, AnalysisParsedGraph.HOST_ARCHITECTURE));
+
+        return decoded;
+    }
+
+    /**
+     * Returns a bytecode position for a given invoke.
+     */
+    public static BytecodePosition sourcePosition(Invoke node, ReachabilityAnalysisMethod method) {
+        BytecodePosition position = node.asFixedNode().getNodeSourcePosition();
+        if (position == null) {
+            position = new BytecodePosition(null, method, node.bci());
+        }
+        return position;
     }
 }

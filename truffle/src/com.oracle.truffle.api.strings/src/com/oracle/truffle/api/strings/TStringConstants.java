@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TStringConstants {
 
@@ -56,8 +57,8 @@ final class TStringConstants {
     @CompilationFinal(dimensions = 1) private static final byte[] INFINITY_BYTES = {'I', 'n', 'f', 'i', 'n', 'i', 't', 'y'};
     @CompilationFinal(dimensions = 1) private static final byte[] NaN_BYTES = {'N', 'a', 'N'};
 
-    private static final TruffleString INFINITY = TruffleString.createConstant(INFINITY_BYTES, INFINITY_BYTES.length, 0, Encodings.getAscii(), INFINITY_BYTES.length, TSCodeRange.get7Bit());
-    private static final TruffleString NaN = TruffleString.createConstant(NaN_BYTES, NaN_BYTES.length, 0, Encodings.getAscii(), NaN_BYTES.length, TSCodeRange.get7Bit());
+    private static final TruffleString INFINITY = TruffleString.createConstant(INFINITY_BYTES, INFINITY_BYTES.length, 0, Encoding.US_ASCII, INFINITY_BYTES.length, TSCodeRange.get7Bit());
+    private static final TruffleString NaN = TruffleString.createConstant(NaN_BYTES, NaN_BYTES.length, 0, Encoding.US_ASCII, NaN_BYTES.length, TSCodeRange.get7Bit());
     @CompilationFinal(dimensions = 2) private static final TruffleString[][] SINGLE_BYTE = new TruffleString[Encodings.SUPPORTED_ENCODINGS_MAX_NUM][];
 
     /**
@@ -71,7 +72,7 @@ final class TStringConstants {
         }
         for (int i = 0; i < 128; i++) {
             SINGLE_BYTE_ARRAYS[i][0] = (byte) i;
-            SINGLE_BYTE[Encodings.SUPPORTED_ENCODINGS_MIN_NUM][i] = TruffleString.createConstant(SINGLE_BYTE_ARRAYS[i], 1, 0, Encodings.getAscii(), 1, TSCodeRange.get7Bit());
+            SINGLE_BYTE[Encodings.SUPPORTED_ENCODINGS_MIN_NUM][i] = TruffleString.createConstant(SINGLE_BYTE_ARRAYS[i], 1, 0, Encoding.US_ASCII, 1, TSCodeRange.get7Bit());
             for (int j = Encodings.SUPPORTED_ENCODINGS_MIN_NUM + 1; j < Encodings.SUPPORTED_ENCODINGS_MAX_NUM; j++) {
                 SINGLE_BYTE[j][i] = SINGLE_BYTE[Encodings.SUPPORTED_ENCODINGS_MIN_NUM][i];
             }
@@ -80,12 +81,12 @@ final class TStringConstants {
         for (int i = 128; i < 256; i++) {
             SINGLE_BYTE_ARRAYS[i][0] = (byte) i;
             for (int j = Encodings.SUPPORTED_ENCODINGS_MIN_NUM; j < Encodings.SUPPORTED_ENCODINGS_MAX_NUM; j++) {
-                SINGLE_BYTE[j][i] = TruffleString.createConstant(SINGLE_BYTE_ARRAYS[i], 1, 0, j, 1, nonAsciiCodeRange(j));
+                SINGLE_BYTE[j][i] = TruffleString.createConstant(SINGLE_BYTE_ARRAYS[i], 1, 0, Encoding.get(j), 1, nonAsciiCodeRange(Encoding.get(j)));
             }
         }
     }
 
-    private static int nonAsciiCodeRange(int encoding) {
+    private static int nonAsciiCodeRange(Encoding encoding) {
         if (TStringGuards.isAsciiBytesOrLatin1(encoding)) {
             return TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding);
         }
@@ -97,36 +98,36 @@ final class TStringConstants {
 
     static TruffleString getInfinity(int encoding) {
         if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
-            return createAscii(INFINITY_BYTES, encoding);
+            return createAscii(INFINITY_BYTES, Encoding.get(encoding));
         }
         return INFINITY;
     }
 
     static TruffleString getNaN(int encoding) {
         if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
-            return createAscii(NaN_BYTES, encoding);
+            return createAscii(NaN_BYTES, Encoding.get(encoding));
         }
         return NaN;
     }
 
-    static TruffleString getSingleByteAscii(int encoding, int value) {
+    static TruffleString getSingleByteAscii(Encoding encoding, int value) {
         if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
             return createAscii(SINGLE_BYTE_ARRAYS[value], encoding);
         }
         if (TStringGuards.isUnsupportedEncoding(encoding)) {
-            return SINGLE_BYTE[Encodings.getAscii()][value];
+            return SINGLE_BYTE[Encoding.US_ASCII.id][value];
         }
-        return SINGLE_BYTE[encoding][value];
+        return SINGLE_BYTE[encoding.id][value];
     }
 
-    static TruffleString getSingleByte(int encoding, int value) {
+    static TruffleString getSingleByte(Encoding encoding, int value) {
         if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS && value <= 0x7f) {
             return createAscii(SINGLE_BYTE_ARRAYS[value], encoding);
         }
-        return SINGLE_BYTE[encoding][value];
+        return SINGLE_BYTE[encoding.id][value];
     }
 
-    private static TruffleString createAscii(byte[] array, int encoding) {
+    private static TruffleString createAscii(byte[] array, Encoding encoding) {
         return TruffleString.createFromByteArray(array, array.length, 0, encoding, array.length, TSCodeRange.getAsciiCodeRange(encoding), true);
     }
 

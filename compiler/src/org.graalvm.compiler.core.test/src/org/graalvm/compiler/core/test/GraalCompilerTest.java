@@ -34,7 +34,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -44,14 +43,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -69,6 +65,7 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.phases.fuzzing.PhasePlanSerializer;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
@@ -119,8 +116,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -267,13 +264,19 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Suites createSuites(OptionValues opts) {
-        Suites ret = backend.getSuites().getDefaultSuites(opts).copy();
+        Suites ret = backend.getSuites().getDefaultSuites(opts, getTarget().arch).copy();
 
         String phasePlanFile = System.getProperty("test.graal.phaseplan.file");
         if (phasePlanFile != null) {
-            ret = loadPhasePlan(phasePlanFile, ret);
+            ret = PhasePlanSerializer.loadPhasePlan(phasePlanFile, ret);
         } else {
             testPhasePlanSerialization(ret, opts);
+        }
+
+        if (getSpeculationLog() == null) {
+            ret.getHighTier().removeSpeculativePhases();
+            ret.getMidTier().removeSpeculativePhases();
+            ret.getLowTier().removeSpeculativePhases();
         }
 
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
@@ -284,8 +287,7 @@ public abstract class GraalCompilerTest extends GraalTest {
              */
             iter = ret.getHighTier().findPhase(CanonicalizerPhase.class);
         }
-        ret.getHighTier().appendPhase(new Phase() {
-
+        ret.getHighTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 checkHighTierGraph(graph);
@@ -301,8 +303,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return "CheckGraphPhase";
             }
         });
-        ret.getMidTier().appendPhase(new Phase() {
-
+        ret.getMidTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 checkMidTierGraph(graph);
@@ -318,8 +319,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return "CheckGraphPhase";
             }
         });
-        ret.getLowTier().appendPhase(new Phase() {
-
+        ret.getLowTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 checkLowTierGraph(graph);
@@ -338,100 +338,15 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <C> String phaseToString(BasePhase<? super C> phase, int level, String tier) {
-        Formatter buf = new Formatter();
-        String indent = level == 0 ? "" : new String(new char[level]).replace('\0', ' ');
-        buf.format("%s%s in %s with hashCode=%s", indent, phase.getClass().getName(), tier, phase.hashCode());
-        if (phase instanceof PhaseSuite) {
-            List<BasePhase<? super C>> subPhases = ((PhaseSuite<C>) phase).getPhases();
-            for (BasePhase<? super C> subPhase : subPhases) {
-                buf.format("%n%s", phaseToString(subPhase, level + 1, tier));
-            }
-        }
-        return buf.toString();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <C> void savePhaseSuite(PhaseSuite<C> phaseSuite, DataOutputStream out, String tier) throws IOException {
-        List<BasePhase<? super C>> phases = phaseSuite.getPhases();
-        out.writeInt(phases.size());
-        for (BasePhase<? super C> phase : phases) {
-            out.writeUTF(phaseToString(phase, 0, tier));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <C> PhaseSuite<C> loadPhaseSuite(DataInputStream in, Map<String, BasePhase<? super C>> lookup) throws IOException {
-        PhaseSuite<C> phaseSuite = new PhaseSuite<>();
-        int size = in.readInt();
-        for (int i = 0; i < size; i++) {
-            String key = in.readUTF();
-            BasePhase<? super C> phase = lookup.get(key);
-            if (phase == null) {
-                GraalError.shouldNotReachHere("No phase could be found matching " + key);
-            }
-            phaseSuite.appendPhase(phase);
-        }
-        return phaseSuite;
-    }
-
-    private static <C> void collect(Map<String, BasePhase<? super C>> lookup, PhaseSuite<C> phaseSuite, String tier) {
-        for (BasePhase<? super C> phase : phaseSuite.getPhases()) {
-            String key = phaseToString(phase, 0, tier);
-            lookup.put(key, phase);
-        }
-    }
-
-    protected void savePhasePlan(String fileName, Suites phasePlan) {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (DataOutputStream dos = new DataOutputStream(baos)) {
-                savePhasePlan(dos, phasePlan);
-            }
-            Files.write(Paths.get(fileName), baos.toByteArray());
-        } catch (IOException e) {
-            GraalError.shouldNotReachHere(e, "Error saving phase plan to " + fileName);
-        }
-    }
-
-    private static void savePhasePlan(DataOutputStream dos, Suites phasePlan) throws IOException {
-        savePhaseSuite(phasePlan.getHighTier(), dos, "high tier");
-        savePhaseSuite(phasePlan.getMidTier(), dos, "mid tier");
-        savePhaseSuite(phasePlan.getLowTier(), dos, "low tier");
-    }
-
-    @SuppressWarnings("unchecked")
-    protected <C> Suites loadPhasePlan(String fileName, Suites originalSuites) {
-        try (DataInputStream in = new DataInputStream(new FileInputStream(fileName))) {
-            return loadPhasePlan(in, originalSuites);
-        } catch (IOException e) {
-            throw new GraalError(e, "Error loading phase plan from %s", fileName);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <C> Suites loadPhasePlan(DataInputStream in, Suites originalSuites) throws IOException {
-        Map<String, BasePhase<? super C>> lookup = new HashMap<>();
-        collect(lookup, ((PhaseSuite<C>) originalSuites.getHighTier()), "high tier");
-        collect(lookup, ((PhaseSuite<C>) originalSuites.getMidTier()), "mid tier");
-        collect(lookup, ((PhaseSuite<C>) originalSuites.getLowTier()), "low tier");
-
-        PhaseSuite<HighTierContext> highTier = (PhaseSuite<HighTierContext>) loadPhaseSuite(in, lookup);
-        PhaseSuite<MidTierContext> midTier = (PhaseSuite<MidTierContext>) loadPhaseSuite(in, lookup);
-        PhaseSuite<LowTierContext> lowTier = (PhaseSuite<LowTierContext>) loadPhaseSuite(in, lookup);
-        return new Suites(highTier, midTier, lowTier);
-    }
-
     private void testPhasePlanSerialization(Suites originalSuites, OptionValues opts) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Suites newSuites;
         try {
             try (DataOutputStream dos = new DataOutputStream(baos)) {
-                savePhasePlan(dos, originalSuites);
+                PhasePlanSerializer.savePhasePlan(dos, originalSuites);
             }
             try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
-                newSuites = loadPhasePlan(in, backend.getSuites().getDefaultSuites(opts).copy());
+                newSuites = PhasePlanSerializer.loadPhasePlan(in, backend.getSuites().getDefaultSuites(opts, getTarget().arch).copy());
             }
         } catch (IOException e) {
             throw new GraalError(e, "Error in phase plan serialization");
@@ -1304,6 +1219,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph lastCompiledGraph;
 
+    /**
+     * This method needs to be overwritten by tests that want to use {@link Speculative} phases. It
+     * may be called multiple times before a compilation is started.
+     */
     protected SpeculationLog getSpeculationLog() {
         return null;
     }
@@ -1469,7 +1388,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, OptionValues options) {
-        return new Builder(options, getDebugContext(options, compilationId.toString(CompilationIdentifier.Verbosity.ID), method), allowAssumptions).method(method).compilationId(compilationId);
+        return new Builder(options, getDebugContext(options, compilationId.toString(CompilationIdentifier.Verbosity.ID), method), allowAssumptions).method(method).compilationId(
+                        compilationId);
     }
 
     protected final Builder builder(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, OptionValues options) {

@@ -44,7 +44,6 @@ package org.graalvm.wasm.parser.validation;
 import static java.lang.Integer.compareUnsigned;
 
 import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -213,10 +212,8 @@ public class ParserState {
      */
     public byte[] popAll(byte[] expectedValueTypes) {
         byte[] popped = new byte[expectedValueTypes.length];
-        int j = 0;
         for (int i = expectedValueTypes.length - 1; i >= 0; i--) {
-            popped[j] = popChecked(expectedValueTypes[i]);
-            j++;
+            popped[i] = popChecked(expectedValueTypes[i]);
         }
         return popped;
     }
@@ -247,64 +244,60 @@ public class ParserState {
         }
     }
 
-    /**
-     * The ControlFrame already supports multiple return types which is not part of our runtime yet.
-     * This helper method generates a single element array from the given return type.
-     * 
-     * @param returnType The return type of the frame.
-     * @return A single element array of the return type or an empty array if the return types is
-     *         void.
-     */
-    private static byte[] getReturnTypeArray(byte returnType) {
-        byte[] out = EMPTY_ARRAY;
-        if (returnType != WasmType.VOID_TYPE) {
-            out = new byte[]{returnType};
-        }
-        return out;
+    public void enterFunction(byte[] returnTypes) {
+        enterBlock(EMPTY_ARRAY, returnTypes);
     }
 
     /**
      * Creates a new block frame that holds information about the current block and pushes it onto
      * the control frame stack.
      *
-     * @param returnType The return type of the block that was entered.
+     * @param paramTypes The param types of the block that was entered.
+     * @param resultTypes The result types of the block that was entered.
      */
-    public void enterBlock(byte returnType) {
-        ControlFrame frame = new BlockFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false);
+    public void enterBlock(byte[] paramTypes, byte[] resultTypes) {
+        ControlFrame frame = new BlockFrame(paramTypes, resultTypes, valueStack.size(), false);
         controlStack.push(frame);
+        pushAll(paramTypes);
     }
 
     /**
      * Creates a new loop frame that holds information about the current loop and pushes it onto the
      * control frame stack.
      *
-     * @param returnType The return type of the loop that was entered.
-     * @param offset The offset of the loop that was entered in the wasm binary.
+     * @param paramTypes The param types of the loop that was entered.
+     * @param resultTypes The result types of the loop that was entered.
+     * @param offset The offset in the wasm binary of the loop that was entered.
      */
-    public void enterLoop(byte returnType, int offset) {
-        ControlFrame frame = new LoopFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
+    public void enterLoop(byte[] paramTypes, byte[] resultTypes, int offset) {
+        ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
         controlStack.push(frame);
+        pushAll(paramTypes);
     }
 
     /**
      * Creates a new if frame that holds information about the current if and pushes it onto the
      * control frame stack.
      *
-     * @param returnType The return type of the if and else branch that was entered.
+     * @param paramTypes The param types of the if and else branch that was entered.
+     * @param resultTypes The result type of the if and else branch that was entered.
+     * @param offset The offset in the wasm binary of the if that was entered.
      */
-    public void enterIf(byte returnType, int offset) {
-        ControlFrame frame = new IfFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, extraData.addIf(offset));
+    public void enterIf(byte[] paramTypes, byte[] resultTypes, int offset) {
+        ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, extraData.addIf(offset));
         controlStack.push(frame);
+        pushAll(paramTypes);
     }
 
     /**
      * Gets the current control frame and tries to enter the else branch.
      *
-     * @param offset The offset of the else branch that was entered in the wasm binary.
+     * @param offset The offset in the wasm binary of the else branch that was entered.
      */
     public void enterElse(int offset) {
         ControlFrame frame = controlStack.peek();
         frame.enterElse(this, extraData, offset);
+        pushAll(frame.paramTypes());
     }
 
     /**
@@ -312,6 +305,7 @@ public class ParserState {
      * data array.
      *
      * @param branchLabel The target label.
+     * @param offset The offset in the wasm binary of the conditional branch.
      */
     public void addConditionalBranch(int branchLabel, int offset) {
         checkLabelExists(branchLabel);
@@ -327,6 +321,7 @@ public class ParserState {
      * extra data array.
      * 
      * @param branchLabel The target label.
+     * @param offset The offset in the wasm binary of the unconditional branch.
      */
     public void addUnconditionalBranch(int branchLabel, int offset) {
         checkLabelExists(branchLabel);
@@ -341,6 +336,7 @@ public class ParserState {
      * array.
      * 
      * @param branchLabels The target labels.
+     * @param offset The offset in the wasm binary of the branch table.
      */
     public void addBranchTable(int[] branchLabels, int offset) {
         int branchLabel = branchLabels[branchLabels.length - 1];
@@ -362,11 +358,15 @@ public class ParserState {
 
     /**
      * Performs the necessary checks for a function return.
+     * 
+     * @param multiValue If multiple return values are supported.
      */
-    public void addReturn() {
+    public void addReturn(boolean multiValue) {
         ControlFrame frame = getRootBlock();
-        Assert.assertIntLessOrEqual(frame.labelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
-        checkReturnTypes(frame);
+        if (!multiValue) {
+            Assert.assertIntLessOrEqual(frame.labelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
+        }
+        checkResultTypes(frame);
     }
 
     /**
@@ -390,10 +390,13 @@ public class ParserState {
     /**
      * Finishes the current control frame and removes it from the control frame stack.
      * 
+     * @param offset The offset in the wasm binary.
+     * @param multiValue If multiple return values are supported.
+     * 
      * @throws WasmException If the number of return value types do not match with the remaining
      *             stack or the number of return values is greater than 1.
      */
-    public void exit(int offset) {
+    public void exit(int offset, boolean multiValue) {
         Assert.assertTrue(!controlStack.isEmpty(), Failure.UNEXPECTED_END_OF_BLOCK);
         ControlFrame frame = controlStack.peek();
         byte[] resultTypes = frame.resultTypes();
@@ -403,7 +406,9 @@ public class ParserState {
         checkStackAfterFrameExit(frame, resultTypes);
 
         controlStack.pop();
-        Assert.assertIntLessOrEqual(resultTypes.length, 1, "A block cannot return more than one value.", Failure.INVALID_RESULT_ARITY);
+        if (!multiValue) {
+            Assert.assertIntLessOrEqual(resultTypes.length, 1, "A block cannot return more than one value.", Failure.INVALID_RESULT_ARITY);
+        }
         pushAll(resultTypes);
     }
 
@@ -420,7 +425,7 @@ public class ParserState {
                 throw ValidationErrors.createResultTypesMismatch(resultTypes, actualTypes);
             }
         }
-        checkReturnTypes(frame);
+        checkResultTypes(frame);
     }
 
     /**
@@ -446,7 +451,7 @@ public class ParserState {
      * @throws WasmException If the return value types do not match the remaining value type on the
      *             stack.
      */
-    public void checkReturnTypes(ControlFrame frame) {
+    private void checkResultTypes(ControlFrame frame) {
         byte[] resultTypes = frame.resultTypes();
         if (isCurrentStackUnreachable()) {
             popAll(resultTypes);
@@ -465,7 +470,7 @@ public class ParserState {
      * @throws WasmException If the parameter value types and the vale types on the stack do not
      *             match.
      */
-    public void checkParameterTypes(byte[] paramTypes) {
+    public void checkParamTypes(byte[] paramTypes) {
         if (isCurrentStackUnreachable()) {
             popAll(paramTypes);
         } else {

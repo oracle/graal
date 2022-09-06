@@ -41,6 +41,7 @@
 package com.oracle.truffle.api;
 
 import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -64,8 +65,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -147,7 +150,7 @@ import com.oracle.truffle.api.source.Source;
  * context} is configured by the {@link Registration#contextPolicy() context policy}. By default an
  * {@link ContextPolicy#EXCLUSIVE exclusive} {@link TruffleLanguage language} instance is created
  * for every {@link org.graalvm.polyglot.Context polyglot context} or
- * {@link TruffleLanguage.Env#newContextBuilder() inner context}. With policy
+ * {@link TruffleLanguage.Env#newInnerContextBuilder(String...) inner context}. With policy
  * {@link ContextPolicy#REUSE reuse}, language instances will be reused after a language context was
  * {@link TruffleLanguage#disposeContext(Object) disposed}. With policy {@link ContextPolicy#SHARED
  * shared}, a language will also be reused if active contexts are not yet disposed. Language
@@ -648,14 +651,14 @@ public abstract class TruffleLanguage<C> {
      * Thread termination as the polyglot thread may be cancelled before executing the executor
      * worker.
      * <p>
-     * During finalizeContext, all unclosed inner contexts {@link Env#newContextBuilder() created}
-     * by the language must be left on all threads where the contexts are still active. No active
-     * inner context is allowed after {@link #finalizeContext(Object)} returns, otherwise it is an
-     * internal error.
+     * During finalizeContext, all unclosed inner contexts
+     * {@link Env#newInnerContextBuilder(String...) created} by the language must be left on all
+     * threads where the contexts are still active. No active inner context is allowed after
+     * {@link #finalizeContext(Object)} returns, otherwise it is an internal error.
      * <p>
-     * Non-active inner contexts {@link Env#newContextBuilder() created} by the language that are
-     * still unclosed after {@link #finalizeContext(Object)} returns are automatically closed by
-     * Truffle.
+     * Non-active inner contexts {@link Env#newInnerContextBuilder(String...) created} by the
+     * language that are still unclosed after {@link #finalizeContext(Object)} returns are
+     * automatically closed by Truffle.
      * <p>
      * Typical implementation looks like:
      *
@@ -1729,7 +1732,7 @@ public abstract class TruffleLanguage<C> {
          * set to 0.
          *
          * @see #getContext()
-         * @see #newContextBuilder()
+         * @see #newInnerContextBuilder(String...)
          * @since 0.28
          */
         @TruffleBoundary
@@ -1743,7 +1746,7 @@ public abstract class TruffleLanguage<C> {
          * description of the parameters. The <code>stackSize</code> set to 0.
          *
          * @see #getContext()
-         * @see #newContextBuilder()
+         * @see #newInnerContextBuilder(String...)
          * @since 0.28
          */
         @TruffleBoundary
@@ -1773,8 +1776,9 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
          * <p>
          * The {@link TruffleContext} can be either an inner context created by
-         * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
-         * context associated with this environment obtained from {@link #getContext()}.
+         * {@link #newInnerContextBuilder(String...)}.{@link TruffleContext.Builder#build()
+         * build()}, or the context associated with this environment obtained from
+         * {@link #getContext()}.
          *
          * @param runnable the runnable to run on this thread.
          * @param context the context to enter and leave when the thread is started.
@@ -1784,7 +1788,7 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
          *             allowed}.
          * @see #getContext()
-         * @see #newContextBuilder()
+         * @see #newInnerContextBuilder(String...)
          * @since 0.28
          */
         @TruffleBoundary
@@ -1797,13 +1801,93 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Creates a new thread designed to process language internal tasks in the background. See
+         * {@link #createSystemThread(Runnable, ThreadGroup)} for a detailed description of the
+         * parameters.
+         *
+         * @see #createSystemThread(Runnable, ThreadGroup)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable) {
+            return createSystemThread(runnable, null);
+        }
+
+        /**
+         * Creates a new thread designed to process language internal tasks in the background. The
+         * created thread cannot enter the context, if it tries an {@link IllegalStateException} is
+         * thrown. Creating or terminating a system thread does not notify
+         * {@link TruffleLanguage#initializeThread(Object, Thread) languages} or instruments'
+         * thread-listeners. Creating a system thread does not cause a transition to multi-threaded
+         * access. The caller must be entered in a context to create a system thread, if not an
+         * {@link IllegalStateException} is thrown.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if the context is closed before the thread is started.
+         * <p>
+         * The language that created and started the thread is responsible to stop and join it
+         * during the {@link TruffleLanguage#disposeContext(Object)} disposeContext}, otherwise an
+         * {@link IllegalStateException} is thrown. It's not safe to use the
+         * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
+         * Thread termination as the system thread may be cancelled before executing the executor
+         * worker.<br/>
+         * A typical implementation looks like: {@link TruffleLanguageSnippets.SystemThreadLanguage}
+         *
+         * @param runnable the runnable to run on this thread.
+         * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
+         * @throws IllegalStateException if the context is already closed.
+         * @see #createSystemThread(Runnable)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable, ThreadGroup threadGroup) {
+            try {
+                return LanguageAccessor.engineAccess().createLanguageSystemThread(polyglotLanguageContext, runnable, threadGroup);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
          * Returns a new context builder useful to create inner context instances.
          *
          * @see TruffleContext for details on language inner contexts.
          * @since 0.27
+         *
+         * @deprecated use {@link #newInnerContextBuilder(String...)} instead. Note that the
+         *             replacement method configures the context differently by default. To restore
+         *             the old behavior: <code>newInnerContextBuilder()
+         *                   .initializeCreatorContext(true).allowInheritAccess(true).build() </code>
          */
+        @Deprecated
         public TruffleContext.Builder newContextBuilder() {
-            return TruffleContext.EMPTY.new Builder(this);
+            return newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true);
+        }
+
+        /**
+         * Returns a new context builder useful to create inner context instances.
+         * <p>
+         * By default the inner context inherits none of the access privileges. To inherit access
+         * set {@link TruffleContext.Builder#inheritAllAccess(boolean)} to <code>true</code>.
+         * <p>
+         * No language context will be initialized by default in the inner context. In order to
+         * initialize the creator context use
+         * {@link TruffleContext.Builder#initializeCreatorContext(boolean)}, initialize the language
+         * after context creation using {@link TruffleContext#initializePublic(Node, String)} or
+         * evaluate a source using {@link TruffleContext#evalPublic(Node, Source)}.
+         *
+         * @param permittedLanguages ids of languages permitted in the context. If no languages are
+         *            provided, then all languages permitted to the outer context will be permitted.
+         *            Languages are validated when the context is {@link Builder#build() built}. An
+         *            {@link IllegalArgumentException} will be thrown if an unknown or a language
+         *            denied by the engine was used.
+         * @see TruffleContext for details on language inner contexts.
+         * @since 22.3
+         */
+        public TruffleContext.Builder newInnerContextBuilder(String... permittedLanguages) {
+            return TruffleContext.EMPTY.new Builder(this).permittedLanguages(permittedLanguages);
         }
 
         /**
@@ -2137,6 +2221,41 @@ public abstract class TruffleLanguage<C> {
         public Object asHostSymbol(Class<?> symbolClass) {
             try {
                 return LanguageAccessor.engineAccess().asHostSymbol(polyglotLanguageContext, symbolClass);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns <code>true</code> if context options are allowed to be modified for inner
+         * contexts, or <code>false</code> if not. This method only indicates whether the embedder
+         * granted wildcard all access for new privileges using
+         * {@link org.graalvm.polyglot.Context.Builder#allowInnerContextOptions(boolean)}.
+         * <p>
+         * This method is useful to find out whether it is possible to specify options for inner
+         * contexts using {@link TruffleContext.Builder#option(String, String)}, as options can only
+         * be specified with all access enabled.
+         *
+         * @see TruffleContext.Builder#option(String, String)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public boolean isInnerContextOptionsAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isInnerContextOptionsAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns <code>true</code> if access to IO is allowed, else <code>false</code>.
+         *
+         * @since 22.3
+         */
+        public boolean isIOAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isIOAllowed(polyglotLanguageContext, this);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2512,7 +2631,8 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Configuration arguments passed from an outer language context to an inner language
-         * context. Inner language contexts can be created using {@link #newContextBuilder()}.
+         * context. Inner language contexts can be created using
+         * {@link #newInnerContextBuilder(String...)}.
          *
          * @see TruffleContext to create inner contexts.
          * @see TruffleContext.Builder#config(String, Object) to pass configuration objects to the
@@ -3446,6 +3566,7 @@ public abstract class TruffleLanguage<C> {
         static <T extends RuntimeException> RuntimeException engineToLanguageException(Throwable t) {
             return LanguageAccessor.engineAccess().engineToLanguageException(t);
         }
+
     }
 
     /**
@@ -3802,7 +3923,6 @@ class TruffleLanguageSnippets {
 
         final Assumption singleThreaded = Truffle.getRuntime().createAssumption();
         final List<Thread> startedThreads = new ArrayList<>();
-
     }
 
     // @formatter:off
@@ -4000,5 +4120,70 @@ class TruffleLanguageSnippets {
     }
     // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
 
+    abstract static
+    // BEGIN: TruffleLanguageSnippets.SystemThreadLanguage
+    class SystemThreadLanguage extends
+            TruffleLanguage<SystemThreadLanguage.Context> {
 
+        static class Context {
+            private final BlockingQueue<Runnable> tasks;
+            private final Env env;
+            private volatile Thread systemThread;
+            private volatile boolean cancelled;
+
+            Context(Env env) {
+                this.tasks = new LinkedBlockingQueue<>();
+                this.env = env;
+            }
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected void initializeContext(Context context) {
+            // Create and start a Thread for the asynchronous internal task.
+            // Remember the Thread to stop and join it in the disposeContext.
+            context.systemThread = context.env.createSystemThread(() -> {
+                while (!context.cancelled) {
+                    try {
+                        Runnable task = context.tasks.
+                                poll(Integer.MAX_VALUE, SECONDS);
+                        if (task != null) {
+                            task.run();
+                        }
+                    } catch (InterruptedException ie) {
+                        // pass to cancelled check
+                    }
+                }
+            });
+            context.systemThread.start();
+        }
+
+        @Override
+        protected void disposeContext(Context context) {
+            // Stop and join system thread.
+            context.cancelled = true;
+            Thread threadToJoin = context.systemThread;
+            if (threadToJoin != null) {
+                threadToJoin.interrupt();
+                boolean interrupted = false;
+                boolean terminated = false;
+                while (!terminated) {
+                    try {
+                        threadToJoin.join();
+                        terminated = true;
+                    } catch (InterruptedException ie) {
+                        interrupted = true;
+                    }
+                }
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+    // END: TruffleLanguageSnippets.SystemThreadLanguage
 }

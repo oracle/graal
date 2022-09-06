@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,8 @@ import org.graalvm.compiler.lir.phases.PreAllocationOptimizationStage;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
+import jdk.vm.ci.code.Architecture;
+
 /**
  * The default configuration for the community edition of Graal.
  */
@@ -52,7 +54,7 @@ public class CommunityCompilerConfiguration implements CompilerConfiguration {
     }
 
     @Override
-    public LowTier createLowTier(OptionValues options) {
+    public LowTier createLowTier(OptionValues options, Architecture arch) {
         return new LowTier(options);
     }
 

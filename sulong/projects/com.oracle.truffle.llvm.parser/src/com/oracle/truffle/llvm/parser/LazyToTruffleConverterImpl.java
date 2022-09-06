@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstr
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
+import com.oracle.truffle.llvm.parser.nodes.LLVMFunctionModifier;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph;
@@ -188,11 +189,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         boolean initDebugValues = true;
         LLVMRuntimeDebugInformation info = new LLVMRuntimeDebugInformation(method.getBlocks().size());
         LLVMBasicBlockNode[] blockNodes = new LLVMBasicBlockNode[method.getBlocks().size()];
+        List<LLVMFunctionModifier> functionModifiers = new ArrayList<>();
         for (InstructionBlock block : method.getBlocks()) {
             List<Phi> blockPhis = phis.get(block);
             ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
             LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(exceptionSlot, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context,
-                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory);
+                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory, functionModifiers);
 
             if (initDebugValues) {
                 for (SourceVariable variable : method.getSourceFunction().getVariables()) {
@@ -209,7 +211,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
             LLVMStatementNode[] nodes = visitor.finish();
             info.setBlockDebugInfo(block.getBlockIndex(), visitor.getDebugInfo());
-            blockNodes[block.getBlockIndex()] = LLVMBasicBlockNode.createBasicBlockNode(options, nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName());
+            blockNodes[block.getBlockIndex()] = LLVMBasicBlockNode.createBasicBlockNode(nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName());
+        }
+
+        for (LLVMFunctionModifier modifier : functionModifiers) {
+            modifier.modify(blockNodes);
         }
 
         for (int j = 0; j < blockNodes.length; j++) {
@@ -226,7 +232,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
             if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
                 loopSuccessorSlot = builder.addSlot(FrameSlotKind.Int, null, null);
-                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info, options);
+                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info);
             }
         }
 
@@ -267,7 +273,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return neededForDebug;
     }
 
-    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info, OptionValues options) {
+    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info) {
         // The original array is needed to access the frame nuller information for outgoing control
         // flow egdes
         LLVMBasicBlockNode[] originalBodyNodes = nodes.clone();
@@ -292,7 +298,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                             loopSuccessorSlot);
             LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
             // replace header block with loop node
-            nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
+            nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
             nodes[headerId].setNullableFrameSlots(header.nullableBefore, header.nullableAfter);
             // remove inner loops to reduce number of nodes
             for (CFGLoop innerLoop : loop.getInnerLoops()) {

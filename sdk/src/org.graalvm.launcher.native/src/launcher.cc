@@ -443,12 +443,25 @@ int main(int argc, char *argv[]) {
 
     struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
 
+    /* Inherit stacksize of main thread. Otherwise pthread_create() defaults to
+     * 512K on darwin, while the main thread has 8192K.
+     */
+    pthread_attr_t attr;
+    if (pthread_attr_init(&attr) != 0) {
+        std::cerr << "Could not initialize pthread attribute structure: " << strerror(errno) << std::endl;
+        return -1;
+    }
+    if (pthread_attr_setstacksize(&attr, pthread_get_stacksize_np(pthread_self())) != 0) {
+        std::cerr << "Could not set stacksize in pthread attribute structure." << std::endl;
+        return -1;
+    }
+
     /* Create dedicated "main" thread for the JVM. The actual main thread
      * must run the UI event loop on macOS. Inspired by this OpenJDK code:
      * https://github.com/openjdk/jdk/blob/011958d30b275f0f6a2de097938ceeb34beb314d/src/java.base/macosx/native/libjli/java_md_macosx.m#L328-L358
      */
     pthread_t main_thr;
-    if (pthread_create(&main_thr, NULL, &apple_main, &args) != 0) {
+    if (pthread_create(&main_thr, &attr, &apple_main, &args) != 0) {
         std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
         return -1;
     }

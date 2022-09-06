@@ -57,12 +57,10 @@ public class InteropMapObject implements TruffleObject {
 
     private final Class<? extends TruffleLanguage<?>> languageClass;
     private final Map<String, Object> map;
-    private final String displayString;
 
-    public InteropMapObject(Class<? extends TruffleLanguage<?>> languageClass, String displayString) {
+    public InteropMapObject(Class<? extends TruffleLanguage<?>> languageClass) {
         this.languageClass = languageClass;
-        this.displayString = displayString;
-        map = new HashMap<>();
+        this.map = new HashMap<>();
     }
 
     @ExportMessage
@@ -147,7 +145,7 @@ public class InteropMapObject implements TruffleObject {
 
     @ExportMessage
     Object toDisplayString(boolean allowSideEffects) {
-        return displayString != null ? displayString : mapToString(map);
+        return mapToString(map);
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -42,6 +42,8 @@ package com.oracle.truffle.api.strings;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
+
 final class TStringGuards {
 
     static boolean isEmpty(AbstractTruffleString a) {
@@ -127,91 +129,90 @@ final class TStringGuards {
                         TSCodeRange.isMoreRestrictiveThan(codeRangeA, codeRangeB);
     }
 
-    static boolean isAscii(TruffleString.Encoding enc) {
-        return isAscii(enc.id);
-    }
-
     static boolean isAscii(int enc) {
-        return enc == TruffleString.Encoding.US_ASCII.id;
+        return enc == Encoding.US_ASCII.id;
     }
 
-    static boolean isBytes(TruffleString.Encoding enc) {
-        return isBytes(enc.id);
+    static boolean isAscii(Encoding enc) {
+        return enc == Encoding.US_ASCII;
     }
 
     static boolean isBytes(int enc) {
-        return enc == TruffleString.Encoding.BYTES.id;
+        return enc == Encoding.BYTES.id;
     }
 
-    static boolean isLatin1(TruffleString.Encoding enc) {
-        return isLatin1(enc.id);
+    static boolean isBytes(Encoding enc) {
+        return enc == Encoding.BYTES;
     }
 
     static boolean isLatin1(int enc) {
-        return enc == TruffleString.Encoding.ISO_8859_1.id;
+        return enc == Encoding.ISO_8859_1.id;
+    }
+
+    static boolean isLatin1(Encoding enc) {
+        return enc == Encoding.ISO_8859_1;
     }
 
     static boolean isAsciiBytesOrLatin1(int enc) {
         return isAscii(enc) || isLatin1(enc) || isBytes(enc);
     }
 
-    static boolean isUTF8(TruffleString.Encoding enc) {
-        return isUTF8(enc.id);
+    static boolean isAsciiBytesOrLatin1(Encoding enc) {
+        return isAscii(enc) || isLatin1(enc) || isBytes(enc);
     }
 
     static boolean isUTF8(int enc) {
-        return enc == TruffleString.Encoding.UTF_8.id;
+        return enc == Encoding.UTF_8.id;
     }
 
-    static boolean isUTF16(TruffleString.Encoding enc) {
-        return isUTF16(enc.id);
+    static boolean isUTF8(Encoding enc) {
+        return enc == Encoding.UTF_8;
     }
 
     static boolean isUTF16(int enc) {
-        return enc == TruffleString.Encoding.UTF_16.id;
+        return enc == Encoding.UTF_16.id;
+    }
+
+    static boolean isUTF16(Encoding enc) {
+        return enc == Encoding.UTF_16;
     }
 
     static boolean isUTF16(TruffleStringBuilder sb) {
         return isUTF16(sb.getEncoding());
     }
 
-    static boolean isUTF32(TruffleString.Encoding enc) {
-        return isUTF32(enc.id);
-    }
-
     static boolean isUTF32(int enc) {
-        return enc == TruffleString.Encoding.UTF_32.id;
+        return enc == Encoding.UTF_32.id;
     }
 
-    static boolean isUTF16Or32(TruffleString.Encoding enc) {
-        return isUTF16Or32(enc.id);
+    static boolean isUTF32(Encoding enc) {
+        return enc == Encoding.UTF_32;
     }
 
-    static boolean isUTF16Or32(int enc) {
-        assert enc >= 0;
-        assert TruffleString.Encoding.UTF_32.id == 0;
-        assert TruffleString.Encoding.UTF_16.id == 1;
-        return enc <= 1;
+    static boolean isUTF16Or32(Encoding enc) {
+        assert Encoding.UTF_32.id == 0;
+        assert Encoding.UTF_16.id == 1;
+        return enc.id <= 1;
     }
 
     static boolean identical(Object a, Object b) {
         return a == b;
     }
 
-    static boolean isSupportedEncoding(TruffleString.Encoding encoding) {
-        return isSupportedEncoding(encoding.id);
-    }
-
     static boolean isSupportedEncoding(int encoding) {
-        return TruffleString.Encoding.isSupported(encoding);
+        return Encoding.isSupported(encoding);
     }
 
-    static boolean isUnsupportedEncoding(TruffleString.Encoding encoding) {
-        return isUnsupportedEncoding(encoding.id);
+    static boolean isSupportedEncoding(Encoding encoding) {
+        return encoding.isSupported();
     }
 
     static boolean isUnsupportedEncoding(int encoding) {
-        return TruffleString.Encoding.isUnsupported(encoding);
+        return Encoding.isUnsupported(encoding);
+    }
+
+    static boolean isUnsupportedEncoding(Encoding encoding) {
+        return encoding.isUnsupported();
     }
 
     static int stride(AbstractTruffleString a) {
@@ -246,20 +247,12 @@ final class TStringGuards {
         return sb.getStride() == 2;
     }
 
-    static boolean is7BitCompatible(TruffleString.Encoding encoding) {
-        return is7BitCompatible(encoding.id);
+    static boolean is7BitCompatible(Encoding encoding) {
+        return encoding.is7BitCompatible();
     }
 
-    static boolean is8BitCompatible(TruffleString.Encoding encoding) {
-        return is8BitCompatible(encoding.id);
-    }
-
-    static boolean is7BitCompatible(int encoding) {
-        return TruffleString.Encoding.is7BitCompatible(encoding);
-    }
-
-    static boolean is8BitCompatible(int encoding) {
-        return TruffleString.Encoding.is8BitCompatible(encoding);
+    static boolean is8BitCompatible(Encoding encoding) {
+        return encoding.is8BitCompatible();
     }
 
     static boolean isBestEffort(TruffleString.ErrorHandling errorHandling) {

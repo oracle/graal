@@ -32,27 +32,30 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -65,6 +68,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
@@ -138,13 +142,13 @@ public class JavaMainWrapper {
     private static int runCore0() {
         try {
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
-                if (VMInspectionOptions.AllowVMInspection.getValue() && ImageSingletons.contains(HeapDumpSupport.class)) {
+                if (VMInspectionOptions.hasHeapDumpSupport()) {
                     String absoluteHeapDumpPath = new File(SubstrateOptions.Name.getValue() + ".hprof").getAbsolutePath();
                     VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
                     System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
                     return 0;
                 } else {
-                    System.err.println("Unable to dump heap. Heap dumping is only supported for native executables built with `-H:+AllowVMInspection`.");
+                    System.err.println("Unable to dump heap. Heap dumping is only supported for native executables built with `" + VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
                     return 1;
                 }
             }
@@ -208,6 +212,15 @@ public class JavaMainWrapper {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     public static int run(int argc, CCharPointerPointer argv) {
+        if (SubstrateOptions.RunMainInNewThread.getValue()) {
+            return doRunInNewThread(argc, argv);
+        } else {
+            return doRun(argc, argv);
+        }
+    }
+
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    private static int doRun(int argc, CCharPointerPointer argv) {
         try {
             CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
             cpuFeatureAccess.verifyHostSupportsArchitectureEarlyOrExit();
@@ -228,6 +241,51 @@ public class JavaMainWrapper {
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    private static final CGlobalData<CCharPointer> START_THREAD_UNMANAGED_ERROR_MESSAGE = CGlobalDataFactory
+                    .createCString("Running main entry point in a new platform thread failed. Platform thread failed to start.");
+    private static final CGlobalData<CCharPointer> JOIN_THREAD_UNMANAGED_ERROR_MESSAGE = CGlobalDataFactory.createCString("Thread that the main entry point was running on failed to join.");
+
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    private static int doRunInNewThread(int argc, CCharPointerPointer argv) {
+        MAIN_ISOLATE_PARAMETERS.get().setArgc(argc);
+        MAIN_ISOLATE_PARAMETERS.get().setArgv(argv);
+        long stackSize = SubstrateOptions.StackSize.getHostedValue();
+        PlatformThreads.OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), WordFactory.nullPointer(), (int) stackSize);
+        if (osThreadHandle.isNull()) {
+            CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
+            return 1;
+        }
+        try {
+            WordPointer threadExitStatus = StackValue.get(WordPointer.class);
+            boolean joined = PlatformThreads.singleton().joinThreadUnmanaged(osThreadHandle, threadExitStatus);
+            if (!joined) {
+                CEntryPointActions.failFatally(1, JOIN_THREAD_UNMANAGED_ERROR_MESSAGE.get());
+                return 1;
+            }
+            return (int) threadExitStatus.read().rawValue();
+        } finally {
+            PlatformThreads.singleton().closeOSThreadHandle(osThreadHandle);
+        }
+    }
+
+    private static final CGlobalData<CFunctionPointer> RUN_MAIN_ROUTINE = CGlobalDataFactory.forSymbol("__svm_JavaMainWrapper_runMainRoutine");
+
+    private static class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return SubstrateOptions.RunMainInNewThread.getValue();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    @CEntryPoint(name = "__svm_JavaMainWrapper_runMainRoutine", include = RunMainInNewThreadBooleanSupplier.class)
+    @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
+    static WordBase runMainRoutine(PointerBase data) {
+        int exitStatus = doRun(MAIN_ISOLATE_PARAMETERS.get().getArgc(), MAIN_ISOLATE_PARAMETERS.get().getArgv());
+        return WordFactory.signed(exitStatus);
     }
 
     private static boolean isArgumentBlockSupported() {

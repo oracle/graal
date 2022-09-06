@@ -31,11 +31,11 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * LLVM target-specific inline assembly snippets and information.
@@ -108,9 +108,9 @@ public interface LLVMTargetSpecific {
     String getScratchRegister();
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-class LLVMAMD64TargetSpecificFeature implements Feature {
+class LLVMAMD64TargetSpecificFeature implements InternalFeature {
     private static final int AMD64_RSP_IDX = 7;
     private static final int AMD64_RBP_IDX = 6;
 
@@ -190,9 +190,9 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
-class LLVMAArch64TargetSpecificFeature implements Feature {
+class LLVMAArch64TargetSpecificFeature implements InternalFeature {
     private static final int AARCH64_FP_IDX = 29;
     private static final int AARCH64_SP_IDX = 31;
 

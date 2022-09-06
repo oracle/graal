@@ -47,6 +47,8 @@ import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
 
+import java.util.Arrays;
+
 /**
  * Representation of a wasm if and else block during module validation.
  */
@@ -78,8 +80,8 @@ class IfFrame extends ControlFrame {
 
     @Override
     void exit(ExtraDataList extraData, int offset) {
-        if (!elseBranch && labelTypeLength() > 0) {
-            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
+        if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
+            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
         }
         falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
         for (BranchTargetWithStackChange branchTarget : branchTargets()) {

@@ -86,5 +86,4 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         ConfigurationCondition condition = parseCondition(proxyConfigObject);
         parseInterfaceList(condition, asList(proxyConfigObject.get("interfaces"), "\"interfaces\" must be an array of fully qualified interface names"));
     }
-
 }
