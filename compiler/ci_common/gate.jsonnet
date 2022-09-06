@@ -158,6 +158,7 @@
     //"gate-compiler-test-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
     //"gate-compiler-test-labsjdk-17-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-17-windows-amd64": t("55:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-19-linux-amd64": t("1:00:00"),
 
     "gate-compiler-style-labsjdk-17-linux-amd64": t("45:00"),
 
