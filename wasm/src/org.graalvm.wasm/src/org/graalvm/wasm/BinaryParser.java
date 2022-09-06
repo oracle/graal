@@ -1648,15 +1648,15 @@ public class BinaryParser extends BinaryStreamParser {
                                     dataSegment));
                 }
             } else {
-                final byte[] data = new byte[byteLength];
+                final byte[] bytes = new byte[byteLength];
                 for (int i = 0; i < byteLength; i++) {
                     byte b = read1();
-                    data[i] = b;
+                    bytes[i] = b;
                 }
                 if (linkedInstance != null) {
-                    linkedInstance.setDataInstance(dataSegmentIndex, data);
+                    linkedInstance.setDataInstance(dataSegmentIndex, bytes);
                 } else {
-                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(instance, currentDataSegmentId, data)));
+                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(instance, currentDataSegmentId, bytes)));
                 }
             }
         }

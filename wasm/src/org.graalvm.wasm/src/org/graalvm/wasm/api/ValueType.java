@@ -45,7 +45,6 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 
 public enum ValueType {
     i32(WasmType.I32_TYPE),

@@ -1566,7 +1566,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int tableIndex = value(valueAndLength);
                             // endregion
 
-                            table_init(context, frame, stackPointer, tableIndex, elementIndex);
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+
+                            table_init(context, n, src, dst, tableIndex, elementIndex);
                             stackPointer -= 3;
                             break;
                         }
@@ -1585,7 +1589,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int sourceTableIndex = value(valueAndLength);
                             // endregion
 
-                            table_copy(context, frame, stackPointer, sourceTableIndex, destinationTableIndex);
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+
+                            table_copy(context, n, src, dst, sourceTableIndex, destinationTableIndex);
                             stackPointer -= 3;
                             break;
                         }
@@ -1618,7 +1626,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += offsetDelta;
                             final int tableIndex = value(valueAndLength);
                             // endregion
-                            table_grow(context, frame, stackPointer, tableIndex);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final Object val = popReference(frame, stackPointer - 2);
+
+                            final int res = table_grow(context, n, val, tableIndex);
+                            pushInt(frame, stackPointer - 2, res);
                             stackPointer--;
                             break;
                         }
@@ -1629,7 +1642,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += offsetDelta;
                             final int tableIndex = value(valueAndLength);
                             // endregion
-                            table_fill(context, frame, stackPointer, tableIndex);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final Object val = popReference(frame, stackPointer - 2);
+                            final int i = popInt(frame, stackPointer - 3);
+                            table_fill(context, n, val, i, tableIndex);
                             stackPointer -= 3;
                             break;
                         }
@@ -1644,22 +1661,31 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             // Consume the ZERO_MEMORY constant.
                             offset += 1;
 
-                            memory_init(frame, stackPointer, dataIndex);
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_init(n, src, dst, dataIndex);
                             stackPointer -= 3;
                             break;
                         }
                         case MEMORY_FILL: {
                             // Consume the ZERO_MEMORY constant.
                             offset += 1;
-                            memory_fill(frame, stackPointer);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int val = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_fill(n, val, dst);
                             stackPointer -= 3;
                             break;
                         }
                         case MEMORY_COPY:
                             // Consume the two ZERO_MEMORY constants.
                             offset += 2;
-
-                            memory_copy(frame, stackPointer);
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_copy(n, src, dst);
                             stackPointer -= 3;
                             break;
                         case DATA_DROP: {
@@ -2972,7 +2998,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushLong(frame, stackPointer - 1, result);
     }
 
-    private void table_init(WasmContext context, VirtualFrame frame, int stackPointer, int tableIndex, int elementIndex) {
+    @TruffleBoundary
+    private void table_init(WasmContext context, int length, int source, int destination, int tableIndex, int elementIndex) {
         final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
         final Object[] elementInstance = instance.elemInstance(elementIndex);
         final int elementInstanceLength;
@@ -2981,17 +3008,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         } else {
             elementInstanceLength = elementInstance.length;
         }
-        final int n = popInt(frame, stackPointer - 1);
-        final int src = popInt(frame, stackPointer - 2);
-        final int dst = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(src, n, elementInstanceLength) || checkOutOfBounds(dst, n, table.size())) {
+        if (checkOutOfBounds(source, length, elementInstanceLength) || checkOutOfBounds(destination, length, table.size())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         }
-        if (n == 0) {
+        if (length == 0) {
             return;
         }
-        table.initialize(elementInstance, src, dst, n);
+        table.initialize(elementInstance, source, destination, length);
     }
 
     private void table_get(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
@@ -3021,46 +3045,41 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushInt(frame, stackPointer, table.size());
     }
 
-    private void table_grow(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+    @TruffleBoundary
+    private int table_grow(WasmContext context, int length, Object value, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
-        final int n = popInt(frame, stackPointer - 1);
-        final Object val = popReference(frame, stackPointer - 2);
-        final int res = table.grow(n, val);
-        pushInt(frame, stackPointer - 2, res);
+        return table.grow(length, value);
     }
 
-    private void table_copy(WasmContext context, VirtualFrame frame, int stackPointer, int sourceTableIndex, int destinationTableIndex) {
+    @TruffleBoundary
+    private void table_copy(WasmContext context, int length, int source, int destination, int sourceTableIndex, int destinationTableIndex) {
         final WasmTable sourceTable = context.tables().table(instance.tableAddress(sourceTableIndex));
         final WasmTable destinationTable = context.tables().table(instance.tableAddress(destinationTableIndex));
-        final int n = popInt(frame, stackPointer - 1);
-        final int src = popInt(frame, stackPointer - 2);
-        final int dst = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(src, n, sourceTable.size()) || checkOutOfBounds(dst, n, destinationTable.size())) {
+        if (checkOutOfBounds(source, length, sourceTable.size()) || checkOutOfBounds(destination, length, destinationTable.size())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         }
-        if (n == 0) {
+        if (length == 0) {
             return;
         }
-        destinationTable.copyFrom(sourceTable, src, dst, n);
+        destinationTable.copyFrom(sourceTable, source, destination, length);
     }
 
-    private void table_fill(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+    @TruffleBoundary
+    private void table_fill(WasmContext context, int length, Object value, int offset, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
-        final int n = popInt(frame, stackPointer - 1);
-        final Object val = popReference(frame, stackPointer - 2);
-        final int i = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(i, n, table.size())) {
+        if (checkOutOfBounds(offset, length, table.size())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         }
-        if (n == 0) {
+        if (length == 0) {
             return;
         }
-        table.fill(i, n, val);
+        table.fill(offset, length, value);
     }
 
-    private void memory_init(VirtualFrame frame, int stackPointer, int dataIndex) {
+    @TruffleBoundary
+    private void memory_init(int length, int source, int destination, int dataIndex) {
         final WasmMemory memory = instance.memory();
         final byte[] dataInstance = instance.dataInstance(dataIndex);
         final int dataLength;
@@ -3069,47 +3088,40 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         } else {
             dataLength = dataInstance.length;
         }
-        final int n = popInt(frame, stackPointer - 1);
-        final int src = popInt(frame, stackPointer - 2);
-        final int dst = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(src, n, dataLength) || checkOutOfBounds(dst, n, memory.byteSize())) {
+        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
-        if (n == 0) {
+        if (length == 0) {
             return;
         }
-        memory.initialize(dataInstance, src, dst, n);
+        memory.initialize(dataInstance, source, destination, length);
     }
 
-    private void memory_fill(VirtualFrame frame, int stackPointer) {
+    @TruffleBoundary
+    private void memory_fill(int length, int value, int offset) {
         final WasmMemory memory = instance.memory();
-        final int n = popInt(frame, stackPointer - 1);
-        final int val = popInt(frame, stackPointer - 2);
-        final int dst = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(dst, n, memory.byteSize())) {
+        if (checkOutOfBounds(offset, length, memory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
-        if (n == 0) {
+        if (length == 0) {
             return;
         }
-        memory.fill(dst, n, (byte) val);
+        memory.fill(offset, length, (byte) value);
     }
 
-    private void memory_copy(VirtualFrame frame, int stackPointer) {
+    @TruffleBoundary
+    private void memory_copy(int length, int source, int destination) {
         final WasmMemory memory = instance.memory();
-        final int n = popInt(frame, stackPointer - 1);
-        final int src = popInt(frame, stackPointer - 2);
-        final int dst = popInt(frame, stackPointer - 3);
-        if (checkOutOfBounds(src, n, memory.byteSize()) || checkOutOfBounds(dst, n, memory.byteSize())) {
+        if (checkOutOfBounds(source, length, memory.byteSize()) || checkOutOfBounds(destination, length, memory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
-        if (n == 0) {
+        if (length == 0) {
             return;
         }
-        memory.copyFrom(memory, src, dst, n);
+        memory.copyFrom(memory, source, destination, length);
     }
 
     // Checkstyle: resume method name check
