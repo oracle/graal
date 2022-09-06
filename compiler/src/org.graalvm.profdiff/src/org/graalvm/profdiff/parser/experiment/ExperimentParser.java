@@ -139,7 +139,7 @@ public class ExperimentParser {
             return inliningTreeNode;
         }
         for (Object inlinee : inlinees) {
-            inliningTreeNode.addInlinee(parseInliningTreeNode(inlinee));
+            inliningTreeNode.addChild(parseInliningTreeNode(inlinee));
         }
         return inliningTreeNode;
     }

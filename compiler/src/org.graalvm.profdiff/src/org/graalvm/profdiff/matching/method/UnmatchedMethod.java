@@ -92,7 +92,7 @@ public class UnmatchedMethod {
     /**
      * Writes the full description of the method according to the current verbosity level. Includes
      * {@link #writeHeaderAndCompilationList a header and the list of compilations}. If enabled,
-     * writes optimization trees for each compilation.
+     * writes optimization and inlining trees for each compilation.
      *
      * @param writer the destination writer
      * @param experiment1 the first experiment
@@ -101,7 +101,7 @@ public class UnmatchedMethod {
     public void write(Writer writer, Experiment experiment1, Experiment experiment2) {
         writeHeaderAndCompilationList(writer, experiment1, experiment2);
         VerbosityLevel verbosity = writer.getVerbosityLevel();
-        if (verbosity.shouldPrintOptimizationTree() || verbosity.shouldDiffCompilations()) {
+        if ((verbosity.shouldPrintOptimizationTree() || verbosity.shouldDiffCompilations()) && !verbosity.shouldShowOnlyDiff()) {
             writer.increaseIndent();
             for (CompilationUnit compilationUnit : compilationUnits) {
                 compilationUnit.write(writer);

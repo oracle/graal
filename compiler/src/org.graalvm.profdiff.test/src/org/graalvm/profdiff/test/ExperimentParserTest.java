@@ -88,7 +88,7 @@ public class ExperimentParserTest {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
                                     compilationUnit.getCompilationMethodName());
                     InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getCompilationMethodName(), -1);
-                    inliningTreeRoot.addInlinee(new InliningTreeNode("java.lang.String.equals(Object)", 44));
+                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44));
                     assertEquals(inliningTreeRoot, compilationUnit.getInliningTreeRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     OptimizationPhase someTier = new OptimizationPhase("SomeTier");

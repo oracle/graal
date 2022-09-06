@@ -24,21 +24,13 @@
  */
 package org.graalvm.profdiff.core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import org.graalvm.profdiff.util.Writer;
 
 /**
- * Represents a method in the inlining tree. The children (inlinees) of a method in the inlining
- * tree are methods that were inlined in the method's body.
+ * Represents a method in the inlining tree. The children (getChildren()) of a method in the
+ * inlining tree are methods that were inlined in the method's body.
  */
-public class InliningTreeNode implements TreeNode<InliningTreeNode> {
-    /**
-     * The name of this inlined method.
-     */
-    private final String targetMethodName;
+public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comparable<InliningTreeNode> {
 
     /**
      * The bci of the parent method's callsite of this inlinee.
@@ -46,14 +38,14 @@ public class InliningTreeNode implements TreeNode<InliningTreeNode> {
     private final int bci;
 
     /**
-     * The list of methods inlined into this method.
+     * Constructs an inlining tree node.
+     *
+     * @param targetMethodName the name of this inlined method
+     * @param bci the bci of the parent method's callsite of this inlinee
      */
-    private List<InliningTreeNode> inlinees;
-
     public InliningTreeNode(String targetMethodName, int bci) {
-        this.targetMethodName = targetMethodName;
+        super(targetMethodName);
         this.bci = bci;
-        this.inlinees = null;
     }
 
     /**
@@ -63,34 +55,9 @@ public class InliningTreeNode implements TreeNode<InliningTreeNode> {
         return bci;
     }
 
-    /**
-     * Adds a method that was inlined in this method.
-     *
-     * @param inlinee the inlined method to be added
-     */
-    public void addInlinee(InliningTreeNode inlinee) {
-        if (inlinees == null) {
-            inlinees = new ArrayList<>();
-        }
-        inlinees.add(inlinee);
-    }
-
-    @Override
-    public List<InliningTreeNode> getChildren() {
-        if (inlinees == null) {
-            return List.of();
-        }
-        return inlinees;
-    }
-
-    @Override
-    public String getName() {
-        return targetMethodName;
-    }
-
     @Override
     public void writeHead(Writer writer) {
-        writer.writeln(targetMethodName + " at bci " + bci);
+        writer.writeln(getName() + " at bci " + bci);
     }
 
     @Override
@@ -102,17 +69,31 @@ public class InliningTreeNode implements TreeNode<InliningTreeNode> {
             return false;
         }
         InliningTreeNode other = (InliningTreeNode) object;
-        if (bci != other.bci || !targetMethodName.equals(other.targetMethodName)) {
-            return false;
-        }
-        return Objects.equals(inlinees, other.inlinees);
+        return bci == other.bci && getName().equals(other.getName()) && getChildren().equals(other.getChildren());
     }
 
     @Override
     public int hashCode() {
-        int result = targetMethodName.hashCode();
+        int result = getName().hashCode();
         result = 31 * result + bci;
-        result = 31 * result + (inlinees != null ? inlinees.hashCode() : 0);
+        result = 31 * result + (getChildren() != null ? getChildren().hashCode() : 0);
         return result;
+    }
+
+    /**
+     * Compares this inlining tree node to another inlining tree node. The nodes are compared
+     * lexicographically according to their {@link #getBCI() bci} and {@link #getName() name} (in
+     * this order).
+     *
+     * @param other the object to be compared
+     * @return the result of the comparison
+     */
+    @Override
+    public int compareTo(InliningTreeNode other) {
+        int order = bci - other.bci;
+        if (order != 0) {
+            return order;
+        }
+        return getName().compareTo(other.getName());
     }
 }

@@ -25,22 +25,23 @@
 package org.graalvm.profdiff;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
-import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.InliningTreeNode;
+import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.matching.method.GreedyMethodMatcher;
 import org.graalvm.profdiff.matching.method.MatchedCompilationUnit;
 import org.graalvm.profdiff.matching.method.MatchedMethod;
 import org.graalvm.profdiff.matching.method.MethodMatching;
+import org.graalvm.profdiff.matching.tree.DeltaTree;
+import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
-import org.graalvm.profdiff.matching.tree.TreeMatcher;
-import org.graalvm.profdiff.matching.tree.TreeMatching;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.DoubleArgument;
 import org.graalvm.profdiff.parser.args.EnumArgument;
@@ -122,10 +123,24 @@ public class Profdiff {
         hotCompilationUnitPolicy.markHotCompilationUnits(experiment2);
         experiment2.writeExperimentSummary(writer);
 
+        for (Experiment experiment : List.of(experiment1, experiment2)) {
+            experiment.getCompilationUnits().forEach(compilationUnit -> {
+                if (verbosityLevel.shouldSortInliningTree()) {
+                    compilationUnit.sortInliningTree();
+                }
+                if (verbosityLevel.shouldRemoveVeryDetailedPhases()) {
+                    compilationUnit.removeVeryDetailedPhases();
+                }
+                if (verbosityLevel.shouldSortUnorderedPhases()) {
+                    compilationUnit.sortUnorderedPhases();
+                }
+            });
+        }
+
         GreedyMethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
-        TreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy());
-        TreeMatcher<InliningTreeNode> inliningTreeMatcher = new SelkowTreeMatcher<>(new InliningTreeEditPolicy());
+        SelkowTreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy());
+        SelkowTreeMatcher<InliningTreeNode> inliningTreeMatcher = new SelkowTreeMatcher<>(new InliningTreeEditPolicy());
 
         for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
             writer.writeln();
@@ -143,19 +158,31 @@ public class Profdiff {
                     InliningTreeNode inliningTreeRoot2 = matchedCompilationUnit.getSecondCompilationUnit().getInliningTreeRoot();
                     if (inliningTreeRoot1 != null && inliningTreeRoot2 != null) {
                         writer.writeln("Inlining tree matching");
-                        TreeMatching inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
+                        EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
+                        if (verbosityLevel.shouldShowOnlyDiff()) {
+                            DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
+                            inliningDeltaTree.pruneIdentities();
+                            inliningTreeMatching = inliningDeltaTree.asEditScript();
+                        }
                         inliningTreeMatching.write(writer);
                     } else {
                         writer.writeln("Inlining trees are not available");
                     }
                     writer.writeln("Optimization tree matching");
-                    TreeMatching optimizationTreeMatching = optimizationTreeMatcher.match(
+                    EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(
                                     matchedCompilationUnit.getFirstCompilationUnit().getRootPhase(),
                                     matchedCompilationUnit.getSecondCompilationUnit().getRootPhase());
+                    if (verbosityLevel.shouldShowOnlyDiff()) {
+                        DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
+                        optimizationDeltaTree.pruneIdentities();
+                        optimizationTreeMatching = optimizationDeltaTree.asEditScript();
+                    }
                     optimizationTreeMatching.write(writer);
                     writer.decreaseIndent();
                 }
-                matchedMethod.getUnmatchedCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+                if (!verbosityLevel.shouldShowOnlyDiff()) {
+                    matchedMethod.getUnmatchedCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+                }
             }
             writer.decreaseIndent();
         }

@@ -24,10 +24,8 @@
  */
 package org.graalvm.profdiff.core;
 
-import java.util.List;
-
-import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.util.Writer;
 
 /**
@@ -191,18 +189,8 @@ public class CompilationUnit {
     }
 
     /**
-     * Creates and returns a list of all optimizations performed during the compilation of this
-     * compilation unit, preserving the order.
-     *
-     * @return the list of optimizations
-     */
-    public List<Optimization> getOptimizationsRecursive() {
-        return rootPhase.getOptimizationsRecursive();
-    }
-
-    /**
      * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
-     * and the optimization tree to the destination writer.
+     * and the optimization and inlining tree to the destination writer.
      *
      * @param writer the destination writer
      */
@@ -221,5 +209,47 @@ public class CompilationUnit {
         writer.increaseIndent();
         rootPhase.writeRecursive(writer);
         writer.decreaseIndent(2);
+    }
+
+    /**
+     * Sorts all children of each node in {@link #inliningTreeRoot the inlining tree} according to
+     * the {@link InliningTreeNode#compareTo(InliningTreeNode) comparator}.
+     */
+    public void sortInliningTree() {
+        if (inliningTreeRoot == null) {
+            return;
+        }
+        inliningTreeRoot.forEach(inliningTreeNode -> inliningTreeNode.getChildren().sort(InliningTreeNode::compareTo));
+    }
+
+    /**
+     * Removes all subtrees from {@link #rootPhase the optimization tree} which are optimization
+     * phases in {@link OptimizationPhase#isVeryDetailedCategory() the very detailed category}.
+     */
+    public void removeVeryDetailedPhases() {
+        rootPhase.removeIf(optimizationTreeNode -> {
+            if (!(optimizationTreeNode instanceof OptimizationPhase)) {
+                return false;
+            }
+            OptimizationPhase optimizationPhase = (OptimizationPhase) optimizationTreeNode;
+            return optimizationPhase.isVeryDetailedCategory();
+        });
+    }
+
+    /**
+     * Sorts children of all {@link OptimizationPhase#isUnorderedCategory() unordered phases} in
+     * {@link #rootPhase the optimization tree} according to
+     * {@link OptimizationTreeNode#compareTo(OptimizationTreeNode) their comparator}.
+     */
+    public void sortUnorderedPhases() {
+        rootPhase.forEach(optimizationTreeNode -> {
+            if (!(optimizationTreeNode instanceof OptimizationPhase)) {
+                return;
+            }
+            OptimizationPhase optimizationPhase = (OptimizationPhase) optimizationTreeNode;
+            if (optimizationPhase.isUnorderedCategory()) {
+                optimizationPhase.getChildren().sort(OptimizationTreeNode::compareTo);
+            }
+        });
     }
 }
