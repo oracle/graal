@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,graalpython,truffleruby
 COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,js,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,nfi,ni,nic,nil,poly,polynative,pro,pyn,pynl,rby,rbyl,rgx,sdk,svm,svmnfi,svmsl,tfl,tflm,vvm
-NATIVE_IMAGES=graalpy,graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,gu,lib:jsvm,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lli,native-image,lib:rubyvm
+NATIVE_IMAGES=graalpy,graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,gu,lib:jsvm,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lib:llvmvm,native-image,lib:rubyvm
 DISABLE_INSTALLABLES=false
