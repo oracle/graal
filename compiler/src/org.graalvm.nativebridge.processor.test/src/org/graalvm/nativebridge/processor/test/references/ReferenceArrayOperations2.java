@@ -37,4 +37,8 @@ public interface ReferenceArrayOperations2 {
     void exchangeHost(Handler[] handlers);
 
     int exchangeHostSubArray(Handler[] handlers, int offset, int length);
+
+    Handler[] getHostObjects();
+
+    Record[] getGuestObjects();
 }

@@ -370,7 +370,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         @SuppressWarnings("unused")
-        CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet) {
+        CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
             return null;
         }
 
@@ -697,6 +697,18 @@ abstract class AbstractBridgeGenerator {
             this.parameterName = parameterName;
             this.parameterType = parameterType;
             this.marshallerData = marshallerData;
+        }
+    }
+
+    static final class PreUnmarshallResult {
+        final CharSequence result;
+        final CharSequence binaryInput;
+        final boolean unmarshalled;
+
+        PreUnmarshallResult(CharSequence result, CharSequence binaryInput, boolean unmarshalled) {
+            this.result = result;
+            this.binaryInput = binaryInput;
+            this.unmarshalled = unmarshalled;
         }
     }
 }

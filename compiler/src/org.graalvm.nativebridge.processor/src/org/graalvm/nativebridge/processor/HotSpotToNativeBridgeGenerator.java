@@ -366,12 +366,12 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
     private PreUnmarshallResult generatePreUnmarshallResult(CodeBuilder builder, MarshallerSnippets snippets, TypeMirror returnType, CharSequence nativeCall, CharSequence receiver,
                     boolean hasBinaryMarshalledResult) {
         CharSequence result = nativeCall;
-        CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall);
+        CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall, null);
         result = endPointResultVariable != null ? endPointResultVariable : result;
         CharSequence marshalledResultInput = null;
         if (hasBinaryMarshalledResult) {
             marshalledResultInput = "marshalledResultInput";
-            builder.lineStart().write(typeCache.binaryInput).space().write(marshalledResultInput).write(" = ").invokeStatic(typeCache.binaryInput, "create", endPointResultVariable).lineEnd(";");
+            builder.lineStart().write(typeCache.binaryInput).space().write(marshalledResultInput).write(" = ").invokeStatic(typeCache.binaryInput, "create", result).lineEnd(";");
         }
         CharSequence resultVariable = snippets.preUnmarshallResult(builder, returnType, result, receiver, null);
         result = resultVariable != null ? resultVariable : result;
@@ -1066,7 +1066,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             }
 
             @Override
-            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet) {
+            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
                 if (marshallerData.sameDirection) {
                     CharSequence resultVariable = "endPointResult";
                     currentBuilder.lineStart().write(getEndPointMethodParameterType(resultType)).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
@@ -1168,12 +1168,10 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                 if (resultType.getKind() == TypeKind.ARRAY) {
                     // Already marshalled by preMarshallResult. Just return the invocationSnippet.
                     return invocationSnippet;
+                } else if (marshallerData.sameDirection) {
+                    return marshallHotSpotToNativeProxyInNative(currentBuilder, invocationSnippet);
                 } else {
-                    if (marshallerData.sameDirection) {
-                        return marshallHotSpotToNativeProxyInNative(currentBuilder, invocationSnippet);
-                    } else {
-                        return marshallNativeToHotSpotProxyInNative(currentBuilder, invocationSnippet);
-                    }
+                    return marshallNativeToHotSpotProxyInNative(currentBuilder, invocationSnippet);
                 }
             }
 
@@ -1403,7 +1401,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             }
 
             @Override
-            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet) {
+            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
                 CharSequence resultVariable = "endPointResult";
                 currentBuilder.lineStart().write(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE))).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
                 return resultVariable;
@@ -1431,18 +1429,6 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, CharSequence jniEnvFieldName) {
                 return parameterName;
             }
-        }
-    }
-
-    private static final class PreUnmarshallResult {
-        final CharSequence result;
-        final CharSequence binaryInput;
-        final boolean unmarshalled;
-
-        PreUnmarshallResult(CharSequence result, CharSequence binaryInput, boolean unmarshalled) {
-            this.result = result;
-            this.binaryInput = binaryInput;
-            this.unmarshalled = unmarshalled;
         }
     }
 }

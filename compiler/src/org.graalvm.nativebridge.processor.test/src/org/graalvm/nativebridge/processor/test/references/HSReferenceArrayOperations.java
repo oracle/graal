@@ -61,4 +61,11 @@ abstract class HSReferenceArrayOperations extends HSObject implements ReferenceA
                     @In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(HSHandler.class) Handler[] handlers,
                     int offset, int length);
 
+    @Override
+    public abstract @ByReference(HSHandler.class) Handler[] getHostObjects();
+
+    @Override
+    @ByReference(NativeRecord.class)
+    public abstract Record[] getGuestObjects();
+
 }
