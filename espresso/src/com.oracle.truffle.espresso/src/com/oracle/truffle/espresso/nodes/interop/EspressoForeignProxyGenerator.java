@@ -434,7 +434,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         Symbol<Symbol.Signature> signature;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
-                            Klass returnType, Klass[] exceptionTypes, boolean isVarArgs, Symbol<Symbol.Signature> signature) {
+                        Klass returnType, Klass[] exceptionTypes, boolean isVarArgs, Symbol<Symbol.Signature> signature) {
             this.methodName = methodName;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
