@@ -414,6 +414,32 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    public boolean isExcluded(Class<? extends jdk.internal.event.Event> eventClass) {
+        // Temporarily always include.
+        return false;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    public boolean setConfiguration(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_event_EventConfiguration configuration) {
+        return SubstrateJVM.get().setConfiguration(eventClass, configuration);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    public Target_jdk_jfr_internal_event_EventConfiguration getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
+        return SubstrateJVM.get().getConfiguration(eventClass);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    public boolean isInstrumented(Class<? extends jdk.internal.event.Event> eventClass) {
+        // This should check for blessed commit methods in the event class [GR-41200]
+        return true;
+    }
+
+    @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void markChunkFinal() {
         // Temporarily do nothing. This is used for JFR streaming.
