@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,18 +39,18 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution(methodName = "newInstance0")
     abstract static class NewInstance0 extends SubstitutionNode {
         public abstract @JavaType(Object.class) StaticObject execute(
-                @JavaType(Constructor.class) StaticObject constructor,
-                @JavaType(Object[].class) StaticObject args0,
-                @Inject EspressoLanguage language,
-                @Inject Meta meta);
+                        @JavaType(Constructor.class) StaticObject constructor,
+                        @JavaType(Object[].class) StaticObject args0,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta);
 
         @Specialization()
         public @JavaType(Object.class) StaticObject newInstance(
-                @JavaType(Constructor.class) StaticObject constructor,
-                @JavaType(Object[].class) StaticObject args0,
-                @Inject EspressoLanguage language,
-                @Inject Meta meta,
-                @Cached ToEspressoNode toEspressoNode) {
+                        @JavaType(Constructor.class) StaticObject constructor,
+                        @JavaType(Object[].class) StaticObject args0,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta,
+                        @Cached ToEspressoNode toEspressoNode) {
             Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass(meta);
             klass.safeInitialize();
             if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
