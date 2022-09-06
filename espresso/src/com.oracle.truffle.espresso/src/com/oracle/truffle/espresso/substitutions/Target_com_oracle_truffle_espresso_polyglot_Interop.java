@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
