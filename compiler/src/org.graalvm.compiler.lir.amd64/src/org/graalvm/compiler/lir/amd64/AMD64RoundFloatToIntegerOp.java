@@ -54,10 +54,10 @@ import jdk.vm.ci.meta.AllocatableValue;
           commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
           sha1      = "7bb09de1deee91732af6a55f527c53eb33dec489")
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 636,
-          lineEnd   = 803,
-          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
-          sha1      = "4997a4e50208c9646c6b518b570d0042567fb99e")
+          lineStart = 634,
+          lineEnd   = 801,
+          commit    = "0c6094e79602fe85a88e3131710bb39813364ad2",
+          sha1      = "9f29fa373a8469daa04ae89fde27febeb70e7f3b")
 // @formatter:on
 @Opcode("AMD64_ROUND_FLOAT_TO_INTEGER")
 public class AMD64RoundFloatToIntegerOp extends AMD64LIRInstruction {
