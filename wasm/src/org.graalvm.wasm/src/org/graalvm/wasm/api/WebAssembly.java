@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.EmbedderDataHolder;
@@ -407,11 +406,11 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ByteArrayBuffer> customSections(WasmModule module, Object sectionName) {
-        Object name;
-        if (sectionName instanceof TruffleString) {
-            name = sectionName.toString();
-        } else {
-            name = sectionName;
+        final String name;
+        try {
+            name = InteropLibrary.getUncached().asString(sectionName);
+        } catch (UnsupportedMessageException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Section name must be a string");
         }
         List<ByteArrayBuffer> sections = new ArrayList<>();
         for (WasmCustomSection section : module.customSections()) {
