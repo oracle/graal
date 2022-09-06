@@ -24,76 +24,94 @@
  */
 package org.graalvm.compiler.nodes.test;
 
-import java.util.ArrayList;
-
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * This class tests that integer stamps are created correctly for constants.
  */
-@RunWith(Parameterized.class)
 public class IntegerStampMaskTest extends GraalTest {
 
-    static long[] intBoundaryValues = {Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
-    static long[] longBoundaryValues = {Long.MIN_VALUE, Long.MIN_VALUE + 1, Long.MAX_VALUE - 1, Long.MAX_VALUE};
-
-    private final IntegerStamp meetOfAB;
-    private final IntegerStamp bounds;
-    private final IntegerStamp joined;
-    private final boolean expectEmpty;
+    static final long[] intBoundaryValues = {Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE};
+    static final long[] longBoundaryValues = {Long.MIN_VALUE, Long.MIN_VALUE + 1, Long.MAX_VALUE - 1, Long.MAX_VALUE};
 
     private static final int VALUE_LIMIT = 8;
 
-    @Parameterized.Parameters(name = "{index}: bits {0} constant1 {1} constant2 {2} lowerBound {3} upperBound {4}")
-    public static Iterable<Object[]> data() {
-        ArrayList<Object[]> data = new ArrayList<>();
-        // Use triangular iteration to ensure duplicate values aren't tested
-        for (long a = -VALUE_LIMIT; a <= VALUE_LIMIT; a++) {
-            for (long b = a + 1; b <= VALUE_LIMIT; b++) {
-                for (long bound1 = -VALUE_LIMIT; bound1 <= VALUE_LIMIT; bound1++) {
-                    for (long bound2 = bound1; bound2 <= VALUE_LIMIT; bound2++) {
-                        data.add(new Object[]{32, a, b, bound1, bound2});
-                        data.add(new Object[]{64, a, b, bound1, bound2});
-                    }
-                }
-            }
-        }
-        return data;
+    public IntegerStampMaskTest() {
     }
 
-    public IntegerStampMaskTest(int bits, long a, long b, long bound1, long bound2) {
-        IntegerStamp constantA = IntegerStamp.create(bits, a, a);
-        IntegerStamp constantB = IntegerStamp.create(bits, b, b);
-        this.meetOfAB = (IntegerStamp) constantA.meet(constantB);
-        assert bound1 <= bound2;
-        this.bounds = IntegerStamp.create(bits, bound1, bound2);
-        this.joined = bounds.join(meetOfAB);
-        this.expectEmpty = !bounds.contains(a) && !bounds.contains(b);
+    @Ignore
+    @Test
+    public void testSingle() {
+        // Placeholder for manual testing of individual values
+        // testValues(32, 2147483655L, 2147483654L, -8, -8);
     }
 
     @Test
     public void test() {
-        checkBounds(joined, meetOfAB, bounds);
+        for (long bound1 = -VALUE_LIMIT; bound1 <= VALUE_LIMIT; bound1++) {
+            for (long bound2 = bound1; bound2 <= VALUE_LIMIT; bound2++) {
+                for (long a = -VALUE_LIMIT; a <= VALUE_LIMIT; a++) {
+                    for (long b = a + 1; b <= VALUE_LIMIT; b++) {
+                        testValues(32, a, b, bound1, bound2);
+                        testValues(64, a, b, bound1, bound2);
+                    }
+                }
 
-        for (long v : intBoundaryValues) {
-            testValue(v);
-        }
-        if (joined.getBits() == 64) {
-            for (long v : longBoundaryValues) {
-                testValue(v);
+                for (long a = 0; a < 32; a++) {
+                    for (long b = a + 1; b < 32; b++) {
+                        testValues(32, CodeUtil.signExtend(1L << a, 32), CodeUtil.signExtend(1L << b, 32), bound1, bound2);
+                        testValues(64, 1L << a, 1L << b, bound1, bound2);
+                    }
+                }
+
+                for (long a = 32; a < 64; a++) {
+                    for (long b = a + 1; b < 64; b++) {
+                        testValues(64, 1L << a, 1L << b, bound1, bound2);
+                    }
+                }
             }
-        }
-        for (long a = -(2 * VALUE_LIMIT); a <= 2 * VALUE_LIMIT; a++) {
-            testValue(a);
         }
     }
 
-    private void testValue(long v) {
+    public static void testValues(int bits, long a, long b, long bound1, long bound2) {
+        try {
+            IntegerStamp constantA = IntegerStamp.create(bits, a, a);
+            IntegerStamp constantB = IntegerStamp.create(bits, b, b);
+            IntegerStamp meetOfAB = (IntegerStamp) constantA.meet(constantB);
+            assert bound1 <= bound2;
+            IntegerStamp bounds = IntegerStamp.create(bits, bound1, bound2);
+            IntegerStamp joined = bounds.join(meetOfAB);
+            boolean expectEmpty = !bounds.contains(a) && !bounds.contains(b);
+            testStamp(joined, meetOfAB, bounds, expectEmpty);
+        } catch (Throwable t) {
+            throw new GraalError(t, "failed testValues(%d, %d, %d, %d, %d)", bits, a, b, bound1, bound2);
+        }
+    }
+
+    public static void testStamp(IntegerStamp joined, IntegerStamp meetOfAB, IntegerStamp bounds, boolean expectEmpty) {
+        checkBounds(joined, meetOfAB, bounds, expectEmpty);
+
+        for (long v : intBoundaryValues) {
+            testValue(v, joined, meetOfAB, bounds);
+        }
+        if (joined.getBits() == 64) {
+            for (long v : longBoundaryValues) {
+                testValue(v, joined, meetOfAB, bounds);
+            }
+        }
+        for (long a = -(2 * VALUE_LIMIT); a <= 2 * VALUE_LIMIT; a++) {
+            testValue(a, joined, meetOfAB, bounds);
+        }
+    }
+
+    private static void testValue(long v, IntegerStamp joined, IntegerStamp meetOfAB, IntegerStamp bounds) {
         if (bounds.contains(v) && meetOfAB.contains(v)) {
             Assert.assertTrue(String.format("%s does not contain %s", joined, v), joined.contains(v));
         }
@@ -102,7 +120,7 @@ public class IntegerStampMaskTest extends GraalTest {
         }
     }
 
-    private void checkBounds(IntegerStamp stamp, IntegerStamp stampA, IntegerStamp stampB) {
+    private static void checkBounds(IntegerStamp stamp, IntegerStamp stampA, IntegerStamp stampB, boolean expectEmpty) {
         if (stamp.isEmpty()) {
             Assert.assertTrue("unexpected empty stamp encountered", expectEmpty);
             return;

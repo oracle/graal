@@ -707,6 +707,7 @@ public class IntegerStampTest extends GraphTest {
         assertNeverZero(a);
         assertNeverZero(b);
         IntegerStamp joined = a.join(b);
+        Assert.assertTrue(joined.isEmpty());
         assertNeverZero(joined);
     }
 

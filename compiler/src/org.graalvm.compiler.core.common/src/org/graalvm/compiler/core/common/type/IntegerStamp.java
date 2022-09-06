@@ -57,15 +57,36 @@ import jdk.vm.ci.meta.SerializableConstant;
 /**
  * Describes the possible values of a node that produces an int or long result.
  *
- * The description consists of (inclusive) lower and upper bounds and up (may be set) and down
- * (always set) bit-masks.
+ * The description consists of inclusive lower and upper bounds and up (may be set) and down (must
+ * be set) bit-masks. The masks combine to describe whether a particular bit is 1, 0 or unknown. The
+ * down mask naturally represents bits which are 1 by having a 1 bit at that location. The up mask
+ * has a 0 at bits which must be 0 and a 1 where it may or must be 1. So the up mask is always a
+ * superset of the down mask.
  */
 public final class IntegerStamp extends PrimitiveStamp {
 
+    /**
+     * Inclusive lower bound.
+     */
     private final long lowerBound;
+
+    /**
+     * Inclusive upper bound.
+     */
     private final long upperBound;
+
+    /**
+     * This indicates which bits must be set. For every value in range,
+     * {@code (value & downMask) == downMask} is true.
+     */
     private final long downMask;
+
+    /**
+     * This indicates which bits may be set. For every value in range,
+     * {@code (value & upMask) == (value & CodeUtil.mask(getBits()))} is true.
+     */
     private final long upMask;
+
     /**
      * Determines if this stamp can contain the value {@code 0}. If this is {@code true} the stamp
      * is a typical stamp without holes. If the stamp ranges over zero but {@code canBeZero==false}
@@ -73,6 +94,16 @@ public final class IntegerStamp extends PrimitiveStamp {
      * cannot express holes in our Stamp system, thus we have the special logic for {@code 0}.
      */
     private final boolean canBeZero;
+
+    @SuppressWarnings("unused")
+    private IntegerStamp(int bits, boolean empty) {
+        super(bits, OPS);
+        this.lowerBound = CodeUtil.maxValue(bits);
+        this.upperBound = CodeUtil.minValue(bits);
+        this.downMask = CodeUtil.mask(bits);
+        this.upMask = 0;
+        this.canBeZero = false;
+    }
 
     private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask) {
         this(bits, lowerBound, upperBound, downMask, upMask, true);
@@ -95,6 +126,9 @@ public final class IntegerStamp extends PrimitiveStamp {
         // use ctor param because canBeZero is not set yet
         this.canBeZero = contains(0, canBeZero);
         assert !this.canBeZero || contains(0) : " Stamp " + this + " either has canBeZero set to false or needs to contain 0";
+        GraalError.guarantee(!isEmpty(), "unexpected empty stamp should for %s %s %s %s %s %s", lowerBound, upperBound, downMask, upMask, canBeZero, this);
+        GraalError.guarantee(contains(upperBound), "%s must contain its upper bound", this);
+        GraalError.guarantee(contains(lowerBound), "%s must contain its lower bound", this);
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
@@ -105,46 +139,86 @@ public final class IntegerStamp extends PrimitiveStamp {
         return create(bits, lowerBoundInput, upperBoundInput, downMask, upMask, true);
     }
 
-    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask, boolean canBeZero) {
-        assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
+    static final int ITERATION_LIMIT = 4;
 
-        // Set lower bound, use masks to make it more precise
-        long minValue = minValueForMasks(bits, downMask, upMask);
-        long lowerBoundTmp = Math.max(lowerBoundInput, minValue);
-
-        // Set upper bound, use masks to make it more precise
-        long maxValue = maxValueForMasks(bits, downMask, upMask);
-        long upperBoundTmp = Math.min(upperBoundInput, maxValue);
-
-        // Assign masks now with the bounds in mind.
-        final long boundedDownMask;
-        final long boundedUpMask;
-        long defaultMask = CodeUtil.mask(bits);
-        if (lowerBoundTmp == upperBoundTmp) {
-            boundedDownMask = lowerBoundTmp;
-            boundedUpMask = lowerBoundTmp;
-        } else if (lowerBoundTmp >= 0) {
-            int upperBoundLeadingZeros = Long.numberOfLeadingZeros(upperBoundTmp);
-            long differentBits = lowerBoundTmp ^ upperBoundTmp;
-            int sameBitCount = Long.numberOfLeadingZeros(differentBits << upperBoundLeadingZeros);
-
-            boundedUpMask = upperBoundTmp | -1L >>> (upperBoundLeadingZeros + sameBitCount);
-            boundedDownMask = upperBoundTmp & ~(-1L >>> (upperBoundLeadingZeros + sameBitCount));
-        } else {
-            if (upperBoundTmp >= 0) {
-                boundedUpMask = defaultMask;
-                boundedDownMask = 0;
-            } else {
-                int lowerBoundLeadingOnes = Long.numberOfLeadingZeros(~lowerBoundTmp);
-                long differentBits = lowerBoundTmp ^ upperBoundTmp;
-                int sameBitCount = Long.numberOfLeadingZeros(differentBits << lowerBoundLeadingOnes);
-
-                boundedUpMask = lowerBoundTmp | -1L >>> (lowerBoundLeadingOnes + sameBitCount) | ~(-1L >>> lowerBoundLeadingOnes);
-                boundedDownMask = lowerBoundTmp & ~(-1L >>> (lowerBoundLeadingOnes + sameBitCount)) | ~(-1L >>> lowerBoundLeadingOnes);
-            }
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMaskInput, long upMaskInput, boolean canBeZero) {
+        if (lowerBoundInput > upperBoundInput || (downMaskInput & (~upMaskInput)) != 0 || (upMaskInput == 0 && (lowerBoundInput > 0 || upperBoundInput < 0))) {
+            return createEmptyStamp(bits);
         }
 
-        return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask, canBeZero);
+        assert (downMaskInput & ~upMaskInput) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMaskInput, upMaskInput);
+
+        long lowerBoundCurrent = lowerBoundInput;
+        long upperBoundCurrent = upperBoundInput;
+        long downMaskCurrent = downMaskInput;
+        long upMaskCurrent = upMaskInput;
+
+        int iterations = 0;
+        while (iterations++ < ITERATION_LIMIT) {
+
+            // Set lower bound, use masks to make it more precise
+            long minValue = minValueForMasks(bits, downMaskCurrent, upMaskCurrent);
+            long lowerBoundTmp = Math.max(lowerBoundCurrent, minValue);
+
+            // Set upper bound, use masks to make it more precise
+            long maxValue = maxValueForMasks(bits, downMaskCurrent, upMaskCurrent);
+            long upperBoundTmp = Math.min(upperBoundCurrent, maxValue);
+
+            // Assign masks now with the bounds in mind.
+            final long boundedDownMask;
+            final long boundedUpMask;
+            long defaultMask = CodeUtil.mask(bits);
+            if (lowerBoundTmp == upperBoundTmp) {
+                boundedDownMask = lowerBoundTmp;
+                boundedUpMask = lowerBoundTmp;
+            } else if (lowerBoundTmp >= 0) {
+                int upperBoundLeadingZeros = Long.numberOfLeadingZeros(upperBoundTmp);
+                long differentBits = lowerBoundTmp ^ upperBoundTmp;
+                int sameBitCount = Long.numberOfLeadingZeros(differentBits << upperBoundLeadingZeros);
+
+                boundedUpMask = upperBoundTmp | -1L >>> (upperBoundLeadingZeros + sameBitCount);
+                boundedDownMask = upperBoundTmp & ~(-1L >>> (upperBoundLeadingZeros + sameBitCount));
+            } else {
+                if (upperBoundTmp >= 0) {
+                    boundedUpMask = defaultMask;
+                    boundedDownMask = 0;
+                } else {
+                    int lowerBoundLeadingOnes = Long.numberOfLeadingZeros(~lowerBoundTmp);
+                    long differentBits = lowerBoundTmp ^ upperBoundTmp;
+                    int sameBitCount = Long.numberOfLeadingZeros(differentBits << lowerBoundLeadingOnes);
+
+                    boundedUpMask = lowerBoundTmp | -1L >>> (lowerBoundLeadingOnes + sameBitCount) | ~(-1L >>> lowerBoundLeadingOnes);
+                    boundedDownMask = lowerBoundTmp & ~(-1L >>> (lowerBoundLeadingOnes + sameBitCount)) | ~(-1L >>> lowerBoundLeadingOnes);
+                }
+            }
+
+            long downMaskTmp = defaultMask & (downMaskCurrent | boundedDownMask);
+            long upMaskTmp = defaultMask & upMaskCurrent & boundedUpMask;
+
+            // Now recompute the bounds from any adjustments to the up and down masks
+            upperBoundTmp = Math.min(upperBoundTmp, maxValueForMasks(bits, downMaskTmp, upMaskTmp));
+            lowerBoundTmp = Math.max(lowerBoundTmp, minValueForMasks(bits, downMaskTmp, upMaskTmp));
+
+            upperBoundTmp = computeUpperBound(bits, upperBoundTmp, downMaskTmp, upMaskTmp, canBeZero);
+            lowerBoundTmp = computeLowerBound(bits, lowerBoundTmp, downMaskTmp, upMaskTmp, canBeZero);
+
+            if (lowerBoundTmp > upperBoundTmp || (downMaskTmp & (~upMaskTmp)) != 0 || (upMaskTmp == 0 && (lowerBoundTmp > 0 || upperBoundTmp < 0))) {
+                return createEmptyStamp(bits);
+            }
+
+            if (lowerBoundCurrent == lowerBoundTmp && upperBoundCurrent == upperBoundTmp && downMaskCurrent == downMaskTmp && upMaskCurrent == upMaskTmp) {
+                return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, downMaskTmp, upMaskTmp, canBeZero);
+            }
+
+            GraalError.guarantee(lowerBoundTmp >= lowerBoundCurrent, "lower bound can't get smaller: %s < %s", lowerBoundTmp, lowerBoundCurrent);
+            GraalError.guarantee(upperBoundTmp <= upperBoundCurrent, "upper bound can't get larger: %s > %s", upperBoundTmp, upperBoundCurrent);
+
+            lowerBoundCurrent = lowerBoundTmp;
+            upperBoundCurrent = upperBoundTmp;
+            downMaskCurrent = downMaskTmp;
+            upMaskCurrent = upMaskTmp;
+        }
+        throw GraalError.shouldNotReachHere("More than " + ITERATION_LIMIT + "iterations required to reach a stable stamp");
     }
 
     /**
@@ -182,6 +256,122 @@ public final class IntegerStamp extends PrimitiveStamp {
         }
     }
 
+    /**
+     * Compute the upper bounds by starting from an initial value derived the downMask and then
+     * setting optional bits until a value which less than or equal to the current upper bound is
+     * found.
+     */
+    private static long computeUpperBound(int bits, long upperBound, long downMask, long upMask, boolean canBeZero) {
+        // Start with the sign extended downMask. That will be the smallest positive or negative
+        // value.
+        long newUpperBound = CodeUtil.signExtend(downMask, bits);
+        if (upperBound < 0 || newUpperBound > upperBound) {
+            // If the upper bound is negative or it's positive but greater than the least
+            // positive value, then start from the minimum negative value
+            newUpperBound = minValueForMasks(bits, downMask, upMask);
+        }
+        // Compute the bits which are set in the upMask but not the downMask, ignoring the sign bit
+        // which was handled above.
+        newUpperBound = setOptionalBits(bits, upperBound, downMask, upMask, newUpperBound);
+
+        if (newUpperBound == 0 && !canBeZero) {
+            // The actual upper bound must be negative
+            if (significantBit(bits, upMask) == 0) {
+                // All values are positive so return the minimum value.
+                return CodeUtil.minValue(bits);
+            } else {
+                // Choose the max negative value
+                newUpperBound = maxValueForMasks(bits, downMask | (1L << bits - 1), upMask);
+            }
+        }
+
+        if (newUpperBound > upperBound) {
+            // The smallest upper bound that's compatible with the masks is larger than the expected
+            // upper bound, so return the minimum value.
+            return CodeUtil.minValue(bits);
+        }
+        return newUpperBound;
+    }
+
+    /**
+     * Starting from an initial value derived from the down mask and ignoring the sign bits, start
+     * setting optional bits until a value which is less than or equal to the bound it reached.
+     */
+    private static long setOptionalBits(int bits, long bound, long downMask, long upMask, long initialValue) {
+        final long optionalBits = upMask & ~downMask & CodeUtil.mask(bits - 1);
+        assert (initialValue & optionalBits) == 0;
+        long value = initialValue;
+        for (int position = bits - 1; position >= 0; position--) {
+            long bit = 1L << position;
+            if ((bit & optionalBits) != 0 && (value | bit) <= bound) {
+                value |= bit;
+            }
+        }
+        return value;
+    }
+
+    /**
+     * Compute a lower bound which is compatible with the masks.
+     */
+    private static long computeLowerBound(int bits, long lowerBound, long downMask, long upMask, boolean canBeZero) {
+        long newLowerBound = minValueForMasks(bits, downMask, upMask);
+        if (newLowerBound < lowerBound) {
+            // First find the largest value which is less the current bound
+            final long optionalBits = upMask & ~downMask & CodeUtil.mask(bits - 1);
+            for (int position = bits - 1; position >= 0; position--) {
+                long bit = 1L << position;
+                if ((bit & optionalBits) != 0) {
+                    if (newLowerBound + bit <= lowerBound) {
+                        newLowerBound += bit;
+                    }
+                }
+            }
+            GraalError.guarantee(newLowerBound <= lowerBound, "should have been sufficient");
+            if (newLowerBound < lowerBound) {
+                // Increment the first optional bit and then adjust the bits upward until it's
+                // compatible with the masks
+                boolean incremented = false;
+                for (int position = 0; position < bits - 1; position++) {
+                    long bit = 1L << position;
+                    if (incremented) {
+                        // We have to propagate any carried bit that changed any bits which must
+                        // be set or cleared.
+                        if ((bit & downMask) != 0 && (newLowerBound & bit) == 0) {
+                            // A downMask bit has been cleared so set it
+                            newLowerBound |= bit;
+                        }
+                        if ((bit & upMask) == 0 && (newLowerBound & bit) != 0) {
+                            // A bit has carried into the clear section so it needs to propagate
+                            // into an upMask bit.
+                            newLowerBound += bit;
+                        }
+                    } else if ((bit & optionalBits) != 0) {
+                        newLowerBound += bit;
+                        incremented = true;
+                    }
+                }
+            }
+        }
+        if (newLowerBound == 0 && !canBeZero) {
+            // The actual upper bound must positive
+            if (downMask > 0) {
+                newLowerBound = downMask;
+            } else if (downMask == 0) {
+                int lowBit = Long.numberOfTrailingZeros(upMask);
+                newLowerBound = 1L << lowBit;
+            } else {
+                // There is no positive value which is
+                newLowerBound = CodeUtil.maxValue(bits);
+            }
+        }
+        if (newLowerBound < lowerBound) {
+            // There is no lower bound which is greater than or equal to the current bound sound
+            // return the max value.
+            return CodeUtil.maxValue(bits);
+        }
+        return newLowerBound;
+    }
+
     public static IntegerStamp stampForMask(int bits, long downMask, long upMask) {
         /*
          * Determine if the new stamp created by down & upMask would be contradicting, i.e., empty
@@ -192,7 +382,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         if ((downMask & ~upMask) != 0L) {
             return createEmptyStamp(bits);
         }
-        return new IntegerStamp(bits, minValueForMasks(bits, downMask, upMask), maxValueForMasks(bits, downMask, upMask), downMask, upMask);
+        return IntegerStamp.create(bits, minValueForMasks(bits, downMask, upMask), maxValueForMasks(bits, downMask, upMask), downMask, upMask);
     }
 
     @Override
@@ -206,7 +396,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     static IntegerStamp createEmptyStamp(int bits) {
-        return new IntegerStamp(bits, CodeUtil.maxValue(bits), CodeUtil.minValue(bits), CodeUtil.mask(bits), 0);
+        return new IntegerStamp(bits, true);
     }
 
     @Override
@@ -396,20 +586,19 @@ public final class IntegerStamp extends PrimitiveStamp {
                 str.append(" \u21c8");
                 new Formatter(str).format("%016x", upMask);
             }
+            if (!canBeZero && contains(0, true)) {
+                // Only print this for ranges which could contain 0
+                str.append(" {!=0}");
+            }
         } else {
             str.append("<empty>");
-        }
-        if (!canBeZero) {
-            str.append(" {!=0}");
         }
         return str.toString();
     }
 
     private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask, boolean newCanBeZero) {
         assert getBits() == other.getBits();
-        if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0 || (newUpMask == 0 && (newLowerBound > 0 || newUpperBound < 0))) {
-            return empty();
-        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask && canBeZero == newCanBeZero) {
+        if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask && canBeZero == newCanBeZero) {
             return this;
         } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newDownMask == other.downMask && newUpMask == other.upMask && newCanBeZero == other.canBeZero) {
             return other;
@@ -787,18 +976,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             newUpperBound = CodeUtil.signExtend(newUpperBound & newUpMask, bits);
                             newDownMask |= limit.downMask();
                             newLowerBound |= newDownMask;
-                            if (isEmpty(newLowerBound, newUpperBound, newDownMask, newUpMask)) {
-                                // It's possible the masks are inconsistent with the bounds so
-                                // return some less precise but non-empty stamp in that case
-                                if (newLowerBound < newUpperBound) {
-                                    return StampFactory.forInteger(bits, newLowerBound, newUpperBound);
-                                } else {
-                                    return limit.unrestricted();
-                                }
-                            }
-                            IntegerStamp result = new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
-                            assert !result.isEmpty() : result;
-                            return result;
+                            return IntegerStamp.create(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
                         }
 
                         @Override
@@ -1308,7 +1486,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp integerStamp = (IntegerStamp) stamp;
                             int bits = integerStamp.getBits();
                             long defaultMask = CodeUtil.mask(bits);
-                            return new IntegerStamp(bits, ~integerStamp.upperBound(), ~integerStamp.lowerBound(), (~integerStamp.upMask()) & defaultMask, (~integerStamp.downMask()) & defaultMask);
+                            long lowerBoundInput = ~integerStamp.upperBound();
+                            long upperBoundInput = ~integerStamp.lowerBound();
+                            long downMask1 = (~integerStamp.upMask()) & defaultMask;
+                            long upMask1 = (~integerStamp.downMask()) & defaultMask;
+                            return IntegerStamp.create(bits, lowerBoundInput, upperBoundInput, downMask1, upMask1);
                         }
                     },
 
@@ -1476,9 +1658,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                                      * use a better stamp if neither lower nor upper bound can lose
                                      * bits
                                      */
-                                    IntegerStamp result = new IntegerStamp(bits, value.lowerBound() << shiftAmount, value.upperBound() << shiftAmount,
-                                                    (value.downMask() << shiftAmount) & CodeUtil.mask(bits),
-                                                    (value.upMask() << shiftAmount) & CodeUtil.mask(bits));
+                                    IntegerStamp result = IntegerStamp.create(bits, value.lowerBound() << shiftAmount, value.upperBound() << shiftAmount,
+                                                    (value.downMask() << shiftAmount) & CodeUtil.mask(bits), (value.upMask() << shiftAmount) & CodeUtil.mask(bits));
                                     return result;
                                 }
                             }
@@ -1543,7 +1724,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 // shifting back and forth performs sign extension
                                 long downMask = (value.downMask() << extraBits) >> (shiftCount + extraBits) & defaultMask;
                                 long upMask = (value.upMask() << extraBits) >> (shiftCount + extraBits) & defaultMask;
-                                return new IntegerStamp(bits, value.lowerBound() >> shiftCount, value.upperBound() >> shiftCount, downMask, upMask);
+                                return IntegerStamp.create(bits, value.lowerBound() >> shiftCount, value.upperBound() >> shiftCount, downMask, upMask);
                             }
                             long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());
                             return IntegerStamp.stampForMask(bits, 0, mask);
@@ -1595,9 +1776,9 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 long downMask = value.downMask() >>> shiftCount;
                                 long upMask = value.upMask() >>> shiftCount;
                                 if (value.lowerBound() < 0) {
-                                    return new IntegerStamp(bits, downMask, upMask, downMask, upMask);
+                                    return IntegerStamp.create(bits, downMask, upMask, downMask, upMask);
                                 } else {
-                                    return new IntegerStamp(bits, value.lowerBound() >>> shiftCount, value.upperBound() >>> shiftCount, downMask, upMask);
+                                    return IntegerStamp.create(bits, value.lowerBound() >>> shiftCount, value.upperBound() >>> shiftCount, downMask, upMask);
                                 }
                             }
                             long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());
@@ -1723,7 +1904,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long downMask = CodeUtil.signExtend(stamp.downMask(), inputBits) & defaultMask;
                             long upMask = CodeUtil.signExtend(stamp.upMask(), inputBits) & defaultMask;
 
-                            return new IntegerStamp(resultBits, stamp.lowerBound(), stamp.upperBound(), downMask, upMask);
+                            return IntegerStamp.create(resultBits, stamp.lowerBound(), stamp.upperBound(), downMask, upMask);
                         }
 
                         @Override
@@ -1814,7 +1995,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long newLowerBound = CodeUtil.signExtend((lowerBound | newDownMask) & newUpMask, resultBits);
                             long newUpperBound = CodeUtil.signExtend((upperBound | newDownMask) & newUpMask, resultBits);
 
-                            IntegerStamp result = new IntegerStamp(resultBits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+                            IntegerStamp result = IntegerStamp.create(resultBits, newLowerBound, newUpperBound, newDownMask, newUpMask);
                             assert result.hasValues();
                             return result;
                         }
