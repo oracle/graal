@@ -1655,7 +1655,6 @@ public class BasicNodeFactory implements NodeFactory {
         }
 
         if (intrinsicName.startsWith("llvm.aarch64.neon")) {
-            // TODO: print perf warning?
             String op = intrinsicName.substring("llvm.aarch64.neon.".length());
             switch (op) {
                 case "ld1x2.v16i8.p0i8":
