@@ -24,10 +24,16 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
@@ -55,18 +61,30 @@ public enum JfrEvent {
     SafepointEnd("jdk.SafepointEnd"),
     ExecuteVMOperation("jdk.ExecuteVMOperation"),
     JavaMonitorEnter("jdk.JavaMonitorEnter"),
-    ThreadSleep("jdk.ThreadSleep"),
+    ThreadSleep("jdk.ThreadSleep", JDK17OrEarlier.class),
     JavaMonitorWait("jdk.JavaMonitorWait");
 
+    private static final long INVALID_ID = Integer.MIN_VALUE;
     private final long id;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrEvent(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
+        this(name, TargetClass.AlwaysIncluded.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JfrEvent(String name, Class<? extends BooleanSupplier> onlyWith) {
+        BooleanSupplier onlyWithProvider = ReflectionUtil.newInstance(onlyWith);
+        if (onlyWithProvider.getAsBoolean()) {
+            this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
+        } else {
+            this.id = INVALID_ID;
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
+        VMError.guarantee(id != INVALID_ID, "Access to invalid JFR Event");
         return id;
     }
 }
