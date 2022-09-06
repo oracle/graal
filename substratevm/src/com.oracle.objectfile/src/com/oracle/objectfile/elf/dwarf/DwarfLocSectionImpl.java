@@ -44,7 +44,7 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
@@ -127,16 +127,16 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int generateContent(DebugContext context, byte[] buffer) {
         int pos = 0;
 
-        pos = writePrimaryClassLocations(context, buffer, pos);
+        pos = writeNormalClassLocations(context, buffer, pos);
         pos = writeDeoptClassLocations(context, buffer, pos);
 
         return pos;
     }
 
-    private int writePrimaryClassLocations(DebugContext context, byte[] buffer, int pos) {
+    private int writeNormalClassLocations(DebugContext context, byte[] buffer, int pos) {
         log(context, "  [0x%08x] normal class locations", pos);
         Cursor cursor = new Cursor(pos);
-        instanceClassStream().filter(ClassEntry::isPrimary).forEach(classEntry -> {
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
             cursor.set(writeMethodLocations(context, classEntry, false, buffer, cursor.get()));
         });
         return cursor.get();
@@ -145,7 +145,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writeDeoptClassLocations(DebugContext context, byte[] buffer, int pos) {
         log(context, "  [0x%08x] deopt class locations", pos);
         Cursor cursor = new Cursor(pos);
-        instanceClassStream().filter(ClassEntry::includesDeoptTarget).forEach(classEntry -> {
+        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
             cursor.set(writeMethodLocations(context, classEntry, true, buffer, cursor.get()));
         });
         return cursor.get();
@@ -153,25 +153,25 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodLocations(DebugContext context, ClassEntry classEntry, boolean isDeopt, byte[] buffer, int p) {
         int pos = p;
-        if (!isDeopt || classEntry.includesDeoptTarget()) {
-            Stream<PrimaryEntry> entries = (isDeopt ? classEntry.deoptPrimaryEntries() : classEntry.normalPrimaryEntries());
+        if (!isDeopt || classEntry.hasDeoptCompiledEntries()) {
+            Stream<CompiledMethodEntry> entries = (isDeopt ? classEntry.deoptCompiledEntries() : classEntry.normalCompiledEntries());
             pos = entries.reduce(pos,
-                            (p1, entry) -> writePrimaryRangeLocations(context, entry, buffer, p1),
+                            (p1, entry) -> writeCompiledMethodLocations(context, entry, buffer, p1),
                             (oldPos, newPos) -> newPos);
         }
         return pos;
     }
 
-    private int writePrimaryRangeLocations(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writeCompiledMethodLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        pos = writeTopLevelLocations(context, primaryEntry, buffer, pos);
-        pos = writeInlineLocations(context, primaryEntry, buffer, pos);
+        pos = writeTopLevelLocations(context, compiledEntry, buffer, pos);
+        pos = writeInlineLocations(context, compiledEntry, buffer, pos);
         return pos;
     }
 
-    private int writeTopLevelLocations(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        Range primary = primaryEntry.getPrimary();
+        Range primary = compiledEntry.getPrimary();
         long base = primary.getLo();
         log(context, "  [0x%08x] top level locations [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
         HashMap<DebugLocalInfo, List<Range>> varRangeMap = primary.getVarRangeMap();
@@ -185,15 +185,15 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeInlineLocations(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        Range primary = primaryEntry.getPrimary();
+        Range primary = compiledEntry.getPrimary();
         if (primary.isLeaf()) {
             return p;
         }
         long base = primary.getLo();
         log(context, "  [0x%08x] inline locations [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
-        Iterator<Range> iterator = primaryEntry.topDownRangeIterator();
+        Iterator<Range> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
             Range subrange = iterator.next();
             if (subrange.isLeaf()) {
@@ -217,11 +217,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         // collect ranges and values, merging adjacent ranges that have equal value
         List<LocalValueExtent> extents = LocalValueExtent.coalesce(local, rangeList);
 
-        // TODO - currently we use the start address of the range's primary method as
+        // TODO - currently we use the start address of the range's compiled method as
         // a base from which to write location offsets. This means we need to explicitly
         // write a (relocatable) base address as a prefix to each location list. If instead
         // we rebased relative to the start of the enclosing compilation unit then we
-        // could omit writing the base adress prefix, saving two long words per location list.
+        // could omit writing the base address prefix, saving two long words per location list.
 
         // write the base address
         pos = writeAttrData8(-1L, buffer, pos);

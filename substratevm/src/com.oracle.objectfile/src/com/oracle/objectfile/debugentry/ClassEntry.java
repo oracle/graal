@@ -72,22 +72,21 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private Map<ResolvedJavaMethod, MethodEntry> methodsIndex;
     /**
-     * A list recording details of all normal primary compiled methods included in this class sorted
-     * by ascending address range. Note that the associated address ranges are disjoint and
-     * contiguous.
+     * A list recording details of all normal compiled methods included in this class sorted by
+     * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private List<PrimaryEntry> primaryEntries;
+    private List<CompiledMethodEntry> normalCompiledEntries;
     /**
-     * A list recording details of all deopt fallback primary compiled methods included in this
-     * class sorted by ascending address range. Note that the associated address ranges are
-     * disjoint, contiguous and above all ranges for normal primary compiled methods.
+     * A list recording details of all deopt fallback compiled methods included in this class sorted
+     * by ascending address range. Note that the associated address ranges are disjoint, contiguous
+     * and above all ranges for normal compiled methods.
      */
-    private List<PrimaryEntry> deoptPrimaryEntries;
+    private List<CompiledMethodEntry> deoptCompiledEntries;
     /**
-     * An index identifying ranges for primary compiled method which have already been encountered,
-     * whether normal or deopt fallback methods.
+     * An index identifying ranges for compiled method which have already been encountered, whether
+     * normal or deopt fallback methods.
      */
-    private Map<Range, PrimaryEntry> primaryIndex;
+    private Map<Range, CompiledMethodEntry> compiledMethodIndex;
     /**
      * An index of all primary and secondary files referenced from this class's compilation unit.
      */
@@ -111,10 +110,10 @@ public class ClassEntry extends StructureTypeEntry {
         this.fileEntry = fileEntry;
         this.methods = new ArrayList<>();
         this.methodsIndex = new HashMap<>();
-        this.primaryEntries = new ArrayList<>();
+        this.normalCompiledEntries = new ArrayList<>();
         // deopt methods list is created on demand
-        this.deoptPrimaryEntries = null;
-        this.primaryIndex = new HashMap<>();
+        this.deoptCompiledEntries = null;
+        this.compiledMethodIndex = new HashMap<>();
         this.localFiles = new ArrayList<>();
         this.localFilesIndex = new HashMap<>();
         this.localDirs = new ArrayList<>();
@@ -159,18 +158,18 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
-        if (primaryIndex.get(primary) == null) {
-            PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
-            primaryIndex.put(primary, primaryEntry);
+        if (compiledMethodIndex.get(primary) == null) {
+            CompiledMethodEntry compiledEntry = new CompiledMethodEntry(primary, frameSizeInfos, frameSize, this);
+            compiledMethodIndex.put(primary, compiledEntry);
             if (primary.isDeoptTarget()) {
-                if (deoptPrimaryEntries == null) {
-                    deoptPrimaryEntries = new ArrayList<>();
+                if (deoptCompiledEntries == null) {
+                    deoptCompiledEntries = new ArrayList<>();
                 }
-                deoptPrimaryEntries.add(primaryEntry);
+                deoptCompiledEntries.add(compiledEntry);
             } else {
-                primaryEntries.add(primaryEntry);
+                normalCompiledEntries.add(compiledEntry);
                 /* deopt targets should all come after normal methods */
-                assert deoptPrimaryEntries == null;
+                assert deoptCompiledEntries == null;
             }
             FileEntry primaryFileEntry = primary.getFileEntry();
             if (primaryFileEntry != null) {
@@ -183,10 +182,10 @@ public class ClassEntry extends StructureTypeEntry {
         Range primary = subrange.getPrimary();
         /* The subrange should belong to a primary range. */
         assert primary != null;
-        PrimaryEntry primaryEntry = primaryIndex.get(primary);
+        CompiledMethodEntry compiledEntry = compiledMethodIndex.get(primary);
         /* We should already have seen the primary range. */
-        assert primaryEntry != null;
-        assert primaryEntry.getClassEntry() == this;
+        assert compiledEntry != null;
+        assert compiledEntry.getClassEntry() == this;
         FileEntry subFileEntry = subrange.getFileEntry();
         if (subFileEntry != null) {
             indexLocalFileEntry(subFileEntry);
@@ -258,37 +257,37 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     /**
-     * Retrieve a stream of all primary compiled method entries for this class, including both
-     * normal and deopt fallback compiled methods.
+     * Retrieve a stream of all compiled method entries for this class, including both normal and
+     * deopt fallback compiled methods.
      * 
-     * @return a stream of all primary compiled method entries for this class.
+     * @return a stream of all compiled method entries for this class.
      */
-    public Stream<PrimaryEntry> primaryEntries() {
-        Stream<PrimaryEntry> stream = primaryEntries.stream();
-        if (deoptPrimaryEntries != null) {
-            stream = Stream.concat(stream, deoptPrimaryEntries.stream());
+    public Stream<CompiledMethodEntry> compiledEntries() {
+        Stream<CompiledMethodEntry> stream = normalCompiledEntries.stream();
+        if (deoptCompiledEntries != null) {
+            stream = Stream.concat(stream, deoptCompiledEntries.stream());
         }
         return stream;
     }
 
     /**
-     * Retrieve a stream of all normal primary compiled method entries for this class, excluding
-     * deopt fallback compiled methods.
+     * Retrieve a stream of all normal compiled method entries for this class, excluding deopt
+     * fallback compiled methods.
      * 
-     * @return a stream of all normal primary compiled method entries for this class.
+     * @return a stream of all normal compiled method entries for this class.
      */
-    public Stream<PrimaryEntry> normalPrimaryEntries() {
-        return primaryEntries.stream();
+    public Stream<CompiledMethodEntry> normalCompiledEntries() {
+        return normalCompiledEntries.stream();
     }
 
     /**
-     * Retrieve a stream of all deopt fallback primary compiled method entries for this class.
+     * Retrieve a stream of all deopt fallback compiled method entries for this class.
      * 
-     * @return a stream of all deopt fallback primary compiled method entries for this class.
+     * @return a stream of all deopt fallback compiled method entries for this class.
      */
-    public Stream<PrimaryEntry> deoptPrimaryEntries() {
-        if (includesDeoptTarget()) {
-            return primaryEntries.stream();
+    public Stream<CompiledMethodEntry> deoptCompiledEntries() {
+        if (hasDeoptCompiledEntries()) {
+            return deoptCompiledEntries.stream();
         } else {
             return Stream.empty();
         }
@@ -302,8 +301,8 @@ public class ClassEntry extends StructureTypeEntry {
         return localFiles;
     }
 
-    public boolean includesDeoptTarget() {
-        return deoptPrimaryEntries != null;
+    public boolean hasDeoptCompiledEntries() {
+        return deoptCompiledEntries != null;
     }
 
     public String getCachePath() {
@@ -381,8 +380,8 @@ public class ClassEntry extends StructureTypeEntry {
         return builder.toString();
     }
 
-    public boolean isPrimary() {
-        return primaryEntries.size() != 0;
+    public boolean hasCompiledEntries() {
+        return normalCompiledEntries.size() != 0;
     }
 
     public ClassEntry getSuperClass() {
@@ -421,8 +420,8 @@ public class ClassEntry extends StructureTypeEntry {
      * @return the lowest code section offset for compiled method code belonging to this class
      */
     public int lowpc() {
-        assert isPrimary();
-        return primaryEntries.get(0).getPrimary().getLo();
+        assert hasCompiledEntries();
+        return normalCompiledEntries.get(0).getPrimary().getLo();
     }
 
     /**
@@ -434,9 +433,9 @@ public class ClassEntry extends StructureTypeEntry {
      *         belonging to this class.
      */
     public int lowpcDeopt() {
-        assert isPrimary();
-        assert includesDeoptTarget();
-        return deoptPrimaryEntries.get(0).getPrimary().getLo();
+        assert hasCompiledEntries();
+        assert hasDeoptCompiledEntries();
+        return deoptCompiledEntries.get(0).getPrimary().getLo();
     }
 
     /**
@@ -448,8 +447,8 @@ public class ClassEntry extends StructureTypeEntry {
      * @return the highest code section offset for compiled method code belonging to this class
      */
     public int hipc() {
-        assert isPrimary();
-        return primaryEntries.get(primaryEntries.size() - 1).getPrimary().getHi();
+        assert hasCompiledEntries();
+        return normalCompiledEntries.get(normalCompiledEntries.size() - 1).getPrimary().getHi();
     }
 
     /**
@@ -461,8 +460,8 @@ public class ClassEntry extends StructureTypeEntry {
      *         belonging to this class.
      */
     public int hipcDeopt() {
-        assert isPrimary();
-        assert includesDeoptTarget();
-        return deoptPrimaryEntries.get(deoptPrimaryEntries.size() - 1).getPrimary().getHi();
+        assert hasCompiledEntries();
+        assert hasDeoptCompiledEntries();
+        return deoptCompiledEntries.get(deoptCompiledEntries.size() - 1).getPrimary().getHi();
     }
 }

@@ -28,7 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -137,14 +137,14 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeMethodFrame(PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writeMethodFrame(CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
         int lengthPos = pos;
-        Range range = primaryEntry.getPrimary();
+        Range range = compiledEntry.getPrimary();
         long lo = range.getLo();
         long hi = range.getHi();
         pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-        pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
+        pos = writeFDEs(compiledEntry.getFrameSize(), compiledEntry.getFrameSizeInfos(), buffer, pos);
         pos = writePaddingNops(buffer, pos);
         patchLength(lengthPos, buffer, pos);
         return pos;
@@ -153,15 +153,15 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     private int writeMethodFrames(byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
         /* Write frames for normal methods. */
-        instanceClassStream().filter(ClassEntry::isPrimary).forEach(classEntry -> {
-            classEntry.normalPrimaryEntries().forEach(primaryEntry -> {
-                cursor.set(writeMethodFrame(primaryEntry, buffer, cursor.get()));
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
+            classEntry.normalCompiledEntries().forEach(compiledEntry -> {
+                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
             });
         });
         /* Now write frames for deopt targets. */
-        instanceClassStream().filter(ClassEntry::includesDeoptTarget).forEach(classEntry -> {
-            classEntry.deoptPrimaryEntries().forEach(primaryEntry -> {
-                cursor.set(writeMethodFrame(primaryEntry, buffer, cursor.get()));
+        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
+            classEntry.deoptCompiledEntries().forEach(compiledEntry -> {
+                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
             });
         });
         return cursor.get();

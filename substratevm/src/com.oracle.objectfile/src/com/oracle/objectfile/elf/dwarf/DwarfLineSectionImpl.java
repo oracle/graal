@@ -32,7 +32,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -157,7 +157,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
 
         /*
-         * Write entries for each file listed in the primary list.
+         * Write line info for each instance class. We do this even when a class has no compiled
+         * methods ane hence no line records. This avoids bail outs by tools when a class's methods
+         * crop up inline-only but the tool still expects a line info entry to provide a file and
+         * dir table.
          */
         Cursor cursor = new Cursor();
         instanceClassStream().forEach(classEntry -> {
@@ -436,10 +439,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     private int debugLine = 1;
     private int debugCopyCount = 0;
 
-    private int writePrimaryLineInfo(DebugContext context, ClassEntry classEntry, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writeCompiledMethodLineInfo(DebugContext context, ClassEntry classEntry, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        Range primaryRange = primaryEntry.getPrimary();
-        // the primary method might be a substitution and not in the primary class file
+        Range primaryRange = compiledEntry.getPrimary();
+        // the compiled method might be a substitution and not in the file of the class entry
         FileEntry fileEntry = primaryRange.getFileEntry();
         if (fileEntry == null) {
             log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
@@ -456,7 +459,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         long line = primaryRange.getLine();
         long address = primaryRange.getLo();
-        Range prologueRange = prologueLeafRange(primaryEntry);
+        Range prologueRange = prologueLeafRange(compiledEntry);
         if (prologueRange != null) {
             // use the line for the range and use its file if available
             line = prologueRange.getLine();
@@ -480,7 +483,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                         file, primaryRange.getLine());
 
         /*
-         * Initialize and write a row for the start of the primary method.
+         * Initialize and write a row for the start of the compiled method.
          */
         pos = writeSetFileOp(context, file, fileIdx, buffer, pos);
         pos = writeSetBasicBlockOp(context, buffer, pos);
@@ -499,7 +502,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Now write a row for each subrange lo and hi.
          */
-        Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
         if (prologueRange != null) {
             // skip already processed range
             Range first = iterator.next();
@@ -640,23 +643,23 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         assert classEntry.localFilesIdx() == 1;
         String className = classEntry.getTypeName();
         String fileName = classEntry.getFileName();
-        String classLabel = classEntry.isPrimary() ? "primary class" : "non-primary class";
+        String classLabel = classEntry.hasCompiledEntries() ? "compiled class" : "non-compiled class";
         log(context, "  [0x%08x] %s %s", pos, classLabel, className);
         log(context, "  [0x%08x] %s file %s", pos, className, fileName);
         // generate for both non-deopt and deopt entries so they share the file + dir table
-        pos = classEntry.primaryEntries().reduce(pos,
-                        (p1, entry) -> writePrimaryLineInfo(context, classEntry, entry, buffer, p1),
+        pos = classEntry.compiledEntries().reduce(pos,
+                        (p1, compiledEntry) -> writeCompiledMethodLineInfo(context, classEntry, compiledEntry, buffer, p1),
                         (oldPos, newPos) -> newPos);
         log(context, "  [0x%08x] processed %s %s", pos, classLabel, className);
 
         return pos;
     }
 
-    private static Range prologueLeafRange(PrimaryEntry primaryEntry) {
-        Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+    private static Range prologueLeafRange(CompiledMethodEntry compiledEntry) {
+        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
         if (iterator.hasNext()) {
             Range range = iterator.next();
-            if (range.getLo() == primaryEntry.getPrimary().getLo()) {
+            if (range.getLo() == compiledEntry.getPrimary().getLo()) {
                 return range;
             }
         }

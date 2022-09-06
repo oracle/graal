@@ -197,11 +197,11 @@ public class MethodEntry extends MemberEntry {
         if (debugMethodInfo instanceof DebugLocationInfo) {
             DebugLocationInfo locationInfo = (DebugLocationInfo) debugMethodInfo;
             if (locationInfo.getCaller() != null) {
-                /* this is a real inlined method not just a top level primary range */
+                /* this is a real inlined method */
                 setIsInlined();
             }
         } else if (debugMethodInfo instanceof DebugCodeInfo) {
-            /* this method has been seen in a primary range */
+            /* this method is being notified as a top level compiled method */
             if (isInRange()) {
                 /* it has already been seen -- just check for consistency */
                 assert fileEntry == debugInfoBase.ensureFileEntry(debugMethodInfo);
