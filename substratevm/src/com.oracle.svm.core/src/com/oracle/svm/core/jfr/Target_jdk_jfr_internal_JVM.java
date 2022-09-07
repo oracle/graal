@@ -349,6 +349,13 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().setCutoff(eventTypeId, cutoffTicks);
     }
 
+    /** See {@link JVM#setThrottle}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        return SubstrateJVM.get().setThrottle(eventTypeId, eventSampleSize, periodMs);
+    }
+
     /** See {@link JVM#emitOldObjectSamples}. */
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class) //

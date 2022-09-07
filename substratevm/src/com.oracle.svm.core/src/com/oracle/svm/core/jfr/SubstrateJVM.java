@@ -48,6 +48,8 @@ import com.oracle.svm.core.util.VMError;
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.LogLevel;
+import jdk.jfr.internal.Logger;
 
 /**
  * Manager class that handles most JFR Java API, see {@link Target_jdk_jfr_internal_JVM}.
@@ -527,6 +529,12 @@ public class SubstrateJVM {
     /** See {@link JVM#setCutoff}. */
     public boolean setCutoff(long eventTypeId, long cutoffTicks) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setCutoffTicks(cutoffTicks);
+        return true;
+    }
+
+    /** See {@link JVM#setThrottle}. */
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        Logger.log(LogTag.JFR_SYSTEM_THROTTLE, LogLevel.WARN, "JFR event throttling is not yet supported in native images.");
         return true;
     }
 
