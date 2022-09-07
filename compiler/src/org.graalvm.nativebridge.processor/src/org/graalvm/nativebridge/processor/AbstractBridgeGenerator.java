@@ -315,6 +315,18 @@ abstract class AbstractBridgeGenerator {
         return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayOffsetParameter");
     }
 
+    static boolean isBinaryMarshallable(MarshallerData marshaller, TypeMirror type, boolean hostToIsolate) {
+        if (marshaller.isCustom()) {
+            // Custom type is always marshalled
+            return true;
+        } else if (marshaller.isReference() && type.getKind() == TypeKind.ARRAY && hostToIsolate == marshaller.sameDirection) {
+            // Arrays of NativeObject references (long handles) are marshalled
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     abstract static class MarshallerSnippets {
 
         private final NativeBridgeProcessor processor;
@@ -570,6 +582,49 @@ abstract class AbstractBridgeGenerator {
             currentBuilder.lineStart().write(cache.jObject).space().write(arrayElementVariable).write(" = ").invokeStatic(cache.jniUtil, "GetObjectArrayElement", jniEnvFieldName, hsArray,
                             sourceIndex).lineEnd(";");
             currentBuilder.lineStart().arrayElement(guestTargetArrayVariable, sinkIndex).write(" = ").write(marshallFunction.apply(arrayElementVariable)).lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+        }
+
+        final void generateWriteNativeObjectArray(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, boolean copyContent,
+                        CharSequence arrayOffsetParameter, CharSequence arrayLengthSnippet, CharSequence outputVar,
+                        CharSequence jniEnvFieldName) {
+            currentBuilder.lineStart().invoke(outputVar, "writeInt", arrayLengthSnippet).lineEnd(";");
+            if (copyContent) {
+                CharSequence indexVariable = parameterName + "Index";
+                currentBuilder.lineStart().forLoop(List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(indexVariable).write(" = 0").build()),
+                                new CodeBuilder(currentBuilder).write(indexVariable).write(" < ").write(arrayLengthSnippet).build(),
+                                List.of(new CodeBuilder(currentBuilder).write(indexVariable).write("++").build())).lineEnd(" {");
+                currentBuilder.indent();
+                TypeMirror componentType = ((ArrayType) parameterType).getComponentType();
+                CharSequence pos = arrayOffsetParameter != null ? new CodeBuilder(currentBuilder).write(arrayOffsetParameter).write(" + ").write(indexVariable).build() : indexVariable;
+                CharSequence parameterElement = new CodeBuilder(currentBuilder).arrayElement(parameterName, pos).build();
+                currentBuilder.lineStart().invoke(outputVar, "writeLong",
+                                marshallParameter(currentBuilder, componentType, parameterElement, outputVar, jniEnvFieldName)).lineEnd(";");
+                currentBuilder.dedent();
+                currentBuilder.line("}");
+            } else {
+                // Pure out parameter. We don't need to copy the content, we only need to reserve
+                // the space.
+                CharSequence size = new CodeBuilder(currentBuilder).memberSelect(types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType(), "BYTES", false).write(" * ").write(
+                                arrayLengthSnippet).build();
+                currentBuilder.lineStart().invoke(outputVar, "skip", size).lineEnd(";");
+            }
+        }
+
+        final void generateReadNativeObjectArray(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName,
+                        CharSequence arrayLengthSnippet, CharSequence inputVar, CharSequence jniEnvVar) {
+            CharSequence arrayIndexVariable = parameterName + "Index";
+            currentBuilder.lineStart().forLoop(
+                            List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(arrayIndexVariable).write(" = 0").build()),
+                            new CodeBuilder(currentBuilder).write(arrayIndexVariable).write(" < ").write(arrayLengthSnippet).build(),
+                            List.of(new CodeBuilder(currentBuilder).write(arrayIndexVariable).write("++").build())).lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence sinkArrayElement = new CodeBuilder(currentBuilder).arrayElement(parameterName, arrayIndexVariable).build();
+            CharSequence handle = new CodeBuilder(currentBuilder).invoke(inputVar, "readLong").build();
+            TypeMirror componentType = ((ArrayType) parameterType).getComponentType();
+            currentBuilder.lineStart(sinkArrayElement).write(" = ").write(unmarshallParameter(currentBuilder, componentType, handle, inputVar, jniEnvVar)).lineEnd(
+                            ";");
             currentBuilder.dedent();
             currentBuilder.line("}");
         }

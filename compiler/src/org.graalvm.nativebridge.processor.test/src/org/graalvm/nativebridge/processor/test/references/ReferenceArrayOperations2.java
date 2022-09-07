@@ -40,5 +40,9 @@ public interface ReferenceArrayOperations2 {
 
     Handler[] getHostObjects();
 
+    void acceptGuest(Record[] records);
+
+    void acceptGuestSubArray(Record[] records, int offset, int length);
+
     Record[] getGuestObjects();
 }
