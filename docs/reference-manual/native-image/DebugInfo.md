@@ -18,6 +18,8 @@ The resulting image will contain debug records in a format the GNU Debugger (GDB
 Additionally, you can pass `-O0` to the builder which specifies that no compiler optimizations should be performed.
 Disabling all optimizations is not required, but in general it makes the debugging experience better.
 
+Debug information is not just useful to the debugger. It can also be used by the Linux performance profiling tools `perf` and `valgrind` to correlate execution statistics such as CPU utilization or cache misses with specific, named Java methods and even link them to individual lines of Java code in the original Java source file.
+
 By default, debug info will only include details of some of the values of parameters and local variables.
 This means that the debugger will report many parameters and local variables as being undefined. If you pass `-O0` to the builder then full debug information will be included.
 If you
@@ -35,7 +37,21 @@ However, it can significantly increase the size of the generated image on disk. 
 and local variable information by passing flag `-H:+SourceLevelDebug` can cause a program to be compiled
 slightly differently and for some applications this can slow down execution.
 
+The basic `perf report` command, which displays a histogram showing percentage execution time in each Java method , only requires passing flags `-g` and `-H:+SourceLevelDebug` to the `native-image` command.
+However, more sophisticated uses of `perf` (i.e. `perf annotate`) and use of
+`valgrind` requires debug info to be supplemented with linkage symbols identifying compiled Java methods.
+Java method symbols are omitted from the generated native image by default but they can be retained achieved by passing one extra flag to the `native-image` command
+
+```shell
+native-image -g -H:+SourceLevelDebug -H:-DeleteLocalSymbols Hello
+```
+
+Use of this flag will result in a small increase in the size of the
+resulting image file.
+
 > Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
+
+> Note: Debug info support for `perf` and `valgrind` on Linux is an experimental feature.
 
 ### Table of Contents
 
@@ -46,6 +62,7 @@ slightly differently and for some applications this can slow down execution.
 - [Checking Debug Info on Linux](#checking-debug-info-on-linux)
 - [Debugging with Isolates](#debugging-with-isolates)
 - [Debugging Helper Methods](#debugging-helper-methods)
+- [Special Considerations for using perf and valgrind](#using perf and valgrind)
 
 ## Source File Caching
 
@@ -773,3 +790,157 @@ For example, calling the method below prints high-level information about the Na
 ### Further Reading
 
 - [Debugging Native Image in VS Code](Debugging.md)
+
+## Special Considerations for using perf and valgrind
+
+Debug info includes details of address ranges for top level and
+inlined compiled method code as well as mappings from code addresses
+to the corresponding source files and lines.
+`perf` and `valgrind` are able to use this information for some of
+their recording and reporting operations.
+For example, `perf report` is able to associate code adresses sampled
+during a `perf record` session with Java methods and print the
+DWARF-derived method name for the method in its output histogram.
+
+```
+    . . .
+    68.18%     0.00%  dirtest          dirtest               [.] _start
+            |
+            ---_start
+               __libc_start_main_alias_2 (inlined)
+               |          
+               |--65.21%--__libc_start_call_main
+               |          com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_5087f5482cc9a6abc971913ece43acb471d2631b (inlined)
+               |          com.oracle.svm.core.JavaMainWrapper::run (inlined)
+               |          |          
+               |          |--55.84%--com.oracle.svm.core.JavaMainWrapper::runCore (inlined)
+               |          |          com.oracle.svm.core.JavaMainWrapper::runCore0 (inlined)
+               |          |          |          
+               |          |          |--55.25%--DirTest::main (inlined)
+               |          |          |          |          
+               |          |          |           --54.91%--DirTest::listAll (inlined)
+               . . .
+```              
+
+Unfortunately, other operations require Java methods to be identified
+by an ELF (local) function symbol table entry locating the start of
+the compiled method code.
+In particular, assembly code dumps provided by both tools identify
+branch and call targets using an offset from the nearest symbol.
+Omitting Java method symbols means that offsets are generally
+displayed relative to some unrelated global symbol, usually the entry
+point for a method exported for invocation by C code.
+
+As an illustration of the problem, the following excerpted output from
+`perf annotate` displays the first few annotated instructions of the
+compiled code for method `java.lang.String::String()`.
+
+```
+    . . .
+         : 501    java.lang.String::String():
+         : 521    public String(byte[] bytes, int offset, int length, Charset charset) {
+    0.00 :   519d50: sub    $0x68,%rsp
+    0.00 :   519d54: mov    %rdi,0x38(%rsp)
+    0.00 :   519d59: mov    %rsi,0x30(%rsp)
+    0.00 :   519d5e: mov    %edx,0x64(%rsp)
+    0.00 :   519d62: mov    %ecx,0x60(%rsp)
+    0.00 :   519d66: mov    %r8,0x28(%rsp)
+    0.00 :   519d6b: cmp    0x8(%r15),%rsp
+    0.00 :   519d6f: jbe    51ae1a <graal_vm_locator_symbol+0xe26ba>
+    0.00 :   519d75: nop
+    0.00 :   519d76: nop
+         : 522    Objects.requireNonNull(charset);
+    0.00 :   519d77: nop
+         : 524    java.util.Objects::requireNonNull():
+         : 207    if (obj == null)
+    0.00 :   519d78: nop
+    0.00 :   519d79: nop
+         : 209    return obj;
+    . . .
+```
+
+The leftmost column shows percentages for the amount of time recorded
+at each instruction in samples obtained during the `perf record` run.
+Each instruction is prefaced with it's address in the program's code
+section.
+The disassembly interleaves the source lines from which the code is
+derived, 521-524 for the top level code and 207-209 for the code
+inlined from from `Objects.requireNonNull()`.
+(note, however that the lines for the quoted comments are being computed
+and displayed incorrectly).
+Also, the start of the method is labelled with the name defined in the
+DWARF debug info, `java.lang.String::String()`.
+However, the branch instruction `jbe` at address `0x519d6f` uses a
+very large offset from `graal_vm_locator_symbol` to identify what is
+actually a target address within the compiled code for
+`String::String()`.
+
+Readability of the tool output is significantly improved if
+option `-H-DeleteLocalSymbols` is passed to the `native-image`
+command.
+The equivalent `perf annotate` output with this option enabled is as
+follows:
+
+```
+    . . .
+         : 5      000000000051aac0 <String_constructor_f60263d569497f1facccd5467ef60532e990f75d>:
+         : 6      java.lang.String::String():
+         : 521    *          {@code offset} is greater than {@code bytes.length - length}
+         : 522    *
+         : 523    * @since  1.6
+         : 524    */
+         : 525    @SuppressWarnings("removal")
+         : 526    public String(byte[] bytes, int offset, int length, Charset charset) {
+    0.00 :   51aac0: sub    $0x68,%rsp
+    0.00 :   51aac4: mov    %rdi,0x38(%rsp)
+    0.00 :   51aac9: mov    %rsi,0x30(%rsp)
+    0.00 :   51aace: mov    %edx,0x64(%rsp)
+    0.00 :   51aad2: mov    %ecx,0x60(%rsp)
+    0.00 :   51aad6: mov    %r8,0x28(%rsp)
+    0.00 :   51aadb: cmp    0x8(%r15),%rsp
+    0.00 :   51aadf: jbe    51bbc1 <String_constructor_f60263d569497f1facccd5467ef60532e990f75d+0x1101>
+    0.00 :   51aae5: nop
+    0.00 :   51aae6: nop
+         : 522    Objects.requireNonNull(charset);
+    0.00 :   51aae7: nop
+         : 524    java.util.Objects::requireNonNull():
+         : 207    * @param <T> the type of the reference
+         : 208    * @return {@code obj} if not {@code null}
+         : 209    * @throws NullPointerException if {@code obj} is {@code null}
+         : 210    */
+         : 211    public static <T> T requireNonNull(T obj) {
+         : 212    if (obj == null)
+    0.00 :   51aae8: nop
+    0.00 :   51aae9: nop
+         : 209    throw new NullPointerException();
+         : 210    return obj;
+    . . .
+```
+
+Note that the start address of the method is now labelled with the
+mangled symbol name `String_constructor_f60263d569497f1facccd5467ef60532e990f75d` as well as the DWARF name.
+
+Unfortunately, `perf` and `valgrind` do not correctly understand the
+mangling algorithm employed by GraalVM, nor are they currently able to
+replace the mangled name with the DWARF name in the disassembly even
+though both symbol and DWARF function data are known to idntify code
+starting at the same address.
+So, the branch instruction still prints its target using a symbol plus
+offset but it is at least using the method symbol this time.
+
+Executing command `perf annotate` will provide a disassembly listing
+for all methods and C functions in the image.
+It is possible to annotate a specific method by passing it's name as
+an argument to the perf annotate command.
+Note, however, that `perf` requries the mangled symbol name as
+argument rather than the DWARF name.
+So, in order to annotate method `java.lang.String::String()` it is
+necessary to run command `perf annotate
+String_constructor_f60263d569497f1facccd5467ef60532e990f75d`.
+
+The `valgrind` tool `callgrind` also requires local symbols to be
+retained in order to provide high quality output.
+When `callgrind` is used in combination with a viewer like
+`kcachegrind` it is possible to identify a great deal of valuable
+information about native image execution aand relate it back to
+specific source code lines.
