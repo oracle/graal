@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk.proxy;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -48,9 +47,7 @@ final class Target_java_lang_reflect_Proxy {
         final Class<?> cl = ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(loader, interfaces);
         try {
             final Constructor<?> cons = cl.getConstructor(InvocationHandler.class);
-            if (!Modifier.isPublic(cl.getModifiers())) {
-                cons.setAccessible(true);
-            }
+            cons.setAccessible(true);
             return cons;
         } catch (NoSuchMethodException e) {
             throw new InternalError(e.toString(), e);
