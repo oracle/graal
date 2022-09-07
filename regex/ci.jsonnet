@@ -36,7 +36,7 @@
     [
       common.linux_amd64  + jdk + regex_gate,
       common.linux_amd64  + jdk + regex_downstream_js,
-      common.darwin_amd64 + jdk + regex_gate_lite,
+      //common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [
       common.oraclejdk11,
       common.oraclejdk17,
