@@ -307,19 +307,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        for (Annotation a : getAnnotations(field)) {
-            if (a.annotationType() == Child.class) {
-                return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
-            }
-            if (a.annotationType() == Children.class) {
-                return TruffleCompilerRuntime.ConstantFieldInfo.CHILDREN;
-            }
-            if (a.annotationType() == CompilationFinal.class) {
-                CompilationFinal cf = (CompilationFinal) a;
-                int dimensions = actualStableDimensions(field, cf.dimensions());
-                return TruffleCompilerRuntime.ConstantFieldInfo.forDimensions(dimensions);
-            }
-
+        if (field.isAnnotationPresent(Child.class)) {
+            return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
+        }
+        if (field.isAnnotationPresent(Children.class)) {
+            return TruffleCompilerRuntime.ConstantFieldInfo.CHILDREN;
+        }
+        CompilationFinal cf = field.getAnnotation(CompilationFinal.class);
+        if (cf != null) {
+            int dimensions = actualStableDimensions(field, cf.dimensions());
+            return TruffleCompilerRuntime.ConstantFieldInfo.forDimensions(dimensions);
         }
         return null;
     }
@@ -1171,14 +1168,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         "method or field in the same class. This can be resolved by modifying the relevant class path " +
                         "or module path such that it includes the missing type.",
                         attemptedAction);
-    }
-
-    private static Annotation[] getAnnotations(ResolvedJavaField element) {
-        try {
-            return element.getAnnotations();
-        } catch (NoClassDefFoundError e) {
-            throw handleAnnotationFailure(e, String.format("querying %s for annotations", element.format("%H.%n:%t")));
-        }
     }
 
     private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaMethod method) {

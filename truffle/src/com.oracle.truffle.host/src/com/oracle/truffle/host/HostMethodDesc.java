@@ -214,16 +214,25 @@ abstract class HostMethodDesc {
             return Modifier.isPublic(method.getModifiers()) && Modifier.isPublic(method.getDeclaringClass().getModifiers());
         }
 
-        static boolean isCallerSensitive(Executable method) {
-            Annotation[] annotations = method.getAnnotations();
-            for (Annotation annotation : annotations) {
-                switch (annotation.annotationType().getName()) {
-                    case "sun.reflect.CallerSensitive":
-                    case "jdk.internal.reflect.CallerSensitive":
-                        return true;
+        private static final Class<? extends Annotation> callerSensitiveClass = getCallerSensitiveClass();
+
+        @SuppressWarnings("unchecked")
+        private static Class<? extends Annotation> getCallerSensitiveClass() {
+            Class<? extends Annotation> tmpCallerSensitiveClass = null;
+            try {
+                tmpCallerSensitiveClass = (Class<? extends Annotation>) Class.forName("jdk.internal.reflect.CallerSensitive");
+            } catch (ClassNotFoundException e) {
+                try {
+                    tmpCallerSensitiveClass = (Class<? extends Annotation>) Class.forName("sun.reflect.CallerSensitive");
+                } catch (ClassNotFoundException ex) {
+                    // ignore
                 }
             }
-            return false;
+            return tmpCallerSensitiveClass;
+        }
+
+        static boolean isCallerSensitive(Executable method) {
+            return callerSensitiveClass != null && method.isAnnotationPresent(callerSensitiveClass);
         }
 
         @Override
