@@ -37,7 +37,7 @@ However, it can significantly increase the size of the generated image on disk. 
 and local variable information by passing flag `-H:+SourceLevelDebug` can cause a program to be compiled
 slightly differently and for some applications this can slow down execution.
 
-The basic `perf report` command, which displays a histogram showing percentage execution time in each Java method , only requires passing flags `-g` and `-H:+SourceLevelDebug` to the `native-image` command.
+The basic `perf report` command, which displays a histogram showing percentage execution time in each Java method, only requires passing flags `-g` and `-H:+SourceLevelDebug` to the `native-image` command.
 However, more sophisticated uses of `perf` (i.e. `perf annotate`) and use of
 `valgrind` requires debug info to be supplemented with linkage symbols identifying compiled Java methods.
 Java method symbols are omitted from the generated native image by default but they can be retained achieved by passing one extra flag to the `native-image` command
@@ -866,14 +866,14 @@ section.
 The disassembly interleaves the source lines from which the code is
 derived, 521-524 for the top level code and 207-209 for the code
 inlined from from `Objects.requireNonNull()`.
-(note, however that the lines for the quoted comments are being computed
-and displayed incorrectly).
 Also, the start of the method is labelled with the name defined in the
 DWARF debug info, `java.lang.String::String()`.
 However, the branch instruction `jbe` at address `0x519d6f` uses a
-very large offset from `graal_vm_locator_symbol` to identify what is
-actually a target address within the compiled code for
-`String::String()`.
+very large offset from `graal_vm_locator_symbol`.
+The printed offset does identify the correct address relative to the
+location of the symbol.
+However, this fails to make clear that the target address actually
+lies within the compiled code range for method `String::String()` i.e. that thsi is a method-local branch.
 
 Readability of the tool output is significantly improved if
 option `-H-DeleteLocalSymbols` is passed to the `native-image`
@@ -917,16 +917,25 @@ follows:
     . . .
 ```
 
-Note that the start address of the method is now labelled with the
-mangled symbol name `String_constructor_f60263d569497f1facccd5467ef60532e990f75d` as well as the DWARF name.
+In this version the start address of the method is now labelled with
+the mangled symbol name `String_constructor_f60263d569497f1facccd5467ef60532e990f75d`
+as well as the DWARF name.
+The branch target is now printed using an offset from that start
+symbol.
 
 Unfortunately, `perf` and `valgrind` do not correctly understand the
 mangling algorithm employed by GraalVM, nor are they currently able to
 replace the mangled name with the DWARF name in the disassembly even
-though both symbol and DWARF function data are known to idntify code
+though both symbol and DWARF function data are known to identify code
 starting at the same address.
 So, the branch instruction still prints its target using a symbol plus
 offset but it is at least using the method symbol this time.
+
+Also, because address `51aac0` is now recognized as a method start,
+`perf` has preceded the first line of the method with 5 context lines,
+which list the tail end of the method's javadoc comment.
+Unfortunately, perf has numbered these lines incorrectly, labelling
+the first comment with 521 rather than 516.
 
 Executing command `perf annotate` will provide a disassembly listing
 for all methods and C functions in the image.
