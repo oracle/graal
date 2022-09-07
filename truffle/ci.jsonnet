@@ -108,7 +108,7 @@
         linux_amd64  + jdk + sigtest,
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
-        darwin_amd64 + jdk + truffle_weekly + gate_lite,
+        //darwin_amd64 + jdk + truffle_weekly + gate_lite,
       ] for jdk in [common.oraclejdk11, common.oraclejdk17]
     ]) + [
     linux_amd64 + common.oraclejdk11 + truffle_gate + {timelimit: "45:00"},

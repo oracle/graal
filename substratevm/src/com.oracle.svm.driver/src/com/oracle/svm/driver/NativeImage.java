@@ -35,7 +35,6 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
@@ -1444,7 +1443,7 @@ public class NativeImage {
             absolutePath = absolutePath.getParent();
         }
         try {
-            Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
+            Path realPath = absolutePath.toRealPath();
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + ClasspathUtils.classpathToString(path) + " is not readable");
             }

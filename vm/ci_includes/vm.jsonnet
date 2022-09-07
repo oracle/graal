@@ -184,7 +184,7 @@ local jdks = common_json.jdks;
      ],
      name: 'post-merge-deploy-vm-maven-linux-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_11_17_only_native + {
+    /*vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['--dry-run', 'lafo-maven'],
@@ -197,7 +197,7 @@ local jdks = common_json.jdks;
        $.maven_11_17_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-darwin-aarch64',
-    },
+    },*/
     vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,

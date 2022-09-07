@@ -136,16 +136,18 @@ public class NativeImageClassLoaderSupport {
         }
         buildcp = Arrays.stream(builderClassPathEntries)
                         .map(Path::of)
-                        .map(Path::toAbsolutePath)
+                        .map(Util::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         imagemp = Arrays.stream(modulePath)
                         .map(Path::of)
+                        .map(Util::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
                         .flatMap(s -> Arrays.stream(s.split(File.pathSeparator)))
                         .map(Path::of)
+                        .map(Util::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
@@ -216,11 +218,19 @@ public class NativeImageClassLoaderSupport {
             Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().flatMap(Util::toClassPathEntries);
             return pathStream.map(v -> {
                 try {
-                    return v.toAbsolutePath().toUri().toURL();
+                    return toRealPath(v).toUri().toURL();
                 } catch (MalformedURLException e) {
                     throw UserError.abort("Invalid classpath element '%s'. Make sure that all paths provided with '%s' are correct.", v, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
                 }
             }).toArray(URL[]::new);
+        }
+
+        static Path toRealPath(Path p) {
+            try {
+                return p.toRealPath();
+            } catch (IOException e) {
+                throw UserError.abort("Path entry '%s' does not map to a real path.", p);
+            }
         }
 
         static Stream<Path> toClassPathEntries(String classPathEntry) {
