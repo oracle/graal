@@ -76,6 +76,18 @@ public class StdoutWriter implements Writer {
     @Override
     public void writeln() {
         System.out.println();
+        indentWritten = false;
+    }
+
+    @Override
+    public int getIndentLevel() {
+        return indentLevel;
+    }
+
+    @Override
+    public void setIndentLevel(int newIndentLevel) {
+        assert newIndentLevel >= 0;
+        indentLevel = newIndentLevel;
     }
 
     @Override

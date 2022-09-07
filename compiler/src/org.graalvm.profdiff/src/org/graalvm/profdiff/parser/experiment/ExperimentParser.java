@@ -131,9 +131,11 @@ public class ExperimentParser {
             return null;
         }
         EconomicMap<String, Object> map = expectMap(obj, "inliningTreeNode", false);
-        String methodName = expectString(map, "targetMethodName", false);
+        String methodName = expectString(map, "targetMethodName", true);
         int bci = expectInteger(map, "bci");
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci);
+        boolean positive = expectBoolean(map, "positive");
+        List<String> reason = expectStringList(map, "reason", true);
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason);
         List<Object> inlinees = expectList(map, "inlinees", true);
         if (inlinees == null) {
             return inliningTreeNode;
@@ -221,6 +223,33 @@ public class ExperimentParser {
         } catch (JSONParserException parserException) {
             throw new ExperimentParserError(experimentFiles.getExperimentId(), currentResourceName, parserException.getMessage());
         }
+    }
+
+    private List<String> expectStringList(EconomicMap<String, Object> map, String key, boolean listNullable) throws ExperimentParserTypeError {
+        List<Object> objects = expectList(map, key, listNullable);
+        if (objects == null) {
+            return null;
+        }
+        List<String> strings = null;
+        for (Object object : objects) {
+            if (object instanceof String) {
+                if (strings == null) {
+                    strings = new ArrayList<>();
+                }
+                strings.add((String) object);
+            } else {
+                throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key + "[]", String.class, object);
+            }
+        }
+        return strings;
+    }
+
+    private boolean expectBoolean(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
+        Object object = map.get(key);
+        if (object instanceof Boolean) {
+            return (Boolean) object;
+        }
+        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, Boolean.class, object);
     }
 
     private String expectString(EconomicMap<String, Object> map, String key, boolean nullable) throws ExperimentParserTypeError {

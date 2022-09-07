@@ -88,17 +88,19 @@ public class CompilationUnitTest {
             unorderedDetailedPhase.addChild(optimization5);
             unorderedDetailedPhase.addChild(optimization1);
 
-            InliningTreeNode inliningTreeRoot = new InliningTreeNode("root", 0);
-            InliningTreeNode method1 = new InliningTreeNode("method1", 1);
-            InliningTreeNode method2 = new InliningTreeNode("method1", 2);
-            InliningTreeNode method3 = new InliningTreeNode("method2", 2);
-            InliningTreeNode method3First = new InliningTreeNode("method", 1);
-            InliningTreeNode method3Second = new InliningTreeNode("method", 2);
+            InliningTreeNode inliningTreeRoot = new InliningTreeNode("root", 0, true, null);
+            InliningTreeNode method1 = new InliningTreeNode("method1", 1, true, null);
+            InliningTreeNode method2 = new InliningTreeNode("method1", 2, true, null);
+            InliningTreeNode method3 = new InliningTreeNode("method2", 2, true, null);
+            InliningTreeNode method3First = new InliningTreeNode("method", 1, true, null);
+            InliningTreeNode method3Second = new InliningTreeNode("method", 2, true, null);
             method3.addChild(method3Second);
             method3.addChild(method3First);
-            InliningTreeNode method4 = new InliningTreeNode("method1", 3);
-            InliningTreeNode method5 = new InliningTreeNode("method2", 3);
+            InliningTreeNode method4 = new InliningTreeNode("method1", 3, true, null);
+            InliningTreeNode method5 = new InliningTreeNode("method2", 3, false, null);
+            InliningTreeNode method6 = new InliningTreeNode("method2", 3, true, null);
             inliningTreeRoot.addChild(method4);
+            inliningTreeRoot.addChild(method6);
             inliningTreeRoot.addChild(method1);
             inliningTreeRoot.addChild(method5);
             inliningTreeRoot.addChild(method3);
@@ -110,7 +112,7 @@ public class CompilationUnitTest {
                             optimization6, subphase1, subphase2);
             optimizationTreePreorderAfterRemoval = List.of(rootPhase, controlPhase, controlPhaseChild2, controlPhaseChild1);
             inliningTreeNodePreorderAfterSort = List.of(inliningTreeRoot, method1, method2, method3, method3First, method3Second,
-                            method4, method5);
+                            method4, method5, method6);
         }
     }
 

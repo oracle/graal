@@ -2,34 +2,40 @@
     "compilationId": "1",
     "compilationMethodName": "foo.bar.Foo$Bar.methodName()",
     "inliningTreeRoot": {
-         "targetMethodName": "foo.bar.Foo$Bar.methodName()",
-         "bci": -1,
-         "inlinees": [
+        "targetMethodName": "foo.bar.Foo$Bar.methodName()",
+        "bci": -1,
+        "positive": true,
+        "reason": null,
+        "inlinees": [
             {
-               "targetMethodName": "java.lang.String.equals(Object)",
-               "bci": 44,
-               "inlinees": null
+                "targetMethodName": "java.lang.String.equals(Object)",
+                "bci": 44,
+                "positive": false,
+                "reason": ["not inlined"]
             }
-         ]
+        ]
     },
-    "rootPhase": { 
-        "phaseName": "RootPhase", 
-        "optimizations": [ 
-           { 
-               "phaseName": "SomeTier", 
-               "optimizations": [ 
-                   { 
-                       "optimizationName": "LoopTransformation", 
-                       "eventName": "PartialUnroll", 
-                       "position": {"foo.bar.Foo$Bar.innerMethod()": 30, "foo.bar.Foo$Bar.methodName()": 68}, 
-                       "unrollFactor": 1 
-                   }, 
-                   { 
-                       "phaseName": "EmptyPhase", 
-                       "optimizations": null 
-                   } 
-               ] 
-           } 
-       ] 
-   } 
+    "rootPhase": {
+        "phaseName": "RootPhase",
+        "optimizations": [
+            {
+                "phaseName": "SomeTier",
+                "optimizations": [
+                    {
+                        "optimizationName": "LoopTransformation",
+                        "eventName": "PartialUnroll",
+                        "position": {
+                            "foo.bar.Foo$Bar.innerMethod()": 30,
+                            "foo.bar.Foo$Bar.methodName()": 68
+                        },
+                        "unrollFactor": 1
+                    },
+                    {
+                        "phaseName": "EmptyPhase",
+                        "optimizations": null
+                    }
+                ]
+            }
+        ]
+    }
 }

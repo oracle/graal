@@ -586,7 +586,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (graph.getInliningLog() == null) {
             return null;
         }
-        return callsiteAsJsonMap(graph.getInliningLog().getRootCallsite(), methodNameFormatter);
+        return callsiteAsJsonMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter);
     }
 
     /**
@@ -595,30 +595,43 @@ public class OptimizationLogImpl implements OptimizationLog {
      * Subtrees representing a node replaced by an inlined snippet are not included.
      *
      * @param callsite the root of the inlining subtree
+     * @param isInlined {@code true} if the callsite was inlined
+     * @param reason the list of reasons for the inlining decisions made about the callsite
      * @param methodNameFormatter a function that formats method names
      * @return inlining subtree as a JSON map
      */
-    private EconomicMap<String, Object> callsiteAsJsonMap(InliningLog.Callsite callsite,
+    private EconomicMap<String, Object> callsiteAsJsonMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
                     Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
-        map.put("targetMethodName", methodNameFormatter.apply(callsite.target));
+        map.put("targetMethodName", callsite.target == null ? null : methodNameFormatter.apply(callsite.target));
         map.put("bci", callsite.getBci());
-        List<Object> inlined = null;
+        map.put("positive", isInlined);
+        map.put("reason", reason);
+        if (!isInlined) {
+            return map;
+        }
+        List<Object> inlinees = null;
         for (InliningLog.Callsite child : callsite.children) {
             if (child.isInlinedSnippet()) {
                 continue;
             }
-            for (InliningLog.Decision decision : child.decisions) {
-                if (decision.isPositive()) {
-                    if (inlined == null) {
-                        inlined = new ArrayList<>();
+            boolean childIsInlined = false;
+            List<String> childReason = null;
+            for (InliningLog.Decision childDecision : child.decisions) {
+                childIsInlined = childIsInlined || childDecision.isPositive();
+                if (childDecision.getReason() != null) {
+                    if (childReason == null) {
+                        childReason = new ArrayList<>();
                     }
-                    inlined.add(callsiteAsJsonMap(child, methodNameFormatter));
-                    break;
+                    childReason.add(childDecision.getReason());
                 }
             }
+            if (inlinees == null) {
+                inlinees = new ArrayList<>();
+            }
+            inlinees.add(callsiteAsJsonMap(child, childIsInlined, childReason, methodNameFormatter));
         }
-        map.put("inlinees", inlined);
+        map.put("inlinees", inlinees);
         return map;
     }
 }

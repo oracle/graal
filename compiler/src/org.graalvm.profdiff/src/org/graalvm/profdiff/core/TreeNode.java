@@ -38,6 +38,11 @@ import org.graalvm.profdiff.util.Writer;
  */
 public abstract class TreeNode<T extends TreeNode<T>> {
     /**
+     * A string to be used instead of the name of the node when the name is {@code null}.
+     */
+    public static final String NULL_NAME = "null";
+
+    /**
      * The name of this node.
      */
     private final String name;
@@ -75,6 +80,13 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     * Gets the name of this node or {@link #NULL_NAME} if the name is {@code null}.
+     */
+    public String getNameOrNull() {
+        return name == null ? NULL_NAME : name;
     }
 
     /**
@@ -184,6 +196,6 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      * @param writer the destination writer
      */
     public void writeHead(Writer writer) {
-        writer.writeln(getName());
+        writer.writeln(getNameOrNull());
     }
 }

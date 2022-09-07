@@ -39,6 +39,7 @@ import org.graalvm.profdiff.matching.method.MatchedMethod;
 import org.graalvm.profdiff.matching.method.MethodMatching;
 import org.graalvm.profdiff.matching.tree.DeltaTree;
 import org.graalvm.profdiff.matching.tree.EditScript;
+import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
@@ -159,12 +160,12 @@ public class Profdiff {
                     if (inliningTreeRoot1 != null && inliningTreeRoot2 != null) {
                         writer.writeln("Inlining tree matching");
                         EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
+                        DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
                         if (verbosityLevel.shouldShowOnlyDiff()) {
-                            DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
                             inliningDeltaTree.pruneIdentities();
-                            inliningTreeMatching = inliningDeltaTree.asEditScript();
                         }
-                        inliningTreeMatching.write(writer);
+                        InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
+                        inliningDeltaTree.accept(inliningDeltaTreeWriter);
                     } else {
                         writer.writeln("Inlining trees are not available");
                     }

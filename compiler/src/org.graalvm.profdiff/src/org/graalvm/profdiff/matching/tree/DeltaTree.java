@@ -181,4 +181,26 @@ public class DeltaTree<T extends TreeNode<T>> {
         }
         return script;
     }
+
+    /**
+     * Visits this delta tree in dfs preorder using the provided visitor.
+     *
+     * @param visitor the visitor that will visit this delta tree
+     */
+    public void accept(DeltaTreeVisitor<T> visitor) {
+        visitor.beforeVisit();
+        forEach(node -> {
+            if (node.isIdentity()) {
+                visitor.visitIdentity(node);
+            } else if (node.isDeletion()) {
+                visitor.visitDeletion(node);
+            } else if (node.isInsertion()) {
+                visitor.visitInsertion(node);
+            } else {
+                assert node.isRelabeling();
+                visitor.visitRelabeling(node);
+            }
+        });
+        visitor.afterVisit();
+    }
 }

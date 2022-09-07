@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.matching.tree;
 
+import java.util.Objects;
+
 import org.graalvm.profdiff.core.InliningTreeNode;
 
 /**
@@ -41,6 +43,25 @@ public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
      */
     @Override
     public boolean nodesEqual(InliningTreeNode node1, InliningTreeNode node2) {
-        return node1.getBCI() == node2.getBCI() && node1.getName().equals(node2.getName());
+        return node1.getBCI() == node2.getBCI() && node1.isPositive() == node2.isPositive() && Objects.equals(node1.getName(), node2.getName());
+    }
+
+    /**
+     * Gets the cost of relabeling the first node to the second. If the nodes differ only in the
+     * positivity of the inlining decision, but they correspond the same method, the
+     * {@link #UNIT_COST unit cost} is returned. Otherwise, the cost of relabeling is
+     * {@link #INFINITE_COST infinite}.
+     *
+     * @param node1 the first node
+     * @param node2 the second node
+     * @return the unit cost if nodes differ only in positivity, infinity otherwise
+     */
+    @Override
+    public long relabelCost(InliningTreeNode node1, InliningTreeNode node2) {
+        assert node1 != node2;
+        if (node1.getBCI() == node2.getBCI() && Objects.equals(node1.getName(), node2.getName())) {
+            return UNIT_COST;
+        }
+        return INFINITE_COST;
     }
 }
