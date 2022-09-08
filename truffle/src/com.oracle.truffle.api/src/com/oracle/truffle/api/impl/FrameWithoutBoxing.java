@@ -377,6 +377,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
     }
 
+    @Override
     public void swap(int first, int second) {
         byte firstTag = getIndexedTagChecked(first);
         Object firstValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
@@ -628,6 +629,74 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @Override
+    public void copyStatic(int srcSlot, int destSlot) {
+        assert indexedTags[srcSlot] >= STATIC_TAG && indexedTags[destSlot] >= STATIC_TAG : "Unexpected copy of static value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[destSlot] = indexedTags[srcSlot];
+        }
+
+        indexedLocals[destSlot] = indexedLocals[srcSlot];
+        indexedPrimitiveLocals[destSlot] = indexedPrimitiveLocals[srcSlot];
+    }
+
+    @Override
+    public void swapPrimitiveStatic(int first, int second) {
+        assert indexedTags[first] > STATIC_TAG && indexedTags[second] > STATIC_TAG : "Unexpected swap of static primitive value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            final byte swapTag = indexedTags[first];
+            indexedTags[first] = indexedTags[second];
+            indexedTags[second] = swapTag;
+        }
+
+        final long firstValue = indexedPrimitiveLocals[first];
+        final long secondValue = indexedPrimitiveLocals[second];
+
+        indexedPrimitiveLocals[first] = secondValue;
+        indexedPrimitiveLocals[second] = firstValue;
+    }
+
+    @Override
+    public void swapObjectStatic(int first, int second) {
+        assert (indexedTags[first] == STATIC_OBJECT_TAG || indexedTags[first] == STATIC_ILLEGAL_TAG) &&
+                        (indexedTags[second] == STATIC_OBJECT_TAG || indexedTags[second] == STATIC_ILLEGAL_TAG) : "Unexpected swap of static object value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            final byte swapTag = indexedTags[first];
+            indexedTags[first] = indexedTags[second];
+            indexedTags[second] = swapTag;
+        }
+
+        final Object firstValue = indexedLocals[first];
+        final Object secondValue = indexedLocals[second];
+
+        indexedLocals[first] = secondValue;
+        indexedLocals[second] = firstValue;
+    }
+
+    @Override
+    public void swapStatic(int first, int second) {
+        assert indexedTags[first] >= STATIC_TAG && indexedTags[second] >= STATIC_TAG : "Unexpected swap of static value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            final byte swapTag = indexedTags[first];
+            indexedTags[first] = indexedTags[second];
+            indexedTags[second] = swapTag;
+        }
+
+        final Object firstValue = indexedLocals[first];
+        final Object secondValue = indexedLocals[second];
+        final long firstPrimitiveValue = indexedPrimitiveLocals[first];
+        final long secondPrimitiveValue = indexedPrimitiveLocals[second];
+
+        indexedLocals[first] = secondValue;
+        indexedLocals[second] = firstValue;
+        indexedPrimitiveLocals[first] = secondPrimitiveValue;
+        indexedPrimitiveLocals[second] = firstPrimitiveValue;
+    }
+
+    @Override
     public void clearPrimitiveStatic(int slot) {
         assert indexedTags[slot] > STATIC_TAG : "Unexpected clear of static primitive value";
         // We use this check instead of the assert keyword to update the tags in PE'd code.
@@ -649,6 +718,21 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_ILLEGAL_TAG;
         }
 
+        indexedLocals[slot] = null;
+    }
+
+    @Override
+    public void clearStatic(int slot) {
+        assert indexedTags[slot] >= STATIC_TAG : "Unexpected clear of static value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_ILLEGAL_TAG;
+        }
+
+        if (CompilerDirectives.inCompiledCode()) {
+            // Avoid keeping track of cleared frame slots in FrameStates
+            indexedPrimitiveLocals[slot] = 0L;
+        }
         indexedLocals[slot] = null;
     }
 

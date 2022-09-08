@@ -655,11 +655,68 @@ public interface Frame {
     }
 
     /**
+     * Copies from one slot to another. Requires both slots to use {@link FrameSlotKind#Static}. In
+     * cases where the underlying slot type is known, {@link Frame#copyPrimitiveStatic} and
+     * {@link Frame#copyObjectStatic} should be used for performance reasons.
+     * 
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since 22.3
+     */
+    default void copyStatic(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Swaps the primitive values of two slots. Requires both slots to use
+     * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
+     * implementations have to guarantee that the variables in both slots are primitive values.
+     * 
+     * @param first the slot of the first local variable
+     * @param second the slot of the second local variable
+     * @since 22.3
+     */
+    default void swapPrimitiveStatic(int first, int second) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Swaps the object values of two slots. Requires both slots to use
+     * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
+     * implementations have to guarantee that the variables in both slots are {@link Object}s.
+     * 
+     * @param first the slot of the first local variable
+     * @param second the slot of the second local variable
+     * @since 22.3
+     */
+    default void swapObjectStatic(int first, int second) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Swaps the contents of two slots. Requires both slots to use {@link FrameSlotKind#Static}. In
+     * cases where the underlying slot type is known, {@link Frame#swapPrimitiveStatic} and
+     * {@link Frame#swapObjectStatic} should be used for performance reasons.
+     * 
+     * @param first the slot of the first local variable
+     * @param second the slot of the second local variable
+     * @since 22.3
+     */
+    default void swapStatic(int first, int second) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Clears the primitive value at the given slot in the frame. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Writing over a previously cleared slot is still allowed.
-     * Subsequent reads to the slot, unless re-written to, will not give any guarantees about the
-     * returned value. Since this method does not perform any type checks, language implementations
-     * have to guarantee that the variable at the given slot is a primitive value.
+     * Subsequent reads to the slot, unless re-written to, are not allowed and will fail with an
+     * {@link AssertionError} if assertions are enabled. Since this method does not perform any type
+     * checks, language implementations have to guarantee that the variable at the given slot is a
+     * primitive value.
      *
      * <p>
      * This method is intended to be used for implementations of liveness analysis. As such, the
@@ -680,9 +737,10 @@ public interface Frame {
     /**
      * Clears the object value at the given slot in the frame. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Writing over a previously cleared slot is still allowed.
-     * Subsequent reads to the slot, unless re-written to, will not give any guarantees about the
-     * returned value. Since this method does not perform any type checks, language implementations
-     * have to guarantee that the variable at the given slot is an {@link Object}.
+     * Subsequent reads to the slot, unless re-written to, are not allowed and will fail with an
+     * {@link AssertionError} if assertions are enabled. Since this method does not perform any type
+     * checks, language implementations have to guarantee that the variable at the given slot is an
+     * {@link Object}.
      *
      * <p>
      * This method is intended to be used for implementations of liveness analysis. As such, the
@@ -696,6 +754,22 @@ public interface Frame {
      * @since 22.2
      */
     default void clearObjectStatic(int slot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Clears the value at the given slot in the frame. Requires the given slot to use
+     * {@link FrameSlotKind#Static}. Writing over a previously cleared slot is still allowed.
+     * Subsequent reads to the slot, unless re-written to, are not allowed and will fail with an
+     * {@link AssertionError} if assertions are enabled. In cases where the underlying slot type is
+     * known, {@link Frame#clearPrimitiveStatic} and {@link Frame#clearObjectStatic} should be used
+     * for performance reasons.
+     * 
+     * @param slot The slot of the local variable
+     * @since 22.3
+     */
+    default void clearStatic(int slot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
