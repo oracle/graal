@@ -138,6 +138,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         assert lenValue.getPlatformKind().equals(AArch64Kind.DWORD) : lenValue;
         assert encryptedCounterValue.getPlatformKind().equals(AArch64Kind.QWORD) : encryptedCounterValue;
         assert usedPtrValue.getPlatformKind().equals(AArch64Kind.QWORD) : usedPtrValue;
+        assert resultValue.getPlatformKind().equals(AArch64Kind.DWORD) : resultValue;
 
         Register in = asRegister(inValue);
         Register out = asRegister(outValue);
