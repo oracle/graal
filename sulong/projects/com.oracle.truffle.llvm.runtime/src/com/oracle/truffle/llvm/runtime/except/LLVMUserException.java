@@ -97,11 +97,13 @@ public class LLVMUserException extends LLVMException {
 
         final transient LLVMPointer imageBase;
         final transient LLVMPointer exceptionObject;
+        final transient long stackOffset;
 
-        public LLVMUserExceptionWindows(Node location, LLVMPointer imageBase, LLVMPointer exceptionObject, LLVMPointer throwInfo) {
+        public LLVMUserExceptionWindows(Node location, LLVMPointer imageBase, LLVMPointer exceptionObject, LLVMPointer throwInfo, long stackOffset) {
             super(location, throwInfo);
             this.exceptionObject = exceptionObject;
             this.imageBase = imageBase;
+            this.stackOffset = stackOffset;
         }
 
         public LLVMPointer getImageBase() {
@@ -112,5 +114,8 @@ public class LLVMUserException extends LLVMException {
             return exceptionObject;
         }
 
+        public long getStackPointer() {
+            return stackOffset;
+        }
     }
 }

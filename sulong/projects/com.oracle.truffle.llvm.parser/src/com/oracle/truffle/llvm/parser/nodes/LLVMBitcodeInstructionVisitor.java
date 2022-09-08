@@ -126,7 +126,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchPadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCleanupPadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode.CatchPadEntryNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssume;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
@@ -1069,24 +1071,30 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         assert catchPad.getClauseSymbols().length == 3;
 
         LLVMExpressionNode clauseNode = symbols.resolve(catchPad.getClauseSymbols()[0]);
-        long offset = getIntegerConstant(catchPad.getClauseSymbols()[1]);
+        long attributes = getIntegerConstant(catchPad.getClauseSymbols()[1]);
         Type exceptionType = catchPad.getClauseSymbols()[2].getType();
         LLVMExpressionNode getExceptionSlot = symbols.resolve(catchPad.getClauseSymbols()[2]);
 
-        CatchPadEntryNode conditionNode = LLVMCatchSwitchNode.createCatchPadEntryNode(clauseNode, offset, getExceptionSlot, (PointerType) exceptionType);
+        CatchPadEntryNode conditionNode = LLVMCatchSwitchNode.createCatchPadEntryNode(clauseNode, attributes, getExceptionSlot, (PointerType) exceptionType);
 
         assert catchPad.getWithinSymbol() instanceof CatchSwitchInstruction;
         CatchSwitchInstruction catchSwitch = (CatchSwitchInstruction) catchPad.getWithinSymbol();
 
         addFunctionModifier(new LLVMCatchSwitchAddConditionFunctionModifier(conditionNode, catchSwitch.getInstructionBlock().getBlockIndex()));
+        createFrameWrite(LLVMCatchPadNode.create(exceptionSlot), catchPad);
     }
 
     @Override
     public void visit(CleanupPadInstruction catchPad) {
+        // TODO([GR-40899]): Reset the stack pointer to the unwound value
+        // TODO([GR-40900]): Call exception object destructor
+        createFrameWrite(LLVMCleanupPadNode.create(exceptionSlot), catchPad);
     }
 
     @Override
     public void visit(CleanupRetInstruction cleanupRet) {
+        // TODO([GR-40899]): Reset the stack pointer to the unwound value
+        // TODO([GR-40900]): Call exception object destructor
         LLVMControlFlowNode node = cleanupRet.getSuccessorCount() > 0 ? nodeFactory.createUnconditionalBranch(cleanupRet.getSuccessor(0).getBlockIndex(), getPhiWriteNodes(cleanupRet)[0])
                         : nodeFactory.createResumeInstruction(exceptionSlot);
 
