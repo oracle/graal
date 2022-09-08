@@ -244,6 +244,8 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         for (Module module : modules) {
             if (builderModule.isNamed()) {
                 Modules.addOpens(module, packageName, builderModule);
+            } else {
+                Modules.addOpensToAllUnnamed(module, packageName);
             }
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
