@@ -1,15 +1,8 @@
 # File is formatted with
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
-<<<<<<< HEAD:sulong/ci_common/sulong-common.jsonnet
-local common = import "../../common.jsonnet";
-local composable = (import "../../common-utils.libsonnet").composable;
-local sulong_deps = composable((import "../../common.json").sulong.deps);
-=======
-{
-  local common = import "../../../common.jsonnet",
-  local composable = (import "../../../common-utils.libsonnet").composable,
-  local sulong_deps = composable((import "../../../common.json").sulong.deps),
->>>>>>> bf1a236d573 (Group ci files in each suite):sulong/ci/ci_common/sulong-common.jsonnet
+local common = import "../../../common.jsonnet";
+local composable = (import "../../../common-utils.libsonnet").composable;
+local sulong_deps = composable((import "../../../common.json").sulong.deps);
 
 {
   local linux_amd64 = common.linux_amd64,
