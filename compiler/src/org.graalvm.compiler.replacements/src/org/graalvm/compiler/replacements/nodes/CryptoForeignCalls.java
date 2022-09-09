@@ -34,7 +34,7 @@ public class CryptoForeignCalls {
     public static final ForeignCallDescriptor STUB_AES_DECRYPT = foreignCallDescriptor("aesDecrypt", AESNode.KILLED_LOCATIONS, Pointer.class, Pointer.class, Pointer.class);
 
     public static final ForeignCallDescriptor STUB_GHASH_PROCESS_BLOCKS = foreignCallDescriptor("ghashProcessBlocks", GHASHProcessBlocksNode.KILLED_LOCATIONS,
-                    Pointer.class, Pointer.class, Pointer.class, Pointer.class);
+                    Pointer.class, Pointer.class, Pointer.class, int.class);
     public static final ForeignCallDescriptor STUB_CTR_AES_CRYPT = foreignCallDescriptorWithReturnType("ctrAESCrypt", CounterModeAESNode.KILLED_LOCATIONS,
                     int.class, Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class, Pointer.class, Pointer.class);
 

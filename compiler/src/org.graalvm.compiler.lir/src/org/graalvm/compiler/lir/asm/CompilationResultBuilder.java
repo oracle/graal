@@ -127,7 +127,7 @@ public class CompilationResultBuilder {
         }
     }
 
-    public final Assembler asm;
+    public final Assembler<?> asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
@@ -189,7 +189,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,
@@ -211,7 +211,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,

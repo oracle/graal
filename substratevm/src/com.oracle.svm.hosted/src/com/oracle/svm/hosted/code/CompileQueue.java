@@ -1367,7 +1367,7 @@ public class CompileQueue {
         @Override
         public CompilationResultBuilder createBuilder(CodeGenProviders providers,
                         FrameMap frameMap,
-                        Assembler asm,
+                        Assembler<?> asm,
                         DataBuilder dataBuilder,
                         FrameContext frameContext,
                         OptionValues options,

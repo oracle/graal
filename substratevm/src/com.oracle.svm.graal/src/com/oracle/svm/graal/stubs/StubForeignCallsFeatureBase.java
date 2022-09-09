@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -48,6 +49,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
+@Platforms({Platform.AMD64.class, Platform.AARCH64.class})
 public class StubForeignCallsFeatureBase implements InternalFeature {
 
     static final class StubDescriptor {
@@ -78,9 +80,14 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures);
-            // Currently we only support AMD64, see CPUFeatureRegionEnterNode.generate
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() && Platform.includedIn(Platform.AMD64.class);
+            boolean isJITCompilationEnabled = DeoptimizationSupport.enabled();
+            // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
+            // as well as a version with the preferred runtime checked features, even if both
+            // variants are not supported by the build time feature set. This way, intrinsics
+            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfils the
+            // minimum requirements and doesn't have the preferred AVX2 flag.
+            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || isJITCompilationEnabled && !minimumRequiredFeatures.equals(runtimeCheckedCPUFeatures);
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && isJITCompilationEnabled;
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {

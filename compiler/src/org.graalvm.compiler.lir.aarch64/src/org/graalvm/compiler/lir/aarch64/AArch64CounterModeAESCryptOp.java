@@ -67,6 +67,7 @@ import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -130,6 +131,15 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        assert inValue.getPlatformKind().equals(AArch64Kind.QWORD) : inValue;
+        assert outValue.getPlatformKind().equals(AArch64Kind.QWORD) : outValue;
+        assert keyValue.getPlatformKind().equals(AArch64Kind.QWORD) : keyValue;
+        assert counterValue.getPlatformKind().equals(AArch64Kind.QWORD) : counterValue;
+        assert lenValue.getPlatformKind().equals(AArch64Kind.DWORD) : lenValue;
+        assert encryptedCounterValue.getPlatformKind().equals(AArch64Kind.QWORD) : encryptedCounterValue;
+        assert usedPtrValue.getPlatformKind().equals(AArch64Kind.QWORD) : usedPtrValue;
+        assert resultValue.getPlatformKind().equals(AArch64Kind.DWORD) : resultValue;
+
         Register in = asRegister(inValue);
         Register out = asRegister(outValue);
         Register key = asRegister(keyValue);
@@ -199,7 +209,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         masm.ldr(32, used, AArch64Address.createBaseRegisterOnlyAddress(32, usedPtr));
         masm.cbz(32, savedLen, labelDone);
 
-        masm.mov(64, len, savedLen);
+        masm.mov(32, len, savedLen);
         masm.mov(offset, 0);
 
         // Compute #rounds for AES based on the length of the key array
@@ -297,7 +307,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         masm.str(32, used, AArch64Address.createBaseRegisterOnlyAddress(32, usedPtr));
 
         Register result = asRegister(resultValue);
-        masm.mov(64, result, savedLen);
+        masm.mov(32, result, savedLen);
     }
 
     private static void emitCTRLargeBlock(AArch64MacroAssembler masm, int bulkWidth, Register in, Register out, Register counter,
@@ -316,9 +326,9 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
             masm.sub(64, sp, sp, 4 * 16);
             masm.neon.st1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v8, v9, v10, v11, AArch64Address.createBaseRegisterOnlyAddress(128, sp));
 
-            masm.mov(64, rscratch, len);
+            masm.mov(32, rscratch, len);
 
-            masm.and(64, len, len, -16 * bulkWidth);  // 8/4 encryptions, 16 bytes per encryption
+            masm.and(32, len, len, -16 * bulkWidth);  // 8/4 encryptions, 16 bytes per encryption
             masm.add(64, in, in, offset);
             masm.add(64, out, out, offset);
 
@@ -380,12 +390,12 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
                                 AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.Byte, sp, 64));
             }
 
-            masm.mov(64, len, rscratch);
-            masm.and(64, rscratch, rscratch, -16 * bulkWidth);
+            masm.mov(32, len, rscratch);
+            masm.and(32, rscratch, rscratch, -16 * bulkWidth);
             masm.add(64, offset, offset, rscratch);
             masm.sub(64, in, in, offset);
             masm.sub(64, out, out, offset);
-            masm.sub(64, len, len, rscratch);
+            masm.sub(32, len, len, rscratch);
             masm.mov(used, 16);
             masm.str(32, used, AArch64Address.createBaseRegisterOnlyAddress(32, usedPtr));
         }

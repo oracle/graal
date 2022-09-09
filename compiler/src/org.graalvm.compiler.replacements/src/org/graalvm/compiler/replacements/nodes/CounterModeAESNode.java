@@ -99,8 +99,16 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
         this.inputs = new NodeInputList<>(this, args);
     }
 
+    public static EnumSet<?> minFeaturesAMD64() {
+        return AESNode.minFeaturesAMD64();
+    }
+
+    public static EnumSet<?> minFeaturesAARCH64() {
+        return AESNode.minFeaturesAARCH64();
+    }
+
     @NodeIntrinsic
-    @GenerateStub(name = "ctrAESCrypt")
+    @GenerateStub(name = "ctrAESCrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native int apply(Pointer inAddr,
                     Pointer outAddr,
                     Pointer kAddr,
