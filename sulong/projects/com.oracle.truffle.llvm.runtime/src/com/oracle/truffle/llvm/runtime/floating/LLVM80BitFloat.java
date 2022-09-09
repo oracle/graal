@@ -51,10 +51,10 @@ import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.WellKnownNativeFunctionNode;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 
@@ -618,55 +618,39 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject implements L
             if (nativeContextExtension == null) {
                 return null;
             } else {
-                return nativeContextExtension.getWellKnownNativeFunction(functionName, "(UINT64,UINT64,UINT64):VOID");
+                return nativeContextExtension.getWellKnownNativeFunction(functionName, "(FP80,FP80):FP80");
             }
+        }
+
+        protected LLVMNativeConvertNode createToFP80() {
+            return LLVMNativeConvertNode.createFromNative(PrimitiveType.X86_FP80);
         }
 
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
 
         @Specialization(guards = "function != null")
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
-                        @Cached("createFunction()") WellKnownNativeFunctionNode function) {
-            LLVMLanguage language = LLVMLanguage.get(this);
-            LLVMMemory memory = language.getLLVMMemory();
-            LLVMNativePointer mem = memory.allocateMemory(this, 3 * 16);
-            LLVMNativePointer ptrX = mem;
-            LLVMNativePointer ptrY = ptrX.increment(16);
-            LLVMNativePointer ptrZ = ptrY.increment(16);
-            memory.put80BitFloat(this, ptrX, x);
-            memory.put80BitFloat(this, ptrY, y);
+                        @Cached("createFunction()") WellKnownNativeFunctionNode function,
+                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
             try {
-                function.execute(ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
-                LLVM80BitFloat z = memory.get80BitFloat(this, ptrZ);
-                return z;
+                Object ret = function.execute(x, y);
+                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
             } catch (InteropException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
-            } finally {
-                memory.free(this, mem);
             }
         }
 
         @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
         protected LLVM80BitFloat doCallAOT(LLVM80BitFloat x, LLVM80BitFloat y,
-                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary) {
+                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
+                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
             NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(LLVMContext.get(this));
-            LLVMLanguage language = LLVMLanguage.get(this);
-            LLVMMemory memory = language.getLLVMMemory();
-            LLVMNativePointer mem = memory.allocateMemory(this, 3 * 16);
-            LLVMNativePointer ptrX = mem;
-            LLVMNativePointer ptrY = ptrX.increment(16);
-            LLVMNativePointer ptrZ = ptrY.increment(16);
-            memory.put80BitFloat(this, ptrX, x);
-            memory.put80BitFloat(this, ptrY, y);
             NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = nativeContextExtension.getWellKnownNativeFunctionAndSignature(functionName, "(UINT64,UINT64,UINT64):VOID");
             try {
-                signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
-                LLVM80BitFloat z = memory.get80BitFloat(this, ptrZ);
-                return z;
+                Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x, y);
+                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
-            } finally {
-                memory.free(this, mem);
             }
         }
 
