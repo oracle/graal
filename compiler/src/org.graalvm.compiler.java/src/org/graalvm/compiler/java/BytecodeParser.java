@@ -3005,10 +3005,24 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         state.clearNonLiveLocals(block, liveness, true);
     }
 
+    private static final SpeculationReasonGroup UNREACHED_CODE = new SpeculationReasonGroup("UnreachedCode", ResolvedJavaMethod.class, int.class);
+
+    public static final CounterKey unreachedCodeSpeculationTaken = DebugContext.counter("BytecodeParser_UnreachedCodeSpeculation_Taken");
+    public static final CounterKey unreachedCodeSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnreachedCodeSpeculation_NotTaken");
+
+    /**
+     * Returns a speculation object if it's possible to speculate on an unreached code guard at the
+     * current bytecode location.
+     */
+    private SpeculationLog.Speculation mayUseUnreachedCode(int bci) {
+        return mayUseSpeculation(bci, UNREACHED_CODE, unreachedCodeSpeculationTaken, unreachedCodeSpeculationNotTaken);
+    }
+
     private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
-        if (isNeverExecutedCode(probability)) {
-            return graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+        SpeculationLog.Speculation neverExecutedSpeculation = isNeverExecutedCode(probability, block.getStartBci());
+        if (neverExecutedSpeculation != null) {
+            return graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode, neverExecutedSpeculation));
         } else {
             assert block != null;
             return createTarget(block, stateAfter);
@@ -3588,12 +3602,19 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
             BciBlock deoptBlock = null;
             BciBlock noDeoptBlock = null;
-            if (isNeverExecutedCode(profileData.getDesignatedSuccessorProbability())) {
+            SpeculationLog.Speculation unreachedCodeSpeculation = null;
+            SpeculationLog.Speculation trueBlockUnreached = isNeverExecutedCode(profileData.getDesignatedSuccessorProbability(), trueBlock.getStartBci());
+            if (trueBlockUnreached != null) {
                 deoptBlock = trueBlock;
                 noDeoptBlock = falseBlock;
-            } else if (isNeverExecutedCode(profileData.getNegatedProbability())) {
-                deoptBlock = falseBlock;
-                noDeoptBlock = trueBlock;
+                unreachedCodeSpeculation = trueBlockUnreached;
+            } else {
+                SpeculationLog.Speculation falseBlockUnreached = isNeverExecutedCode(profileData.getNegatedProbability(), falseBlock.getStartBci());
+                if (falseBlockUnreached != null) {
+                    deoptBlock = falseBlock;
+                    noDeoptBlock = trueBlock;
+                    unreachedCodeSpeculation = falseBlockUnreached;
+                }
             }
 
             if (deoptBlock != null) {
@@ -3604,12 +3625,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 }
                 boolean negated = deoptBlock == trueBlock;
                 if (!isPotentialCountedLoopExit(condition, deoptBlock)) {
-                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, negated, survivingSuccessorPosition));
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, unreachedCodeSpeculation, negated, survivingSuccessorPosition));
                     appendGoto(noDeoptBlock);
                 } else {
                     this.controlFlowSplit = true;
                     FixedNode noDeoptSuccessor = createTarget(noDeoptBlock, frameState, false, true);
-                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode, unreachedCodeSpeculation));
                     /*
                      * We do not want to `checkLoopExit` here: otherwise the deopt will go to the
                      * deoptBlock's BCI, skipping the branch in the interpreter, and the profile
@@ -4317,15 +4338,23 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      * bytecode location.
      */
     private SpeculationLog.Speculation mayUseTypeProfile() {
+        return mayUseSpeculation(bci(), FALLBACK_TYPECHECK, fallBackSpeculationTaken, fallBackSpeculationNotTaken);
+    }
+
+    /**
+     * Returns a speculation object if it's possible to speculate on the given {@code reason} at the
+     * bytecode location indicated by the BCI.
+     */
+    private SpeculationLog.Speculation mayUseSpeculation(int bci, SpeculationReasonGroup reason, CounterKey speculationTaken, CounterKey speculationNotTaken) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
         SpeculationLog.Speculation speculation = null;
         if (speculationLog != null) {
-            SpeculationLog.SpeculationReason speculationReason = FALLBACK_TYPECHECK.createSpeculationReason(getMethod(), bci());
+            SpeculationLog.SpeculationReason speculationReason = reason.createSpeculationReason(getMethod(), bci);
             if (speculationLog.maySpeculate(speculationReason)) {
                 speculation = speculationLog.speculate(speculationReason);
-                fallBackSpeculationTaken.increment(debug);
+                speculationTaken.increment(debug);
             } else {
-                fallBackSpeculationNotTaken.increment(debug);
+                speculationNotTaken.increment(debug);
             }
         }
         return speculation;
@@ -4938,11 +4967,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             if (i < nofCases) {
                 keys[i] = bs.keyAt(i);
             }
-            if (!constantValue && isNeverExecutedCode(keyProbabilities[i])) {
+            int targetBci = i < nofCases ? bs.targetAt(i) : bs.defaultTarget();
+            if (!constantValue && isNeverExecutedCode(keyProbabilities[i], targetBci) != null) {
                 deoptSuccessorIndex = SWITCH_DEOPT_SEEN;
                 keySuccessors[i] = SWITCH_DEOPT_SEEN;
             } else {
-                int targetBci = i < nofCases ? bs.targetAt(i) : bs.defaultTarget();
                 SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
                 if (info.actualIndex < 0) {
                     info.actualIndex = nextSuccessorIndex++;
@@ -4997,7 +5026,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                         if (deoptSuccessorIndex == SWITCH_DEOPT_SEEN) {
                             // Spawn deopt successor if needed.
                             deoptSuccessorIndex = nextSuccessorIndex++;
-                            actualSuccessors.add(null);
+                            actualSuccessors.add(currentBlock.getSuccessor(info.blockIndex));
                         }
                         keySuccessors[i] = deoptSuccessorIndex;
                     }
@@ -5010,8 +5039,24 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     }
 
-    protected boolean isNeverExecutedCode(double probability) {
-        return probability == 0 && optimisticOpts.removeNeverExecutedCode(getOptions());
+    /**
+     * Determines if a branch with the given {@code probability} to the {@code bci} may speculate
+     * that the target of the branch is never executed. A caller that uses this information to prune
+     * a path and replace it by a deoptimization should use the speculation returned here to avoid
+     * deopt loops.
+     *
+     * @return a non-{@code null} speculation if the target is never executed, {@code null}
+     *         otherwise
+     */
+    protected SpeculationLog.Speculation isNeverExecutedCode(double probability, int bci) {
+        if (probability == 0 && optimisticOpts.removeNeverExecutedCode(getOptions())) {
+            if (graph.getSpeculationLog() != null) {
+                return mayUseUnreachedCode(bci);
+            } else {
+                return SpeculationLog.NO_SPECULATION;
+            }
+        }
+        return null;
     }
 
     private double clampProbability(double probability) {
