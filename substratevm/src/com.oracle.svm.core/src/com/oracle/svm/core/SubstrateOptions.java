@@ -53,6 +53,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
@@ -810,5 +811,19 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
 
     @Option(help = "Initializes and runs main entry point in a new native thread.", type = Expert)//
-    public static final HostedOptionKey<Boolean> RunMainInNewThread = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> RunMainInNewThread = new HostedOptionKey<>(false) {
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this) && Platform.includedIn(Platform.LINUX.class) && LibCBase.singleton().getName().equals("musl")) {
+                return true;
+            }
+            return (Boolean) values.get(this, this.getDefaultValue());
+        }
+    };
+
 }
