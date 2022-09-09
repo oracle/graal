@@ -713,4 +713,8 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
     public static FP80Node createRemNode() {
         return LLVM80BitFloatNativeCallNodeGen.create("mod", null, null);
     }
+
+    public static FP80Node createPowNode(LLVMExpressionNode x, LLVMExpressionNode y) {
+        return LLVM80BitFloatNativeCallNodeGen.create("pow", x, y);
+    }
 }

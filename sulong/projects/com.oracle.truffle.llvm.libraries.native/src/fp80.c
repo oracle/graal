@@ -48,3 +48,7 @@ long double __sulong_fp80_div(long double x, long double y) {
 long double __sulong_fp80_mod(long double x, long double y) {
     return fmodl(x, y);
 }
+
+long double __sulong_fp80_pow(long double x, long double y) {
+    return powl(x, y);
+}
