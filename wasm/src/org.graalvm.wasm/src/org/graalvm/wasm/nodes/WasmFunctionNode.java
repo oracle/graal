@@ -350,11 +350,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @CompilationFinal private Object osrMetadata;
 
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset) {
+    private final boolean referenceTypes;
+
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, boolean referenceTypes) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.functionStartOffset = functionStartOffset;
         this.functionEndOffset = functionEndOffset;
+        this.referenceTypes = referenceTypes;
     }
 
     @SuppressWarnings("hiding")
@@ -848,7 +851,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case DROP: {
                     stackPointer--;
-                    drop(frame, stackPointer);
+                    if (referenceTypes) {
+                        drop(frame, stackPointer);
+                    } else {
+                        dropPrimitive(frame, stackPointer);
+                    }
                     break;
                 }
                 case SELECT: {
@@ -2000,19 +2007,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static void local_tee(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copy(frame, stackPointer, index);
-    }
-
-    private static void local_set(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copy(frame, stackPointer, index);
-        if (CompilerDirectives.inCompiledCode()) {
-            drop(frame, stackPointer);
+    private void local_tee(VirtualFrame frame, int stackPointer, int index) {
+        if (referenceTypes) {
+            WasmFrame.copy(frame, stackPointer, index);
+        } else {
+            WasmFrame.copyPrimitive(frame, stackPointer, index);
         }
     }
 
-    private static void local_get(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copy(frame, index, stackPointer);
+    private void local_set(VirtualFrame frame, int stackPointer, int index) {
+        if (referenceTypes) {
+            WasmFrame.copy(frame, stackPointer, index);
+            if (CompilerDirectives.inCompiledCode()) {
+                drop(frame, stackPointer);
+            }
+        } else {
+            WasmFrame.copyPrimitive(frame, stackPointer, index);
+            if (CompilerDirectives.inCompiledCode()) {
+                dropPrimitive(frame, stackPointer);
+            }
+        }
+    }
+
+    private void local_get(VirtualFrame frame, int stackPointer, int index) {
+        if (referenceTypes) {
+            WasmFrame.copy(frame, index, stackPointer);
+        } else {
+            WasmFrame.copyPrimitive(frame, index, stackPointer);
+        }
     }
 
     private static void i32_eqz(VirtualFrame frame, int stackPointer) {
@@ -3185,14 +3207,23 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param targetResultCount The result value count of the target block.
      */
     @ExplodeLoop
-    private static void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+    private void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
-        for (int i = 0; i < targetResultCount; ++i) {
-            WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
-        }
-        for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-            drop(frame, i);
+        if (referenceTypes) {
+            for (int i = 0; i < targetResultCount; ++i) {
+                WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+            }
+            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+                drop(frame, i);
+            }
+        } else {
+            for (int i = 0; i < targetResultCount; ++i) {
+                WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+            }
+            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+                dropPrimitive(frame, i);
+            }
         }
     }
 
