@@ -1542,7 +1542,8 @@ final class TStringInternalNodes {
             TruffleString ret = TruffleString.createFromArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange);
             if (length == javaString.length()) {
                 assert charOffset == 0;
-                ret.cacheInsert(TruffleString.createWrapJavaString(javaString, codePointLength, codeRange));
+                TruffleString wrapped = TruffleString.createWrapJavaString(javaString, codePointLength, codeRange);
+                ret.cacheInsertFirstBeforePublished(wrapped);
             }
             return ret;
         }
