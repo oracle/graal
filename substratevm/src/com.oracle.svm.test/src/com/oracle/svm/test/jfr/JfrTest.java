@@ -28,7 +28,15 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assume.assumeTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -51,6 +59,8 @@ import jdk.jfr.consumer.RecordingFile;
 public abstract class JfrTest {
     protected Jfr jfr;
     protected Recording recording;
+    private ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
+    protected final long MS_TOLERANCE = 10;
 
     @BeforeClass
     public static void checkForJFR() {
@@ -76,6 +86,7 @@ public abstract class JfrTest {
     public void endRecording() {
         try {
             jfr.endRecording(recording);
+            analyzeEvents();
         } catch (Exception e) {
             Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
         }
@@ -100,6 +111,8 @@ public abstract class JfrTest {
     }
 
     public abstract String[] getTestedEvents();
+    public void analyzeEvents(){
+    }
 
     protected void checkEvents() {
         HashSet<String> seenEvents = new HashSet<>();
@@ -127,6 +140,40 @@ public abstract class JfrTest {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }
     }
+
+    private static class ChronologicalComparator implements Comparator<RecordedEvent> {
+        @Override
+        public int compare(RecordedEvent e1, RecordedEvent e2) {
+            return e1.getStartTime().compareTo(e2.getStartTime());
+        }
+    }
+    private Path makeCopy(Recording recording, String testName) throws IOException { // from jdk 19
+        Path p = recording.getDestination();
+        if (p == null) {
+            File directory = new File(".");
+            p = new File(directory.getAbsolutePath(), "recording-" + recording.getId() + "-" + testName+ ".jfr").toPath();
+            recording.dump(p);
+        }
+        return p;
+    }
+    protected List<RecordedEvent> getEvents(Recording recording, String testName) throws IOException {
+        Path p = makeCopy(recording, testName);
+        List<RecordedEvent> events = RecordingFile.readAllEvents(p);
+        Collections.sort(events, chronologicalComparator);
+        return events;
+    }
+
+
+    /** Used for comparing durations with a tolerance of MS_TOLERANCE */
+    protected boolean isEqualDuration(Duration d1, Duration d2) {
+        return d1.minus(d2).abs().compareTo(Duration.ofMillis(MS_TOLERANCE)) < 0;
+    }
+
+    /** Used for comparing durations with a tolerance of MS_TOLERANCE. True if 'larger' really is bigger */
+    protected boolean isGreaterDuration(Duration smaller, Duration larger) {
+        return smaller.minus(larger.plus(Duration.ofMillis(MS_TOLERANCE))).isNegative();
+    }
+
 }
 
 class JFRTestFeature implements Feature {
