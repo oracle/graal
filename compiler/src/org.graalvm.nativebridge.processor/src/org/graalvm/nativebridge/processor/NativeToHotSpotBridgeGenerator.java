@@ -1085,35 +1085,33 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             void postMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence receiver, CharSequence marshalledParametersInput,
                             CharSequence jniEnvFieldName, CharSequence resultVariableName) {
                 if (parameterType.getKind() == TypeKind.ARRAY) {
-                    if (parameterType.getKind() == TypeKind.ARRAY) {
-                        AnnotationMirror out = findOut(marshallerData.annotations);
-                        if (out != null) {
-                            // Out parameter. We need to copy the content from buffer to array.
-                            currentBuilder.lineStart("if (").write(parameterName).write(" != null) ").lineEnd("{");
-                            currentBuilder.indent();
-                            CharSequence sourceArrayVariable = Utilities.javaMemberName("hs", parameterName);
-                            TypeMirror componentType = ((ArrayType) parameterType).getComponentType();
-                            boolean trimToResult = trimToResult(out);
-                            CharSequence arrayLength;
-                            if (trimToResult) {
-                                arrayLength = resultVariableName;
-                            } else {
-                                arrayLength = getArrayLengthParameterName(out);
-                            }
-                            if (arrayLength == null) {
-                                arrayLength = new CodeBuilder(currentBuilder).memberSelect(parameterName, "length", false).build();
-                            }
-                            CharSequence arrayOffsetParameter = getArrayOffsetParameterName(out);
-                            if (marshallerData.sameDirection) {
-                                generateCopyHotSpotToHSObjectArray(currentBuilder, parameterName, arrayOffsetParameter, arrayLength, sourceArrayVariable, null, jniEnvFieldName,
-                                                (element) -> unmarshallResult(currentBuilder, componentType, element, receiver, null, jniEnvFieldName));
-                            } else {
-                                generateReadNativeObjectArray(currentBuilder, parameterName, arrayOffsetParameter, arrayLength, marshalledParametersInput,
-                                                (element) -> unmarshallResult(currentBuilder, componentType, element, null, marshalledParametersInput, jniEnvFieldName));
-                            }
-                            currentBuilder.dedent();
-                            currentBuilder.line("}");
+                    AnnotationMirror out = findOut(marshallerData.annotations);
+                    if (out != null) {
+                        // Out parameter. We need to copy the content from buffer to array.
+                        currentBuilder.lineStart("if (").write(parameterName).write(" != null) ").lineEnd("{");
+                        currentBuilder.indent();
+                        CharSequence sourceArrayVariable = Utilities.javaMemberName("hs", parameterName);
+                        TypeMirror componentType = ((ArrayType) parameterType).getComponentType();
+                        boolean trimToResult = trimToResult(out);
+                        CharSequence arrayLength;
+                        if (trimToResult) {
+                            arrayLength = resultVariableName;
+                        } else {
+                            arrayLength = getArrayLengthParameterName(out);
                         }
+                        if (arrayLength == null) {
+                            arrayLength = new CodeBuilder(currentBuilder).memberSelect(parameterName, "length", false).build();
+                        }
+                        CharSequence arrayOffsetParameter = getArrayOffsetParameterName(out);
+                        if (marshallerData.sameDirection) {
+                            generateCopyHotSpotToHSObjectArray(currentBuilder, parameterName, arrayOffsetParameter, arrayLength, sourceArrayVariable, null, jniEnvFieldName,
+                                            (element) -> unmarshallResult(currentBuilder, componentType, element, receiver, null, jniEnvFieldName));
+                        } else {
+                            generateReadNativeObjectArray(currentBuilder, parameterName, arrayOffsetParameter, arrayLength, marshalledParametersInput,
+                                            (element) -> unmarshallResult(currentBuilder, componentType, element, null, marshalledParametersInput, jniEnvFieldName));
+                        }
+                        currentBuilder.dedent();
+                        currentBuilder.line("}");
                     }
                 }
             }
