@@ -323,7 +323,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .stream()
                         .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
         modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
-        modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.everyoneModule);
+        modulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
 
         Module builderModule = ModuleLayerFeature.class.getModule();
         assert builderModule != null;
