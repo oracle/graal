@@ -450,8 +450,18 @@ local devkits = common_json.devkits;
     ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
   ],
 
+  build_base_graalvm_image_no_profiles: [
+    $.mx_vm_common + ['graalvm-show'],
+    $.mx_vm_common + ['build'],
+    ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
+  ],
+
   check_base_graalvm_image(os, arch, java_version): [
     ['set-export', 'GRAALVM_DIST', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'paths', $.mx_vm_common + vm.vm_profiles + ['graalvm-dist-name']]]
+    ] + vm.check_graalvm_base_build('$GRAALVM_DIST', os, arch, java_version),
+
+  check_base_graalvm_image_no_profiles(os, arch, java_version): [
+    ['set-export', 'GRAALVM_DIST', $.mx_vm_common + ['--quiet', '--no-warning', 'paths', $.mx_vm_common + ['graalvm-dist-name']]]
     ] + vm.check_graalvm_base_build('$GRAALVM_DIST', os, arch, java_version),
 
   patch_env(os, arch, java_version):
@@ -598,12 +608,12 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_windows_amd64(java_version): vm.check_structure + {
-    run: $.patch_env('windows', 'amd64', java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
-      $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
+    run: $.patch_env('windows', 'amd64', java_version) + $.build_base_graalvm_image_no_profiles + [
+      $.mx_vm_common + $.record_file_sizes,
       $.upload_file_sizes,
-      $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
+      $.mx_vm_common + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
-    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("windows", "amd64", java_version),
+    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image_no_profiles("windows", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
   },
