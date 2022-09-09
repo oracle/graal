@@ -266,7 +266,7 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
         }
 
         short copyDirection(LLVMPointer sourcePtr, LLVMPointer destPtr) {
-            if (LLVMManagedPointer.isInstance(sourcePtr) && LLVMManagedPointer.isInstance(sourcePtr)) {
+            if (LLVMManagedPointer.isInstance(sourcePtr) && LLVMManagedPointer.isInstance(destPtr)) {
                 LLVMManagedPointer managedSourcePtr = LLVMManagedPointer.cast(sourcePtr);
                 LLVMManagedPointer managedDestPtr = LLVMManagedPointer.cast(destPtr);
                 if (managedSourcePtr.getObject() == managedDestPtr.getObject()) {
@@ -279,7 +279,7 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
                         return 1;
                     }
                 }
-            } else if (LLVMNativePointer.isInstance(sourcePtr) && LLVMNativePointer.isInstance(sourcePtr)) {
+            } else if (LLVMNativePointer.isInstance(sourcePtr) && LLVMNativePointer.isInstance(destPtr)) {
                 LLVMNativePointer nativeSourcePtr = LLVMNativePointer.cast(sourcePtr);
                 LLVMNativePointer nativeDestPtr = LLVMNativePointer.cast(destPtr);
                 if (nativeSourcePtr.asNative() == nativeDestPtr.asNative()) {
