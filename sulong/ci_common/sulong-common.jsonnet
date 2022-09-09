@@ -1,10 +1,10 @@
 # File is formatted with
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
-{
-  local common = import "../../common.jsonnet",
-  local composable = (import "../../common-utils.libsonnet").composable,
-  local sulong_deps = composable((import "../../common.json").sulong.deps),
+local common = import "../../common.jsonnet";
+local composable = (import "../../common-utils.libsonnet").composable;
+local sulong_deps = composable((import "../../common.json").sulong.deps);
 
+{
   local linux_amd64 = common.linux_amd64,
   local linux_aarch64 = common.linux_aarch64,
   local darwin_amd64 = common.darwin_amd64,
@@ -42,30 +42,6 @@
   defBuild(b):: $.build_template + b + {
     assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
   } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
-
-  labsjdk_ce_11: common["labsjdk-ce-11"] {
-    jdk:: "jdk11",
-    downloads+: {
-      # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
-      EXTRA_JAVA_HOMES: { pathlist: [] },
-    },
-  },
-
-  labsjdk_ce_17: common["labsjdk-ce-17"] {
-    jdk:: "jdk17",
-    downloads+: {
-      # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
-      EXTRA_JAVA_HOMES: { pathlist: [] },
-    },
-  },
-
-  labsjdk_ee_11: common["labsjdk-ee-11"] {
-    jdk:: "jdk11",
-  },
-
-  labsjdk_ee_17: common["labsjdk-ee-17"] {
-    jdk:: "jdk17",
-  },
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
@@ -218,4 +194,13 @@
       libgmp: "==6.1.2",
     },
   },
+
+} + {
+
+  [std.strReplace(name, "-", "_")]: common[name] {
+    jdk: "jdk" + self.jdk_version,
+  }
+  for name in std.objectFieldsAll(common)
+  if std.startsWith(name, "labsjdk-")
+
 }

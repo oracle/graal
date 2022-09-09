@@ -45,7 +45,8 @@ public class LLVMUserException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
-    final LLVMPointer unwindHeader; // or throw info
+    // transient to shut up JDK19 warnings (this should never be serialized anyway)
+    final transient LLVMPointer unwindHeader; // or throw info
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
         super(location);
@@ -94,8 +95,8 @@ public class LLVMUserException extends LLVMException {
 
         private static final long serialVersionUID = 1L;
 
-        final LLVMPointer imageBase;
-        final LLVMPointer exceptionObject;
+        final transient LLVMPointer imageBase;
+        final transient LLVMPointer exceptionObject;
 
         public LLVMUserExceptionWindows(Node location, LLVMPointer imageBase, LLVMPointer exceptionObject, LLVMPointer throwInfo) {
             super(location, throwInfo);
