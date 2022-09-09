@@ -322,12 +322,12 @@ public class PartialEscapeAnalysisTest extends EATestBase {
             Object var5 = var4[i];
             var2.add(var5);
             if (var2.size() >= var3) {
-                var1.add(new Integer(var2.size()));
+                var1.add(var2.size());
                 var2 = new ArrayList<>();
             }
         }
         if (!var2.isEmpty()) {
-            var1.add(new Integer(-42));
+            var1.add(-42);
         }
         return var1.size();
     }
