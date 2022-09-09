@@ -28,7 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -137,39 +137,34 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeMethodFrames(byte[] buffer, int p) {
+    private int writeMethodFrame(CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        /* Write frames for normal methods. */
-        for (ClassEntry classEntry : getPrimaryClasses()) {
-            for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
-                Range range = primaryEntry.getPrimary();
-                if (!range.isDeoptTarget()) {
-                    long lo = range.getLo();
-                    long hi = range.getHi();
-                    int lengthPos = pos;
-                    pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-                    pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
-                    pos = writePaddingNops(buffer, pos);
-                    patchLength(lengthPos, buffer, pos);
-                }
-            }
-        }
-        /* Now write frames for deopt targets. */
-        for (ClassEntry classEntry : getPrimaryClasses()) {
-            for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
-                Range range = primaryEntry.getPrimary();
-                if (range.isDeoptTarget()) {
-                    long lo = range.getLo();
-                    long hi = range.getHi();
-                    int lengthPos = pos;
-                    pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-                    pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
-                    pos = writePaddingNops(buffer, pos);
-                    patchLength(lengthPos, buffer, pos);
-                }
-            }
-        }
+        int lengthPos = pos;
+        Range range = compiledEntry.getPrimary();
+        long lo = range.getLo();
+        long hi = range.getHi();
+        pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
+        pos = writeFDEs(compiledEntry.getFrameSize(), compiledEntry.getFrameSizeInfos(), buffer, pos);
+        pos = writePaddingNops(buffer, pos);
+        patchLength(lengthPos, buffer, pos);
         return pos;
+    }
+
+    private int writeMethodFrames(byte[] buffer, int p) {
+        Cursor cursor = new Cursor(p);
+        /* Write frames for normal methods. */
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
+            classEntry.normalCompiledEntries().forEach(compiledEntry -> {
+                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
+            });
+        });
+        /* Now write frames for deopt targets. */
+        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
+            classEntry.deoptCompiledEntries().forEach(compiledEntry -> {
+                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
+            });
+        });
+        return cursor.get();
     }
 
     protected abstract int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos);

@@ -33,9 +33,9 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Tracks debug info associated with a primary method. i.e. a top level compiled method
+ * Tracks debug info associated with a top level compiled method.
  */
-public class PrimaryEntry {
+public class CompiledMethodEntry {
     /**
      * The primary range detailed by this object.
      */
@@ -53,7 +53,7 @@ public class PrimaryEntry {
      */
     private int frameSize;
 
-    public PrimaryEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
+    public CompiledMethodEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;
         this.classEntry = classEntry;
         this.frameSizeInfos = frameSizeInfos;
@@ -69,8 +69,8 @@ public class PrimaryEntry {
     }
 
     /**
-     * Returns an iterator that traverses all the callees of the primary range associated with this
-     * entry. The iterator performs a depth-first pre-order traversal of the call tree.
+     * Returns an iterator that traverses all the callees of the method associated with this entry.
+     * The iterator performs a depth-first pre-order traversal of the call tree.
      *
      * @return the iterator
      */
@@ -115,9 +115,9 @@ public class PrimaryEntry {
     }
 
     /**
-     * Returns an iterator that traverses the callees of the primary range associated with this
-     * entry and returns only the leafs. The iterator performs a depth-first pre-order traversal of
-     * the call tree returning only ranges with no callees.
+     * Returns an iterator that traverses the callees of the method associated with this entry and
+     * returns only the leafs. The iterator performs a depth-first pre-order traversal of the call
+     * tree returning only ranges with no callees.
      *
      * @return the iterator
      */

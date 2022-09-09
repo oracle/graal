@@ -56,9 +56,9 @@ public class MethodEntry extends MemberEntry {
     final String symbolName;
 
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
-                    FileEntry fileEntry, String methodName, ClassEntry ownerType,
+                    FileEntry fileEntry, int line, String methodName, ClassEntry ownerType,
                     TypeEntry valueType, TypeEntry[] paramTypes, DebugLocalInfo[] paramInfos, DebugLocalInfo thisParam) {
-        super(fileEntry, methodName, ownerType, valueType, debugMethodInfo.modifiers());
+        super(fileEntry, line, methodName, ownerType, valueType, debugMethodInfo.modifiers());
         this.paramTypes = paramTypes;
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;
@@ -197,11 +197,11 @@ public class MethodEntry extends MemberEntry {
         if (debugMethodInfo instanceof DebugLocationInfo) {
             DebugLocationInfo locationInfo = (DebugLocationInfo) debugMethodInfo;
             if (locationInfo.getCaller() != null) {
-                /* this is a real inlined method not just a top level primary range */
+                /* this is a real inlined method */
                 setIsInlined();
             }
         } else if (debugMethodInfo instanceof DebugCodeInfo) {
-            /* this method has been seen in a primary range */
+            /* this method is being notified as a top level compiled method */
             if (isInRange()) {
                 /* it has already been seen -- just check for consistency */
                 assert fileEntry == debugInfoBase.ensureFileEntry(debugMethodInfo);
