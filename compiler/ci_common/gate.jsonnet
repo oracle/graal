@@ -155,8 +155,8 @@
     "gate-compiler-test-labsjdk-11-linux-amd64": t("55:00"),
     "gate-compiler-test-labsjdk-17-linux-amd64": t("55:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-17-linux-aarch64": t("1:50:00"),
-    //"gate-compiler-test-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
-    //"gate-compiler-test-labsjdk-17-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-17-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-17-windows-amd64": t("55:00") + c.mach5_target,
 
     "gate-compiler-style-labsjdk-17-linux-amd64": t("45:00"),
@@ -174,8 +174,8 @@
 
     "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00"),
 
-    //"gate-compiler-bootstrap_lite-labsjdk-11-darwin-amd64": t("1:00:00") + c.mach5_target,
-    //"gate-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-11-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
 
     "gate-compiler-bootstrap_full-labsjdk-17-linux-amd64": s.many_cores + c.mach5_target
   },
@@ -189,8 +189,8 @@
     "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-17-linux-amd64": {},
 
     "weekly-compiler-test-labsjdk-11-windows-amd64": t("55:00"),
-    //"weekly-compiler-test-labsjdk-11-darwin-amd64": {},
-    //"weekly-compiler-test-labsjdk-11-darwin-aarch64": {},
+    "weekly-compiler-test-labsjdk-11-darwin-amd64": {},
+    "weekly-compiler-test-labsjdk-11-darwin-aarch64": {},
 
     "weekly-compiler-test_vec16-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_avx0-labsjdk-17-linux-amd64": {},
@@ -288,8 +288,8 @@
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
-      /*"darwin-amd64",
-      "darwin-aarch64",*/
+      "darwin-amd64",
+      "darwin-aarch64",
       "windows-amd64"
     ]
     for task in [

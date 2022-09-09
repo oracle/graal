@@ -16,7 +16,7 @@
   builds: [
     common.linux_amd64  + common.oraclejdk11 + sdk_gate + common.eclipse + common.jdt,
     common.linux_amd64  + common.oraclejdk17 + sdk_gate + common.eclipse + common.jdt + common.mach5_target,
-    //common.darwin_amd64 + common.oraclejdk11 + sdk_gate,
-    //common.darwin_amd64 + common.oraclejdk17 + sdk_gate + common.mach5_target,
+    common.darwin_amd64 + common.oraclejdk11 + sdk_gate,
+    common.darwin_amd64 + common.oraclejdk17 + sdk_gate + common.mach5_target,
   ]
 }
