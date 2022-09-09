@@ -30,14 +30,14 @@ import java.io.IOException;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heapdump.HeapDumpWriterImpl.AllocationFreeFileOutputStream;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -80,7 +80,7 @@ final class AllocationFreeFileOutputStreamPosix extends AllocationFreeFileOutput
 
     @Override
     public void write(int b) throws IOException {
-        final CCharPointer buffer = StackValue.get(CCharPointer.class);
+        final CCharPointer buffer = UnsafeStackValue.get(CCharPointer.class);
         buffer.write((byte) b);
         final boolean writeResult = PosixUtils.writeBytes(fileDescriptor, buffer, WordFactory.unsigned(1));
         if (!writeResult) {
@@ -100,7 +100,7 @@ final class AllocationFreeFileOutputStreamPosix extends AllocationFreeFileOutput
          * the byte array up in multiple chunks and write them separately.
          */
         final int chunkSize = 256;
-        final CCharPointer bytes = StackValue.get(chunkSize);
+        final CCharPointer bytes = UnsafeStackValue.get(chunkSize);
 
         int chunkOffset = off;
         int inputLength = len;

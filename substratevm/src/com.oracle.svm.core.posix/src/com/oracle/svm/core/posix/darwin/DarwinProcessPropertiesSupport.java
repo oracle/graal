@@ -25,16 +25,16 @@
 package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 import com.oracle.svm.core.posix.headers.darwin.DarwinDyld;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
@@ -43,7 +43,7 @@ public class DarwinProcessPropertiesSupport extends PosixProcessPropertiesSuppor
     @Override
     public String getExecutableName() {
         /* Find out how long the executable path is. */
-        final CIntPointer sizePointer = StackValue.get(CIntPointer.class);
+        final CIntPointer sizePointer = UnsafeStackValue.get(CIntPointer.class);
         sizePointer.write(0);
         if (DarwinDyld._NSGetExecutablePath(WordFactory.nullPointer(), sizePointer) != -1) {
             VMError.shouldNotReachHere("DarwinProcessPropertiesSupport.getExecutableName: Executable path length is 0?");

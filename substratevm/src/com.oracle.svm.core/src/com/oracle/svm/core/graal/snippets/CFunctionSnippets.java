@@ -50,10 +50,11 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
@@ -63,7 +64,6 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -102,7 +102,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
         /* Push a JavaFrameAnchor to the thread-local linked list. */
-        JavaFrameAnchor anchor = (JavaFrameAnchor) StackValueNode.stackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
+        JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
         JavaFrameAnchors.pushFrameAnchor(anchor);
 
         /*

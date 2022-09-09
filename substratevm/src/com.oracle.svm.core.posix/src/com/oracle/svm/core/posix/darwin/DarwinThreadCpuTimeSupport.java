@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
@@ -59,7 +60,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         int threadsMachPort = DarwinPthread.pthread_mach_thread_np((pthread_t) osThreadHandle);
-        CIntPointer sizePointer = StackValue.get(Integer.BYTES);
+        CIntPointer sizePointer = UnsafeStackValue.get(Integer.BYTES);
         sizePointer.write(DarwinThreadInfo.THREAD_INFO_MAX());
         thread_basic_info_data_t basicThreadInfo = StackValue.get(thread_basic_info_data_t.class);
         if (DarwinThreadInfo.thread_info(threadsMachPort, DarwinThreadInfo.THREAD_BASIC_INFO(), basicThreadInfo, sizePointer) != 0) {

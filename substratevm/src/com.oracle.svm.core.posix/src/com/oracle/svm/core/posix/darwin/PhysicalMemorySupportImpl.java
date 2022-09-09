@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
@@ -44,12 +44,12 @@ class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     @Override
     public UnsignedWord size() {
-        CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
+        CIntPointer namePointer = UnsafeStackValue.get(2, CIntPointer.class);
         namePointer.write(0, DarwinSysctl.CTL_HW());
         namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
 
-        WordPointer physicalMemoryPointer = StackValue.get(WordPointer.class);
-        WordPointer physicalMemorySizePointer = StackValue.get(WordPointer.class);
+        WordPointer physicalMemoryPointer = UnsafeStackValue.get(WordPointer.class);
+        WordPointer physicalMemorySizePointer = UnsafeStackValue.get(WordPointer.class);
         physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
         final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
         if (sysctlResult != 0) {

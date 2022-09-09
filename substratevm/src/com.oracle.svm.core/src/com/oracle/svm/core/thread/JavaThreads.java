@@ -161,6 +161,15 @@ public final class JavaThreads {
         return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
 
+    /** @see PlatformThreads#setCurrentThread */
+    public static boolean isCurrentThreadVirtual() {
+        if (!supportsVirtual()) {
+            return false;
+        }
+        Thread thread = PlatformThreads.currentThread.get();
+        return thread != null && toTarget(thread).vthread != null;
+    }
+
     @AlwaysInline("Enable constant folding in case of Loom.")
     private static boolean isVirtualDisallowLoom(Thread thread) {
         if (LoomSupport.isEnabled()) {
@@ -367,7 +376,7 @@ public final class JavaThreads {
     }
 
     public static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        if (supportsVirtual() && isVirtual(Thread.currentThread())) {
+        if (supportsVirtual() && isCurrentThreadVirtual()) {
             VirtualThreads.singleton().blockedOn(b);
         } else {
             PlatformThreads.blockedOn(b);
