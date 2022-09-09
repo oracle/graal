@@ -158,7 +158,7 @@ gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
-  capabilities : ["linux", "amd64", "x82"]
+  capabilities : ["linux", "amd64", "avx512"]
   environment : {
     JVM_CONFIG    : ${jvm-config.default}"-avx3"
   }
