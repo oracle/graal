@@ -143,7 +143,7 @@ import jdk.vm.ci.services.Services;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
-    private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
+    private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
 
     /**
      * Used only to reset state for native image compilation.
@@ -958,14 +958,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         CharArrayWriter caw = new CharArrayWriter();
         e.printStackTrace(new PrintWriter(caw));
         return caw.toString();
-    }
-
-    private static int getJavaSpecificationVersion() {
-        String value = Services.getSavedProperties().get("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
     }
 
     public final class KnownMethods {

@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,6 +48,10 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
+
+    public ExecutionListenerCompilerTest() {
+        Assume.assumeTrue("GR-40843", Runtime.version().feature() < 19);
+    }
 
     static final SourceSection DUMMY_SECTION = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").name("").build().createSection(0, 0);
 

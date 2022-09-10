@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.test.InstrumentationCompilerTest.DUMM
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -78,6 +79,7 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
 
     @Test
     public void testScopeRead() {
+        Assume.assumeTrue("GR-40843", Runtime.version().feature() < 19);
         var builder = FrameDescriptor.newBuilder();
         int varSlot = builder.addSlot(FrameSlotKind.Illegal, "var", null);
         FrameDescriptor frameDescriptor = builder.build();
