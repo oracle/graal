@@ -292,7 +292,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     char *executablenameEnv = getenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME");
     if (executablenameEnv) {
         executablename << executablenameEnv;
-        unsetenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME");
+        setenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME", "");
     } else {
         executablename << argv[0];
     }
@@ -585,7 +585,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvm
     }
 
     /* invoke launcher entry point */
-    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native, relaunch);
+    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (jlong)(uintptr_t)(void*)argv_native, relaunch);
     jthrowable t = env->ExceptionOccurred();
     if (t) {
         if (env->IsInstanceOf(t, relaunchExceptionClass)) {
