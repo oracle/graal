@@ -86,9 +86,10 @@ abstract class HostMethodDesc {
         @CompilationFinal(dimensions = 1) private final Type[] genericParameterTypes;
         @CompilationFinal(dimensions = 1) private final int[] scopedStaticParameters;
         private final int scopedStaticParameterCount;
+        private final boolean onlyVisibleFromJniName;
         private static final Class<?>[] UNSCOPED_TYPES = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class, String.class};
 
-        protected SingleMethod(Executable executable, boolean parametersScoped) {
+        protected SingleMethod(Executable executable, boolean parametersScoped, boolean onlyVisibleFromJniName) {
             this.varArgs = executable.isVarArgs();
             this.parameterTypes = executable.getParameterTypes();
             this.genericParameterTypes = executable.getGenericParameterTypes();
@@ -111,6 +112,7 @@ abstract class HostMethodDesc {
             } else {
                 this.scopedStaticParameters = EMTPY_SCOPED_PARAMETERS;
             }
+            this.onlyVisibleFromJniName = onlyVisibleFromJniName;
         }
 
         private SingleMethod(boolean varArgs, Class<?>[] parameterTypes, Type[] genericParameterTypes, int[] scopedStaticParameters, int scopedStaticParameterCount) {
@@ -119,6 +121,7 @@ abstract class HostMethodDesc {
             this.genericParameterTypes = genericParameterTypes;
             this.scopedStaticParameters = scopedStaticParameters;
             this.scopedStaticParameterCount = scopedStaticParameterCount;
+            this.onlyVisibleFromJniName = false;
         }
 
         private static boolean isScoped(Class<?> c) {
@@ -131,6 +134,10 @@ abstract class HostMethodDesc {
                 }
             }
             return true;
+        }
+
+        public boolean isOnlyVisibleFromJniName() {
+            return onlyVisibleFromJniName;
         }
 
         public abstract Executable getReflectionMethod();
@@ -192,12 +199,12 @@ abstract class HostMethodDesc {
             return getReflectionMethod() instanceof Constructor<?>;
         }
 
-        static SingleMethod unreflect(Method reflectionMethod, boolean scoped) {
+        static SingleMethod unreflect(Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
             assert isAccessible(reflectionMethod);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionMethod)) {
-                return new MethodReflectImpl(reflectionMethod, scoped);
+                return new MethodReflectImpl(reflectionMethod, scoped, onlyVisibleFromJniName);
             } else {
-                return new MethodMHImpl(reflectionMethod, scoped);
+                return new MethodMHImpl(reflectionMethod, scoped, onlyVisibleFromJniName);
             }
         }
 
@@ -242,8 +249,8 @@ abstract class HostMethodDesc {
 
         abstract static class ReflectBase extends SingleMethod {
 
-            ReflectBase(Executable executable, boolean scoped) {
-                super(executable, scoped);
+            ReflectBase(Executable executable, boolean scoped, boolean onlyVisibleFromJniName) {
+                super(executable, scoped, onlyVisibleFromJniName);
             }
 
             @Override
@@ -257,8 +264,8 @@ abstract class HostMethodDesc {
         private static final class MethodReflectImpl extends ReflectBase {
             private final Method reflectionMethod;
 
-            MethodReflectImpl(Method reflectionMethod, boolean scoped) {
-                super(reflectionMethod, scoped);
+            MethodReflectImpl(Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
+                super(reflectionMethod, scoped, onlyVisibleFromJniName);
                 this.reflectionMethod = reflectionMethod;
             }
 
@@ -293,7 +300,7 @@ abstract class HostMethodDesc {
             private final Constructor<?> reflectionConstructor;
 
             ConstructorReflectImpl(Constructor<?> reflectionConstructor, boolean scoped) {
-                super(reflectionConstructor, scoped);
+                super(reflectionConstructor, scoped, false);
                 this.reflectionConstructor = reflectionConstructor;
             }
 
@@ -323,8 +330,8 @@ abstract class HostMethodDesc {
         abstract static class MHBase extends SingleMethod {
             @CompilationFinal private MethodHandle methodHandle;
 
-            MHBase(Executable executable, boolean scoped) {
-                super(executable, scoped);
+            MHBase(Executable executable, boolean scoped, boolean onlyVisibleFromJniName) {
+                super(executable, scoped, onlyVisibleFromJniName);
             }
 
             @Override
@@ -384,8 +391,8 @@ abstract class HostMethodDesc {
         private static final class MethodMHImpl extends MHBase {
             private final Method reflectionMethod;
 
-            MethodMHImpl(Method reflectionMethod, boolean scoped) {
-                super(reflectionMethod, scoped);
+            MethodMHImpl(Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
+                super(reflectionMethod, scoped, onlyVisibleFromJniName);
                 this.reflectionMethod = reflectionMethod;
             }
 
@@ -417,7 +424,7 @@ abstract class HostMethodDesc {
             private final Constructor<?> reflectionConstructor;
 
             ConstructorMHImpl(Constructor<?> reflectionConstructor, boolean scoped) {
-                super(reflectionConstructor, scoped);
+                super(reflectionConstructor, scoped, false);
                 this.reflectionConstructor = reflectionConstructor;
             }
 
