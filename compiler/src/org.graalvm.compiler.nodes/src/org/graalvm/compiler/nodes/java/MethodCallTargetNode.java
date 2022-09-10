@@ -31,8 +31,6 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -46,6 +44,8 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 
@@ -138,9 +138,17 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     public static ResolvedJavaMethod devirtualizeCall(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ResolvedJavaType contextType, Assumptions assumptions, Stamp receiverStamp) {
         TypeReference type = StampTool.typeReferenceOrNull(receiverStamp);
-        if (type == null && invokeKind == InvokeKind.Virtual) {
+        if (invokeKind == InvokeKind.Virtual) {
             // For virtual calls, we are guaranteed to receive a correct receiver type.
-            type = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
+            TypeReference declaringType = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
+            if (receiverStamp == null) {
+                type = declaringType;
+            } else {
+                Stamp improvedStamp = receiverStamp.tryImproveWith(StampFactory.object(declaringType));
+                if (improvedStamp != null) {
+                    type = StampTool.typeReferenceOrNull(improvedStamp);
+                }
+            }
         }
 
         if (type != null) {
