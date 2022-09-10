@@ -468,6 +468,11 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.common",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc"
+                ]
+            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "11+",
             "annotationProcessors": [
@@ -476,6 +481,30 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.graal.pointsto.standalone": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.graal.pointsto",
+            ],
+            "requires" : [
+                "jdk.unsupported" # sun.misc.Unsafe
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc"
+                ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                ]
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
 
         "com.oracle.graal.reachability": {
             "subDir": "src",
@@ -1566,6 +1595,45 @@ suite = {
                   "jdk.vm.ci.runtime",
                 ],
               }
+            },
+        },
+
+        "STANDALONE_POINTSTO": {
+            "subDir": "src",
+            "description" : "A standalone version of SubstrateVM static analysis to use for general pointsto analysis",
+            "dependencies": [
+                "com.oracle.graal.pointsto.standalone",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL",
+                "NATIVE_IMAGE_BASE",
+                "POINTSTO"
+            ],
+            "exclude": [
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.pointsto.standalone",
+                "exports" : [
+                    "com.oracle.graal.pointsto.standalone",
+                ],
+                "requires": [
+                    "java.management",
+                    "jdk.management",
+                ],
+                "requiresConcealed" : {
+                    "java.management": [
+                        "sun.management",
+                    ],
+                    "jdk.internal.vm.ci" : [
+                        "jdk.vm.ci.meta",
+                        "jdk.vm.ci.common",
+                        "jdk.vm.ci.code",
+                        "jdk.vm.ci.runtime",
+                    ],
+                    "jdk.internal.vm.compiler" : [
+                        "org.graalvm.compiler.options"
+                    ]
+                }
             },
         },
 
