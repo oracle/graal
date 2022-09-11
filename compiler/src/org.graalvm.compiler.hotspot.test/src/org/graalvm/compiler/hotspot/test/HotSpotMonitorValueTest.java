@@ -32,12 +32,12 @@ import static org.junit.Assert.assertThat;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.options.OptionValues;
+import org.junit.Test;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.InstalledCode;
@@ -55,7 +55,7 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
                 Call call = (Call) i;
                 if (call.target instanceof ResolvedJavaMethod) {
                     ResolvedJavaMethod target = (ResolvedJavaMethod) call.target;
-                    if (target.equals(lookupObjectWait())) {
+                    if (target.getName().equals("wait") && target.getDeclaringClass().isJavaLangObject() && target.getSignature().toMethodDescriptor().equals("(J)V")) {
                         BytecodeFrame frame = call.debugInfo.frame();
                         BytecodeFrame caller = frame.caller();
                         assertNotNull(caller);
@@ -86,19 +86,18 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
         throw new AssertionError("Could not find debug info for call to Object.wait(long)");
     }
 
-    private ResolvedJavaMethod lookupObjectWait() {
-        try {
-            return getMetaAccess().lookupJavaMethod(Object.class.getDeclaredMethod("wait", long.class));
-        } catch (Exception e) {
-            throw new GraalError("Could not find Object.wait(long): %s", e);
-        }
-    }
-
     @Test
     public void test() {
-        test("testSnippet", "a", "b");
+        // Disable incremental inlining so that the call to Objec.wait(long) in
+        // locks2 is not inlined.
+        OptionValues options = new OptionValues(getInitialOptions(), HighTier.Options.Inline, false);
+        test(options, "testSnippet", "a", "b");
     }
 
+    /**
+     * Force inlining to get the code shape expected by {@link #addMethod}.
+     */
+    @BytecodeParserForceInline
     private static void locks2(Object a, Object b) throws InterruptedException {
         synchronized (a) {
             synchronized (b) {

@@ -246,6 +246,13 @@ public class CompilationResultBuilder {
     }
 
     /**
+     * Sets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    public void setMinDataSectionItemAlignment(int alignment) {
+        compilationResult.setMinDataSectionItemAlignment(alignment);
+    }
+
+    /**
      * Associates {@code markId} with position {@code codePos} in the compilation result.
      *
      * @return the recorded entry for the mark

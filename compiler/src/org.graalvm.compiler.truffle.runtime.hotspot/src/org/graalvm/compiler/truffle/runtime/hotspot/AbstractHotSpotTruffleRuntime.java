@@ -74,7 +74,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -85,7 +84,7 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
-    static final int JAVA_SPEC = getJavaSpecificationVersion();
+    static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
 
@@ -676,14 +675,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
 
         return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayBaseOffset(resolvedType.getJavaKind());
-    }
-
-    private static int getJavaSpecificationVersion() {
-        String value = Services.getSavedProperties().get("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
     }
 
     @Override

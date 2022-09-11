@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,6 +90,7 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
@@ -312,7 +313,8 @@ public final class EspressoContext {
         if (espressoEnv.JDWPOptions != null) {
             espressoEnv.getJdwpContext().jdwpInit(getEnv(), getMainThread(), espressoEnv.getEventListener());
         }
-        getPolyglotInterfaceMappings().resolve(this);
+
+        getEspressoEnv().getPolyglotTypeMappings().resolve(this);
         getEspressoEnv().getReferenceDrainer().startReferenceDrain();
     }
 
@@ -1081,20 +1083,30 @@ public final class EspressoContext {
     }
 
     public boolean explicitTypeMappingsEnabled() {
-        return getPolyglotInterfaceMappings().hasMappings();
+        return getEspressoEnv().getPolyglotTypeMappings().hasMappings();
     }
 
-    public PolyglotInterfaceMappings getPolyglotInterfaceMappings() {
-        return getEspressoEnv().getPolyglotInterfaceMappings();
+    public boolean interfaceMappingsEnabled() {
+        return getEspressoEnv().getPolyglotTypeMappings().hasInterfaceMappings();
     }
 
-    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String name) {
-        assert getEspressoEnv().getProxyCache() != null;
-        return getEspressoEnv().getProxyCache().get(name);
+    public PolyglotTypeMappings getPolyglotInterfaceMappings() {
+        return getEspressoEnv().getPolyglotTypeMappings();
     }
 
-    public void registerProxyBytes(String name, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
-        assert getEspressoEnv().getProxyCache() != null;
-        getEspressoEnv().getProxyCache().put(name, generatedProxyBytes);
+    public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String metaName) {
+        if (getEspressoEnv().getProxyCache() != null) {
+            return getEspressoEnv().getProxyCache().get(metaName);
+        } else {
+            return null;
+        }
+    }
+
+    public void registerProxyBytes(String metaName, EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes) {
+        if (getEspressoEnv().getProxyCache() != null) {
+            getEspressoEnv().getProxyCache().put(metaName, generatedProxyBytes);
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
     }
 }

@@ -29,7 +29,9 @@ import java.lang.reflect.InvocationTargetException;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.test.AddExports;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -51,11 +53,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * See the documentation attached to {@code jdk.jfr.internal.event.EventWriter} for more detail.
  */
+@AddExports("jdk.jfr/jdk.jfr.internal.event")
 public class TestGetEventWriter extends GraalCompilerTest {
 
     @BeforeClass
     public static void beforeClass() throws Throwable {
         Assume.assumeTrue("JDK-8282420 came in JDK 19", JavaVersionUtil.JAVA_SPEC >= 19);
+        Assume.assumeTrue("Requires JDK-8290075", GraalServices.hasLookupMethodWithCaller());
         try (Recording r = new Recording()) {
             r.start();
             // Unlocks access to jdk.jfr.internal.event

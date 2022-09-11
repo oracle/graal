@@ -32,7 +32,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Denotes a generated class or method that should be ignored by JaCoCo.
+ * Denotes a class or method that should be ignored by JaCoCo. The "Generated" part of the name is a
+ * restriction based on JaCoco's support for excluding by annotation.
  *
  * @see "https://github.com/jacoco/jacoco/releases/tag/v0.8.3"
  */
@@ -40,7 +41,8 @@ import java.lang.annotation.Target;
 @Target({TYPE, METHOD})
 public @interface JacocoIgnoreGenerated {
     /**
-     * Specifies the reason the annotated element should be excluded from JaCoCo analysis.
+     * Specifies the reason the annotated element should be excluded from JaCoCo analysis. If an
+     * issue has been opened for missing coverage, use the issue id as the reason.
      */
     String value();
 }

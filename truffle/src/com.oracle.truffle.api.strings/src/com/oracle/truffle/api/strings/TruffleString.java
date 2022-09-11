@@ -140,7 +140,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     private final int codePointLength;
     private final byte codeRange;
-    private TruffleString next;
+    TruffleString next;
 
     private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
         super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0);
@@ -303,6 +303,20 @@ public final class TruffleString extends AbstractTruffleString {
             }
             entry.next = cacheHeadNext == null ? cacheHead : cacheHeadNext;
         } while (!setNextAtomic(cacheHead, cacheHeadNext, entry));
+    }
+
+    /*
+     * Simpler and faster insertion for the case `this` and `entry` were just allocated together and
+     * before they are published. The CAS is not needed in that case since we know nobody could
+     * write to `next` fields before us.
+     */
+    void cacheInsertFirstBeforePublished(TruffleString entry) {
+        assert !entry.isCacheHead();
+        assert isCacheHead();
+        assert next == null;
+        TruffleString cacheHead = this;
+        entry.next = cacheHead;
+        cacheHead.next = entry;
     }
 
     private static boolean hasDuplicateEncoding(TruffleString cacheHead, TruffleString start, TruffleString insertEntry) {
@@ -2024,7 +2038,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.1
          */
         public final TruffleString execute(String value, Encoding encoding) {
-            return execute(value, 0, value.length(), encoding, true);
+            return execute(value, 0, value.length(), encoding, false);
         }
 
         /**
@@ -4846,7 +4860,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
                         @Cached ConditionProfile lengthAndCodeRangeCheckProfile,
-                        @Cached ConditionProfile compareHashProfile,
+                        @Cached BranchProfile compareHashProfile,
                         @Cached ConditionProfile checkFirstByteProfile) {
             final int codeRangeA = getCodeRangeANode.execute(a);
             final int codeRangeB = getCodeRangeBNode.execute(b);
@@ -4861,7 +4875,7 @@ public final class TruffleString extends AbstractTruffleString {
                         ToIndexableNode toIndexableNodeA,
                         ToIndexableNode toIndexableNodeB,
                         ConditionProfile lengthAndCodeRangeCheckProfile,
-                        ConditionProfile compareHashProfile,
+                        BranchProfile compareHashProfile,
                         ConditionProfile checkFirstByteProfile,
                         EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
@@ -4869,8 +4883,11 @@ public final class TruffleString extends AbstractTruffleString {
             if (lengthAndCodeRangeCheckProfile.profile(lengthCMP != b.length() || codeRangeA != codeRangeB)) {
                 return false;
             }
-            if (compareHashProfile.profile(a.isHashCodeCalculated() && b.isHashCodeCalculated()) && a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
-                return false;
+            if (a.isHashCodeCalculated() && b.isHashCodeCalculated()) {
+                compareHashProfile.enter();
+                if (a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+                    return false;
+                }
             }
             if (lengthCMP == 0) {
                 return true;

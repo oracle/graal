@@ -117,6 +117,28 @@ public final class Mangle {
         return result.toString();
     }
 
+    /**
+     * Mangle a method name and signature to the symbols to be used for a Truffle jni-named method
+     * call. Signature must not be <code>null</code>. Truffle jni names are made up of the method
+     * name, the return type and the parameter types. Note that the declaring class and the 'Java_'
+     * marker is omitted from the result here.
+     * 
+     * @param methodName a Java method name (not checked here for validity)
+     * @param signature if non-null, a method signature to include in the mangled name
+     * @return a mangled jni-style string as described above
+     */
+    public static String truffleJniMethodName(String methodName, Symbol<Signature> signature) {
+        assert signature != null;
+        final StringBuilder result = new StringBuilder(100);
+        result.append(mangle(methodName)).append("__");
+        final String sig = signature.toString();
+        final String returnType = sig.substring(sig.lastIndexOf(')') + 1).replace('/', '.').replace('$', '.');
+        result.append(mangle(returnType));
+        final String parametersSignature = sig.substring(1, sig.lastIndexOf(')')).replace('/', '.').replace('$', '.');
+        result.append(mangle(parametersSignature));
+        return result.toString();
+    }
+
     private static String mangleChar(char ch) {
         final String s = Integer.toHexString(ch);
         assert s.length() <= 4;

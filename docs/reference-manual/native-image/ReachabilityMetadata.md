@@ -160,7 +160,7 @@ The JSON file is an array of reflection entries:
             {"name": "<methodName>", "parameterTypes": ["<param-one-type>"]}
         ],
         "fields": [
-            {"name": "<fieldName>", "allowWrite": true}
+            {"name": "<fieldName>"}
         ],
         "allDeclaredMethods": true,
         "allDeclaredFields": true,
@@ -185,9 +185,7 @@ The fields in a reflection entry have the following meaning:
  The parameter types are fully qualified Java class names.
  - `queriedMethods`: List of class methods that can only be looked up.
  The description of each method is identical to the `methods` list.
- - `fields`: List of class fields that can be looked up.
- Each field can optionally contain the `allowWrite` property.
- If `allowWrite` is set, this field can be written to reflectively even if marked as final.
+ - `fields`: List of class fields that can be looked up, read, or modified.
  - `all<access>(Methods/Fields/Constructors)`: Registers all methods/fields/constructors for lookup. Methods and constructors can also be invoked.
  `<access>` refers to different ways of querying these members in Java and can be either `Declared` or `Public`.
  For more information, see `java.lang.Class.getDeclaredMethods()` and `java.lang.Class.getPublicMethods()`.
