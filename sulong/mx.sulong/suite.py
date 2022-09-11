@@ -1475,7 +1475,27 @@ suite = {
       "cmakeConfig" : {
         "CMAKE_C_FLAGS" : "-Wno-everything",
         "CMAKE_CXX_FLAGS" : "-Wno-everything",
-        "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
+      },
+      "os_arch" : {
+        "darwin": {
+          "aarch64" : {
+            "cmakeConfig" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-L/opt/homebrew/lib -lm -lgmp",
+            },
+          },
+          "amd64": {
+            "buildEnv" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
+            },
+          },
+        },
+		"<others>": {
+          "<others>": {
+            "buildEnv" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
+            },
+          },
+        },
       },
       "dependencies" : [
         "SULONG_TEST",

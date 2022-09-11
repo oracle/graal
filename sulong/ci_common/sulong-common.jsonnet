@@ -195,6 +195,11 @@ local sulong_deps = composable((import "../../common.json").sulong.deps);
     },
   },
 
+  requireGMPDarwinAArch64:: {
+    packages+: {
+      libgmp: "==6.2.1",
+    },
+  },
 } + {
 
   [std.strReplace(name, "-", "_")]: common[name] {

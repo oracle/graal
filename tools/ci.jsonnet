@@ -77,7 +77,7 @@
     common.windows_amd64 + common.oraclejdk11 + tools_gate_lite + devkits["windows-jdk11"],
     common.windows_amd64 + common.oraclejdk17 + tools_gate_lite + devkits["windows-jdk17"],
 
-    //common.darwin_amd64  + common.oraclejdk11 + tools_gate_lite,
-    //common.darwin_amd64  + common.oraclejdk17 + tools_gate_lite,
+    common.darwin_amd64  + common.oraclejdk11 + tools_gate_lite,
+    common.darwin_amd64  + common.oraclejdk17 + tools_gate_lite,
   ],
 }
