@@ -82,7 +82,7 @@ public final class StackFramesHandler {
                                 context.debuggerToClientLine(sourceSection.getStartLine()), context.debuggerToClientColumn(sourceSection.getStartColumn())).setSource(dapSource));
             } else {
                 sfs.add(StackFrame.create(info.getId(new FrameWrapper(frame, returnValue)), frame.getName(),
-                                context.debuggerToClientLine(sourceSection.getEndLine()), context.debuggerToClientColumn(sourceSection.getEndColumn())).setSource(dapSource));
+                                context.debuggerToClientLine(sourceSection.getEndLine()), context.debuggerToClientColumn(sourceSection.getEndColumn() + 1)).setSource(dapSource));
             }
             top = false;
         }
