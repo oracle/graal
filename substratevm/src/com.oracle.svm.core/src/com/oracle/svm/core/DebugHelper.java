@@ -51,6 +51,15 @@ import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * All {@link CEntryPoint} methods in here can be directly called from a debugger.
+ *
+ * Example usage native-image GDB debug session on AMD64:
+ *
+ * <pre>
+ * (gdb) b 'java.io.PrintStream::write'
+ * Thread 1 "hellojava" hit Breakpoint 2, java.io.PrintStream::write(byte [] *, int, int) (this=0x7ffff7a2e4e0, buf=0x7ffff790b8f0, off=0, len=27)
+ * (gdb) call svm_dbg_print_obj($r15, 0x7ffff7a2e4e0)
+ * is an object of type java.io.PrintStream
+ * </pre>
  */
 public class DebugHelper {
     static class PointerDebugHelper {
