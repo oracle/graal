@@ -246,7 +246,6 @@ import static org.graalvm.wasm.constants.Instructions.TABLE_SIZE;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
-import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
@@ -276,6 +275,8 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_LEN
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.PRIMITIVE_TYPES;
+import static org.graalvm.wasm.util.ExtraDataAccessor.REFERENCE_TYPES;
 import static org.graalvm.wasm.util.ExtraDataAccessor.fifthValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
@@ -283,9 +284,6 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -310,12 +308,14 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.util.ExtraDataAccessor;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
@@ -3197,26 +3197,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         CompilerAsserts.partialEvaluationConstant(typeIndicator);
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
-        if (typeIndicator == ExtraDataAccessor.PRIMITIVE_TYPES) {
-            for (int i = 0; i < targetResultCount; ++i) {
-                WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        final int sourceStackPointer = stackPointer - targetResultCount;
+        CompilerAsserts.partialEvaluationConstant(sourceStackPointer);
+        for (int i = 0; i < targetResultCount; i++) {
+            switch (typeIndicator) {
+                case PRIMITIVE_TYPES:
+                    WasmFrame.copyPrimitive(frame, sourceStackPointer + i, targetStackPointer + i);
+                    break;
+                case REFERENCE_TYPES:
+                    WasmFrame.copyReference(frame, sourceStackPointer + i, targetStackPointer + i);
+                    break;
+                case ALL_TYPES:
+                    WasmFrame.copy(frame, sourceStackPointer + i, targetStackPointer + i);
+                    break;
             }
-            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-                dropPrimitive(frame, i);
-            }
-        } else if (typeIndicator == ExtraDataAccessor.REFERENCE_TYPES) {
-            for (int i = 0; i < targetResultCount; ++i) {
-                WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
-            }
-            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-                dropReference(frame, i);
-            }
-        } else if (typeIndicator == ExtraDataAccessor.ALL_TYPES) {
-            for (int i = 0; i < targetResultCount; ++i) {
-                WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
-            }
-            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-                drop(frame, i);
+        }
+        for (int i = targetStackPointer + targetResultCount; i < stackPointer; i++) {
+            switch (typeIndicator) {
+                case PRIMITIVE_TYPES:
+                    WasmFrame.dropPrimitive(frame, i);
+                    break;
+                case REFERENCE_TYPES:
+                    WasmFrame.dropReference(frame, i);
+                    break;
+                case ALL_TYPES:
+                    WasmFrame.drop(frame, i);
+                    break;
             }
         }
     }
