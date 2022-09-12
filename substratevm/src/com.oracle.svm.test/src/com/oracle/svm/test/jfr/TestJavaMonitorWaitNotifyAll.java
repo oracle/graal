@@ -26,7 +26,6 @@
 
 package com.oracle.svm.test.jfr;
 
-import static java.lang.Math.abs;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -34,19 +33,21 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
-import jdk.jfr.consumer.RecordedClass;
 import org.junit.Test;
 
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedObject;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorWait extends JfrTest {
+public class TestJavaMonitorWaitNotifyAll extends JfrTest {
     private static final int MILLIS = 50;
-    private static final int COUNT = 10;
-    private String producerName;
-    private String consumerName;
     static Helper helper = new Helper();
+    static String waiterName1;
+    static String waiterName2;
+    static String notifierName;
+    private boolean notifierFound = false;
+    private int waitersFound = 0;
 
     @Override
     public String[] getTestedEvents() {
@@ -57,42 +58,39 @@ public class TestJavaMonitorWait extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "jdk.JavaMonitorWait");
+            events = getEvents(recording, "TestJavaMonitorWaitNotifyAll");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        int prodCount = 0;
-        int consCount = 0;
-        String lastEventThreadName = null; // should alternate if buffer is 1
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
+            if (!event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
+                continue;
+            }
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
             String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
-            assertTrue("No event thread", eventThread != null);
-            if ((!eventThread.equals(producerName) && !eventThread.equals(consumerName)) || !event.getEventType().getName().equals("jdk.JavaMonitorWait") ||
-                            !struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+            if (!eventThread.equals(waiterName1) &&
+                            !eventThread.equals(waiterName2) &&
+                            !eventThread.equals(notifierName)) {
+                continue;
+            }
+            if (!struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
 
-            assertTrue("Wrong event duration", isEqualDuration(Duration.ofMillis(MILLIS), event.getDuration()));
-            assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+            assertTrue("Event is wrong duration.", isGreaterDuration(Duration.ofMillis(MILLIS), event.getDuration()));
 
-            if (lastEventThreadName == null) {
-                lastEventThreadName = notifThread;
+            if (eventThread.equals(notifierName)) {
+                assertTrue("Should have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+                notifierFound = true;
+            } else {
+                assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+                assertTrue("Notifier thread name is incorrect", notifThread.equals(notifierName));
+                waitersFound++;
             }
-            assertTrue("Not alternating", lastEventThreadName.equals(notifThread));
-            if (eventThread.equals(producerName)) {
-                prodCount++;
-                assertTrue("Wrong notifier", notifThread.equals(consumerName));
-            } else if (eventThread.equals(consumerName)) {
-                consCount++;
-                assertTrue("Wrong notifier", notifThread.equals(producerName));
-            }
-            lastEventThreadName = eventThread;
         }
-        assertFalse("Wrong number of events: " + prodCount + " " + consCount,
-                        abs(prodCount - consCount) > 1 || abs(consCount - COUNT) > 1);
+        assertTrue("Couldn't find expected wait events. NotifierFound: " + notifierFound + " waitersFound: " + waitersFound,
+                        notifierFound && waitersFound == 2);
     }
 
     @Test
@@ -112,43 +110,34 @@ public class TestJavaMonitorWait extends JfrTest {
                 throw new RuntimeException(e);
             }
         };
-        Thread tc = new Thread(consumer);
-        Thread tp = new Thread(producer);
-        producerName = tp.getName();
-        consumerName = tc.getName();
-        tp.start();
-        tc.start();
-        tp.join();
-        tc.join();
+        Thread tc1 = new Thread(consumer);
+        Thread tp1 = new Thread(producer);
+        Thread tp2 = new Thread(producer);
+        waiterName1 = tp1.getName();
+        waiterName2 = tp2.getName();
+        notifierName = tc1.getName();
+
+        tp1.start();
+        tp2.start();
+        tc1.start();
+
+        tp1.join();
+        tp2.join();
+        tc1.join();
 
         // sleep so we know the event is recorded
         Thread.sleep(500);
     }
 
     static class Helper {
-        private int count = 0;
-        private final int bufferSize = 1;
-
         public synchronized void produce() throws InterruptedException {
-            for (int i = 0; i < COUNT; i++) {
-                while (count >= bufferSize) {
-                    wait();
-                }
-                Thread.sleep(MILLIS);
-                count++;
-                notify();
-            }
+            wait();
         }
 
         public synchronized void consume() throws InterruptedException {
-            for (int i = 0; i < COUNT; i++) {
-                while (count == 0) {
-                    wait();
-                }
-                Thread.sleep(MILLIS);
-                count--;
-                notify();
-            }
+            // give the producers a headstart so they can start waiting
+            wait(MILLIS);
+            notifyAll(); // should wake up both producers
         }
     }
 }

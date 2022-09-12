@@ -27,12 +27,10 @@
 package com.oracle.svm.test.jfr;
 
 import static java.lang.Math.abs;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -42,20 +40,19 @@ import org.junit.Test;
 
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedObject;
-import com.oracle.svm.test.jfr.JfrTest;
-
-import com.oracle.svm.test.jfr.Stressor;
 
 public class TestJavaMonitorEnter extends JfrTest {
-    private final int THREADS = 10;
+    private final int threads = 10;
     private static final int MILLIS = 60;
     static Object monitor = new Object();
 
     private static Queue<String> orderedWaiterNames = new LinkedList<>();
+
     @Override
     public String[] getTestedEvents() {
         return new String[]{"jdk.JavaMonitorEnter"};
     }
+
     @Override
     public void analyzeEvents() {
         List<RecordedEvent> events;
@@ -65,34 +62,34 @@ public class TestJavaMonitorEnter extends JfrTest {
             throw new RuntimeException(e);
         }
         int count = 0;
-        orderedWaiterNames.poll(); //first worker does not wait
+        orderedWaiterNames.poll(); // first worker does not wait
         String waiterName = orderedWaiterNames.poll();
         Long prev = 0L;
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
-            String eventThread = struct.<RecordedThread>getValue("eventThread").getJavaName();
-            if (event.getEventType().getName().equals("jdk.JavaMonitorEnter")
-                    && isGreaterDuration(Duration.ofMillis(MILLIS), event.getDuration())
-                    && waiterName.equals(eventThread)) {
+            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
+            if (event.getEventType().getName().equals("jdk.JavaMonitorEnter") && isGreaterDuration(Duration.ofMillis(MILLIS), event.getDuration()) && waiterName.equals(eventThread)) {
                 Long duration = event.getDuration().toMillis();
-                assertTrue( "Durations not as expected ", abs(duration - prev - MILLIS) < MS_TOLERANCE );
+                assertTrue("Durations not as expected ", abs(duration - prev - MILLIS) < msTolerance);
                 count++;
                 waiterName = orderedWaiterNames.poll();
                 prev = duration;
             }
         }
-        assertTrue("Wrong number of Java Monitor Enter Events " + count, count == THREADS - 1);// -1 because first thread does not get blocked by any previous thread
+        assertTrue("Wrong number of Java Monitor Enter Events " + count, count == threads - 1);
+
     }
 
     private static void doWork(Object obj) throws InterruptedException {
-        synchronized(obj){
+        synchronized (obj) {
             Thread.sleep(MILLIS);
             orderedWaiterNames.add(Thread.currentThread().getName());
         }
     }
+
     @Test
     public void test() throws Exception {
-        int threadCount = THREADS;
+        int threadCount = threads;
         Runnable r = () -> {
             // create contention between threads for one lock
             try {

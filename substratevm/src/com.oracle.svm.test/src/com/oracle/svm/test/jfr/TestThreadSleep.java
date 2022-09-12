@@ -36,7 +36,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
-import com.oracle.svm.test.jfr.JfrTest;
 
 public class TestThreadSleep extends JfrTest {
     private String sleepingThreadName;
@@ -46,6 +45,7 @@ public class TestThreadSleep extends JfrTest {
     public String[] getTestedEvents() {
         return new String[]{"jdk.ThreadSleep"};
     }
+
     @Override
     public void analyzeEvents() {
         List<RecordedEvent> events;
@@ -60,18 +60,18 @@ public class TestThreadSleep extends JfrTest {
                 continue;
             }
             RecordedObject struct = event;
-            String eventThread = struct.<RecordedThread>getValue("eventThread").getJavaName();
+            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
             if (!eventThread.equals(sleepingThreadName)) {
                 continue;
             }
             if (!isEqualDuration(event.getDuration(), Duration.ofMillis(MILLIS))) {
                 continue;
-            }            foundSleepEvent = true;
+            }
+            foundSleepEvent = true;
             break;
         }
         assertTrue("Sleep event not found.", foundSleepEvent);
     }
-
 
     @Test
     public void test() throws Exception {

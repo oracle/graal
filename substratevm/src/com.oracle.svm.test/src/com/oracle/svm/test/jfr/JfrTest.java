@@ -30,7 +30,6 @@ import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
@@ -60,7 +59,7 @@ public abstract class JfrTest {
     protected Jfr jfr;
     protected Recording recording;
     private ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
-    protected final long MS_TOLERANCE = 10;
+    protected final long msTolerance = 10;
 
     @BeforeClass
     public static void checkForJFR() {
@@ -111,7 +110,8 @@ public abstract class JfrTest {
     }
 
     public abstract String[] getTestedEvents();
-    public void analyzeEvents(){
+
+    public void analyzeEvents() {
     }
 
     protected void checkEvents() {
@@ -147,15 +147,17 @@ public abstract class JfrTest {
             return e1.getEndTime().compareTo(e2.getEndTime());
         }
     }
+
     private Path makeCopy(Recording recording, String testName) throws IOException { // from jdk 19
         Path p = recording.getDestination();
         if (p == null) {
             File directory = new File(".");
-            p = new File(directory.getAbsolutePath(), "recording-" + recording.getId() + "-" + testName+ ".jfr").toPath();
+            p = new File(directory.getAbsolutePath(), "recording-" + recording.getId() + "-" + testName + ".jfr").toPath();
             recording.dump(p);
         }
         return p;
     }
+
     protected List<RecordedEvent> getEvents(Recording recording, String testName) throws IOException {
         Path p = makeCopy(recording, testName);
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
@@ -163,15 +165,17 @@ public abstract class JfrTest {
         return events;
     }
 
-
-    /** Used for comparing durations with a tolerance of MS_TOLERANCE */
+    /** Used for comparing durations with a tolerance of MS_TOLERANCE. */
     protected boolean isEqualDuration(Duration d1, Duration d2) {
-        return d1.minus(d2).abs().compareTo(Duration.ofMillis(MS_TOLERANCE)) < 0;
+        return d1.minus(d2).abs().compareTo(Duration.ofMillis(msTolerance)) < 0;
     }
 
-    /** Used for comparing durations with a tolerance of MS_TOLERANCE. True if 'larger' really is bigger */
+    /**
+     * Used for comparing durations with a tolerance of MS_TOLERANCE. True if 'larger' really is
+     * bigger
+     */
     protected boolean isGreaterDuration(Duration smaller, Duration larger) {
-        return smaller.minus(larger.plus(Duration.ofMillis(MS_TOLERANCE))).isNegative();
+        return smaller.minus(larger.plus(Duration.ofMillis(msTolerance))).isNegative();
     }
 
 }
