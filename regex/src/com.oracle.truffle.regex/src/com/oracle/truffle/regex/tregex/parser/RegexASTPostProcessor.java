@@ -472,7 +472,10 @@ public class RegexASTPostProcessor {
                 // surrogates
                 CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
                 assert !ast.getFlags().isUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
-                assert !group.hasEnclosedCaptureGroups();
+                if (cc.getCharSet().isEmpty()) {
+                    // negative lookaround on a character class that can never match -> no-op
+                    return LookAroundOptimization.NO_OP;
+                }
                 Group wrapGroup = ast.createGroup();
                 Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
                 positionAssertionSeq.add(ast.createPositionAssertion(lookaround.isLookAheadAssertion() ? PositionAssertion.Type.DOLLAR : PositionAssertion.Type.CARET));
