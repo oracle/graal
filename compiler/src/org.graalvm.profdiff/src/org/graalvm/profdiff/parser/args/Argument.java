@@ -120,8 +120,12 @@ public abstract class Argument {
      * @param offset the index in the program arguments where this argument begins
      * @return next value of the offset where the next argument is expected to begin
      * @throws InvalidArgumentException there was no value provided for this argument
+     * @throws MissingArgumentException a required argument is missing in the program arguments
+     *             (from an {@link ArgumentSubparser})
+     * @throws UnknownArgumentException a value was provided for an unknown argument (from an
+     *             {@link ArgumentSubparser})
      */
-    abstract int parse(String[] args, int offset) throws InvalidArgumentException;
+    abstract int parse(String[] args, int offset) throws InvalidArgumentException, UnknownArgumentException, MissingArgumentException;
 
     /**
      * Finds out whether this argument is an option argument by looking at its prefix.

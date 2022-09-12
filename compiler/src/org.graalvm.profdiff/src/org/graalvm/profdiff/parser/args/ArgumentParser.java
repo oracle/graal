@@ -28,64 +28,23 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
- * Builds and parses program arguments.
+ * Builds and parses arguments.
  */
-public class ArgumentParser {
-    /**
-     * The name of the program.
-     */
-    private final String prog;
-
-    /**
-     * The description of the program.
-     */
-    private final String description;
-
+public abstract class ArgumentParser {
     /**
      * The map of argument names to option arguments. Option argument names start with the "--"
      * prefix. They may be required or optional.
      */
-    private final Map<String, Argument> optionArguments = new LinkedHashMap<>();
+    protected final Map<String, Argument> optionArguments = new LinkedHashMap<>();
 
     /**
      * The list of positional arguments. The argument names do not start with a prefix and are
      * always required.
      */
-    private final List<Argument> positionalArguments = new ArrayList<>();
-
-    /**
-     * Constructs an argument parser.
-     *
-     * @param prog the name of the program
-     * @param description the description of the program
-     */
-    public ArgumentParser(String prog, String description) {
-        this.prog = prog;
-        this.description = description;
-    }
-
-    /**
-     * Creates a usage string describing the arguments.
-     *
-     * @return the usage string
-     */
-    public String createUsage() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Usage: ").append(prog);
-        if (!optionArguments.values().isEmpty()) {
-            sb.append(" [options]");
-        }
-        for (Argument argument : positionalArguments) {
-            sb.append(' ').append(argument.getName());
-        }
-        sb.append("\n\n").append(description).append("\n\nOptions:\n");
-        for (Argument argument : optionArguments.values()) {
-            sb.append(String.format("  %-20s ", argument.getName())).append(argument.getHelp()).append('\n');
-        }
-        return sb.toString();
-    }
+    protected final List<Argument> positionalArguments = new ArrayList<>();
 
     /**
      * Parses the program arguments, sets the parsed values to {@link Argument} objects and verifies
@@ -129,14 +88,32 @@ public class ArgumentParser {
     }
 
     /**
+     * Gets the subparser group argument if this parser contains a subparser group.
+     */
+    protected Optional<ArgumentSubparserGroup> getSubparserGroup() {
+        if (positionalArguments.isEmpty()) {
+            return Optional.empty();
+        }
+        int last = positionalArguments.size() - 1;
+        if (positionalArguments.get(last) instanceof ArgumentSubparserGroup) {
+            return Optional.of((ArgumentSubparserGroup) positionalArguments.get(last));
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Adds an argument to the list of program arguments.
      *
      * @param argument the program argument to be added
      */
-    private void addArgument(Argument argument) {
+    protected void addArgument(Argument argument) {
         if (argument.isOptionArgument()) {
             optionArguments.put(argument.getName(), argument);
         } else {
+            if (getSubparserGroup().isPresent()) {
+                throw new RuntimeException("Only one subparser group per argument parser is possible, " +
+                                "and it must be the last positional argument.");
+            }
             positionalArguments.add(argument);
         }
     }
@@ -206,12 +183,26 @@ public class ArgumentParser {
      * @param name the name of the argument
      * @param defaultValue the default value of the argument, must not be null
      * @param help the help message in the program usage string
-     * @return the created argument instance
      * @param <T> the type of the enum
+     * @return the created argument instance
      */
     public <T extends Enum<T>> EnumArgument<T> addEnumArgument(String name, T defaultValue, String help) {
         EnumArgument<T> argument = new EnumArgument<>(name, defaultValue, help);
         addArgument(argument);
         return argument;
+    }
+
+    /**
+     * Adds an argument that expects a command name that will parse the rest of the arguments. Only
+     * one subparser group per parser is possible, and it must be the last positional argument.
+     *
+     * @param name the name of the command group
+     * @param help the help message for the command group
+     * @return the command group
+     */
+    public ArgumentSubparserGroup addSubparserGroup(String name, String help) {
+        ArgumentSubparserGroup subparserGroup = new ArgumentSubparserGroup(name, help);
+        addArgument(subparserGroup);
+        return subparserGroup;
     }
 }

@@ -43,12 +43,12 @@ import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.DoubleArgument;
 import org.graalvm.profdiff.parser.args.EnumArgument;
 import org.graalvm.profdiff.parser.args.IntegerArgument;
 import org.graalvm.profdiff.parser.args.InvalidArgumentException;
 import org.graalvm.profdiff.parser.args.MissingArgumentException;
+import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
 import org.graalvm.profdiff.parser.args.UnknownArgumentException;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
@@ -60,7 +60,7 @@ import org.graalvm.profdiff.util.Writer;
 
 public class Profdiff {
     public static void main(String[] args) {
-        ArgumentParser argumentParser = new ArgumentParser(
+        ProgramArgumentParser argumentParser = new ProgramArgumentParser(
                         "mx profdiff",
                         "Compares the optimization log of hot compilation units of two experiments.");
         IntegerArgument hotMinArgument = argumentParser.addIntegerArgument(
