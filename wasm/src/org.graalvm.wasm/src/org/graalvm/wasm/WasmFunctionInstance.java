@@ -116,6 +116,12 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {
+            for (int i = 0; i < arguments.length; i++) {
+                final Object arg = arguments[i];
+                if (InteropLibrary.getUncached().isNull(arg)) {
+                    arguments[i] = WasmConstant.NULL;
+                }
+            }
             Object result = callNode.execute(target, arguments);
 
             // For external calls of a WebAssembly function we have to materialize the multi-value

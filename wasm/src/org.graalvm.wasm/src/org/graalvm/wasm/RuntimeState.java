@@ -273,6 +273,9 @@ public class RuntimeState {
     }
 
     public void dropElemInstance(int index) {
+        if (elemInstances == null) {
+            return;
+        }
         assert index < elemInstances.length;
         elemInstances[index] = null;
     }
@@ -302,6 +305,9 @@ public class RuntimeState {
     }
 
     public void dropDataInstance(int index) {
+        if (dataInstances == null) {
+            return;
+        }
         assert index < dataInstances.length;
         dataInstances[index] = null;
     }

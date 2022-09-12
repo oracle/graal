@@ -178,7 +178,7 @@ public final class WasmContext {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
         // Reread code sections if module is instantiated multiple times
-        if (!module.hasCodeEntries()) {
+        if (module.hasCodeSection() && !module.hasCodeEntries()) {
             final BinaryParser reader = new BinaryParser(module, this);
             reader.readCodeEntries();
         }

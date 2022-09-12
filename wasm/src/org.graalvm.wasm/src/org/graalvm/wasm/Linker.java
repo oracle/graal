@@ -377,7 +377,7 @@ public class Linker {
             int baseAddress;
             if (offsetGlobalIndex != -1) {
                 final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
+                assertTrue(offsetGlobalAddress != SymbolTable.UNINITIALIZED_ADDRESS, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
                                 dataSegmentId + " in module '" + instance.name() + "' was not initialized.", Failure.UNSPECIFIED_MALFORMED);
                 baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
             } else {
@@ -494,7 +494,7 @@ public class Linker {
         final int baseAddress;
         if (offsetGlobalIndex != -1) {
             final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-            assertTrue(offsetGlobalAddress != -1,
+            assertTrue(offsetGlobalAddress != SymbolTable.UNINITIALIZED_ADDRESS,
                             String.format("The global variable '%d' for the offset of the elem segment %d in module '%s' was not initialized.", offsetGlobalIndex, elemSegmentId, instance.name()),
                             Failure.UNSPECIFIED_INTERNAL);
             baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
