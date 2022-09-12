@@ -97,7 +97,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private Group wrappedRoot;
     private Group[] captureGroups;
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
-    private final SubTreeIndex subtrees = new SubTreeIndex();
+    private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
@@ -251,7 +251,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return wrappedRoot;
     }
 
-    public SubTreeIndex getSubtrees() {
+    public GlobalSubTreeIndex getSubtrees() {
         return subtrees;
     }
 

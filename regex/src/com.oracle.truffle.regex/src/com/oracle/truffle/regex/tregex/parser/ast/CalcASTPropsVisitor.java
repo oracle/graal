@@ -361,6 +361,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && !atomicGroup.isDead()) {
             ast.getProperties().setAtomicGroups();
             ast.getSubtrees().add(atomicGroup);
+            atomicGroup.getSubTreeParent().getSubtrees().add(atomicGroup);
         }
         leaveSubtreeRootNode(atomicGroup, CHANGED_FLAGS);
         atomicGroup.getParent().setMinPath(atomicGroup.getMinPath());
@@ -370,6 +371,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     private void leaveLookAroundAssertion(LookAroundAssertion assertion) {
         if (isForward() && !assertion.isDead()) {
             ast.getSubtrees().add(assertion);
+            assertion.getSubTreeParent().getSubtrees().add(assertion);
         }
         if (assertion.hasCaptureGroups()) {
             ast.getProperties().setCaptureGroupsInLookAroundAssertions();
