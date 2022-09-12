@@ -317,7 +317,6 @@ public class PartialEscapeAnalysisTest extends EATestBase {
         ArrayList<Object> var2 = new ArrayList<>();
 
         int var3 = (int) Math.pow(10.0D, Math.floor(Math.log(var4.length - 0.01D) / Math.log(10.0D)));
-        // int var3 = 100;
         for (int i = 0; i < var4.length; i++) {
             Object var5 = var4[i];
             var2.add(var5);
@@ -334,6 +333,32 @@ public class PartialEscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testVirtualPhiLoop2() {
+        for (int size = 0; size < 100; size++) {
+            test("virtualPhiLoop2", (Object) new Object[size]);
+        }
+    }
+
+    private static int virtualPhiLoop3(Object[] var4) {
+        ArrayList<Object> var1 = new ArrayList<>();
+        ArrayList<Object> var2 = new ArrayList<>();
+
+        int var3 = 100;
+        for (int i = 0; i < var4.length; i++) {
+            Object var5 = var4[i];
+            var2.add(var5);
+            if (var2.size() >= var3) {
+                var1.add(var2.size());
+                var2 = new ArrayList<>();
+            }
+        }
+        if (!var2.isEmpty()) {
+            var1.add(-42);
+        }
+        return var1.size();
+    }
+
+    @Test
+    public void testVirtualPhiLoop3() {
         for (int size = 0; size < 100; size++) {
             test("virtualPhiLoop2", (Object) new Object[size]);
         }
