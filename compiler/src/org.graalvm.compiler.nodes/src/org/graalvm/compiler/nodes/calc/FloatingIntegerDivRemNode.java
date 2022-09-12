@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
@@ -121,8 +122,14 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
 
     @Override
     public boolean verify() {
-        GraalError.guarantee((!canDivideByZero() && !overflowVisibleSideEffect()) || graph().isAfterStage(StageFlag.FIXED_READS),
-                        "Floating irem must never create an exception or trap");
+        /*
+         * Special case unconditionally deopting rem operations: Other optimziations can lead to
+         * graphs where the rem operation will unconditionally deopt.
+         */
+        boolean guardWillAlwaysDeopt = getGuard() != null && getGuard() instanceof GuardNode && ((GuardNode) getGuard()).willDeoptUnconditionally();
+        boolean cannotDeopt = (!canDivideByZero() && !overflowVisibleSideEffect());
+        boolean isAfterStage = graph().isAfterStage(StageFlag.FIXED_READS);
+        GraalError.guarantee(guardWillAlwaysDeopt || cannotDeopt || isAfterStage, "Floating irem must never create an exception or trap");
         return super.verify();
     }
 }
