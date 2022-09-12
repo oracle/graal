@@ -61,6 +61,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.junit.Assert;
 
@@ -253,6 +254,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     private CallTarget lastParsed;
 
+    private static FrameDescriptor getDefaultFrameDescriptor() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlot(FrameSlotKind.Static, null, null);
+        builder.addSlot(FrameSlotKind.Int, null, null);
+        return builder.build();
+    }
+
     public static CallTarget getLastParsedCalltarget() {
         return InstrumentationTestLanguage.get(null).lastParsed;
     }
@@ -264,7 +272,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         if (code != null) {
             SourceSection outer = code.createSection(0, code.getLength());
             BaseNode node = parse(code);
-            RootCallTarget rct = new InstrumentationTestRootNode(this, "", outer, node).getCallTarget();
+            RootCallTarget rct = new InstrumentationTestRootNode(this, getDefaultFrameDescriptor(), "", outer, node).getCallTarget();
             rct.call();
             if (context.runInitAfterExec) {
                 context.afterTarget = rct;
@@ -288,7 +296,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             throw new IOException(e);
         }
         RootCallTarget afterTarget = InstrumentContext.get(null).afterTarget;
-        return lastParsed = new InstrumentationTestRootNode(this, "", outer, afterTarget, node).getCallTarget();
+        return lastParsed = new InstrumentationTestRootNode(this, getDefaultFrameDescriptor(), "", outer, afterTarget, node).getCallTarget();
     }
 
     public static RootNode parse(String code) {
@@ -296,7 +304,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         Source source = Source.newBuilder(ID, code, "test").build();
         SourceSection outer = source.createSection(0, source.getLength());
         BaseNode base = testLanguage.parse(source);
-        return new InstrumentationTestRootNode(testLanguage, "", outer, base);
+        return new InstrumentationTestRootNode(testLanguage, getDefaultFrameDescriptor(), "", outer, base);
     }
 
     @Override
@@ -632,12 +640,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         private final RootCallTarget afterTarget;
         @Child private InstrumentedNode functionRoot;
 
-        protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, BaseNode... expressions) {
-            this(lang, name, sourceSection, null, expressions);
+        protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, FrameDescriptor descriptor, String name, SourceSection sourceSection, BaseNode... expressions) {
+            this(lang, descriptor, name, sourceSection, null, expressions);
         }
 
-        protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, RootCallTarget afterTarget, BaseNode... expressions) {
-            super(lang);
+        protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, FrameDescriptor descriptor, String name, SourceSection sourceSection, RootCallTarget afterTarget,
+                        BaseNode... expressions) {
+            super(lang, descriptor);
             this.name = name;
             this.sourceSection = sourceSection;
             this.afterTarget = afterTarget;
@@ -1627,7 +1636,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
-            this.target = new InstrumentationTestRootNode(InstrumentationTestLanguage.get(this), identifier, functionSection, children).getCallTarget();
+            this.target = new InstrumentationTestRootNode(InstrumentationTestLanguage.get(this), getDefaultFrameDescriptor(), identifier, functionSection, children).getCallTarget();
         }
 
         @Override
