@@ -68,7 +68,7 @@ public abstract class EnginesGCedTest {
             Thread[] threads = findAllThreads();
             for (Thread t : threads) {
                 if (t != null) {
-                    threadIDs.add(t.getId());
+                    threadIDs.add(getThreadId(t));
                 }
             }
         }
@@ -80,7 +80,7 @@ public abstract class EnginesGCedTest {
             Thread[] threads = findAllThreads();
             for (Thread t : threads) {
                 if (t != null) {
-                    if (!threadIDs.contains(t.getId())) {
+                    if (!threadIDs.contains(getThreadId(t))) {
                         if (t.getClass().getPackage().getName().startsWith("org.graalvm.compiler")) {
                             // A compiler thread
                             continue;
@@ -94,6 +94,11 @@ public abstract class EnginesGCedTest {
                 }
             }
             threadIDs.clear();
+        }
+
+        @SuppressWarnings("deprecation")
+        private static long getThreadId(Thread t) {
+            return t.getId();
         }
 
         void addReference(Object engine) {
