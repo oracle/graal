@@ -810,11 +810,20 @@ public final class Deoptimizer {
         targetContentSize += FrameAccess.returnAddressSize();
 
         /* The source and target bytecode frame must match (as they stem from the same BCI). */
-        assert sourceFrame.getNumLocals() == targetFrame.getNumLocals();
-        assert sourceFrame.getNumStack() == targetFrame.getNumStack();
-        assert sourceFrame.getNumLocks() == targetFrame.getNumLocks();
-        assert targetFrame.getVirtualObjects().length == 0;
-        assert sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
+        boolean compatibleState = sourceFrame.getNumLocals() == targetFrame.getNumLocals() &&
+                        sourceFrame.getNumStack() == targetFrame.getNumStack() &&
+                        sourceFrame.getNumLocks() == targetFrame.getNumLocks() &&
+                        targetFrame.getVirtualObjects().length == 0 &&
+                        sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
+        if (!compatibleState) {
+            String message = "Deoptimization is not possible.\n" +
+                            String.format("Target Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s, virtual objects length-%s\n", targetFrame.getNumLocals(),
+                                            targetFrame.getNumStack(), targetFrame.getNumLocks(), targetFrame.getValueInfos().length, targetFrame.getVirtualObjects().length) +
+                            String.format("Source Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s\n", sourceFrame.getNumLocals(), sourceFrame.getNumStack(),
+                                            sourceFrame.getNumLocks(), sourceFrame.getValueInfos().length);
+            throw VMError.shouldNotReachHere(message);
+        }
+
         int numValues = targetFrame.getValueInfos().length;
 
         /*

@@ -35,6 +35,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
@@ -216,6 +218,7 @@ public class CompilationResult {
 
     private final DataSection dataSection = new DataSection();
 
+    private final EconomicSet<Infopoint> invalidDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     private final List<Infopoint> infopoints = new ArrayList<>();
     private final List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
@@ -315,6 +318,7 @@ public class CompilationResult {
                 Objects.equals(this.dataSection, that.dataSection) &&
                 Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
                 Objects.equals(this.dataPatches, that.dataPatches) &&
+                Objects.equals(this.invalidDeoptimizationStates, that.invalidDeoptimizationStates) &&
                 Objects.equals(this.infopoints, that.infopoints) &&
                 Objects.equals(this.marks,  that.marks) &&
                 Arrays.equals(this.assumptions, that.assumptions) &&
@@ -600,6 +604,14 @@ public class CompilationResult {
         infopoints.add(infopoint);
     }
 
+    /**
+     * Mark that the provided infopoint cannot be used as a deoptimization entrypoint.
+     */
+    public void recordInvalidForDeoptimization(Infopoint infopoint) {
+        checkOpen();
+        invalidDeoptimizationStates.add(infopoint);
+    }
+
     public void recordSourceMapping(int startOffset, int endOffset, NodeSourcePosition sourcePosition) {
         checkOpen();
         sourceMapping.add(new SourceMapping(startOffset, endOffset, sourcePosition));
@@ -667,6 +679,10 @@ public class CompilationResult {
             annotations = new ArrayList<>();
         }
         annotations.add(annotation);
+    }
+
+    public boolean isValidDeoptimizationState(Infopoint infopoint) {
+        return infopoint != null && !invalidDeoptimizationStates.contains(infopoint);
     }
 
     /**

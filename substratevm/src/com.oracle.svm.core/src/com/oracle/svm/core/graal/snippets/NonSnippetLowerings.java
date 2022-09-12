@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
@@ -116,13 +117,16 @@ public abstract class NonSnippetLowerings {
 
     @SuppressWarnings("unused")
     protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
-                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         this.runtimeConfig = runtimeConfig;
         this.knownOffsets = KnownOffsets.singleton();
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
-        lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
-        lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
+        if (hosted) {
+            // These nodes create a FrameState which cannot be deoptimized from
+            lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
+            lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
+        }
         lowerings.put(GetClassNode.class, new GetClassLowering());
         lowerings.put(InvokeNode.class, new InvokeLowering());
         lowerings.put(InvokeWithExceptionNode.class, new InvokeLowering());
@@ -218,7 +222,15 @@ public abstract class NonSnippetLowerings {
                             getCachedExceptionDescriptors, createExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
-            foreignCallNode.setStateAfter(node.createStateDuring());
+            FrameState stateDuring = node.createStateDuring();
+            /*
+             * FrameStates attached to bytecode exception nodes are not a valid deoptimization state
+             * since these nodes are on the exceptional control flow path but before the exception
+             * handler itself.
+             */
+            stateDuring.invalidateForDeoptimization();
+            foreignCallNode.setStateDuring(stateDuring);
+            foreignCallNode.setStateAfter(node.stateAfter());
             graph.replaceFixedWithFixed(node, foreignCallNode);
         }
     }
