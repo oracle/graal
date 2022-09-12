@@ -71,15 +71,14 @@ public class TestJavaMonitorWait extends JfrTest {
             String eventThread = struct.<RecordedThread>getValue("eventThread").getJavaName();
             String notifThread = struct.<RecordedThread>getValue("notifier") != null ? struct.<RecordedThread>getValue("notifier").getJavaName() : null;
             assertTrue("No event thread",eventThread != null);
-            if (!eventThread.equals(producerName) && !eventThread.equals(consumerName) ) {
+            if (
+                    (!eventThread.equals(producerName) && !eventThread.equals(consumerName))
+                    || !event.getEventType().getName().equals("jdk.JavaMonitorWait")
+                    || !struct.<RecordedClass>getValue("monitorClass").getName().equals(Helper.class.getName() )) {
                 continue;
             }
-            assertTrue( "Wrong event type", event.getEventType().getName().equals("jdk.JavaMonitorWait"));
-            assertTrue("Wrong event duration", isEqualDuration(Duration.ofMillis(MILLIS), event.getDuration()));
-            assertFalse("Wrong monitor class.",
-                    !struct.<RecordedClass>getValue("monitorClass").getName().equals(Helper.class.getName())
-                            && (eventThread.equals(consumerName) ||eventThread.equals(producerName)));
 
+            assertTrue("Wrong event duration", isEqualDuration(Duration.ofMillis(MILLIS), event.getDuration()));
             assertFalse("Should not have timed out.", struct.<Boolean>getValue("timedOut").booleanValue());
 
             if (lastEventThreadName == null) {

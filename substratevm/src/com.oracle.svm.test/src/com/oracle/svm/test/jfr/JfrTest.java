@@ -144,7 +144,7 @@ public abstract class JfrTest {
     private static class ChronologicalComparator implements Comparator<RecordedEvent> {
         @Override
         public int compare(RecordedEvent e1, RecordedEvent e2) {
-            return e1.getStartTime().compareTo(e2.getStartTime());
+            return e1.getEndTime().compareTo(e2.getEndTime());
         }
     }
     private Path makeCopy(Recording recording, String testName) throws IOException { // from jdk 19

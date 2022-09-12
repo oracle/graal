@@ -56,15 +56,17 @@ public class TestThreadSleep extends JfrTest {
         }
         boolean foundSleepEvent = false;
         for (RecordedEvent event : events) {
+            if (!event.getEventType().getName().equals("jdk.ThreadSleep")) {
+                continue;
+            }
             RecordedObject struct = event;
             String eventThread = struct.<RecordedThread>getValue("eventThread").getJavaName();
             if (!eventThread.equals(sleepingThreadName)) {
                 continue;
             }
-            assertTrue("wrong event type",event.getEventType().getName().equals("jdk.ThreadSleep"));
-
-            assertTrue("Slept wrong duration.",isEqualDuration(event.getDuration(), Duration.ofMillis(MILLIS)));
-            foundSleepEvent = true;
+            if (!isEqualDuration(event.getDuration(), Duration.ofMillis(MILLIS))) {
+                continue;
+            }            foundSleepEvent = true;
             break;
         }
         assertTrue("Sleep event not found.", foundSleepEvent);
