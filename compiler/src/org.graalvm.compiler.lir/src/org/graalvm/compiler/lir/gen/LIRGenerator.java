@@ -445,7 +445,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                 state = frameState;
             } else {
                 assert needOnlyOopMaps();
-                state = new LIRFrameState(null, null, null);
+                state = new LIRFrameState(null, null, null, false);
             }
         }
 

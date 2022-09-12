@@ -143,6 +143,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     private final Bytecode code;
 
     /**
+     * Flag to indicate whether this frame represents valid deoptimization state.
+     */
+    private boolean validForDeoptimization = true;
+
+    /**
      * Narrows {@code value} to a {@code char} while ensuring the value does not change.
      */
     private static char ensureChar(int value) {
@@ -272,6 +277,14 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     boolean duringCall) {
         this(outerFrameState, code, bci, locals.length, stackSize + computeSize(pushedSlotKinds), locks.length, rethrowException, duringCall, monitorIds, null);
         createValues(locals, stack, stackSize, pushedSlotKinds, pushedValues, locks);
+    }
+
+    public boolean isValidForDeoptimization() {
+        return validForDeoptimization;
+    }
+
+    public void invalidateForDeoptimization() {
+        validForDeoptimization = false;
     }
 
     private static int computeSize(JavaKind[] slotKinds) {
