@@ -35,15 +35,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.util.VMError;
 
 public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.Predicate> {
 
@@ -60,6 +61,11 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         @Override
         public void addResources(ConfigurationCondition condition, String pattern) {
             configuration.addResourcePattern(condition, pattern);
+        }
+
+        @Override
+        public void injectResource(ConfigurationCondition condition, Module module, String resourcePath, byte[] resourceContent) {
+            VMError.shouldNotReachHere("Resource injection is only supported via Feature implementation");
         }
 
         @Override

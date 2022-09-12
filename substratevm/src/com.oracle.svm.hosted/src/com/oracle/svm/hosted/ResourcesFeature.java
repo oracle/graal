@@ -29,10 +29,14 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 
 import java.io.InputStream;
 import java.nio.file.FileSystem;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -52,6 +56,7 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
@@ -60,7 +65,6 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -108,12 +112,45 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     private boolean sealed = false;
+    private final Map<ResourceLocation, byte[]> injectResourceWorkSet = new ConcurrentHashMap<>();
     private final Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
     public final Set<String> includedResourcesModules = new HashSet<>();
+
+    private static final class ResourceLocation {
+        private final Module module;
+        private final String path;
+
+        private ResourceLocation(Module module, String path) {
+            this.module = module;
+            this.path = path;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            ResourceLocation that = (ResourceLocation) o;
+            return Objects.equals(module, that.module) && Objects.equals(path, that.path);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(module, path);
+        }
+
+        @Override
+        public String toString() {
+            return module.getName() + ":" + path;
+        }
+    }
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -130,6 +167,18 @@ public final class ResourcesFeature implements InternalFeature {
             registerConditionalConfiguration(condition, () -> {
                 UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
                 resourcePatternWorkSet.add(pattern);
+            });
+        }
+
+        @Override
+        public void injectResource(ConfigurationCondition condition, Module module, String resourcePath, byte[] resourceContent) {
+            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> {
+                ResourceLocation resourceLocation = new ResourceLocation(module, resourcePath);
+                UserError.guarantee(!sealed, "Resources added too late: %s", resourceLocation);
+                injectResourceWorkSet.put(resourceLocation, resourceContent);
             });
         }
 
@@ -255,13 +304,22 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         resourceRegistryImpl().flushConditionalConfiguration(access);
-        if (resourcePatternWorkSet.isEmpty()) {
+        if (resourcePatternWorkSet.isEmpty() && injectResourceWorkSet.isEmpty()) {
             return;
         }
 
         access.requireAnalysisIteration();
 
         DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
+        List<String> removed = new ArrayList<>();
+
+        for (Map.Entry<ResourceLocation, byte[]> entry : injectResourceWorkSet.entrySet()) {
+            var resourceLocation = entry.getKey();
+            var moduleName = resourceLocation.module.isNamed() ? resourceLocation.module.getName() : null;
+            Resources.registerResource(moduleName, resourceLocation.path, entry.getValue());
+        }
+        injectResourceWorkSet.clear();
+
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules);

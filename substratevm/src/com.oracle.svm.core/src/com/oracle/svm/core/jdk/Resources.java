@@ -41,10 +41,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -109,6 +109,11 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String moduleName, String resourceName, InputStream is) {
         registerResource(moduleName, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
+        addEntry(moduleName, resourceName, false, resourceContent, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

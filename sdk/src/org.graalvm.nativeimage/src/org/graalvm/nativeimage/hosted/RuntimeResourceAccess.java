@@ -67,8 +67,26 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResource(Module module, String resourcePath) {
+        Objects.requireNonNull(module);
+        Objects.requireNonNull(resourcePath);
         ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
                         withModuleName(module, Pattern.quote(resourcePath)));
+    }
+
+    /**
+     * Inject a Java resource at {@code resourcePath} in {@code module} with the specified
+     * {@code resourceContent}. At runtime the resource can be accessed as if it was part of the
+     * original application. If the given {@code module} is unnamed, the resource is placed on the
+     * classpath instead.
+     *
+     * @since 22.3
+     */
+    public static void addResource(Module module, String resourcePath, byte[] resourceContent) {
+        Objects.requireNonNull(module);
+        Objects.requireNonNull(resourcePath);
+        Objects.requireNonNull(resourceContent);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(ConfigurationCondition.alwaysTrue(),
+                        module, resourcePath, resourceContent);
     }
 
     /**

@@ -46,6 +46,8 @@ import java.util.Locale;
 public interface RuntimeResourceSupport {
     void addResources(ConfigurationCondition condition, String pattern);
 
+    void injectResource(ConfigurationCondition condition, Module module, String resourcePath, byte[] resourceContent);
+
     void ignoreResources(ConfigurationCondition condition, String pattern);
 
     void addResourceBundles(ConfigurationCondition condition, String name);
