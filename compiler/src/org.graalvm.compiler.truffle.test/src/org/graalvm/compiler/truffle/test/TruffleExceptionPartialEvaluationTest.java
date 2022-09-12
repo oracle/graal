@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -56,6 +57,7 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
 
     @Test
     public void testTruffleException() {
+        Assume.assumeTrue("GR-40843", Runtime.version().feature() < 19);
         assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 0));
         assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(3, 0));
         assertPartialEvalEquals(TruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 3));

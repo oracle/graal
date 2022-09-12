@@ -27,6 +27,7 @@ local jdks = common_json.jdks;
   libgraal_env: 'libgraal',
   custom_vm_linux: {},
   custom_vm_darwin: {},
+  custom_vm_windows: {},
   vm_profiles:: [],
   collect_profiles():: [],
 
@@ -34,9 +35,9 @@ local jdks = common_json.jdks;
 
   check_structure: {},
 
-  check_graalvm_base_build(os, arch, java_version): [],
+  check_graalvm_base_build(path, os, arch, java_version): [],
 
-  check_graalvm_complete_build: [],
+  check_graalvm_complete_build(mx_command_base, os, arch, java_version): [],
 
   vm_setup:: {
     short_name:: 'ce',
@@ -121,7 +122,7 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-unittest-linux-amd64',
     },
-    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows + {
+    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
@@ -211,14 +212,14 @@ local jdks = common_json.jdks;
      ],
      name: 'daily-deploy-vm-maven-darwin-aarch64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_11_17_only_native + {
+    vm_common.svm_common_windows_amd64("11") + vm_common.gate_vm_windows_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_11_17_only_native + {
+    vm_common.svm_common_windows_amd64("11") + vm_common.deploy_daily_vm_windows + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
@@ -268,4 +269,6 @@ local jdks = common_json.jdks;
   ],
 
   builds: [vm_common.verify_name(b1) for b1 in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [{'defined_in': std.thisFile} + b2  for b2 in builds]],
+
+  compiler_gate:: (import '../../compiler/ci_common/gate.jsonnet')
 }

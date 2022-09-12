@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -111,6 +111,14 @@ public abstract class ValueList<V extends ValueList.Value<V, C>, C extends Value
         if (unresolvedIndices.get(valueIndex)) {
             unresolvedIndices.set(valueIndex, false);
             resolveForwardReference(valueIndex, newValue);
+        }
+    }
+
+    public V getForwardReferencedOrNull(int index, V dependent) {
+        if (index == 0) {
+            return null;
+        } else {
+            return getForwardReferenced(index, dependent);
         }
     }
 

@@ -111,22 +111,16 @@ public class ReflectionUtils {
      * {@code flag}.
      */
     public static void setAccessible(Field field, boolean flag) {
-        if (!Java8OrEarlier) {
-            openForReflectionTo(field.getDeclaringClass(), ReflectionUtils.class);
-        }
+        openForReflectionTo(field.getDeclaringClass(), ReflectionUtils.class);
         field.setAccessible(flag);
     }
-
-    public static final boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     /**
      * Calls {@link AccessibleObject#setAccessible(boolean)} on {@code executable} with the value
      * {@code flag}.
      */
     public static void setAccessible(Executable executable, boolean flag) {
-        if (!Java8OrEarlier) {
-            openForReflectionTo(executable.getDeclaringClass(), ReflectionUtils.class);
-        }
+        openForReflectionTo(executable.getDeclaringClass(), ReflectionUtils.class);
         executable.setAccessible(flag);
     }
 

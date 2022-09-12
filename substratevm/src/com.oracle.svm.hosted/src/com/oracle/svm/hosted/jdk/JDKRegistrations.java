@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
 
     /**

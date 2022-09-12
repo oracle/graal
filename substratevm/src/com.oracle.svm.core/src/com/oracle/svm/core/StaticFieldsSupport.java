@@ -47,10 +47,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -77,6 +78,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * the {@link StaticFieldBaseNode} with a {@link ConstantNode} only in the low tier of the compiler
  * solves this problem.
  */
+@AutomaticallyRegisteredImageSingleton
 public final class StaticFieldsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -164,12 +166,8 @@ public final class StaticFieldsSupport {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class StaticFieldsFeature implements InternalFeature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StaticFieldsSupport.class, new StaticFieldsSupport());
-    }
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -39,18 +38,19 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent;
@@ -62,6 +62,7 @@ import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
+@AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 @Platforms(Platform.WINDOWS.class)
 public final class WindowsPlatformThreads extends PlatformThreads {
     @Platforms(HOSTED_ONLY.class)
@@ -92,6 +93,40 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         // Start the thread running
         Process.ResumeThread(osThreadHandle);
         return true;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+        int initFlag = 0;
+
+        // If caller specified a stack size, don't commit it all at once.
+        if (stackSize != 0) {
+            initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
+        }
+
+        WinBase.HANDLE osThreadHandle = Process.NoTransitions._beginthreadex(WordFactory.nullPointer(), stackSize,
+                        threadRoutine, userData, initFlag, WordFactory.nullPointer());
+        return (PlatformThreads.OSThreadHandle) osThreadHandle;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
+        if (SynchAPI.NoTransitions.WaitForSingleObject((WinBase.HANDLE) threadHandle, SynchAPI.INFINITE()) != SynchAPI.WAIT_OBJECT_0()) {
+            return false;
+        }
+        if (Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
+        WinBase.CloseHandle((WinBase.HANDLE) threadHandle);
     }
 
     /**
@@ -230,20 +265,11 @@ class WindowsParkEvent extends ParkEvent {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 @Platforms(Platform.WINDOWS.class)
 class WindowsParkEventFactory implements ParkEventFactory {
     @Override
     public ParkEvent create() {
         return new WindowsParkEvent();
-    }
-}
-
-@AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
-class WindowsThreadsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PlatformThreads.class, new WindowsPlatformThreads());
-        ImageSingletons.add(ParkEventFactory.class, new WindowsParkEventFactory());
     }
 }

@@ -405,7 +405,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
         StaticObject thread = context.getCurrentThread();
         try (Transition transition = Transition.transition(context, State.BLOCKED)) {
-            if (context.EnableManagement) {
+            if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
@@ -419,7 +419,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
             if (report) {
                 context.reportOnContendedMonitorEntered(obj);
             }
-            if (context.EnableManagement) {
+            if (context.getEspressoEnv().EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }
         }

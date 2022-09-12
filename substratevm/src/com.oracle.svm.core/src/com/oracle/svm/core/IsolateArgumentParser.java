@@ -37,15 +37,13 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
@@ -54,9 +52,10 @@ import com.oracle.svm.core.util.VMError;
  * Parses a small subset of the runtime arguments before the image heap is mapped and before the
  * isolate is fully started.
  */
+@AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
     private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
-                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling};
+                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, SubstrateOptions.ConcealedOptions.UsePerfData};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
@@ -436,13 +435,5 @@ public class IsolateArgumentParser {
         public static boolean isNumeric(byte optionValueType) {
             return optionValueType == Integer || optionValueType == Long;
         }
-    }
-}
-
-@AutomaticFeature
-class IsolateArgumentParserFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(IsolateArgumentParser.class, new IsolateArgumentParser());
     }
 }

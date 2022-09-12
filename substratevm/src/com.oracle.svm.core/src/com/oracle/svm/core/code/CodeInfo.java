@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.struct.RawStructure;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 /**
  * A tethered {@link CodeInfo} object that can be accessed using the static methods on the class

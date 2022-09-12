@@ -78,6 +78,7 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
@@ -102,6 +103,8 @@ public abstract class Launcher {
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
     @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_INTERNAL = "--help:internal";
     @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_EXPERT = "--help:expert";
+
+    private static final String EXECUTABLE_NAME_PROPERTY = "org.graalvm.launcher.executablename";
 
     public enum VMType {
         Native,
@@ -1156,6 +1159,30 @@ public abstract class Launcher {
 
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
 
+    /**
+     * Returns what is an equivalent of {@code argv[0]}}, i.e., the command that executed the
+     * launcher. If the launcher was executed via a symlink, this returns the symlink. If the
+     * launcher was executed via a command resolved via the user's PATH environment variable, this
+     * returns that command.
+     *
+     * @return The program name or {@code null} if not available.
+     */
+    protected static String getProgramName() {
+        // For thin launchers this system property should always be available in both JVM and native
+        // mode. Bash launchers set this property explicitly.
+        String executableName = System.getProperty(EXECUTABLE_NAME_PROPERTY);
+        if (executableName != null) {
+            return executableName;
+        }
+        // What remains are non-thin native launchers
+        if (ImageInfo.inImageRuntimeCode()) {
+            if (ProcessProperties.getArgumentVectorBlockSize() > 0) {
+                return ProcessProperties.getArgumentVectorProgramName();
+            }
+        }
+        return null;
+    }
+
     @SuppressWarnings("unused")
     @Deprecated(since = "20.3")
     protected final void maybeNativeExec(List<String> args, boolean isPolyglotLauncher, Map<String, String> polyglotOptions) {
@@ -1250,6 +1277,7 @@ public abstract class Launcher {
             if (thinLauncher) {
                 Map<String, String> env = new HashMap<>();
                 env.put("GRAALVM_LAUNCHER_FORCE_JVM", "true");
+                env.put("GRAALVM_LAUNCHER_EXECUTABLE_NAME", System.getProperty(EXECUTABLE_NAME_PROPERTY));
                 nativeAccess.reExec(originalArgs, env);
             } else {
                 executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());

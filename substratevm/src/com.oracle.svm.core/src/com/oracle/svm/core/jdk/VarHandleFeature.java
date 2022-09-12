@@ -35,11 +35,9 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -47,7 +45,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -91,8 +91,8 @@ import jdk.internal.misc.Unsafe;
  * VarHandle access to arrays is the simplest case: we only need field value recomputations for the
  * array base offset and array index shift.
  */
-@AutomaticFeature
-public class VarHandleFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class VarHandleFeature implements InternalFeature {
 
     /** The JDK 11 class VarHandleObjects got renamed to VarHandleReferences. */
     static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPEC <= 11 ? "Objects" : "References";

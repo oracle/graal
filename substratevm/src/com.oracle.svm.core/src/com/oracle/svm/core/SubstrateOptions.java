@@ -693,6 +693,10 @@ public class SubstrateOptions {
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
         public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, Immutable);
+
+        /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
+        @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
+        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -805,4 +809,6 @@ public class SubstrateOptions {
     @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
     public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
 
+    @Option(help = "Initializes and runs main entry point in a new native thread.", type = Expert)//
+    public static final HostedOptionKey<Boolean> RunMainInNewThread = new HostedOptionKey<>(false);
 }

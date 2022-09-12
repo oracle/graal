@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -107,6 +108,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                     schedule = graph.getLastSchedule();
                     cfg = schedule.getCFG();
                 }
+                boolean postTriggered = false;
                 try (DebugContext.Scope scheduleScope = debug.scope("EffectsPhaseWithSchedule", schedule)) {
                     Closure<?> closure = createEffectsClosure(context, schedule, cfg);
                     ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
@@ -124,10 +126,12 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                             new DeadCodeEliminationPhase(Required).apply(graph);
                         }
                         LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
+                        Graph.Mark before = graph.getMark();
                         postIteration(graph, context, listener.getNodes());
+                        postTriggered = !before.isCurrent();
                     }
 
-                    if (closure.hasChanged()) {
+                    if (closure.hasChanged() || postTriggered) {
                         changed = true;
                     } else {
                         break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,6 @@ import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
@@ -133,7 +132,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
-        final TruffleContext innerTruffleContext = currentContext.environment().newContextBuilder().build();
+        final TruffleContext innerTruffleContext = currentContext.environment().newInnerContextBuilder().initializeCreatorContext(true).build();
         final Object prev = innerTruffleContext.enter(null);
         try {
             final WasmContext instanceContext = WasmContext.get(null);
@@ -350,7 +349,8 @@ public class WebAssembly extends Dictionary {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
             } else if (globalIndex != null) {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType));
+                String mutability = module.isGlobalMutable(globalIndex) ? "mut" : "con";
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType + " " + mutability));
             } else {
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
@@ -406,9 +406,15 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ByteArrayBuffer> customSections(WasmModule module, Object sectionName) {
+        final String name;
+        try {
+            name = InteropLibrary.getUncached().asString(sectionName);
+        } catch (UnsupportedMessageException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Section name must be a string");
+        }
         List<ByteArrayBuffer> sections = new ArrayList<>();
         for (WasmCustomSection section : module.customSections()) {
-            if (section.getName().equals(sectionName)) {
+            if (section.getName().equals(name)) {
                 sections.add(new ByteArrayBuffer(module.data(), section.getOffset(), section.getLength()));
             }
         }
@@ -538,18 +544,21 @@ public class WebAssembly extends Dictionary {
         typeInfo.append(f.index());
 
         typeInfo.append('(');
-        int argumentCount = f.numArguments();
-        for (int i = 0; i < argumentCount; i++) {
+        int paramCount = f.paramCount();
+        for (int i = 0; i < paramCount; i++) {
             if (i != 0) {
                 typeInfo.append(' ');
             }
-            typeInfo.append(ValueType.fromByteValue(f.argumentTypeAt(i)));
+            typeInfo.append(ValueType.fromByteValue(f.paramTypeAt(i)));
         }
         typeInfo.append(')');
 
-        byte returnType = f.returnType();
-        if (returnType != WasmType.VOID_TYPE) {
-            typeInfo.append(ValueType.fromByteValue(f.returnType()));
+        int resultCount = f.resultCount();
+        for (int i = 0; i < resultCount; i++) {
+            if (i != 0) {
+                typeInfo.append(' ');
+            }
+            typeInfo.append(ValueType.fromByteValue(f.resultTypeAt(i)));
         }
         return typeInfo.toString();
     }

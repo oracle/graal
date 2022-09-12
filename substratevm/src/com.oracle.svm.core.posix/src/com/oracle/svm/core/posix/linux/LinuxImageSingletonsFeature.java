@@ -30,14 +30,16 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibCSupport;
+import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.posix.linux.libc.BionicLibC;
 import com.oracle.svm.core.posix.linux.libc.LibCFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-class LinuxImageSingletonsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class LinuxImageSingletonsFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -50,6 +52,13 @@ class LinuxImageSingletonsFeature implements Feature {
             ImageSingletons.add(LibCSupport.class, new BionicLibCSupport());
         } else {
             ImageSingletons.add(LibCSupport.class, new LinuxLibCSupport());
+        }
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
         }
     }
 }

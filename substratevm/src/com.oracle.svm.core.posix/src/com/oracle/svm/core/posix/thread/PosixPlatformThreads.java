@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -39,22 +38,23 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -74,6 +74,7 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 public final class PosixPlatformThreads extends PlatformThreads {
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -210,6 +211,64 @@ public final class PosixPlatformThreads extends PlatformThreads {
         setPthreadIdentifier(thread, Pthread.pthread_self());
         setNativeName(thread, thread.getName());
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+        pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
+        int status = Pthread.pthread_attr_init_no_transition(attributes);
+        if (status != 0) {
+            return WordFactory.nullPointer();
+        }
+        try {
+            status = Pthread.pthread_attr_setdetachstate_no_transition(attributes, Pthread.PTHREAD_CREATE_JOINABLE());
+            if (status != 0) {
+                return WordFactory.nullPointer();
+            }
+
+            UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
+            /* If there is a chosen stack size, use it as the stack size. */
+            if (threadStackSize.notEqual(WordFactory.zero())) {
+                /* Make sure the chosen stack size is large enough. */
+                threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
+                /* Make sure the chosen stack size is a multiple of the system page size. */
+                threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.NoTransitions.getpagesize()));
+
+                status = Pthread.pthread_attr_setstacksize_no_transition(attributes, threadStackSize);
+                if (status != 0) {
+                    return WordFactory.nullPointer();
+                }
+            }
+
+            Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
+
+            status = Pthread.pthread_create_no_transition(newThread, attributes, threadRoutine, userData);
+            if (status != 0) {
+                return WordFactory.nullPointer();
+            }
+
+            return (OSThreadHandle) newThread.read();
+        } finally {
+            Pthread.pthread_attr_destroy_no_transition(attributes);
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
+        int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
+        if (status != 0) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
+        // pthread_t doesn't need closing
+    }
 }
 
 @TargetClass(Thread.class)
@@ -325,18 +384,10 @@ class PosixParkEvent extends ParkEvent {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 class PosixParkEventFactory implements ParkEventFactory {
     @Override
     public ParkEvent create() {
         return new PosixParkEvent();
-    }
-}
-
-@AutomaticFeature
-class PosixThreadsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PlatformThreads.class, new PosixPlatformThreads());
-        ImageSingletons.add(ParkEventFactory.class, new PosixParkEventFactory());
     }
 }

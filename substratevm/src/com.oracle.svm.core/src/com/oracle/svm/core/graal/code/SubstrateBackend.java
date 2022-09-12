@@ -26,13 +26,17 @@ package com.oracle.svm.core.graal.code;
 
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
-import com.oracle.svm.core.util.VMError;
+import java.lang.reflect.Method;
+
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.IndirectCallTargetNode;
+import org.graalvm.compiler.nodes.LoweredCallTargetNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
@@ -41,22 +45,24 @@ import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import java.lang.reflect.Method;
-
 public abstract class SubstrateBackend extends Backend {
+    private static final LocationIdentity JIT_VTABLE_IDENTITY = NamedLocationIdentity.mutable("DynamicHub.vtable@jit");
 
     public enum SubstrateMarkId implements CompilationResult.MarkId {
         PROLOGUE_DECD_RSP(true),
@@ -170,9 +176,31 @@ public abstract class SubstrateBackend extends Backend {
         return frameAnchor;
     }
 
+    /** For runtime compilations, emit only indirect calls to avoid additional patching. */
     public static boolean shouldEmitOnlyIndirectCalls() {
-        // For runtime compilations, emit indirect foreign calls to avoid additional patching
         return !SubstrateUtil.HOSTED;
+    }
+
+    /**
+     * Identity for {@link com.oracle.svm.core.hub.DynamicHub} vtable accesses.
+     *
+     * Runtime-compiled code uses a mutable identity because it can be persisted and loaded in a
+     * process where image code is located elsewhere and so the addresses in vtables are different.
+     */
+    public static LocationIdentity getVTableIdentity() {
+        return SubstrateUtil.HOSTED ? NamedLocationIdentity.FINAL_LOCATION : JIT_VTABLE_IDENTITY;
+    }
+
+    /** See {@link #shouldEmitOnlyIndirectCalls()}, {@link #getVTableIdentity()}. */
+    protected static void verifyCallTarget(LoweredCallTargetNode callTarget) {
+        if (shouldEmitOnlyIndirectCalls()) {
+            if (callTarget instanceof IndirectCallTargetNode) {
+                VMError.guarantee(!((IndirectCallTargetNode) callTarget).computedAddress().isConstant(),
+                                "Runtime-compiled code must not contain calls with absolute addresses");
+            } else if (!(callTarget instanceof ComputedIndirectCallTargetNode)) {
+                throw VMError.shouldNotReachHere("Call uses non-indirect target when only indirect calls are permitted: " + callTarget);
+            }
+        }
     }
 
     /**

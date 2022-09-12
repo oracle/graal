@@ -997,10 +997,28 @@ meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeJNIAccess
+meth public !varargs static void register(java.lang.Class<?>[])
+meth public !varargs static void register(java.lang.reflect.Executable[])
+meth public !varargs static void register(java.lang.reflect.Field[])
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
+meth public static void registerLambdaCapturingClass(java.lang.Class<?>)
+meth public !varargs static void registerProxyClass(java.lang.Class<?>[])
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeProxyCreation
+meth public !varargs static void register(java.lang.Class<?>[])
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeResourceAccess
+meth public static void addResource(java.lang.Module,java.lang.String)
+meth public static void addResourceBundle(java.lang.Module,java.lang.String,java.util.Locale[])
+meth public static void addResourceBundle(java.lang.Module,java.lang.String)
 supr java.lang.Object
 
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform

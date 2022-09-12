@@ -30,11 +30,9 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
+@AutomaticallyRegisteredImageSingleton(JDKVersionSpecificResourceBuilder.class)
 public class JDKVersionSpecificResourceBuilderJDK11OrLater implements JDKVersionSpecificResourceBuilder {
 
     @Override
@@ -68,13 +66,5 @@ public class JDKVersionSpecificResourceBuilderJDK11OrLater implements JDKVersion
                 return urlConnection.getContentLength();
             }
         };
-    }
-}
-
-@AutomaticFeature
-final class JDKVersionSpecificResourceBuilderFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(JDKVersionSpecificResourceBuilder.class, new JDKVersionSpecificResourceBuilderJDK11OrLater());
     }
 }

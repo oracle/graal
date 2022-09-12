@@ -50,13 +50,10 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
-import java.util.ArrayDeque;
-import java.util.EnumSet;
-
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -70,7 +67,7 @@ import jdk.vm.ci.meta.PlatformKind;
 /**
  * This class implements an assembler that can encode most X86 instructions.
  */
-public abstract class AMD64BaseAssembler extends Assembler {
+public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     /**
      * @see #getSimdEncoder()
@@ -80,18 +77,6 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * @see #getSimdEncoder()
      */
     private final SIMDEncoder sseEncoder;
-    /**
-     * CPU features that are statically available.
-     */
-    private final EnumSet<CPUFeature> features;
-    /**
-     * Stack of features that are temporarily available in a certain region of the code. Each
-     * element only contains the features which were added.
-     *
-     * @see #addFeatures
-     * @see #removeFeatures
-     */
-    private final ArrayDeque<EnumSet<CPUFeature>> featuresStack;
 
     /**
      * If {@code true}, always encode non-zero address displacements in 4 bytes, even if they would
@@ -104,11 +89,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * Constructs an assembler for the AMD64 architecture.
      */
     public AMD64BaseAssembler(TargetDescription target) {
-        super(target);
+        super(target, ((AMD64) target.arch).getFeatures().clone());
         vexEncoder = new VEXEncoderImpl();
         sseEncoder = new SSEEncoderImpl();
-        features = ((AMD64) target.arch).getFeatures().clone();
-        featuresStack = new ArrayDeque<>(1);
     }
 
     /**
@@ -293,48 +276,6 @@ public abstract class AMD64BaseAssembler extends Assembler {
             int pos = position();
             codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(pos, pos + operandOffset, operandSize, pos + operandOffset + operandSize));
         }
-    }
-
-    public final EnumSet<CPUFeature> getFeatures() {
-        return features;
-    }
-
-    /**
-     * Add a new item at the top of the feature stack. The new item will contain all those
-     * {@code newFeatures} that aren't already contained in {@link #getFeatures()}. A feature stack
-     * item will always be added, even if none of the features are actually new.
-     */
-    public void addFeatures(EnumSet<CPUFeature> newFeatures) {
-        EnumSet<CPUFeature> added = EnumSet.noneOf(CPUFeature.class);
-        for (CPUFeature feature : newFeatures) {
-            if (getFeatures().add(feature)) {
-                added.add(feature);
-            }
-        }
-        featuresStack.push(added);
-    }
-
-    /**
-     * Removes the topmost item from the feature stack and removes all of this item's features from
-     * {@link #getFeatures()}.
-     */
-    public void removeFeatures() {
-        GraalError.guarantee(!featuresStack.isEmpty(), "cannot remove features since no features have been added");
-        EnumSet<CPUFeature> added = featuresStack.pop();
-        for (CPUFeature feature : added) {
-            getFeatures().remove(feature);
-        }
-    }
-
-    /**
-     * Returns {@code true} if the feature is included in the current topmost item of the feature
-     * stack.
-     */
-    public boolean isCurrentRegionFeature(CPUFeature feature) {
-        if (featuresStack.isEmpty()) {
-            return false;
-        }
-        return featuresStack.peek().contains(feature);
     }
 
     public final boolean supports(CPUFeature feature) {

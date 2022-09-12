@@ -24,27 +24,13 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.os.AbstractCopyingImageHeapProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
-
-@AutomaticFeature
-class DarwinImageHeapProviderFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
-            ImageSingletons.add(ImageHeapProvider.class, new DarwinImageHeapProvider());
-        }
-    }
-}
 
 /** Creates image heaps on Darwin that are copy-on-write clones of the loaded image heap. */
 public class DarwinImageHeapProvider extends AbstractCopyingImageHeapProvider {

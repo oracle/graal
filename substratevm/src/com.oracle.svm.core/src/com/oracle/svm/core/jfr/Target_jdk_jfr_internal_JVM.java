@@ -349,6 +349,13 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().setCutoff(eventTypeId, cutoffTicks);
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        // Not supported but this method is called during JFR startup, so we can't throw an error.
+        return true;
+    }
+
     /** See {@link JVM#emitOldObjectSamples}. */
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class) //

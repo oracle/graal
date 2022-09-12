@@ -32,13 +32,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
@@ -46,8 +47,9 @@ import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.thread.VMThreadMTFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-public final class KnownOffsetsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class KnownOffsetsFeature implements InternalFeature {
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         if (SubstrateOptions.MultiThreaded.getValue()) {

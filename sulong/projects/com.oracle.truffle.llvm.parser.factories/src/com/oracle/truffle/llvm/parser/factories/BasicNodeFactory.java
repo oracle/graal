@@ -102,6 +102,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoid
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMWritePhisNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
@@ -145,6 +146,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMReturnAddressNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackRestoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMTrapNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAArch64_NeonNodesFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
@@ -355,6 +357,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I64_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I8_SIZE_IN_BYTES;
 
 public class BasicNodeFactory implements NodeFactory {
 
@@ -1179,6 +1184,16 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMLandingpadNodeGen.create(getStack, allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
     }
 
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, getStack, phiWrites);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, int unwindBlock, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, unwindBlock, getStack, phiWrites);
+    }
+
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
         return LLVMLandingpadNode.createCatchEntry(exp);
     }
@@ -1637,6 +1652,24 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMExpressionNode vectorIntrinsic = matchVectorOp(intrinsicName, args);
         if (vectorIntrinsic != null) {
             return vectorIntrinsic;
+        }
+
+        if (intrinsicName.startsWith("llvm.aarch64.neon")) {
+            String op = intrinsicName.substring("llvm.aarch64.neon.".length());
+            switch (op) {
+                case "ld1x2.v16i8.p0i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Ld1x2NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+                case "ld2.v16i8.p0v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Ld2NodeGen.create(2 * I64_SIZE_IN_BYTES, I8_SIZE_IN_BYTES, args[1], args[2]);
+                case "tbl1.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Tbl1NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+                case "tbl2.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Tbl2NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2], args[3]);
+                case "umaxv.i32.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_UmaxvNodeGen.create(2 * I64_SIZE_IN_BYTES, args[1]);
+                case "uqsub.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_UqsubNodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+            }
         }
 
         // strip the type suffix for intrinsics that are supported for more than one data type. If

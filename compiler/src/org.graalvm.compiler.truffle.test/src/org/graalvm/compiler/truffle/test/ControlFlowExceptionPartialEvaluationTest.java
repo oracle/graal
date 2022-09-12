@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -41,6 +42,10 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {
         return 42;
+    }
+
+    public ControlFlowExceptionPartialEvaluationTest() {
+        Assume.assumeTrue("GR-40843", Runtime.version().feature() < 19);
     }
 
     @Test

@@ -24,22 +24,20 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo.thread_basic_info_data_t;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
+@AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
@@ -74,16 +72,5 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             micros += basicThreadInfo.system_time().microseconds();
         }
         return seconds * 1_000_000_000 + micros * 1_000;
-    }
-
-}
-
-@Platforms({Platform.DARWIN.class})
-@AutomaticFeature
-final class DarwinThreadCpuTimeFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ThreadCpuTimeSupport.class, new DarwinThreadCpuTimeSupport());
     }
 }

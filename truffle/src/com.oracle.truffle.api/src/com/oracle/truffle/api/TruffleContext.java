@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.api;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -53,6 +57,7 @@ import org.graalvm.polyglot.PolyglotException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
@@ -187,6 +192,61 @@ public final class TruffleContext implements AutoCloseable {
                 verifyEnter(prev);
             }
             return prev;
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Forces initialization of an internal or public language. If the context is not an inner
+     * context and e.g. accessed using {@link Env#getContext()} an {@link IllegalStateException} is
+     * thrown. In such a case {@link Env#initializeLanguage(LanguageInfo)} should be used instead to
+     * initialize contexts.
+     * <p>
+     * No context or the parent creator context must be entered to initialize languages in a
+     * {@link TruffleContext} otherwise an {@link IllegalStateException} will be thrown.
+     *
+     * @throws IllegalStateException if an invalid context is entered or the context is already
+     *             closed.
+     * @throws IllegalArgumentException if the given language of the source cannot be accessed.
+     * @param languageId the id of the language to initialize
+     * @param node a partial evaluation constant node context used to optimize this operation. Can
+     *            be <code>null</code> if not available.
+     * @return <code>true</code> if the language was initialized, else <code>false</code>, e.g. if
+     *         the language as already initialized.
+     *
+     * @since 22.3
+     */
+    public boolean initializeInternal(Node node, String languageId) {
+        Objects.requireNonNull(languageId);
+        CompilerAsserts.partialEvaluationConstant(node);
+        try {
+            return LanguageAccessor.engineAccess().initializeInnerContext(node, polyglotContext, languageId, true);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * The same as {@link #initializeInternal(Node, String)}, but only public languages are
+     * accessible.
+     *
+     * @throws IllegalStateException if an invalid context is entered or the context is already
+     *             closed.
+     * @throws IllegalArgumentException if the given language of the source cannot be accessed.
+     * @param languageId the id of the language to initialize
+     * @param node a partial evaluation constant node context used to optimize this operation. Can
+     *            be <code>null</code> if not available.
+     * @return <code>true</code> if the language was initialized, else <code>false</code>, e.g. if
+     *         the language as already initialized.
+     *
+     * @since 22.3
+     */
+    public boolean initializePublic(Node node, String languageId) {
+        Objects.requireNonNull(languageId);
+        CompilerAsserts.partialEvaluationConstant(node);
+        try {
+            return LanguageAccessor.engineAccess().initializeInnerContext(node, polyglotContext, languageId, false);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -629,13 +689,39 @@ public final class TruffleContext implements AutoCloseable {
 
         private final Env sourceEnvironment;
         private Map<String, Object> config;
-        private boolean initializeCreatorContext = true;
-        private Runnable onCancelledRunnable;
-        private Consumer<Integer> onExitedRunnable;
-        private Runnable onClosedRunnable;
+        private Map<String, String[]> arguments;
+        private boolean initializeCreatorContext;
+        private Runnable onCancelled;
+        private Consumer<Integer> onExited;
+        private Runnable onClosed;
+
+        private Boolean sharingEnabled;
+        private Map<String, String> options;
+        private Map<String, String> environment;
+        private String[] permittedLanguages;
+        private OutputStream out;
+        private OutputStream err;
+        private InputStream in;
+        private boolean inheritAccess;
+        private Boolean allowCreateThread;
+        private Boolean allowNativeAccess;
+        private Boolean allowIO;
+        private Boolean allowHostLookup;
+        private Boolean allowHostClassLoading;
+        private Boolean allowCreateProcess;
+        private Boolean allowInnerContextOptions;
+        private Boolean allowPolyglotAccess;
+        private Boolean allowEnvironmentAccess;
+        private ZoneId timeZone;
 
         Builder(Env env) {
             this.sourceEnvironment = env;
+        }
+
+        @SuppressWarnings("hiding")
+        Builder permittedLanguages(String... permittedLanguages) {
+            this.permittedLanguages = permittedLanguages;
+            return this;
         }
 
         /**
@@ -665,6 +751,350 @@ public final class TruffleContext implements AutoCloseable {
         }
 
         /**
+         * Sets the standard output stream to be used for the context. If not set or set to
+         * <code>null</code>, then the standard output stream is inherited from the outer context.
+         *
+         * @since 22.3
+         */
+        @SuppressWarnings("hiding")
+        public Builder out(OutputStream out) {
+            this.out = out;
+            return this;
+        }
+
+        /**
+         * Sets the error output stream to be used for the context. If not set or set to
+         * <code>null</code>, then the standard error stream is inherited from the outer context. is
+         * used.
+         *
+         * @since 22.3
+         */
+        @SuppressWarnings("hiding")
+        public Builder err(OutputStream err) {
+            this.err = err;
+            return this;
+        }
+
+        /**
+         * Sets the input stream to be used for the context. If not set or set to <code>null</code>,
+         * then the standard input stream is inherited from the outer context.
+         *
+         * @since 22.3
+         */
+        @SuppressWarnings("hiding")
+        public Builder in(InputStream in) {
+            this.in = in;
+            return this;
+        }
+
+        /**
+         * Force enables or disables code sharing for this inner context. By default this option is
+         * set to <code>null</code> which instructs this context to inherit sharing configuration
+         * from the outer context.
+         * <p>
+         * If sharing is explicitly set to <code>true</code> then code may be shared with all
+         * contexts compatible with the configuration of this inner context. Code may also be shared
+         * with the outer context if the outer context supports code sharing and its sharing layer
+         * is compatible. This may be useful to force sharing for multiple created inner contexts if
+         * the outer context configuration disabled sharing.
+         * <p>
+         * If sharing is explicitly set to <code>false</code> then no code will be shared even if
+         * the outer context has code sharing enabled and supported by the language. This may be
+         * useful to avoid runtime profile pollution through code run in an inner context.
+         * <p>
+         * If multiple languages are potentially used it is recommended but not required to use
+         * {@link Env#newInnerContextBuilder(String...) permitted languages} to specify all used
+         * languages ahead of time. This allows to validate sharing layer compatibility eagerly and
+         * avoids late failures when a language is initialized lazily and is not compatible with the
+         * sharing layer. Use <code>--engine.TraceSharing</code> for details on whether the sharing
+         * configuration is compatible.
+         *
+         * @since 22.3
+         */
+        public Builder forceSharing(Boolean enabled) {
+            this.sharingEnabled = enabled;
+            return this;
+        }
+
+        /**
+         * Overrides an option of the inner context. Only language options may be changed. Engine or
+         * instrument options cannot be modified after their initial configuration in the outer
+         * context. All options for inner contexts are inherited from the outer context, but options
+         * set for the inner context have precedence over options set in the outer context.
+         * <p>
+         * This method is currently only supported if the outer context is configured with
+         * {@link org.graalvm.polyglot.Context.Builder#allowInnerContextOptions(boolean)}. If all
+         * privileges are denied then an {@link IllegalArgumentException} will be thrown when
+         * building the inner context. To find out whether the inner context option privilege has
+         * been granted languages may use
+         * {@link TruffleLanguage.Env#isInnerContextOptionsAllowed()}.
+         *
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Builder option(String key, String value) {
+            Objects.requireNonNull(key);
+            Objects.requireNonNull(value);
+            if (this.options == null) {
+                this.options = new HashMap<>();
+            }
+            this.options.put(key, value);
+            return this;
+        }
+
+        /**
+         * If set to <code>true</code> allows all access privileges that were also granted to the
+         * outer context. If set to <code>false</code> then all privileges are denied in the created
+         * context independent of the outer context. By default all privileges are denied and not
+         * inherited.
+         * <p>
+         * This privilege enables inheritance for the following privileges:
+         * <ul>
+         * <li>{@link #allowCreateThread(boolean)}
+         * <li>{@link #allowNativeAccess(boolean)}
+         * <li>{@link #allowIO(boolean)}
+         * <li>{@link #allowHostClassLookup(boolean)}
+         * <li>{@link #allowHostClassLoading(boolean)}
+         * <li>{@link #allowCreateProcess(boolean)}
+         * <li>{@link #allowPolyglotAccess(boolean)}
+         * <li>{@link #allowInheritEnvironmentAccess(boolean)}
+         * <li>{@link #allowInnerContextOptions(boolean)}
+         * </ul>
+         * <p>
+         * If an individual privilege was set explicitly then the value of
+         * {@link #inheritAllAccess(boolean)} is ignored for that privilege. For example it is
+         * possible to set {@link #inheritAllAccess(boolean)} to <code>true</code> but set
+         * {@link #allowNativeAccess(boolean)} to <code>false</code> to allow inheritance of all but
+         * native access rights from the outer to the inner context.
+         * <p>
+         * In case new privileges are added in the future, then this method will allow or disallow
+         * inheritance for the new privileges as well. For security sensitive use-cases it is
+         * recommended to keep the default value of {@link #inheritAllAccess(boolean)} and
+         * individually specify allowed privileges for this context. For non security sensitive
+         * use-cases it is recommended to set this flag to <code>true</code>. Following this
+         * recommendation is important in case new privileges are added to the platform.
+         *
+         * @since 22.3
+         */
+        public Builder inheritAllAccess(boolean b) {
+            this.inheritAccess = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies creating threads for this context. Set to <code>true</code> to inherit
+         * access privilege from the outer context or <code>false</code> to deny access for this
+         * context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowCreateThread(boolean)
+         * @since 22.3
+         */
+        public Builder allowCreateThread(boolean b) {
+            this.allowCreateThread = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies using native access in this context. Set to <code>true</code> to inherit
+         * access privilege from the outer context or <code>false</code> to deny access for this
+         * context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowNativeAccess(boolean)
+         * @since 22.3
+         */
+        public Builder allowNativeAccess(boolean b) {
+            this.allowNativeAccess = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies using IO in this context. Set to <code>true</code> to inherit access
+         * privilege from the outer context or <code>false</code> to deny access for this context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowIO(boolean)
+         * @since 22.3
+         */
+        public Builder allowIO(boolean b) {
+            this.allowIO = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies loading new host classes in this context. Set to <code>true</code> to
+         * inherit access privilege from the outer context or <code>false</code> to deny access for
+         * this context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)
+         * @since 22.3
+         */
+        public Builder allowHostClassLoading(boolean b) {
+            this.allowHostClassLoading = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies loading new host classes in this context. Set to <code>true</code> to
+         * inherit access privilege from the outer context or <code>false</code> to deny access for
+         * this context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowHostAccess(org.graalvm.polyglot.HostAccess)
+         * @since 22.3
+         */
+        public Builder allowHostClassLookup(boolean b) {
+            this.allowHostLookup = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies creating processes in this context. Set to <code>true</code> to inherit
+         * access privilege from the outer context or <code>false</code> to deny access for this
+         * context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowCreateProcess(boolean)
+         * @since 22.3
+         */
+        public Builder allowCreateProcess(boolean b) {
+            this.allowCreateProcess = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies options for inner contexts created by this context. Set to
+         * <code>true</code> to inherit access privilege from the outer context or
+         * <code>false</code> to deny access for this context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowCreateProcess(boolean)
+         * @since 22.3
+         */
+        public Builder allowInnerContextOptions(boolean b) {
+            this.allowInnerContextOptions = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies access to polyglot languages in this context. Set to <code>true</code>
+         * to inherit access privilege from the outer context or <code>false</code> to deny access
+         * for this context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
+         * @since 22.3
+         */
+        public Builder allowPolyglotAccess(boolean b) {
+            this.allowPolyglotAccess = b;
+            return this;
+        }
+
+        /**
+         * Allows or denies access to the parent context's environment in this context. Set to
+         * <code>true</code> to inherit variables from the outer context or <code>false</code> to
+         * deny inheritance for this context. Environment variables can be set for the inner context
+         * with {@link #environment(String, String)} even if inheritance is disabled. If inheritance
+         * is enabled, environment variables specified for the inner context override environment
+         * variables of the outer context.
+         *
+         * @see #inheritAllAccess(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess)
+         * @since 22.3
+         */
+        public Builder allowInheritEnvironmentAccess(boolean b) {
+            this.allowEnvironmentAccess = b;
+            return this;
+        }
+
+        /**
+         * Sets an environment variable.
+         *
+         * @param name the environment variable name
+         * @param value the environment variable value
+         * @since 22.3
+         */
+        public Builder environment(String name, String value) {
+            Objects.requireNonNull(name, "Name must be non null.");
+            Objects.requireNonNull(value, "Value must be non null.");
+            if (this.environment == null) {
+                this.environment = new HashMap<>();
+            }
+            this.environment.put(name, value);
+            return this;
+        }
+
+        /**
+         * Shortcut for setting multiple {@link #environment(String, String) environment variables}
+         * using a map. All values of the provided map must be non-null.
+         *
+         * @param env environment variables
+         * @see #environment(String, String) To set a single environment variable.
+         * @since 22.3
+         */
+        public Builder environment(Map<String, String> env) {
+            Objects.requireNonNull(env, "Env must be non null.");
+            for (Map.Entry<String, String> e : env.entrySet()) {
+                environment(e.getKey(), e.getValue());
+            }
+            return this;
+        }
+
+        /**
+         * Sets the default time zone to be used for this context. If not set, or explicitly set to
+         * <code>null</code> then the time zone of the outer context will be used.
+         *
+         * @since 22.3
+         */
+        public Builder timeZone(ZoneId zone) {
+            this.timeZone = zone;
+            return this;
+        }
+
+        /**
+         * Sets the guest language application arguments for a language context. Application
+         * arguments are typically made available to guest language implementations. Passing no
+         * arguments to a language is equivalent to providing an empty arguments array.
+         *
+         * @param language the language id of the primary language.
+         * @param args an array of arguments passed to the guest language program.
+         * @throws IllegalArgumentException if an invalid language id was specified.
+         * @since 22.3
+         */
+        public Builder arguments(String language, String[] args) {
+            Objects.requireNonNull(language);
+            Objects.requireNonNull(args);
+            String[] newArgs = args;
+            if (args.length > 0) {
+                newArgs = new String[args.length];
+                for (int i = 0; i < args.length; i++) { // defensive copy
+                    newArgs[i] = Objects.requireNonNull(args[i]);
+                }
+            }
+            if (arguments == null) {
+                arguments = new HashMap<>();
+            }
+            arguments.put(language, newArgs);
+            return this;
+        }
+
+        /**
+         * Sets multiple options using a map. See {@link #option(String, String)} for details.
+         *
+         * @since 22.3
+         */
+        @TruffleBoundary
+        @SuppressWarnings("hiding")
+        public Builder options(Map<String, String> options) {
+            for (var entry : options.entrySet()) {
+                option(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+
+        /**
          * Specifies a {@link Runnable} that will be executed when the new context is
          * {@link TruffleContext#closeCancelled(Node, String) cancelled} and the cancel exception is
          * about to reach the outer context, or when some operation on the new context is attempted
@@ -679,7 +1109,7 @@ public final class TruffleContext implements AutoCloseable {
          * @since 22.1
          */
         public Builder onCancelled(Runnable r) {
-            this.onCancelledRunnable = r;
+            this.onCancelled = r;
             return this;
         }
 
@@ -702,7 +1132,7 @@ public final class TruffleContext implements AutoCloseable {
          *      Exit</a>
          */
         public Builder onExited(Consumer<Integer> r) {
-            this.onExitedRunnable = r;
+            this.onExited = r;
             return this;
         }
 
@@ -719,7 +1149,7 @@ public final class TruffleContext implements AutoCloseable {
          * @since 22.1
          */
         public Builder onClosed(Runnable r) {
-            this.onClosedRunnable = r;
+            this.onClosed = r;
             return this;
         }
 
@@ -731,8 +1161,11 @@ public final class TruffleContext implements AutoCloseable {
         @TruffleBoundary
         public TruffleContext build() {
             try {
-                return LanguageAccessor.engineAccess().createInternalContext(sourceEnvironment.getPolyglotLanguageContext(), config, initializeCreatorContext, onCancelledRunnable, onExitedRunnable,
-                                onClosedRunnable);
+                return LanguageAccessor.engineAccess().createInternalContext(
+                                sourceEnvironment.getPolyglotLanguageContext(), this.out, this.err, this.in, this.timeZone,
+                                this.permittedLanguages, this.config, this.options, this.arguments, this.sharingEnabled, this.initializeCreatorContext, this.onCancelled, this.onExited,
+                                this.onClosed, this.inheritAccess, this.allowCreateThread, this.allowNativeAccess, this.allowIO, this.allowHostLookup, this.allowHostClassLoading,
+                                this.allowCreateProcess, this.allowPolyglotAccess, this.allowEnvironmentAccess, this.environment, this.allowInnerContextOptions);
             } catch (Throwable t) {
                 throw Env.engineToLanguageException(t);
             }
@@ -753,7 +1186,8 @@ class TruffleContextSnippets {
         void executeInContext(Env env) {
             MyContext outerLangContext = getContext(this);
 
-            TruffleContext innerContext = env.newContextBuilder().build();
+            TruffleContext innerContext = env.newInnerContextBuilder().
+                            initializeCreatorContext(true).build();
             Object p = innerContext.enter(this);
             try {
                 /*

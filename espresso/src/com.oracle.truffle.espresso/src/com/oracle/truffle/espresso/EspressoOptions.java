@@ -206,6 +206,12 @@ public final class EspressoOptions {
                     usageSyntax = "my.first.MyInterface;my.second.MySecondInterface;...") //
     public static final OptionKey<List<String>> PolyglotInterfaceMappings = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE_SEPARATED_BY_SEMI_COLON);
 
+    @Option(help = "Option to enable target type conversion by specifying a conversion class.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "java.PolyglotTypeConverters.java.lang.Optional=my.type.conversion.Implementation") //
+    public static final OptionKey<OptionMap<String>> PolyglotTypeConverters = OptionKey.mapOf(String.class);
+
     @Option(help = "Enable assertions.", //
                     category = OptionCategory.USER, //
                     stability = OptionStability.STABLE, //
@@ -482,6 +488,10 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> ExposeNativeJavaVM = new OptionKey<>(false);
+
+    @Option(help = "User-specified classlist used to warmup Espresso during context pre-initialization. The file should contain one class per line (see lib/classlist for an example).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Path> PreInitializationClasslist = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     private static final OptionType<Long> SIZE_OPTION_TYPE = new OptionType<>("Size", new Function<String, Long>() {
         private static final int K = 1024;

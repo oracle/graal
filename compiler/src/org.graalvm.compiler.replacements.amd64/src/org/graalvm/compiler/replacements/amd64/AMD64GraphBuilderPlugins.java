@@ -26,8 +26,6 @@ package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
-import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
-import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -38,7 +36,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
@@ -74,8 +71,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
@@ -123,7 +119,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
-                registerAESPlugins(invocationPlugins, replacements, arch);
             }
         });
     }
@@ -539,8 +534,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     private static void registerArraysEqualsPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Arrays.class, replacements);
-        r.register(new StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin(JavaKind.Float, float[].class, float[].class));
-        r.register(new StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin(JavaKind.Double, double[].class, double[].class));
+        r.register(new ArrayEqualsInvocationPlugin(JavaKind.Float, float[].class, float[].class));
+        r.register(new ArrayEqualsInvocationPlugin(JavaKind.Double, double[].class, double[].class));
     }
 
     private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -622,21 +617,5 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             }
         });
-    }
-
-    private static boolean supports(AMD64 arch, CPUFeature... features) {
-        EnumSet<CPUFeature> supportedFeatures = arch.getFeatures();
-        for (CPUFeature feature : features) {
-            if (!supportedFeatures.contains(feature)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, AMD64 arch) {
-        Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerConditional(supports(arch, CPUFeature.AVX, CPUFeature.AES), new AESCryptPlugin(ENCRYPT));
-        r.registerConditional(supports(arch, CPUFeature.AVX, CPUFeature.AES), new AESCryptPlugin(DECRYPT));
     }
 }

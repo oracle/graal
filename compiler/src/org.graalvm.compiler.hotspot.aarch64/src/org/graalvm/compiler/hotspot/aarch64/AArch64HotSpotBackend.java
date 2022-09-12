@@ -34,7 +34,6 @@ import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
-import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -270,7 +269,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
-        Assembler masm = new AArch64MacroAssembler(getTarget());
+        AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, config.preserveFramePointer);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
@@ -278,6 +277,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
+        crb.setMinDataSectionItemAlignment(getMinDataSectionItemAlignment());
+
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(deoptimizationRescueSlot);

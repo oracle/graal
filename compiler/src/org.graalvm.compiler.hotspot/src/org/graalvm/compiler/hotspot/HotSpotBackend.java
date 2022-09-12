@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,9 +89,11 @@ import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -124,11 +126,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * Descriptor for SharedRuntime::get_ic_miss_stub().
      */
     public static final HotSpotForeignCallDescriptor IC_MISS_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "icMissHandler", void.class);
-
-    /**
-     * Descriptor for SharedRuntime::get_handle_wrong_method_stub().
-     */
-    public static final HotSpotForeignCallDescriptor WRONG_METHOD_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "wrongMethodHandler", void.class);
 
     /**
      * Descriptor for {@link UnwindExceptionToCallerStub}. This stub is called by code generated
@@ -308,6 +305,8 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(),
                     "_electronicCodeBook_decryptAESCrypt", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor CONTINUATION_DO_YIELD = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "_cont_doYield", int.class);
 
     /**
      * @see VMErrorNode
@@ -501,5 +500,15 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             return new HotSpotCompilationIdentifier(request);
         }
         return super.getCompilationIdentifier(resolvedJavaMethod);
+    }
+
+    /**
+     * Gets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    protected int getMinDataSectionItemAlignment() {
+        HotSpotVMConfigAccess vmAccess = new HotSpotVMConfigAccess(runtime.getVMConfig().getStore());
+        int vmValue = vmAccess.getFieldValue("CompilerToVM::Data::data_section_item_alignment", Integer.class, "int", -1);
+        // Choosing 4 as minimum (JDK-8283626) if JVMCI does not expose the VM value
+        return Math.max(4, vmValue);
     }
 }

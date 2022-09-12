@@ -74,9 +74,9 @@ graal_isolate_t* graal_get_isolate(graal_isolatethread_t* thread);
 int graal_detach_thread(graal_isolatethread_t* thread);
 
 /*
- * Tears down the passed isolate, waiting for any attached threads to detach from
- * it, then discards the isolate's objects, threads, and any other state or context
- * that is associated with it.
+ * Tears down the isolate of the passed (and still attached) isolate thread
+ * waiting for any attached threads to detach from it, then discards its objects,
+ * threads, and any other state or context that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
  */
 int graal_tear_down_isolate(graal_isolatethread_t* thread);

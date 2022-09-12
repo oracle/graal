@@ -102,6 +102,12 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         this.cleanupPhase = cleanupPhase;
     }
 
+    public PartialEscapePhase(int iterations, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase) {
+        super(iterations, canonicalizer);
+        this.readElimination = readElimination;
+        this.cleanupPhase = cleanupPhase;
+    }
+
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options,
                     SchedulePhase.SchedulingStrategy strategy) {
         super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer, false, strategy);

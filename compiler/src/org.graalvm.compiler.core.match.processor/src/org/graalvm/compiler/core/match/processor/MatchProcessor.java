@@ -41,7 +41,6 @@ import java.util.regex.Pattern;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -56,7 +55,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
@@ -85,11 +83,6 @@ public class MatchProcessor extends AbstractProcessor {
     private static final String MATCH_RULES_CLASS_NAME = "org.graalvm.compiler.core.match.MatchRules";
 
     public MatchProcessor() {
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
     }
 
     private final Set<Element> processedMatchRules = new HashSet<>();
@@ -603,22 +596,6 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("}");
         }
         this.createProviderFile(pkg + "." + matchStatementClassName, "org.graalvm.compiler.core.match.MatchStatementSet", originatingElements);
-    }
-
-    protected PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
-        try {
-            // Ensure Unix line endings to comply with Graal code style guide checked by Checkstyle
-            JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, originatingElements);
-            return new PrintWriter(sourceFile.openWriter()) {
-
-                @Override
-                public void println() {
-                    print("\n");
-                }
-            };
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /**

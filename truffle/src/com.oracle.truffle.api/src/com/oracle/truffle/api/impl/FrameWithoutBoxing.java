@@ -59,12 +59,11 @@ import sun.misc.Unsafe;
  * frame object would show up very late and would be hard to identify.
  */
 public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame {
-    private static final String UNEXPECTED_STATIC_READ = "Cannot read non-static frame slot with static API";
-    private static final String UNEXPECTED_STATIC_WRITE = "Cannot write non-static frame slot with static API";
-    private static final String UNEXPECTED_STATIC_COPY = "Cannot copy to or from a non-static frame slot with static copy API";
-    private static final String UNEXPECTED_STATIC_CLEAR = "Cannot clear non-static frame slot with static clear API";
-    private static final String UNEXPECTED_NON_STATIC_READ = "Cannot read static frame slot with non-static API";
-    private static final String UNEXPECTED_NON_STATIC_WRITE = "Cannot write static frame slot with non-static API";
+    private static final String UNEXPECTED_STATIC_WRITE = "Unexpected static write of non-static frame slot";
+    private static final String UNEXPECTED_NON_STATIC_READ = "Unexpected non-static read of static frame slot";
+    private static final String UNEXPECTED_NON_STATIC_WRITE = "Unexpected non-static write of static frame slot";
+
+    private static final boolean ASSERTIONS_ENABLED;
 
     private final FrameDescriptor descriptor;
     private final Object[] arguments;
@@ -93,6 +92,15 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public static final byte ILLEGAL_TAG = 7;
     public static final byte STATIC_TAG = 8;
 
+    private static final byte STATIC_OBJECT_TAG = STATIC_TAG | OBJECT_TAG;
+    private static final byte STATIC_LONG_TAG = STATIC_TAG | LONG_TAG;
+    private static final byte STATIC_INT_TAG = STATIC_TAG | INT_TAG;
+    private static final byte STATIC_DOUBLE_TAG = STATIC_TAG | DOUBLE_TAG;
+    private static final byte STATIC_FLOAT_TAG = STATIC_TAG | FLOAT_TAG;
+    private static final byte STATIC_BOOLEAN_TAG = STATIC_TAG | BOOLEAN_TAG;
+    private static final byte STATIC_BYTE_TAG = STATIC_TAG | BYTE_TAG;
+    private static final byte STATIC_ILLEGAL_TAG = STATIC_TAG | ILLEGAL_TAG;
+
     private static final Object[] EMPTY_OBJECT_ARRAY = {};
     private static final long[] EMPTY_LONG_ARRAY = {};
     private static final byte[] EMPTY_BYTE_ARRAY = {};
@@ -109,6 +117,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         assert BOOLEAN_TAG == FrameSlotKind.Boolean.tag;
         assert BYTE_TAG == FrameSlotKind.Byte.tag;
         assert STATIC_TAG == FrameSlotKind.Static.tag;
+
+        // Check if assertions are enabled
+        boolean enabled = false;
+        assert enabled = true;
+        ASSERTIONS_ENABLED = enabled;
     }
 
     private static Unsafe initUnsafe() {
@@ -202,7 +215,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public byte getTag(int slotIndex) {
         try {
-            return getIndexedTags()[slotIndex];
+            final byte tag = getIndexedTags()[slotIndex];
+            return tag < STATIC_TAG ? tag : STATIC_TAG;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw CompilerDirectives.shouldNotReachHere("invalid indexed slot", e);
         }
@@ -236,7 +250,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public Object getValue(int slot) {
         byte tag = getTag(slot);
-        assert tag != STATIC_TAG : UNEXPECTED_NON_STATIC_READ;
+        assert (indexedTags[slot] & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_READ;
         switch (tag) {
             case BOOLEAN_TAG:
                 return getBoolean(slot);
@@ -363,6 +377,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
     }
 
+    @Override
     public void swap(int first, int second) {
         byte firstTag = getIndexedTagChecked(first);
         Object firstValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
@@ -380,7 +395,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void verifyIndexedSet(int slot, byte tag) {
-        assert getIndexedTags()[slot] != STATIC_TAG : UNEXPECTED_NON_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_WRITE;
         // this may raise an AIOOBE
         getIndexedTags()[slot] = tag;
     }
@@ -398,7 +413,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private byte getIndexedTagChecked(int slot) {
         // this may raise an AIOOBE
         byte tag = getIndexedTags()[slot];
-        assert tag != STATIC_TAG : UNEXPECTED_NON_STATIC_READ;
+        assert (tag & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_READ;
         return tag;
     }
 
@@ -467,103 +482,228 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public Object getObjectStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_OBJECT_TAG : "Unexpected read of static object value";
+
         return indexedLocals[slot];
     }
 
     @Override
     public void setObjectStatic(int slot, Object value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_OBJECT_TAG;
+        }
+
         indexedLocals[slot] = value;
     }
 
     @Override
     public byte getByteStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_BYTE_TAG : "Unexpected read of static byte value";
+
         return (byte) (int) indexedPrimitiveLocals[slot];
     }
 
     @Override
     public void setByteStatic(int slot, byte value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_BYTE_TAG;
+        }
+
         indexedPrimitiveLocals[slot] = extend(value);
     }
 
     @Override
     public boolean getBooleanStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_BOOLEAN_TAG : "Unexpected read of static boolean value";
+
         return (int) indexedPrimitiveLocals[slot] != 0;
     }
 
     @Override
     public void setBooleanStatic(int slot, boolean value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_BOOLEAN_TAG;
+        }
+
         indexedPrimitiveLocals[slot] = value ? 1L : 0L;
     }
 
     @Override
     public int getIntStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_INT_TAG : "Unexpected read of static int value";
+
         return (int) indexedPrimitiveLocals[slot];
     }
 
     @Override
     public void setIntStatic(int slot, int value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_INT_TAG;
+        }
+
         indexedPrimitiveLocals[slot] = extend(value);
     }
 
     @Override
     public long getLongStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_LONG_TAG : "Unexpected read of static long value";
+
         return indexedPrimitiveLocals[slot];
     }
 
     @Override
     public void setLongStatic(int slot, long value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_LONG_TAG;
+        }
+
         indexedPrimitiveLocals[slot] = value;
     }
 
     @Override
     public float getFloatStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_FLOAT_TAG : "Unexpected read of static float value";
+
         return Float.intBitsToFloat((int) indexedPrimitiveLocals[slot]);
     }
 
     @Override
     public void setFloatStatic(int slot, float value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_FLOAT_TAG;
+        }
+
         indexedPrimitiveLocals[slot] = extend(Float.floatToRawIntBits(value));
     }
 
     @Override
     public double getDoubleStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_READ;
+        assert indexedTags[slot] == STATIC_DOUBLE_TAG : "Unexpected read of static double value";
+
         return Double.longBitsToDouble(indexedPrimitiveLocals[slot]);
     }
 
     @Override
     public void setDoubleStatic(int slot, double value) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
+        assert (indexedTags[slot] & STATIC_TAG) != 0 : UNEXPECTED_STATIC_WRITE;
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_DOUBLE_TAG;
+        }
+
         indexedPrimitiveLocals[slot] = Double.doubleToRawLongBits(value);
     }
 
     @Override
     public void copyPrimitiveStatic(int srcSlot, int destSlot) {
-        assert indexedTags[srcSlot] == STATIC_TAG && indexedTags[destSlot] == STATIC_TAG : UNEXPECTED_STATIC_COPY;
+        assert indexedTags[srcSlot] > STATIC_TAG && (indexedTags[destSlot] & STATIC_TAG) != 0 : "Unexpected copy of static primitive value ";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[destSlot] = indexedTags[srcSlot];
+        }
+
         indexedPrimitiveLocals[destSlot] = indexedPrimitiveLocals[srcSlot];
     }
 
     @Override
     public void copyObjectStatic(int srcSlot, int destSlot) {
-        assert indexedTags[srcSlot] == STATIC_TAG && indexedTags[destSlot] == STATIC_TAG : UNEXPECTED_STATIC_COPY;
+        assert (indexedTags[srcSlot] == STATIC_OBJECT_TAG || indexedTags[srcSlot] == STATIC_ILLEGAL_TAG) && (indexedTags[destSlot] & STATIC_TAG) != 0 : "Unexpected copy of static object value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[destSlot] = indexedTags[srcSlot];
+        }
+
         indexedLocals[destSlot] = indexedLocals[srcSlot];
     }
 
     @Override
+    public void copyStatic(int srcSlot, int destSlot) {
+        assert indexedTags[srcSlot] >= STATIC_TAG && indexedTags[destSlot] >= STATIC_TAG : "Unexpected copy of static value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[destSlot] = indexedTags[srcSlot];
+        }
+
+        indexedLocals[destSlot] = indexedLocals[srcSlot];
+        indexedPrimitiveLocals[destSlot] = indexedPrimitiveLocals[srcSlot];
+    }
+
+    @Override
+    public void swapPrimitiveStatic(int first, int second) {
+        assert indexedTags[first] > STATIC_TAG && indexedTags[second] > STATIC_TAG : "Unexpected swap of static primitive value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            final byte swapTag = indexedTags[first];
+            indexedTags[first] = indexedTags[second];
+            indexedTags[second] = swapTag;
+        }
+
+        final long firstValue = indexedPrimitiveLocals[first];
+        final long secondValue = indexedPrimitiveLocals[second];
+
+        indexedPrimitiveLocals[first] = secondValue;
+        indexedPrimitiveLocals[second] = firstValue;
+    }
+
+    @Override
+    public void swapObjectStatic(int first, int second) {
+        assert (indexedTags[first] == STATIC_OBJECT_TAG || indexedTags[first] == STATIC_ILLEGAL_TAG) &&
+                        (indexedTags[second] == STATIC_OBJECT_TAG || indexedTags[second] == STATIC_ILLEGAL_TAG) : "Unexpected swap of static object value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            final byte swapTag = indexedTags[first];
+            indexedTags[first] = indexedTags[second];
+            indexedTags[second] = swapTag;
+        }
+
+        final Object firstValue = indexedLocals[first];
+        final Object secondValue = indexedLocals[second];
+
+        indexedLocals[first] = secondValue;
+        indexedLocals[second] = firstValue;
+    }
+
+    @Override
+    public void swapStatic(int first, int second) {
+        assert indexedTags[first] >= STATIC_TAG && indexedTags[second] >= STATIC_TAG : "Unexpected swap of static value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            final byte swapTag = indexedTags[first];
+            indexedTags[first] = indexedTags[second];
+            indexedTags[second] = swapTag;
+        }
+
+        final Object firstValue = indexedLocals[first];
+        final Object secondValue = indexedLocals[second];
+        final long firstPrimitiveValue = indexedPrimitiveLocals[first];
+        final long secondPrimitiveValue = indexedPrimitiveLocals[second];
+
+        indexedLocals[first] = secondValue;
+        indexedLocals[second] = firstValue;
+        indexedPrimitiveLocals[first] = secondPrimitiveValue;
+        indexedPrimitiveLocals[second] = firstPrimitiveValue;
+    }
+
+    @Override
     public void clearPrimitiveStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_CLEAR;
+        assert indexedTags[slot] > STATIC_TAG : "Unexpected clear of static primitive value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_ILLEGAL_TAG;
+        }
+
         if (CompilerDirectives.inCompiledCode()) {
             // Avoids keeping track of cleared frame slots in FrameStates
             indexedPrimitiveLocals[slot] = 0L;
@@ -572,7 +712,55 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void clearObjectStatic(int slot) {
-        assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_CLEAR;
+        assert indexedTags[slot] == STATIC_OBJECT_TAG || indexedTags[slot] == STATIC_ILLEGAL_TAG : "Unexpected clear of static object value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_ILLEGAL_TAG;
+        }
+
         indexedLocals[slot] = null;
+    }
+
+    @Override
+    public void clearStatic(int slot) {
+        assert indexedTags[slot] >= STATIC_TAG : "Unexpected clear of static value";
+        // We use this check instead of the assert keyword to update the tags in PE'd code.
+        if (ASSERTIONS_ENABLED) {
+            indexedTags[slot] = STATIC_ILLEGAL_TAG;
+        }
+
+        if (CompilerDirectives.inCompiledCode()) {
+            // Avoid keeping track of cleared frame slots in FrameStates
+            indexedPrimitiveLocals[slot] = 0L;
+        }
+        indexedLocals[slot] = null;
+    }
+
+    /**
+     * This method is used to transfer a static slot from a source frame to a target frame before or
+     * after OSR. This method must exclusively be used inside
+     * {@code BytecodeOSRMetadata#transferIndexedFrameSlot}. It is necessary to support static
+     * assertions.
+     *
+     * @param target The target frame (The frame descriptor of this and the target frame must match)
+     * @param slot The slot that should be transferred
+     */
+    void transferOSRStaticSlot(FrameWithoutBoxing target, int slot) {
+        if (ASSERTIONS_ENABLED) {
+            final byte tag = indexedTags[slot];
+            indexedTags[slot] = STATIC_OBJECT_TAG;
+            target.setObjectStatic(slot, getObjectStatic(slot));
+            indexedTags[slot] = STATIC_LONG_TAG;
+            target.setLongStatic(slot, getLongStatic(slot));
+            indexedTags[slot] = tag;
+            target.setStaticSlotTag(slot, tag);
+        } else {
+            target.setObjectStatic(slot, getObjectStatic(slot));
+            target.setLongStatic(slot, getLongStatic(slot));
+        }
+    }
+
+    private void setStaticSlotTag(int slot, byte tag) {
+        indexedTags[slot] = tag;
     }
 }

@@ -47,7 +47,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -472,7 +471,6 @@ final class APIOptionSupport {
     }
 }
 
-@AutomaticFeature
 final class APIOptionFeature implements Feature {
 
     @Override

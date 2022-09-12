@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 
 /** Method object in the compiler isolate with an equivalent method object in the client isolate. */

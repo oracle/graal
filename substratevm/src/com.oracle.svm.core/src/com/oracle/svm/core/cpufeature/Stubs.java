@@ -27,6 +27,7 @@ package com.oracle.svm.core.cpufeature;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
@@ -39,6 +40,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,10 +65,14 @@ public final class Stubs {
                         AVX,
                         AVX2);
         public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(AVX, AES);
+        public static final EnumSet<AMD64.CPUFeature> GHASH_CPU_FEATURES_AMD64 = EnumSet.of(AVX, CLMUL);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
-            if (AESNode.class.equals(klass)) {
+            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass)) {
                 return AES_CPU_FEATURES_AMD64;
+            }
+            if (GHASHProcessBlocksNode.class.equals(klass)) {
+                return GHASH_CPU_FEATURES_AMD64;
             }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
@@ -75,10 +82,14 @@ public final class Stubs {
     public static class AArch64Features {
         public static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
         public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.AES);
+        public static final EnumSet<AArch64.CPUFeature> GHASH_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.PMULL);
 
         public static EnumSet<AArch64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
-            if (AESNode.class.equals(klass)) {
+            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass)) {
                 return AES_CPU_FEATURES_AARCH64;
+            }
+            if (GHASHProcessBlocksNode.class.equals(klass)) {
+                return GHASH_CPU_FEATURES_AARCH64;
             }
             return EMPTY_CPU_FEATURES_AARCH64;
         }

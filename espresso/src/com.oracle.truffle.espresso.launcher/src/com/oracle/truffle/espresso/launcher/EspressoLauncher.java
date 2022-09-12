@@ -547,8 +547,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             } catch (PolyglotException e) {
                 if (e.isInternalError()) {
                     e.printStackTrace();
+                    throw abort((String) null);
                 } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
+                    throw abort((String) null);
+                } else {
+                    throw abort((String) null, e.getExitStatus());
                 }
             }
         }

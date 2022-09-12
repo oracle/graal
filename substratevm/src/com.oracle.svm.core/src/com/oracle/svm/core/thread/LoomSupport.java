@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.UseEpsilonGC;
-import static com.oracle.svm.core.SubstrateOptions.UseSerialGC;
-
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
@@ -34,7 +31,7 @@ public final class LoomSupport {
     private static final boolean isEnabled;
     static {
         boolean enabled = false;
-        if (JavaVersionUtil.JAVA_SPEC == 19 && (UseSerialGC.getValue() || UseEpsilonGC.getValue())) {
+        if (JavaVersionUtil.JAVA_SPEC == 19) {
             try {
                 enabled = (Boolean) Class.forName("jdk.internal.misc.PreviewFeatures")
                                 .getDeclaredMethod("isEnabled").invoke(null);

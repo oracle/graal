@@ -122,7 +122,8 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
             } else {
                 int stackEffect = Bytecodes.stackEffectOf(opcode);
                 if (stackEffect < 0) {
-                    assert topState.stackSize() >= -stackEffect : "expected at least " + (-stackEffect) + " stack depth : " + topState;
+                    assert topState.stackSize() >= -stackEffect : "opcode " + opcode + " (" + Bytecodes.nameOf(opcode) + ") stack effect " + stackEffect + ": expected at least " + (-stackEffect) +
+                                    " stack depth : " + topState;
                 }
             }
         }

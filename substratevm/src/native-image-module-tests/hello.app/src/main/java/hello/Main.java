@@ -110,6 +110,7 @@ public class Main {
         assert base.getLayer() == bootLayer;
 
         System.out.println("Now testing boot module layer java.base loader");
+        assert bootLayer.findModule("java.base").get().getClassLoader() == null;
         assert bootLayer.findLoader("java.base") == null;
 
         System.out.println("Now testing boot module layer parent");

@@ -28,6 +28,9 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.espresso.preinit.ContextPatchingException;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -35,6 +38,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -59,12 +63,15 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
+import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 // TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //
@@ -90,10 +97,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String FILE_EXTENSION = ".class";
 
-    private final Utf8ConstantTable utf8Constants;
-    private final Names names;
-    private final Types types;
-    private final Signatures signatures;
+    @CompilationFinal private Utf8ConstantTable utf8Constants;
+    @CompilationFinal private Names names;
+    @CompilationFinal private Types types;
+    @CompilationFinal private Signatures signatures;
 
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
     // This field should be final, but creating a shape requires a fully-initialized instance of
@@ -110,6 +117,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private JavaVersion javaVersion;
 
     // region Options
+    // Note: All options are initialized during the bootstrapping of the first context
     @CompilationFinal private EspressoOptions.VerifyMode verifyMode;
     @CompilationFinal private EspressoOptions.SpecComplianceMode specComplianceMode;
     @CompilationFinal private EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
@@ -118,8 +126,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private boolean optionsInitialized;
     // endregion Options
 
-    // region allocation tracking
+    // region Allocation
+    // Note: Initialized during the bootstrapping of the first context; See initializeOptions()
+    @CompilationFinal private GuestAllocator allocator;
     @CompilationFinal private final Assumption noAllocationTracking = Assumption.create("Espresso no allocation tracking assumption");
+    // endregion Allocation
+
+    // region Preinit
+    @CompilationFinal private EspressoLanguageCache languageCache;
+    // endregion Preinit
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -157,6 +172,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         initializeOptions(env);
 
+        // We cannot use env.isPreinitialization() here because the language instance that holds the
+        // inner context
+        // is not under pre-initialization
+        boolean isPreinitLanguageInstance = (boolean) env.getConfig().getOrDefault("preinit", false);
+        languageCache = new EspressoLanguageCache(isPreinitLanguageInstance);
+
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
@@ -175,11 +196,86 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        context.initializeContext();
+        if (context.getEnv().isPreInitialization()) {
+            // Spawn Espresso VM in an inner context. Make sure to initialize the context
+            TruffleContext ctx = context.getEnv() //
+                            .newInnerContextBuilder() //
+                            .initializeCreatorContext(true) //
+                            .inheritAllAccess(true) //
+                            .config("preinit", true) //
+                            .build();
+            Object prev = ctx.enter(null);
+            try {
+                // Retrieve caches and options and store them in the pre-initialized language
+                // instance.
+                EspressoContext inner = EspressoContext.get(null);
+                inner.preInitializeContext();
+                extractDataFrom(inner.getLanguage());
+                languageCache.logCacheStatus();
+
+                // This is needed to ensure that there are no references to the inner context
+                inner = null;
+            } finally {
+                ctx.leave(null, prev);
+                ctx.close();
+
+                // This is needed to ensure that there are no references to the inner context
+                ctx = null;
+
+                // Ensure that weak references will get collected
+                System.gc();
+            }
+        } else {
+            context.initializeContext();
+        }
+    }
+
+    private void extractDataFrom(EspressoLanguage other) {
+        javaVersion = other.javaVersion;
+        utf8Constants = other.getUtf8ConstantTable();
+        names = other.getNames();
+        types = other.getTypes();
+        signatures = other.getSignatures();
+        languageCache = other.getLanguageCache();
+    }
+
+    @Override
+    protected boolean patchContext(EspressoContext context, Env newEnv) {
+        // This check has to be done manually as long as language uses exclusive context sharing
+        // policy.
+        if (!areOptionsCompatible(context.getEnv().getOptions(), newEnv.getOptions())) {
+            return false;
+        }
+        context.patchContext(newEnv);
+        try {
+            context.initializeContext();
+        } catch (ContextPatchingException e) {
+            context.getLogger().severe(e.getMessage());
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues oldOptions, OptionValues newOptions) {
+        return isOptionCompatible(newOptions, oldOptions, EspressoOptions.JavaHome) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.BootClasspath) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.Verify) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.SpecCompliance) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals);
+    }
+
+    private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
+        return oldOptions.get(option).equals(newOptions.get(option));
     }
 
     @Override
     protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
+        if (!context.isInitialized()) {
+            return;
+        }
+
         if (exitMode == ExitMode.NATURAL) {
             // Make sure current thread is no longer considered alive by guest code.
             if (context.getVM().DetachCurrentThread(context) == JNI_OK) {
@@ -357,6 +453,18 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public void invalidateAllocationTrackingDisabled() {
         noAllocationTracking.invalidate();
+    }
+
+    public EspressoLanguageCache getLanguageCache() {
+        return languageCache;
+    }
+
+    public GuestAllocator getAllocator() {
+        return allocator;
+    }
+
+    public void initializeGuestAllocator(TruffleLanguage.Env env) {
+        this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

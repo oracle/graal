@@ -91,7 +91,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     public static final byte FrameSlotKindStaticTag = 8; // FrameSlotKind.Static.tag
 
     private static final byte FrameDescriptorNoStaticMode = 1; // FrameDescriptor.NO_STATIC_MODE
-    private static final byte FrameDescriptorAllStaticMode = 2; // FrameDescriptor.ALL_STATIC_MODe
+    private static final byte FrameDescriptorAllStaticMode = 2; // FrameDescriptor.ALL_STATIC_MODE
     private static final byte FrameDescriptorMixedStaticMode = FrameDescriptorNoStaticMode | FrameDescriptorAllStaticMode; // FrameDescriptor.MIXED_STATIC_MODE
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
@@ -250,10 +250,12 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         }
         this.virtualFrameArrays = new NodeInputList<>(this, new ValueNode[]{indexedLocals, indexedPrimitiveLocals, indexedTags, auxiliarySlotsArray});
 
-        ValueNode[] c = new ValueNode[TruffleCompilerRuntime.getRuntime().getFrameSlotKindTagsCount()];
+        // We double the frame slot kind tags count to support static assertion tags.
+        ValueNode[] c = new ValueNode[TruffleCompilerRuntime.getRuntime().getFrameSlotKindTagsCount() * 2];
         for (int i = 0; i < c.length; i++) {
             c[i] = ConstantNode.forInt(i, graph);
         }
+
         this.smallIntConstants = new NodeInputList<>(this, c);
     }
 

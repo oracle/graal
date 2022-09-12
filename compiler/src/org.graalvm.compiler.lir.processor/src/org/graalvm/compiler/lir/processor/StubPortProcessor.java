@@ -40,7 +40,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
@@ -66,11 +65,6 @@ public class StubPortProcessor extends AbstractProcessor {
     static final String HTTPS_PROXY_ENV_VAR = "HTTPS_PROXY";
 
     static final int SEARCH_RANGE = 100;
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -130,7 +124,7 @@ public class StubPortProcessor extends AbstractProcessor {
             String oldSnippet = oldUrlIn.lines().skip(lineStart).limit(lineEnd - lineStart).collect(Collectors.joining("\n"));
             int newLineStart = Math.max(0, lineStart - SEARCH_RANGE);
             int newLineEnd = lineEnd + SEARCH_RANGE;
-            String newFullFile = newUrlIn.lines().skip(newLineStart).limit(newLineEnd - lineStart).collect(Collectors.joining("\n"));
+            String newFullFile = newUrlIn.lines().skip(newLineStart).limit(newLineEnd - newLineStart).collect(Collectors.joining("\n"));
             int idx = newFullFile.indexOf(oldSnippet);
             if (idx != -1) {
                 return newLineStart + newFullFile.substring(0, idx).split("\n").length;
@@ -164,11 +158,6 @@ public class StubPortProcessor extends AbstractProcessor {
 
                     Proxy proxy = Proxy.NO_PROXY;
                     String proxyEnv = System.getenv(HTTPS_PROXY_ENV_VAR);
-
-                    if (proxyEnv != null) {
-                        URI proxyURI = new URI(System.getenv(HTTPS_PROXY_ENV_VAR));
-                        proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyURI.getHost(), proxyURI.getPort()));
-                    }
 
                     if (proxyEnv != null) {
                         URI proxyURI = new URI(System.getenv(HTTPS_PROXY_ENV_VAR));

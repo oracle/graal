@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -53,6 +53,16 @@ final class JDK19OrLaterWithoutLoom implements BooleanSupplier {
 final class Target_jdk_internal_vm_Continuation__WithoutLoom {
     @Substitute
     static boolean yield(Target_jdk_internal_vm_ContinuationScope scope) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Substitute
+    static void pin() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Substitute
+    static void unpin() {
         throw VMError.shouldNotReachHere();
     }
 }

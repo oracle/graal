@@ -27,6 +27,9 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * See https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md .
+ */
 final class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
     private final int threads;

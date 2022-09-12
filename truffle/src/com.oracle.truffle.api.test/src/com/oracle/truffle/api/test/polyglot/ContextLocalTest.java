@@ -866,7 +866,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
 
         @CompilerDirectives.TruffleBoundary
         private static TruffleContext createInnerContext(Env env) {
-            return env.newContextBuilder().build();
+            return env.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
         }
 
         @CompilerDirectives.TruffleBoundary
