@@ -1017,6 +1017,7 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeResourceAccess
 meth public static void addResource(java.lang.Module,java.lang.String)
+meth public static void addResource(java.lang.Module,java.lang.String,byte[])
 meth public static void addResourceBundle(java.lang.Module,java.lang.String,java.util.Locale[])
 meth public static void addResourceBundle(java.lang.Module,java.lang.String)
 supr java.lang.Object
