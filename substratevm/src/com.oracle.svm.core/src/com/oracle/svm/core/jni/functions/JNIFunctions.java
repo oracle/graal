@@ -35,6 +35,7 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -54,18 +55,18 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
@@ -1335,6 +1336,7 @@ public final class JNIFunctions {
          * The object is considered "a buffer" if it implements java.nio.Buffer. The buffer is
          * considered "direct" if it implements sun.nio.ch.DirectBuffer.
          */
+        @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "FindBugs does not understand substitution classes")
         static Target_java_nio_Buffer directBufferFromJNIHandle(JNIObjectHandle handle) {
             Object obj = JNIObjectHandles.getObject(handle);
             if (obj instanceof Target_java_nio_Buffer && obj instanceof sun.nio.ch.DirectBuffer) {
