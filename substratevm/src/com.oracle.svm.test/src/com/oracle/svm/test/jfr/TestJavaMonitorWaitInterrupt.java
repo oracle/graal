@@ -98,11 +98,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
     @Test
     public void test() throws Exception {
         Runnable interrupter = () -> {
-            try {
-                helper.interrupt();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            helper.interrupt();
         };
 
         Runnable interrupted = () -> {
@@ -115,19 +111,11 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         };
 
         Runnable simpleWaiter = () -> {
-            try {
-                helper.simpleWait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            helper.simpleWait();
         };
 
         Runnable simpleNotifier = () -> {
-            try {
-                helper.simpleNotify();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            helper.simpleNotify();
         };
         Thread interrupterThread = new Thread(interrupter);
         Thread interruptedThread = new Thread(interrupted);
@@ -169,7 +157,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
             }
         }
 
-        public synchronized void interrupt() throws InterruptedException {
+        public synchronized void interrupt() {
             try {
                 interrupted.interrupt();
             } catch (Exception e) {
@@ -177,7 +165,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         }
 
-        public synchronized void simpleWait() throws InterruptedException {
+        public synchronized void simpleWait() {
             try {
                 wait();
             } catch (Exception e) {
@@ -185,7 +173,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
             }
         }
 
-        public synchronized void simpleNotify() throws InterruptedException {
+        public synchronized void simpleNotify() {
             try {
                 Thread.sleep(2 * MILLIS);
                 notify();
