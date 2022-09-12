@@ -41,10 +41,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -222,6 +222,19 @@ public final class Resources {
         }
 
         ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
+        if (moduleName == null && entry == null) {
+            /*
+             * If no moduleName is specified and entry was not found as classpath-resource we have
+             * to search for the resource in all modules in the image.
+             */
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                entry = Resources.get(module.getName(), resourceName);
+                if (entry != null) {
+                    break;
+                }
+            }
+        }
+
         if (entry == null) {
             return null;
         }
