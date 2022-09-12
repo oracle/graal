@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.util;
 
+import org.graalvm.wasm.WasmType;
+
 /**
  * Helper class for generating extra data entries.
  */
@@ -51,7 +53,8 @@ public class ExtraDataUtil {
     private static final int MAX_UNSIGNED_15BIT_VALUE = 0x0000_7fff;
     private static final int MIN_SIGNED_15BIT_VALUE = 0xffff_c000;
     private static final int MAX_SIGNED_15BIT_VALUE = 0x0000_3fff;
-    private static final int MAX_UNSIGNED_8BIT_VALUE = 0x0000_00ff;
+    private static final int MAX_UNSIGNED_7BIT_VALUE = 0x0000_007f;
+    private static final int MAX_UNSIGNED_2BIT_VALUE = 0x0000_0003;
 
     /**
      * Compact sizes.
@@ -65,22 +68,31 @@ public class ExtraDataUtil {
      * Extended sizes.
      */
     public static final int EXTENDED_JUMP_TARGET_SIZE = 2;
-    public static final int EXTENDED_STACK_CHANGE_SIZE = 2;
+    public static final int EXTENDED_STACK_CHANGE_SIZE = 3;
     public static final int EXTENDED_CALL_TARGET_SIZE = 1;
     public static final int EXTENDED_TABLE_HEADER_SIZE = 1;
 
     public static final int PROFILE_SIZE = 1;
 
+    private static final int TYPE_INDICATOR_PRIMITIVE = 0;
+    private static final int TYPE_INDICATOR_REFERENCE = 1;
+    // 2 reserved for potential vector types;
+    private static final int TYPE_INDICATOR_ALL = 3;
+
     private static int createCompactShortValuesWithIndicator(int upperValue, int lowerValue) {
         return ((upperValue << 16) | lowerValue) & 0x7fff_ffff;
     }
 
-    private static int createCompactUpperBytes(int upperValue, int lowerValue) {
-        return (upperValue << 24) | (lowerValue << 16);
+    private static int createCompactUpperBytes(int leadValue, int upperValue, int lowerValue) {
+        return (leadValue << 30) | (upperValue << 23) | (lowerValue << 16);
     }
 
-    public static boolean exceedsUnsignedByteValue(int value) {
-        return Integer.compareUnsigned(value, MAX_UNSIGNED_8BIT_VALUE) > 0;
+    public static boolean exceeds2BitValue(int value) {
+        return Integer.compareUnsigned(value, MAX_UNSIGNED_2BIT_VALUE) > 0;
+    }
+
+    public static boolean exceedsUnsigned7BitValue(int value) {
+        return Integer.compareUnsigned(value, MAX_UNSIGNED_7BIT_VALUE) > 0;
     }
 
     public static boolean exceedsUnsignedShortValueWithIndicator(int value) {
@@ -111,9 +123,9 @@ public class ExtraDataUtil {
      * Adds a compact jump target entry, consisting of byte code displacement and extra data
      * displacement, at the given offset. The jump target entry has to be at the start of an extra
      * data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | 0 (1-bit) | extraDataDisplacement (15-bits) | byteCodeDisplacement (16-bits) |
      * </code>
@@ -133,9 +145,9 @@ public class ExtraDataUtil {
      * Adds an extended jump target entry, consisting of byte code displacement and extra data
      * displacement, at the given offset. The jump target entry has to be at the start of an extra
      * data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | 1 (1-bit) | extraDataDisplacement (31-bits) | byteCodeDisplacement (32-bit) |
      * </code>
@@ -155,9 +167,9 @@ public class ExtraDataUtil {
     /**
      * Adds a compact stack change entry, consisting of return length and stack size, at the given
      * offset. The stack change entry cannot be at the start of an extra data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | resultCount (8-bit) | stackSize (8-bit) | 0 (16-bit) |
      * </code>
@@ -168,17 +180,17 @@ public class ExtraDataUtil {
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int resultCount, int stackSize) {
-        extraData[stackChangeOffset] = createCompactUpperBytes(resultCount, stackSize);
+    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int typeIndicator, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = createCompactUpperBytes(typeIndicator, resultCount, stackSize);
         return COMPACT_STACK_CHANGE_SIZE;
     }
 
     /**
      * Adds an extended stack change entry, consisting of return length and stack size, at the given
      * offset. The stack change entry cannot be at the start of an extra data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | resultCount (32-bit) | stackSize (32-bit) |
      * </code>
@@ -189,18 +201,19 @@ public class ExtraDataUtil {
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addExtendedStackChange(int[] extraData, int stackChangeOffset, int resultCount, int stackSize) {
-        extraData[stackChangeOffset] = resultCount;
-        extraData[stackChangeOffset + 1] = stackSize;
+    public static int addExtendedStackChange(int[] extraData, int stackChangeOffset, int typeIndicator, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = typeIndicator;
+        extraData[stackChangeOffset + 1] = resultCount;
+        extraData[stackChangeOffset + 2] = stackSize;
         return EXTENDED_STACK_CHANGE_SIZE;
     }
 
     /**
      * Adds a compact call target entry, consisting of a node index, at the given offset. The call
      * target entry has to be at the start of an extra data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | 0 (1-bit) | nodeIndex (15-bit) | 0 (16-bit) |
      * </code>
@@ -218,9 +231,9 @@ public class ExtraDataUtil {
     /**
      * Adds an extended call target entry, consisting of a node index, at the given offset. The call
      * target entry has to be at the start of an extra data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | 1 (1-bit) | nodeIndex (31-bit) |
      * </code>
@@ -238,9 +251,9 @@ public class ExtraDataUtil {
     /**
      * Adds a compact table header entry, consisting of the table size, at the given offset. The
      * table header entry has to be at the start of an extra data entry.
-     *
+     * <p>
      * The resulting entry looks a follows:
-     *
+     * <p>
      * <code>
      *     | 0 (1-bit) | size (15-bit) | 0 (16-bit) |
      * </code>
@@ -258,9 +271,9 @@ public class ExtraDataUtil {
     /**
      * Adds an extended table header entry, consisting of the table size, at the given offset. The
      * table header entry has to be at the start of an extra data entry.
-     *
+     * <p>
      * The resulting entry looks as follows:
-     *
+     * <p>
      * <code>
      *     | 1 (1-bit) | size (31-bit) |
      * </code>
@@ -278,9 +291,9 @@ public class ExtraDataUtil {
     /**
      * Adds a profile counter at the given offset. The profile counter cannot be at the start of an
      * extra data entry.
-     * 
+     * <p>
      * The resulting entry looks as follows:
-     * 
+     * <p>
      * <code>
      *     | profileCounter (32-bit) |
      * </code>
@@ -292,5 +305,25 @@ public class ExtraDataUtil {
     @SuppressWarnings("unused")
     public static int addProfileCounter(int[] extraData, int profileOffset) {
         return PROFILE_SIZE;
+    }
+
+    public static int extractTypeIndicator(byte[] params, byte[] results) {
+        boolean primitive = false;
+        boolean reference = false;
+        for (byte type : params) {
+            primitive = primitive | WasmType.isNumberType(type);
+            reference = reference | WasmType.isReferenceType(type);
+        }
+        for (byte type : results) {
+            primitive = primitive | WasmType.isNumberType(type);
+            reference = reference | WasmType.isReferenceType(type);
+        }
+        if (primitive && reference) {
+            return TYPE_INDICATOR_ALL;
+        }
+        if (reference) {
+            return TYPE_INDICATOR_REFERENCE;
+        }
+        return TYPE_INDICATOR_PRIMITIVE;
     }
 }

@@ -56,12 +56,20 @@ public abstract class WasmFrame {
         }
     }
 
+    public static void dropReference(VirtualFrame frame, int slot) {
+        frame.clearObjectStatic(slot);
+    }
+
     public static void drop(VirtualFrame frame, int slot) {
         frame.clearStatic(slot);
     }
 
     public static void copyPrimitive(VirtualFrame frame, int sourceSlot, int targetSlot) {
         frame.copyPrimitiveStatic(sourceSlot, targetSlot);
+    }
+
+    public static void copyReference(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyObjectStatic(sourceSlot, targetSlot);
     }
 
     public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {

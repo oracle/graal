@@ -46,17 +46,17 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents a br_if entry in the extra data list.
- *
+ * <p>
  * Compact format:
- * 
+ * <p>
  * <code>
- *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | resultCount (unsigned 8-bit) | stackSize (unsigned 8-bit) | profileCounter (unsigned 16-bit) |
+ *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | typeIndicator (unsigned 2-bit) | resultCount (unsigned 7-bit) | stackSize (unsigned 7-bit) | profileCounter (unsigned 16-bit) |
  * </code>
- * 
+ * <p>
  * Extended format:
- * 
+ * <p>
  * <code>
- *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | resultCount (signed 32-bit) | stackSize (signed 32-bit) | unused (16-bit) | profileCounter (unsigned 16-bit) |
+ *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | typeIndicator (signed 32-bit) | resultCount (signed 32-bit) | stackSize (signed 32-bit) | unused (16-bit) | profileCounter (unsigned 16-bit) |
  * </code>
  */
 public class ConditionalBranchEntry extends BranchTargetWithStackChange {
@@ -68,7 +68,7 @@ public class ConditionalBranchEntry extends BranchTargetWithStackChange {
     protected int generateCompactData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
-        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, resultCount(), stackSize());
+        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, typeIndicator(), resultCount(), stackSize());
         return offset;
     }
 
@@ -76,7 +76,7 @@ public class ConditionalBranchEntry extends BranchTargetWithStackChange {
     protected int generateExtendedData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
-        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, resultCount(), stackSize());
+        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, typeIndicator(), resultCount(), stackSize());
         offset += ExtraDataUtil.addProfileCounter(extraData, offset);
         return offset;
     }

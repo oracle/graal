@@ -43,6 +43,7 @@ package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 import java.util.ArrayList;
 
@@ -127,5 +128,9 @@ public abstract class ControlFrame {
 
     protected void resetUnreachable() {
         this.unreachable = false;
+    }
+
+    protected int typeIndicator() {
+        return ExtraDataUtil.extractTypeIndicator(paramTypes, resultTypes);
     }
 }

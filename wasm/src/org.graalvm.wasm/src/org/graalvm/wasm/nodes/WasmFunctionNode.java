@@ -246,6 +246,7 @@ import static org.graalvm.wasm.constants.Instructions.TABLE_SIZE;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
+import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
@@ -257,6 +258,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
+import static org.graalvm.wasm.util.ExtraDataAccessor.ALL_TYPES;
 import static org.graalvm.wasm.util.ExtraDataAccessor.CALL_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_PROFILE_OFFSET;
@@ -274,6 +276,7 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_LEN
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.fifthValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
@@ -312,6 +315,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.util.ExtraDataAccessor;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
@@ -350,14 +354,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @CompilationFinal private Object osrMetadata;
 
-    private final boolean referenceTypes;
-
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, boolean referenceTypes) {
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.functionStartOffset = functionStartOffset;
         this.functionEndOffset = functionEndOffset;
-        this.referenceTypes = referenceTypes;
     }
 
     @SuppressWarnings("hiding")
@@ -538,10 +539,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case BR: {
                     final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, extraOffset, compact);
-                    final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
+                    final int typeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
+                    final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
+                    final int targetReturnLength = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
+                    unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetReturnLength);
 
                     // Jump to the target block.
                     offset += secondValueSigned(extraData, extraOffset, compact);
@@ -555,10 +557,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
-                        final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, extraOffset, compact);
-                        final int targetResultCount = thirdValueUnsigned(extraData, extraOffset, compact);
+                        final int typeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
+                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
+                        final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                         // Jump to the target block.
                         offset += secondValueSigned(extraData, extraOffset, compact);
@@ -592,10 +595,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                         updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, indexOffset, compact);
-                        final int targetResultCount = thirdValueUnsigned(extraData, indexOffset, compact);
+                        final int typeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
+                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
+                        final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                         // Jump to the branch target.
                         offset += secondValueSigned(extraData, indexOffset, compact);
@@ -611,10 +615,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
-                                final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, indexOffset, compact);
-                                final int targetResultCount = thirdValueUnsigned(extraData, indexOffset, compact);
+                                final int typeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
+                                final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
+                                final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                                 // Jump to the branch target.
                                 offset += secondValueSigned(extraData, indexOffset, compact);
@@ -634,7 +639,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     if (backEdgeCounter.count > 0) {
                         LoopNode.reportLoopCount(this, backEdgeCounter.count);
                     }
-                    unwindStack(frame, stackPointer, numLocals, codeEntry.resultCount());
+                    unwindStack(frame, stackPointer, ALL_TYPES, numLocals, codeEntry.resultCount());
                     return RETURN_VALUE;
                 }
                 case CALL: {
@@ -851,11 +856,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case DROP: {
                     stackPointer--;
-                    if (referenceTypes) {
-                        drop(frame, stackPointer);
-                    } else {
-                        dropPrimitive(frame, stackPointer);
-                    }
+                    drop(frame, stackPointer);
                     break;
                 }
                 case SELECT: {
@@ -2008,33 +2009,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private void local_tee(VirtualFrame frame, int stackPointer, int index) {
-        if (referenceTypes) {
-            WasmFrame.copy(frame, stackPointer, index);
-        } else {
-            WasmFrame.copyPrimitive(frame, stackPointer, index);
-        }
+        WasmFrame.copy(frame, stackPointer, index);
     }
 
     private void local_set(VirtualFrame frame, int stackPointer, int index) {
-        if (referenceTypes) {
-            WasmFrame.copy(frame, stackPointer, index);
-            if (CompilerDirectives.inCompiledCode()) {
-                drop(frame, stackPointer);
-            }
-        } else {
-            WasmFrame.copyPrimitive(frame, stackPointer, index);
-            if (CompilerDirectives.inCompiledCode()) {
-                dropPrimitive(frame, stackPointer);
-            }
+        WasmFrame.copy(frame, stackPointer, index);
+        if (CompilerDirectives.inCompiledCode()) {
+            drop(frame, stackPointer);
         }
     }
 
     private void local_get(VirtualFrame frame, int stackPointer, int index) {
-        if (referenceTypes) {
-            WasmFrame.copy(frame, index, stackPointer);
-        } else {
-            WasmFrame.copyPrimitive(frame, index, stackPointer);
-        }
+        WasmFrame.copy(frame, index, stackPointer);
     }
 
     private static void i32_eqz(VirtualFrame frame, int stackPointer) {
@@ -3207,22 +3193,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param targetResultCount The result value count of the target block.
      */
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+    private void unwindStack(VirtualFrame frame, int stackPointer, int typeIndicator, int targetStackPointer, int targetResultCount) {
+        CompilerAsserts.partialEvaluationConstant(typeIndicator);
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
-        if (referenceTypes) {
-            for (int i = 0; i < targetResultCount; ++i) {
-                WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
-            }
-            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-                drop(frame, i);
-            }
-        } else {
+        if (typeIndicator == ExtraDataAccessor.PRIMITIVE_TYPES) {
             for (int i = 0; i < targetResultCount; ++i) {
                 WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
             }
             for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
                 dropPrimitive(frame, i);
+            }
+        } else if (typeIndicator == ExtraDataAccessor.REFERENCE_TYPES) {
+            for (int i = 0; i < targetResultCount; ++i) {
+                WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+            }
+            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+                dropReference(frame, i);
+            }
+        } else if (typeIndicator == ExtraDataAccessor.ALL_TYPES) {
+            for (int i = 0; i < targetResultCount; ++i) {
+                WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+            }
+            for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+                drop(frame, i);
             }
         }
     }

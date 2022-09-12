@@ -51,6 +51,8 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * returns a value.
  */
 public abstract class BranchTargetWithStackChange extends BranchTarget {
+
+    private int typeIndicator;
     private int resultCount;
     private int stackSize;
 
@@ -64,15 +66,21 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
      * @param resultCount The number of result values
      * @param stackSize The stack size after the jump
      */
-    public void setStackInfo(int resultCount, int stackSize) {
+    public void setStackInfo(int typeIndicator, int resultCount, int stackSize) {
+        this.typeIndicator = typeIndicator;
         this.resultCount = resultCount;
         this.stackSize = stackSize;
-        if (ExtraDataUtil.exceedsUnsignedByteValue(resultCount) || ExtraDataUtil.exceedsUnsignedByteValue(stackSize)) {
+        assert !ExtraDataUtil.exceeds2BitValue(typeIndicator) : "Invalid type indicator";
+        if (ExtraDataUtil.exceedsUnsigned7BitValue(resultCount) || ExtraDataUtil.exceedsUnsigned7BitValue(stackSize)) {
             if (ExtraDataUtil.exceedsPositiveIntValue(resultCount) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
             }
             extendFormat();
         }
+    }
+
+    protected int typeIndicator() {
+        return typeIndicator;
     }
 
     protected int resultCount() {
