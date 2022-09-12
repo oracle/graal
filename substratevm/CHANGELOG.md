@@ -13,6 +13,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-15630) Allow multiple classes with the same name from different class loaders.
 * (GR-40198) Introduce public API for programmatic JNI / Resource / Proxy / Serialization registration from Feature classes during the image build.
 * (GR-38909) Moved strictly-internal annotation classes (e.g. @AlwaysInline, @NeverInline, @Uninterruptible, ...) out of com.oracle.svm.core.annotate. Moved remaining annotation classes to org.graalvm.sdk module.
+* (GR-40906) Add RuntimeResourceAccess#addResource(Module module, String resourcePath, byte[] resource) API method that allows injecting resources into images
 
 ## Version 22.2.0
 * (GR-20653) Re-enable the usage of all CPU features for JIT compilation on AMD64.
