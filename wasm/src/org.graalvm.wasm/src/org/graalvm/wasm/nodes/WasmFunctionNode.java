@@ -2008,18 +2008,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void local_tee(VirtualFrame frame, int stackPointer, int index) {
+    private static void local_tee(VirtualFrame frame, int stackPointer, int index) {
         WasmFrame.copy(frame, stackPointer, index);
     }
 
-    private void local_set(VirtualFrame frame, int stackPointer, int index) {
+    private static void local_set(VirtualFrame frame, int stackPointer, int index) {
         WasmFrame.copy(frame, stackPointer, index);
         if (CompilerDirectives.inCompiledCode()) {
             drop(frame, stackPointer);
         }
     }
 
-    private void local_get(VirtualFrame frame, int stackPointer, int index) {
+    private static void local_get(VirtualFrame frame, int stackPointer, int index) {
         WasmFrame.copy(frame, index, stackPointer);
     }
 
@@ -3193,7 +3193,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param targetResultCount The result value count of the target block.
      */
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int stackPointer, int typeIndicator, int targetStackPointer, int targetResultCount) {
+    private static void unwindStack(VirtualFrame frame, int stackPointer, int typeIndicator, int targetStackPointer, int targetResultCount) {
         CompilerAsserts.partialEvaluationConstant(typeIndicator);
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
