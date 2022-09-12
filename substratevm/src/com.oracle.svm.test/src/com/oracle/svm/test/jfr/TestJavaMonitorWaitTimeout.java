@@ -58,7 +58,7 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "TestJavaMonitorWaitTimeout");
+            events = getEvents("TestJavaMonitorWaitTimeout");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

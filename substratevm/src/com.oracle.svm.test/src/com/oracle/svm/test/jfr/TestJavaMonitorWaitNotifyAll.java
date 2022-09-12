@@ -58,7 +58,7 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "TestJavaMonitorWaitNotifyAll");
+            events = getEvents("TestJavaMonitorWaitNotifyAll");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

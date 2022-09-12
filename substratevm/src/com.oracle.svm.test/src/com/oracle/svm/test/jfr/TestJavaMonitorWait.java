@@ -57,7 +57,7 @@ public class TestJavaMonitorWait extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "jdk.JavaMonitorWait");
+            events = getEvents("jdk.JavaMonitorWait");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -60,7 +60,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "TestJavaMonitorWaitInterrupt");
+            events = getEvents("TestJavaMonitorWaitInterrupt");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -162,20 +162,35 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         public Thread interrupted;
 
         public synchronized void interrupted() throws InterruptedException {
-            wait();
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                throw new InterruptedException("expected interrupt");
+            }
         }
 
         public synchronized void interrupt() throws InterruptedException {
-            interrupted.interrupt();
+            try {
+                interrupted.interrupt();
+            } catch (Exception e) {
+            }
+
         }
 
         public synchronized void simpleWait() throws InterruptedException {
-            wait();
+            try {
+                wait();
+            } catch (Exception e) {
+
+            }
         }
 
         public synchronized void simpleNotify() throws InterruptedException {
-            Thread.sleep(2 * MILLIS);
-            notify();
+            try {
+                Thread.sleep(2 * MILLIS);
+                notify();
+            } catch (Exception e) {
+            }
         }
     }
 }

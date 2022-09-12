@@ -148,7 +148,7 @@ public abstract class JfrTest {
         }
     }
 
-    private Path makeCopy(Recording recording, String testName) throws IOException { // from jdk 19
+    private Path makeCopy(String testName) throws IOException { // from jdk 19
         Path p = recording.getDestination();
         if (p == null) {
             File directory = new File(".");
@@ -158,8 +158,8 @@ public abstract class JfrTest {
         return p;
     }
 
-    protected List<RecordedEvent> getEvents(Recording recording, String testName) throws IOException {
-        Path p = makeCopy(recording, testName);
+    protected List<RecordedEvent> getEvents(String testName) throws IOException {
+        Path p = makeCopy(testName);
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
         Collections.sort(events, chronologicalComparator);
         return events;

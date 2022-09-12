@@ -50,7 +50,7 @@ public class TestThreadSleep extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "jdk.ThreadSleep");
+            events = getEvents("jdk.ThreadSleep");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -57,7 +57,7 @@ public class TestJavaMonitorEnter extends JfrTest {
     public void analyzeEvents() {
         List<RecordedEvent> events;
         try {
-            events = getEvents(recording, "jdk.JavaMonitorEnter");
+            events = getEvents("jdk.JavaMonitorEnter");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
