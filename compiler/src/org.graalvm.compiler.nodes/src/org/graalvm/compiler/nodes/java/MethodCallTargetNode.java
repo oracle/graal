@@ -141,9 +141,11 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         if (invokeKind == InvokeKind.Virtual) {
             // For virtual calls, we are guaranteed to receive a correct receiver type.
             TypeReference declaringType = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
-            if (receiverStamp == null) {
+            if (type == null) {
+                // Probably a word type, non-compatible stamp.
                 type = declaringType;
             } else {
+                // Narrow the receiver type to a unique concrete subtype, if it exists.
                 Stamp improvedStamp = receiverStamp.tryImproveWith(StampFactory.object(declaringType));
                 if (improvedStamp != null) {
                     type = StampTool.typeReferenceOrNull(improvedStamp);
