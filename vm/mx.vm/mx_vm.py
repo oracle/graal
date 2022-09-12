@@ -162,9 +162,13 @@ llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm
 
 # pylint: disable=line-too-long
 ce_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm']
-ce_win_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'icu4j', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
+ce_win_19_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'icu4j', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
+ce_win_complete_components = ce_win_19_complete_components + ['ejvm', 'java']
+ce_aarch64_19_complete_components = ce_win_19_complete_components + ['llp', 'llrc', 'llrl', 'llrn', 'pyn', 'pynl', 'rby', 'rbyl', 'svml']
 ce_aarch64_complete_components = ce_win_complete_components + ['llp', 'llrc', 'llrl', 'llrn', 'pyn', 'pynl', 'rby', 'rbyl', 'svml']
+ce_19_complete_components = ce_aarch64_19_complete_components + ['R', 'bRMain']
 ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain']
+ce_darwin_aarch64_19_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'nfi-libffi', 'ni', 'nic', 'nil', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
 ce_darwin_aarch64_complete_components = list(ce_aarch64_complete_components)
 ce_darwin_aarch64_complete_components.remove('gwa')  # GR-39032
 ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
@@ -183,10 +187,15 @@ mx_sdk_vm.register_vm_config('ce', ce_components + ['js', 'njs', 'sjsvm'], _suit
 mx_sdk_vm.register_vm_config('ce', ce_components + ['llrn', 'llp', 'llrc', 'llrl'], _suite, env_file='ce-llvm')
 mx_sdk_vm.register_vm_config('ce', ce_ruby_components, _suite, dist_name='ce-ruby', env_file='ce-ruby')
 mx_sdk_vm.register_vm_config('ce', ce_win_complete_components, _suite, dist_name='ce-win-complete')
+mx_sdk_vm.register_vm_config('ce', ce_win_19_complete_components, _suite, dist_name='ce-win-complete', env_file='ce-win-19-complete')
 mx_sdk_vm.register_vm_config('ce', ce_aarch64_complete_components, _suite, dist_name='ce-aarch64-complete')
+mx_sdk_vm.register_vm_config('ce', ce_aarch64_19_complete_components, _suite, dist_name='ce-aarch64-complete', env_file='ce-aarch64-19-complete')
 mx_sdk_vm.register_vm_config('ce', ce_darwin_aarch64_complete_components, _suite, dist_name='ce-darwin-aarch64-complete')
+mx_sdk_vm.register_vm_config('ce', ce_darwin_aarch64_19_complete_components, _suite, dist_name='ce-darwin-aarch64-complete', env_file='ce-darwin-aarch64-19-complete')
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
+mx_sdk_vm.register_vm_config('ce', ce_19_complete_components, _suite, dist_name='ce-complete', env_file='ce-19-complete')
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete', env_file='ce-darwin-complete')
+mx_sdk_vm.register_vm_config('ce', ce_19_complete_components, _suite, dist_name='ce-complete', env_file='ce-darwin-19-complete')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
