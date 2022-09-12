@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,27 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nfa;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public final class PureNFAIndex extends SimpleStateIndex<PureNFA> {
+public final class GlobalSubTreeIndex extends SimpleStateIndex<RegexASTSubtreeRootNode> {
 
-    public static PureNFAIndex getEmptyInstance(RegexLanguage language) {
-        return language.emptyNFAIndex;
-    }
-
-    public PureNFAIndex(int size) {
-        super(size);
+    @Override
+    protected int getStateId(RegexASTSubtreeRootNode state) {
+        return state.getGlobalSubTreeId();
     }
 
     @Override
-    protected int getStateId(PureNFA state) {
-        return state.getSubTreeId();
-    }
-
-    @Override
-    protected void setStateId(PureNFA state, int id) {
+    protected void setStateId(RegexASTSubtreeRootNode state, int id) {
+        state.setGlobalSubTreeId(id);
     }
 }

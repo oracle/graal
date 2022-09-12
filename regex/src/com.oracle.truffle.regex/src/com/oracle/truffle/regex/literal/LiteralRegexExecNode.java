@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -90,7 +91,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
     }
 
     @Override
-    public abstract RegexResult execute(Object input, int fromIndex);
+    public abstract RegexResult execute(VirtualFrame frame, Object input, int fromIndex);
 
     @Specialization
     RegexResult doByteArray(byte[] input, int fromIndex) {
