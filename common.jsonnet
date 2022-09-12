@@ -32,7 +32,7 @@ local add_jdk_version(name) =
   local version = find_first_integer(jdk.version);
   // santity check that the parsed version is also included in the name
   assert std.length(std.findSubstr(std.toString(version), name)) == 1 : "Cannot find version %d in name %s" % [version, name];
-  { jdk_version: version}
+  { jdk_version:: version}
 ;
 
 {
