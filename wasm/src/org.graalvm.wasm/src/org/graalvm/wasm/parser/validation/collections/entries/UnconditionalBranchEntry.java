@@ -49,15 +49,26 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * <p>
  * Compact format:
  * <p>
- * <code>
- *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | typeIndicator (unsigned 2-bit) | resultCount (unsigned 7-bit) | stackSize (unsigned 7-bit) | unused (16-bit) |
- * </code>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 15-bit)
+ * <li>byteCodeDisplacement (signed 16-bit)
+ * <li>typeIndicator (unsigned 2-bit)
+ * <li>resultCount (unsigned 7-bit)
+ * <li>stackSize (unsigned 7-bit)
+ * <li>unused (16-bit)
+ * </ul>
  * <p>
  * Extended format:
  * <p>
- * <code>
- *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | typeIndicator (signed 32-bit) | resultCount (signed 32-bit) | stackSize (signed 32-bit) |
- * </code>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 31-bit)
+ * <li>byteCodeDisplacement (signed 32-bit)
+ * <li>typeIndicator (signed 32-bit)
+ * <li>resultCount (signed 32-bit)
+ * <li>stackSize (signed 32-bit)
+ * </ul>
  */
 public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
     public UnconditionalBranchEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
