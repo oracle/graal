@@ -29,11 +29,9 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 
 import java.io.InputStream;
 import java.nio.file.FileSystem;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -310,9 +308,6 @@ public final class ResourcesFeature implements InternalFeature {
 
         access.requireAnalysisIteration();
 
-        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
-        List<String> removed = new ArrayList<>();
-
         for (Map.Entry<ResourceLocation, byte[]> entry : injectResourceWorkSet.entrySet()) {
             var resourceLocation = entry.getKey();
             var moduleName = resourceLocation.module.isNamed() ? resourceLocation.module.getName() : null;
@@ -322,10 +317,9 @@ public final class ResourcesFeature implements InternalFeature {
 
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
+        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules);
-
         ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
-
         resourcePatternWorkSet.clear();
     }
 
