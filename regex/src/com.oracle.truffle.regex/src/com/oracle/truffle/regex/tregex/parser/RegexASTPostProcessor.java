@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.ArrayList;
+import java.util.Optional;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -64,9 +67,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-
-import java.util.ArrayList;
-import java.util.Optional;
 
 public class RegexASTPostProcessor {
 
@@ -454,7 +454,10 @@ public class RegexASTPostProcessor {
                 // surrogates
                 CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
                 assert !ast.getFlags().isUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
-                assert !group.hasEnclosedCaptureGroups();
+                if (cc.getCharSet().isEmpty()) {
+                    // negative lookaround on a character class that can never match -> no-op
+                    return Optional.empty();
+                }
                 Group wrapGroup = ast.createGroup();
                 Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
                 positionAssertionSeq.add(ast.createPositionAssertion(lookaround.isLookAheadAssertion() ? PositionAssertion.Type.DOLLAR : PositionAssertion.Type.CARET));

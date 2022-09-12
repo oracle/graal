@@ -158,6 +158,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(BackReference backReference) {
+        ast.getProperties().setBackReferences();
         backReference.setHasBackReferences();
         backReference.getParent().setHasBackReferences();
         if (backReference.hasQuantifier()) {
