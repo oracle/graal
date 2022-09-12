@@ -663,22 +663,28 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.LOCAL_GET: {
+                    final int localOffset = offset;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     state.push(locals[localIndex]);
+                    state.addLocalOp(locals[localIndex], offset - localOffset, localIndex);
                     break;
                 }
                 case Instructions.LOCAL_SET: {
+                    final int localOffset = offset;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     state.popChecked(locals[localIndex]);
+                    state.addLocalOp(locals[localIndex], offset - localOffset, localIndex);
                     break;
                 }
                 case Instructions.LOCAL_TEE: {
+                    final int localOffset = offset;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     state.popChecked(locals[localIndex]);
                     state.push(locals[localIndex]);
+                    state.addLocalOp(locals[localIndex], offset - localOffset, localIndex);
                     break;
                 }
                 case Instructions.GLOBAL_GET: {

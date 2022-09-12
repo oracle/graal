@@ -73,6 +73,9 @@ public class ExtraDataAccessor {
     public static final int COMPACT_CALL_INDIRECT_PROFILE_OFFSET = 0;
     public static final int EXTENDED_CALL_INDIRECT_PROFILE_OFFSET = 1;
 
+    public static final int COMPACT_LOCAL_OP_LENGTH = 1;
+    public static final int EXTENDED_LOCAL_OP_LENGTH = 2;
+
     public static final int PRIMITIVE_TYPES = 0;
     public static final int REFERENCE_TYPES = 1;
     public static final int ALL_TYPES = 3;

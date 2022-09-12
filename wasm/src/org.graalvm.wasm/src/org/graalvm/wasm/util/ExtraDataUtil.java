@@ -63,6 +63,7 @@ public class ExtraDataUtil {
     public static final int COMPACT_STACK_CHANGE_SIZE = 1;
     public static final int COMPACT_CALL_TARGET_SIZE = 1;
     public static final int COMPACT_TABLE_HEADER_SIZE = 1;
+    public static final int COMPACT_LOCAL_OP_SIZE = 1;
 
     /**
      * Extended sizes.
@@ -71,6 +72,7 @@ public class ExtraDataUtil {
     public static final int EXTENDED_STACK_CHANGE_SIZE = 3;
     public static final int EXTENDED_CALL_TARGET_SIZE = 1;
     public static final int EXTENDED_TABLE_HEADER_SIZE = 1;
+    public static final int EXTENDED_LOCAL_OP_SIZE = 2;
 
     public static final int PROFILE_SIZE = 1;
 
@@ -305,6 +307,27 @@ public class ExtraDataUtil {
     @SuppressWarnings("unused")
     public static int addProfileCounter(int[] extraData, int profileOffset) {
         return PROFILE_SIZE;
+    }
+
+    public static int addCompactLocalOp(int[] extraData, int localOpOffset, int typeIndicator, int valueLength, int localIndex) {
+        extraData[localOpOffset] = (typeIndicator << 29) | (valueLength << 27) | localIndex;
+        return COMPACT_LOCAL_OP_SIZE;
+    }
+
+    public static int addExtendedLocalOp(int[] extraData, int localOpOffset, int typeIndicator, int valueLength, int localIndex) {
+        extraData[localOpOffset] = EXTENDED_FORMAT_INDICATOR | (typeIndicator << 29) | (valueLength << 27);
+        extraData[localOpOffset + 1] = localIndex;
+        return EXTENDED_LOCAL_OP_SIZE;
+    }
+
+    public static int getTypeIndicator(byte valueType) {
+        if (WasmType.isNumberType(valueType)) {
+            return TYPE_INDICATOR_PRIMITIVE;
+        }
+        if (WasmType.isReferenceType(valueType)) {
+            return TYPE_INDICATOR_REFERENCE;
+        }
+        return TYPE_INDICATOR_ALL;
     }
 
     public static int extractTypeIndicator(byte[] params, byte[] results) {

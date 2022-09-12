@@ -402,6 +402,10 @@ public class ParserState {
         extraData.addCall(nodeIndex);
     }
 
+    public void addLocalOp(byte valueType, int valueLength, int localIndex) {
+        extraData.addLocalOp(valueType, valueLength, localIndex);
+    }
+
     /**
      * Finishes the current control frame and removes it from the control frame stack.
      * 
