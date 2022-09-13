@@ -1,5 +1,9 @@
 # Version 22.3.0
 
+New Features:
+
+* Add experimental Windows support.
+
 Changes:
 
 * Updated LLVM toolchain to version 14.0.6.
