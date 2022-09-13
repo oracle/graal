@@ -243,7 +243,7 @@ final class Target_java_lang_StackWalker {
 
     final class ContinuationSpliterator extends AbstractStackFrameSpliterator {
         private final Target_jdk_internal_vm_ContinuationScope contScope;
-        private final JavaStackWalk walk;
+        private JavaStackWalk walk;
 
         private Target_jdk_internal_vm_Continuation continuation;
         private StoredContinuation stored;
@@ -355,11 +355,12 @@ final class Target_java_lang_StackWalker {
         protected void invalidate() {
             continuation = null;
             stored = null;
+            walk = WordFactory.nullPointer();
         }
 
         @Override
         protected void checkState() {
-            if (continuation == null) {
+            if (walk.isNull()) {
                 throw new IllegalStateException("Continuation traversal no longer valid");
             }
         }
