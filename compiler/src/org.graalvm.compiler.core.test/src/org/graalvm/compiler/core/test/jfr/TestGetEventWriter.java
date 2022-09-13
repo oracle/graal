@@ -24,17 +24,19 @@
  */
 package org.graalvm.compiler.core.test.jfr;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.AddExports;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -52,12 +54,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@code jdk.jfr.Event.commit()} method.
  *
  * See the documentation attached to {@code jdk.jfr.internal.event.EventWriter} for more detail.
+ *
+ * This test must run in a separate JVM process. It enables JFR instrumentation, which affects
+ * Truffle PartialEvaluationTests.
  */
 @AddExports("jdk.jfr/jdk.jfr.internal.event")
-public class TestGetEventWriter extends GraalCompilerTest {
+public class TestGetEventWriter extends SubprocessTest {
 
-    @BeforeClass
-    public static void beforeClass() throws Throwable {
+    private static void initializeJFR() {
         Assume.assumeTrue("JDK-8282420 came in JDK 19", JavaVersionUtil.JAVA_SPEC >= 19);
         Assume.assumeTrue("Requires JDK-8290075", GraalServices.hasLookupMethodWithCaller());
         try (Recording r = new Recording()) {
@@ -78,6 +82,34 @@ public class TestGetEventWriter extends GraalCompilerTest {
     }
 
     @Test
+    public void test() throws IOException, InterruptedException {
+        Assume.assumeTrue("JDK-8282420 came in JDK 19", JavaVersionUtil.JAVA_SPEC >= 19);
+        launchSubprocess(() -> {
+            try {
+                initializeJFR();
+                testInitializationEvent();
+                testNonEvent();
+                testRegisteredTrueEvent();
+                testRegisteredFalseEvent();
+                testMyCommitRegisteredTrue();
+                testMyCommitRegisteredFalse();
+                testStaticCommit();
+            } catch (Throwable t) {
+                throw rethrowSilently(RuntimeException.class, t);
+            }
+        });
+    }
+
+    @Override
+    public void configSubprocess(List<String> vmArgs) {
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    private static <E extends Throwable> E rethrowSilently(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
+    }
+
     public void testInitializationEvent() {
         InitializationEvent event = new InitializationEvent();
         ResolvedJavaMethod method = getResolvedJavaMethod(event.getClass(), "commit");
@@ -90,7 +122,6 @@ public class TestGetEventWriter extends GraalCompilerTest {
     // API. It has its own stand-alone "commit()V", which is not an override, that
     // attempts to resolve and link against EventWriterFactory. This user implementation
     // is not blessed for linkage.
-    @Test
     public void testNonEvent() throws Throwable {
         testEvent("Non", "java/lang/Object", null, "commit", false);
     }
@@ -98,7 +129,6 @@ public class TestGetEventWriter extends GraalCompilerTest {
     // The user has defined a class which overrides and implements the "commit()V"
     // method declared final in jdk.jfr.Event.
     // This user implementation is not blessed for linkage.
-    @Test
     public void testRegisteredTrueEvent() throws Throwable {
         testEvent("Registered", "jdk/jfr/Event", true, "commit", false);
     }
@@ -111,7 +141,6 @@ public class TestGetEventWriter extends GraalCompilerTest {
     // classify it as being outside of the JFR system. Attempting to register
     // such a class throws an IllegalArgumentException. The user-defined
     // "commit()V" method is still not blessed for linkage, even after registration.
-    @Test
     public void testRegisteredFalseEvent() throws Throwable {
         testEvent("Registered", "jdk/jfr/Event", false, "commit", false);
     }
@@ -119,7 +148,6 @@ public class TestGetEventWriter extends GraalCompilerTest {
     // The user has implemented another method, "myCommit()V", not an override nor
     // overload. that attempts to resolve and link EventWriterFactory. This will fail,
     // because "myCommit()V" is not blessed for linkage.
-    @Test
     public void testMyCommitRegisteredTrue() throws Throwable {
         testEvent("MyCommit", "jdk/jfr/Event", true, "myCommit", false);
     }
@@ -129,7 +157,6 @@ public class TestGetEventWriter extends GraalCompilerTest {
     // Since the user has not defined any final methods in jdk.jfr.Event,
     // the class is not excluded wholesale from the JFR system.
     // Invoking the real "commit()V", installed by the framework, is OK.
-    @Test
     public void testMyCommitRegisteredFalse() throws Throwable {
         testEvent("MyCommit", "jdk/jfr/Event", false, "myCommit", false);
     }
@@ -137,7 +164,6 @@ public class TestGetEventWriter extends GraalCompilerTest {
     // Events located in the boot class loader can create a static
     // commit-method to emit events. It must not be used by code
     // outside of the boot class loader.
-    @Test
     public void testStaticCommit() throws Throwable {
         testEvent("StaticCommit", "jdk/jfr/Event", null, "commit", true);
     }
