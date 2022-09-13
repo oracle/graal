@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -148,9 +149,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return result;
         }
         try {
-            Method.MethodVersion m = lookupMethod.execute(this, member, true, true, -1 /*- skip */);
-            if (m != null) {
-                return EspressoFunction.createStaticInvocable(m.getMethod());
+            Method[] candidates = lookupMethod.execute(this, member, true, true, -1 /*- skip */);
+            if (candidates != null) {
+                if (candidates.length == 1) {
+                    return EspressoFunction.createStaticInvocable(candidates[0]);
+                }
             }
         } catch (ArityException e) {
             /* ignore and continue */
@@ -216,16 +219,24 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     final Object invokeMember(String member,
                     Object[] arguments,
                     @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
+                    @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        Method.MethodVersion methodVersion = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (methodVersion != null) {
-            Method method = methodVersion.getMethod();
-            assert method.isStatic() && method.isPublic();
-            assert member.startsWith(method.getNameAsString());
-            assert method.getParameterCount() == arguments.length;
+        Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
+        if (candidates != null) {
+            if (candidates.length == 1) {
+                Method method = candidates[0];
+                assert method.isStatic() && method.isPublic();
+                assert member.startsWith(method.getNameAsString());
+                assert method.getParameterCount() == arguments.length;
 
-            return invoke.execute(method, null, arguments);
+                return invoke.execute(method, null, arguments);
+            } else {
+                Method[] typeMatched = overloadSelector.execute(candidates, arguments);
+                if (typeMatched != null && typeMatched.length == 1) {
+                    return invoke.execute(typeMatched[0], null, arguments);
+                }
+            }
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -382,18 +393,26 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
+                        @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
-            Method.MethodVersion init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
-            if (init != null) {
-                Method initMethod = init.getMethod();
-                assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
-                initMethod.getDeclaringKlass().safeInitialize();
-                EspressoContext context = EspressoContext.get(invoke);
-                GuestAllocator.AllocationChecks.checkCanAllocateNewReference(context.getMeta(), objectKlass, false);
-                StaticObject newObject = context.getAllocator().createNew(objectKlass);
-                invoke.execute(initMethod, newObject, arguments);
-                return newObject;
+            Method[] initCandidates = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
+            if (initCandidates != null) {
+                if (initCandidates.length == 1) {
+                    Method initMethod = initCandidates[0];
+                    assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
+                    initMethod.getDeclaringKlass().safeInitialize();
+                    EspressoContext context = EspressoContext.get(invoke);
+                    GuestAllocator.AllocationChecks.checkCanAllocateNewReference(context.getMeta(), objectKlass, false);
+                    StaticObject newObject = context.getAllocator().createNew(objectKlass);
+                    invoke.execute(initMethod, newObject, arguments);
+                    return newObject;
+                } else {
+                    Method[] typeMatched = overloadSelector.execute(initCandidates, arguments);
+                    if (typeMatched != null && typeMatched.length == 1) {
+                        return invoke.execute(typeMatched[0], null, arguments);
+                    }
+                }
             }
             // TODO(goltsova): throw ArityException whenever possible
             throw UnsupportedMessageException.create();
