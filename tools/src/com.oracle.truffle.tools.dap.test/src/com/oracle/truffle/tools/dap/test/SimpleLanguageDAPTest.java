@@ -842,7 +842,8 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":37}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":37,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":37,\"command\":\"continue\"}",
+                "{\"event\":\"output\",\"body\":{\"output\":\"10000000002\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":59}"
         );
         tester.finish();
     }

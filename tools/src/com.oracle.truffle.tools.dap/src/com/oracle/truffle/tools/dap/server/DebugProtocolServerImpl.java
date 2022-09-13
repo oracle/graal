@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.dap.server;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -41,6 +42,8 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.dap.instrument.Enabler;
+import com.oracle.truffle.tools.dap.instrument.OutputConsumerInstrument;
 import com.oracle.truffle.tools.dap.types.AttachRequestArguments;
 import com.oracle.truffle.tools.dap.types.BreakpointLocationsArguments;
 import com.oracle.truffle.tools.dap.types.BreakpointLocationsResponse;
@@ -118,6 +121,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private final ExecutionContext context;
     private volatile DebugProtocolClient client;
     private volatile DebuggerSession debuggerSession;
+    private final Enabler ioEnabler;
     private boolean disposed = false;
     private final List<Runnable> runOnDispose = new CopyOnWriteArrayList<>();
 
@@ -180,6 +184,14 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 execEnter.get().dispose();
             }
         }
+        InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(OutputConsumerInstrument.ID);
+        ioEnabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
+        ioEnabler.enable();
+        OutputHandler oh = context.getEnv().lookup(instrumentInfo, OutputHandler.Provider.class).getOutputHandler();
+        ConsoleOutputListener outL = new ConsoleOutputListener("stdout");
+        ConsoleOutputListener errL = new ConsoleOutputListener("stderr");
+        oh.setOutListener(outL);
+        oh.setErrListener(errL);
     }
 
     public static DebugProtocolServerImpl create(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, final boolean inspectInitialization) {
@@ -248,6 +260,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 session = debuggerSession;
                 debuggerSession = null;
             }
+            ioEnabler.disable();
             if (session != null) {
                 session.close();
             }
@@ -665,6 +678,22 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
             }
             context.getLoadedSourcesHandler().assureLoaded(ss.getSource());
             context.getThreadsHandler().threadSuspended(Thread.currentThread(), event);
+        }
+    }
+
+    private class ConsoleOutputListener implements OutputHandler.Listener {
+
+        private final String category;
+
+        ConsoleOutputListener(String category) {
+            this.category = category;
+        }
+
+        @Override
+        public void outputText(String text) {
+            OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
+            event.setCategory(category);
+            context.getClient().output(event);
         }
     }
 }
