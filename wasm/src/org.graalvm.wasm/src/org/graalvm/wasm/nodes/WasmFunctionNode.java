@@ -883,62 +883,40 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case LOCAL_GET: {
-                    // region Load LEB128 Unsigned32 -> index
-                    // long valueLength = unsignedIntConstantAndLength(data, offset);
-                    // int index = value(valueLength);
-                    // int offsetDelta = length(valueLength);
-                    // offset += offsetDelta;
-
                     final int value = extraData[extraOffset];
                     CompilerAsserts.partialEvaluationConstant(value);
                     final boolean compact = value >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator;
+                    final int typeIndicator = value << 1 >> 30;
+                    final int length = value << 3 >> 19;
+                    offset += length;
                     final int index;
                     if (compact) {
-                        typeIndicator = value >> 29;
-                        final int length = value << 3 >> 30;
                         index = value & 0x0000_ffff;
-                        offset += length;
                         extraOffset += ExtraDataAccessor.COMPACT_LOCAL_OP_LENGTH;
                     } else {
-                        typeIndicator = value << 1 >> 30;
-                        final int length = value << 4 >> 31;
                         index = extraData[extraOffset + 1];
-                        offset += length;
                         extraOffset += ExtraDataAccessor.EXTENDED_LOCAL_OP_LENGTH;
                     }
 
-                    // endregion
                     local_get(frame, stackPointer, index, typeIndicator);
                     stackPointer++;
                     break;
                 }
                 case LOCAL_SET: {
-                    // region Load LEB128 Unsigned32 -> index
-                    // long valueLength = unsignedIntConstantAndLength(data, offset);
-                    // int index = value(valueLength);
-                    // int offsetDelta = length(valueLength);
-                    // offset += offsetDelta;
-                    // endregion
-
                     final int value = extraData[extraOffset];
                     CompilerAsserts.partialEvaluationConstant(value);
                     final boolean compact = value >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator;
+                    final int typeIndicator = value << 1 >> 30;
+                    final int length = value << 3 >> 19;
+                    offset += length;
                     final int index;
                     if (compact) {
-                        typeIndicator = value >> 29;
-                        final int length = value << 3 >> 30;
                         index = value & 0x0000_ffff;
-                        offset += length;
                         extraOffset += ExtraDataAccessor.COMPACT_LOCAL_OP_LENGTH;
                     } else {
-                        typeIndicator = value << 1 >> 30;
-                        final int length = value << 4 >> 31;
                         index = extraData[extraOffset + 1];
-                        offset += length;
                         extraOffset += ExtraDataAccessor.EXTENDED_LOCAL_OP_LENGTH;
                     }
 
@@ -947,30 +925,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case LOCAL_TEE: {
-                    // region Load LEB128 Unsigned32 -> index
-                    // long valueLength = unsignedIntConstantAndLength(data, offset);
-                    // int index = value(valueLength);
-                    // int offsetDelta = length(valueLength);
-                    // offset += offsetDelta;
-                    // endregion
-
                     final int value = extraData[extraOffset];
                     CompilerAsserts.partialEvaluationConstant(value);
                     final boolean compact = value >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator;
+                    final int typeIndicator = value << 1 >> 30;
+                    final int length = value << 3 >> 19;
+                    offset += length;
                     final int index;
                     if (compact) {
-                        typeIndicator = value >> 29;
-                        final int length = value << 3 >> 30;
                         index = value & 0x0000_ffff;
-                        offset += length;
                         extraOffset += ExtraDataAccessor.COMPACT_LOCAL_OP_LENGTH;
                     } else {
-                        typeIndicator = value << 1 >> 30;
-                        final int length = value << 4 >> 31;
                         index = extraData[extraOffset + 1];
-                        offset += length;
                         extraOffset += ExtraDataAccessor.EXTENDED_LOCAL_OP_LENGTH;
                     }
 

@@ -45,6 +45,28 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
 import org.graalvm.wasm.util.ExtraDataUtil;
 
+/**
+ * Representation of local.get, local.set, local.tee in the extra data list.
+ * <p>
+ * Compact format:
+ * <p>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>typeIndicator (2-bit)
+ * <li>byteCodeDisplacement (unsigned 13-bit)
+ * <li>localIndex (unsigned 16-bit)
+ * </ul>
+ * <p>
+ * Extended format:
+ * <p>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>typeIndicator (2-bit)
+ * <li>byteCodeDisplacement (unsigned 13-bit)
+ * <li>unused (16-bit)
+ * <li>localIndex (signed 32-bit)
+ * </ul>
+ */
 public class LocalOpEntry extends ExtraDataEntry {
     private final int localIndex;
     private final int typeIndicator;
@@ -56,7 +78,7 @@ public class LocalOpEntry extends ExtraDataEntry {
         this.typeIndicator = ExtraDataUtil.getTypeIndicator(valueType);
         this.valueLength = valueLength;
         assert !ExtraDataUtil.exceeds2BitValue(this.typeIndicator) : "Invalid value type";
-        if (ExtraDataUtil.exceedsUnsignedShortValueWithIndicator(localIndex)) {
+        if (ExtraDataUtil.exceedsUnsignedShortValue(localIndex)) {
             if (ExtraDataUtil.exceedsUnsignedIntValueWithIndicator(localIndex)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
             }

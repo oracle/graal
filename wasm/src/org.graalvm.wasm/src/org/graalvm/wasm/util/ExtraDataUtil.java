@@ -53,6 +53,7 @@ public class ExtraDataUtil {
     private static final int MAX_UNSIGNED_15BIT_VALUE = 0x0000_7fff;
     private static final int MIN_SIGNED_15BIT_VALUE = 0xffff_c000;
     private static final int MAX_SIGNED_15BIT_VALUE = 0x0000_3fff;
+    private static final int MAX_UNSIGNED_16BIT_VALUE = 0x0000_ffff;
     private static final int MAX_UNSIGNED_7BIT_VALUE = 0x0000_007f;
     private static final int MAX_UNSIGNED_2BIT_VALUE = 0x0000_0003;
 
@@ -99,6 +100,10 @@ public class ExtraDataUtil {
 
     public static boolean exceedsUnsignedShortValueWithIndicator(int value) {
         return Integer.compareUnsigned(value, MAX_UNSIGNED_15BIT_VALUE) > 0;
+    }
+
+    public static boolean exceedsUnsignedShortValue(int value) {
+        return Integer.compareUnsigned(value, MAX_UNSIGNED_16BIT_VALUE) > 0;
     }
 
     public static boolean exceedsSignedShortValueWithIndicator(int value) {
@@ -310,12 +315,12 @@ public class ExtraDataUtil {
     }
 
     public static int addCompactLocalOp(int[] extraData, int localOpOffset, int typeIndicator, int valueLength, int localIndex) {
-        extraData[localOpOffset] = (typeIndicator << 29) | (valueLength << 27) | localIndex;
+        extraData[localOpOffset] = (typeIndicator << 29) | (valueLength << 16) | localIndex;
         return COMPACT_LOCAL_OP_SIZE;
     }
 
     public static int addExtendedLocalOp(int[] extraData, int localOpOffset, int typeIndicator, int valueLength, int localIndex) {
-        extraData[localOpOffset] = EXTENDED_FORMAT_INDICATOR | (typeIndicator << 29) | (valueLength << 27);
+        extraData[localOpOffset] = EXTENDED_FORMAT_INDICATOR | (typeIndicator << 29) | (valueLength << 16);
         extraData[localOpOffset + 1] = localIndex;
         return EXTENDED_LOCAL_OP_SIZE;
     }
