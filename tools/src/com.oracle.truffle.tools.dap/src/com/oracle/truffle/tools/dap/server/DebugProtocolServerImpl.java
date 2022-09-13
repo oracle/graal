@@ -104,6 +104,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 /**
@@ -299,21 +300,23 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<ContinueResponse.ResponseBody> doContinue(ContinueArguments args) {
+    public CompletableFuture<ContinueResponse.ResponseBody> doContinue(ContinueArguments args, Consumer<? super ContinueResponse.ResponseBody> responseConsumer) {
         CompletableFuture<ContinueResponse.ResponseBody> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
                 future.completeExceptionally(Errors.invalidThread(args.getThreadId()));
                 return false;
             }
-            future.complete(ContinueResponse.ResponseBody.create().setAllThreadsContinued(false));
+            ContinueResponse.ResponseBody response = ContinueResponse.ResponseBody.create().setAllThreadsContinued(false);
+            responseConsumer.accept(response);
+            future.complete(response);
             return true;
         });
         return future;
     }
 
     @Override
-    public CompletableFuture<Void> next(NextArguments args) {
+    public CompletableFuture<Void> next(NextArguments args, Consumer<? super Void> responseConsumer) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
@@ -321,6 +324,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return false;
             }
             info.getSuspendedEvent().prepareStepOver(STEP_CONFIG);
+            responseConsumer.accept(null);
             future.complete(null);
             return true;
         });
@@ -328,7 +332,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<Void> stepIn(StepInArguments args) {
+    public CompletableFuture<Void> stepIn(StepInArguments args, Consumer<? super Void> responseConsumer) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
@@ -336,6 +340,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return false;
             }
             info.getSuspendedEvent().prepareStepInto(STEP_CONFIG);
+            responseConsumer.accept(null);
             future.complete(null);
             return true;
         });
@@ -343,7 +348,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<Void> stepOut(StepOutArguments args) {
+    public CompletableFuture<Void> stepOut(StepOutArguments args, Consumer<? super Void> responseConsumer) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
@@ -351,6 +356,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return false;
             }
             info.getSuspendedEvent().prepareStepOut(STEP_CONFIG);
+            responseConsumer.accept(null);
             future.complete(null);
             return true;
         });
