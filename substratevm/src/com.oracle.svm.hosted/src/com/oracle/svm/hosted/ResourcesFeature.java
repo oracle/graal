@@ -52,6 +52,7 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
@@ -60,7 +61,6 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -131,6 +131,12 @@ public final class ResourcesFeature implements InternalFeature {
                 UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
                 resourcePatternWorkSet.add(pattern);
             });
+        }
+
+        @Override
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+            var moduleName = module.isNamed() ? module.getName() : null;
+            Resources.registerResource(moduleName, resourcePath, resourceContent);
         }
 
         @Override
@@ -261,13 +267,11 @@ public final class ResourcesFeature implements InternalFeature {
 
         access.requireAnalysisIteration();
 
-        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
+        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules);
-
         ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
-
         resourcePatternWorkSet.clear();
     }
 

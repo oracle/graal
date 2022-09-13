@@ -86,14 +86,16 @@ public final class Resources {
     }
 
     private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        Resources support = singleton();
-        Pair<String, String> key = Pair.create(moduleName, resourceName);
-        ResourceStorageEntry entry = support.resources.get(key);
-        if (entry == null) {
-            entry = new ResourceStorageEntry(isDirectory, fromJar);
-            support.resources.put(key, entry);
+        var resources = singleton().resources;
+        synchronized (resources) {
+            Pair<String, String> key = Pair.create(moduleName, resourceName);
+            ResourceStorageEntry entry = resources.get(key);
+            if (entry == null) {
+                entry = new ResourceStorageEntry(isDirectory, fromJar);
+                resources.put(key, entry);
+            }
+            entry.getData().add(data);
         }
-        entry.getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -109,6 +111,11 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String moduleName, String resourceName, InputStream is) {
         registerResource(moduleName, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
+        addEntry(moduleName, resourceName, false, resourceContent, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
