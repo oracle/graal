@@ -68,12 +68,15 @@ import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
+import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -816,9 +819,11 @@ public class EspressoInterop extends BaseInterop {
                 return unwrapForeign(EspressoLanguage.get(lookupField), f.get(receiver));
             }
             try {
-                Method m = lookupMethod.execute(getInteropKlass(receiver), member, -1);
-                if (m != null) {
-                    return EspressoFunction.createInstanceInvocable(m, receiver);
+                Method[] candidates = lookupMethod.execute(getInteropKlass(receiver), member, -1);
+                if (candidates != null) {
+                    if (candidates.length == 1) {
+                        return EspressoFunction.createInstanceInvocable(candidates[0], receiver);
+                    }
                 }
             } catch (ArityException e) {
                 /* Ignore */
@@ -966,14 +971,32 @@ public class EspressoInterop extends BaseInterop {
                     String member,
                     Object[] arguments,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
+                    @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        Method method = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
-        if (method != null) {
-            assert !method.isStatic() && method.isPublic();
-            assert member.startsWith(method.getNameAsString());
-            assert method.getParameterCount() == arguments.length;
-            return invoke.execute(method, receiver, arguments);
+        Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
+        if (candidates != null) {
+            if (candidates.length == 1) {
+                // common case with no overloads
+                Method m = candidates[0];
+                assert !m.isStatic() && m.isPublic();
+                assert member.startsWith(m.getNameAsString());
+                assert m.getParameterCount() == arguments.length;
+                return invoke.execute(m, receiver, arguments);
+            } else {
+                // multiple overloaded methods found
+                // find method with type matches
+                Method[] typeMatched = selectorNode.execute(candidates, arguments);
+                if (typeMatched != null && typeMatched.length == 1) {
+                    // single match found!
+                    return invoke.execute(typeMatched[0], receiver, arguments);
+                } else {
+                    // We could try to de-disambiguate by selecting the most
+                    // specific method overload if any.
+                    // See: HostExecuteNode.findMostSpecificOverload
+                    throw UnknownIdentifierException.create(member);
+                }
+            }
         }
         throw UnknownIdentifierException.create(member);
     }

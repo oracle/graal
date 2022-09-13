@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -40,7 +41,8 @@ public abstract class AbstractLookupNode extends EspressoNode {
     abstract Method.MethodVersion[] getMethodArray(Klass k);
 
     @TruffleBoundary
-    Method doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+    Method[] doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+        ArrayList<Method> result = new ArrayList<>();
         String methodName;
         String signature = null;
         int separatorIndex = key.indexOf(METHOD_SELECTION_SEPARATOR);
@@ -50,7 +52,7 @@ public abstract class AbstractLookupNode extends EspressoNode {
         } else {
             methodName = key;
         }
-        Method result = null;
+
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
         boolean skipArityCheck = arity == -1;
@@ -60,21 +62,14 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
                 if (matchArity == arity || skipArityCheck) {
-                    if (result != null) {
-                        /*
-                         * Multiple methods with the same name and arity (if specified), cannot
-                         * disambiguate
-                         */
-                        return null;
-                    }
-                    result = m.getMethod();
+                    result.add(m.getMethod());
                 }
             }
         }
         if (!skipArityCheck && result == null && maxOverallArity >= 0) {
             throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
-        return result;
+        return result.isEmpty() ? null : result.toArray(new Method[result.size()]);
     }
 
     private static boolean matchMethod(Method m, String methodName, String signature, boolean isStatic, boolean publicOnly) {

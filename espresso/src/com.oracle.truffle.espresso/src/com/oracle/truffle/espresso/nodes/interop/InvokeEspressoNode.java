@@ -62,7 +62,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         return result;
     }
 
-    static ToEspressoNode[] createToEspresso(long argsLength) {
+    public static ToEspressoNode[] createToEspresso(long argsLength) {
         ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
         for (int i = 0; i < argsLength; i++) {
             toEspresso[i] = ToEspressoNodeGen.create();

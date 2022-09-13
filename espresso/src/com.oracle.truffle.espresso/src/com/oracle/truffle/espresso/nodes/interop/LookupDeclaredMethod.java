@@ -64,8 +64,11 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     @Specialization(replaces = "doCached")
     Method.MethodVersion doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
-        Method method = doLookup(klass, key, publicOnly, isStatic, arity);
-        return method == null ? null : method.getMethodVersion();
+        Method[] candidates = doLookup(klass, key, publicOnly, isStatic, arity);
+        if (candidates == null || candidates.length > 1) {
+            return null;
+        }
+        return candidates[0].getMethodVersion();
     }
 
     @Override
