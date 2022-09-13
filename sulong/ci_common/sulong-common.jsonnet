@@ -39,9 +39,9 @@ local sulong_deps = composable((import "../../common.json").sulong.deps);
     gen_name:: std.join("-", self.gen_name_componentes),
   },
 
-  defBuild(b):: $.build_template + b + {
+  defBuild(b):: {
     assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
-  } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
+  } + $.build_template + b + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
