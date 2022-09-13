@@ -23,8 +23,8 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -40,37 +40,21 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
 
     public abstract Method[] execute(Method[] candidates, Object[] arguments);
 
-    static ToEspressoNode[] createToEspresso(int length) {
-        return InvokeEspressoNode.createToEspresso(length);
-    }
-
-    static boolean same(Method[] methods, Method[] cachedMethods) {
-        return Arrays.equals(methods, cachedMethods);
-    }
-
-    static Klass[][] resolveParameterKlasses(Method[] methods) {
-        Klass[][] resolved = new Klass[methods.length][];
-        for (int i = 0; i < methods.length; i++) {
-            resolved[i] = methods[i].resolveParameterKlasses();
-        }
-        return resolved;
-    }
-
     @Specialization(guards = {"same(candidates, cachedCandidates)", "arguments.length == toEspressoNodes.length"}, limit = "LIMIT")
     Method[] doCached(Method[] candidates,
                     Object[] arguments,
                     @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
                     @Cached(value = "createToEspresso(arguments.length)") ToEspressoNode[] toEspressoNodes) {
-        return doTypeCheck(candidates, arguments, parameterKlasses, toEspressoNodes);
+        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNodes);
     }
 
     @Specialization(replaces = "doCached")
     Method[] doGeneric(Method[] candidates, Object[] arguments) {
-        return doTypeCheck(candidates, arguments, resolveParameterKlasses(candidates), createToEspresso(arguments.length));
+        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), createToEspresso(arguments.length));
     }
 
-    private Method[] doTypeCheck(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode[] toEspressoNodes) {
+    private Method[] selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode[] toEspressoNodes) {
         ArrayList<Method> fitByType = new ArrayList<>(candidates.length);
 
         for (int i = 0; i < candidates.length; i++) {
@@ -92,5 +76,33 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
             }
         }
         return fitByType.toArray(new Method[fitByType.size()]);
+    }
+
+    @TruffleBoundary
+    static ToEspressoNode[] createToEspresso(int length) {
+        return InvokeEspressoNode.createToEspresso(length);
+    }
+
+    static boolean same(Method[] methods, Method[] cachedMethods) {
+        assert methods != null;
+        assert cachedMethods != null;
+
+        if (methods.length != cachedMethods.length) {
+            return false;
+        }
+        for (int i = 0; i < methods.length; i++) {
+            if (methods[i] != cachedMethods[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static Klass[][] resolveParameterKlasses(Method[] methods) {
+        Klass[][] resolved = new Klass[methods.length][];
+        for (int i = 0; i < methods.length; i++) {
+            resolved[i] = methods[i].resolveParameterKlasses();
+        }
+        return resolved;
     }
 }
