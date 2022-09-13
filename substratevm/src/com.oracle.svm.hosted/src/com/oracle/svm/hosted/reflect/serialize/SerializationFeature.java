@@ -193,7 +193,7 @@ public class SerializationFeature implements InternalFeature {
         for (ConstantNode cNode : constantNodes) {
             Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
 
-            if (lambdaClass != null) {
+            if (lambdaClass != null && Serializable.class.isAssignableFrom(lambdaClass)) {
                 try {
                     Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
                     RuntimeReflection.register(serializeLambdaMethod);
