@@ -730,7 +730,20 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
-        /* We don't mangle local symbols, because they never need be referenced by an assembler. */
+        /*
+         * We don't normally mangle local symbols, because they do not need to be referenced by an
+         * assembler. However, on Linux we do mangle them when debug info is enabled. This allows
+         * them to be used as the linkage name in DWARF info. At the very least this means that: gdb
+         * is able to demangle them for use in code disassembly listings; and perf is able to use
+         * them to label method code addresses included in profile samples. However, it also means
+         * that when local symbols are retained perf, valgrind and any other tools that rely on
+         * DWARF and bfd demangling are able to label methods correctly and can be asked to report
+         * details of method code using the standard Java name to identify the desired method.
+         */
+        if (OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+            // use tool friendly symbol names
+            return SubstrateUtil.toolFriendlyMangle(sm);
+        }
         return SubstrateOptions.ImageSymbolsPrefix.getValue() + (sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm));
     }
 

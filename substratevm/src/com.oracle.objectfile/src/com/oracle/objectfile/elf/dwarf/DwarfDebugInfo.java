@@ -208,6 +208,11 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * Value for DW_AT_language attribute with form DATA1.
      */
     public static final byte DW_LANG_Java = 0xb;
+    /**
+     * This field defines the value used for the DW_AT_language attribute of compile units.
+     *
+     */
+    public static final byte LANG_ENCODING = DW_LANG_Java;
     /*
      * Values for {@link DW_AT_inline} attribute with form DATA1.
      */
