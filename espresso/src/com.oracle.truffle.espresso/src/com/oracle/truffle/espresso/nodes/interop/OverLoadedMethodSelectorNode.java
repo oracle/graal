@@ -51,7 +51,7 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
     static Klass[][] resolveParameterKlasses(Method[] methods) {
         Klass[][] resolved = new Klass[methods.length][];
         for (int i = 0; i < methods.length; i++) {
-            resolved[i] = methods[i].resolveParameterKlasses();;
+            resolved[i] = methods[i].resolveParameterKlasses();
         }
         return resolved;
     }
