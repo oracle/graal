@@ -425,8 +425,12 @@ final class Target_java_util_concurrent_ForkJoinTask_JDK11OrEarlier {
 final class Target_java_util_concurrent_ForkJoinTask_ExceptionNode {
 }
 
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK17OrLater.class)
-final class Target_java_util_concurrent_ForkJoinTask_JDK17OrLater {
+@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK19OrLater.class)
+final class Target_java_util_concurrent_ForkJoinTask_JDK19OrLater {
+    @Alias @RecomputeFieldValue(kind = Kind.FieldOffset, name = "status") //
+    static long STATUS;
+    @Alias @RecomputeFieldValue(kind = Kind.FieldOffset, name = "aux") //
+    static long AUX;
 }
 
 /** Dummy class to have a class with the file's name. */
