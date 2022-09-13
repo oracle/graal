@@ -85,7 +85,7 @@ public final class RuntimeResourceAccess {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(ConfigurationCondition.alwaysTrue(),
+        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(
                         module, resourcePath, resourceContent);
     }
 

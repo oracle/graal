@@ -33,8 +33,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -110,45 +108,12 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     private boolean sealed = false;
-    private final Map<ResourceLocation, byte[]> injectResourceWorkSet = new ConcurrentHashMap<>();
     private final Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
     public final Set<String> includedResourcesModules = new HashSet<>();
-
-    private static final class ResourceLocation {
-        private final Module module;
-        private final String path;
-
-        private ResourceLocation(Module module, String path) {
-            this.module = module;
-            this.path = path;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            ResourceLocation that = (ResourceLocation) o;
-            return Objects.equals(module, that.module) && Objects.equals(path, that.path);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(module, path);
-        }
-
-        @Override
-        public String toString() {
-            return module.getName() + ":" + path;
-        }
-    }
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -169,15 +134,9 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void injectResource(ConfigurationCondition condition, Module module, String resourcePath, byte[] resourceContent) {
-            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> {
-                ResourceLocation resourceLocation = new ResourceLocation(module, resourcePath);
-                UserError.guarantee(!sealed, "Resources added too late: %s", resourceLocation);
-                injectResourceWorkSet.put(resourceLocation, resourceContent);
-            });
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+            var moduleName = module.isNamed() ? module.getName() : null;
+            Resources.registerResource(moduleName, resourcePath, resourceContent);
         }
 
         @Override
@@ -302,18 +261,11 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         resourceRegistryImpl().flushConditionalConfiguration(access);
-        if (resourcePatternWorkSet.isEmpty() && injectResourceWorkSet.isEmpty()) {
+        if (resourcePatternWorkSet.isEmpty()) {
             return;
         }
 
         access.requireAnalysisIteration();
-
-        for (Map.Entry<ResourceLocation, byte[]> entry : injectResourceWorkSet.entrySet()) {
-            var resourceLocation = entry.getKey();
-            var moduleName = resourceLocation.module.isNamed() ? resourceLocation.module.getName() : null;
-            Resources.registerResource(moduleName, resourceLocation.path, entry.getValue());
-        }
-        injectResourceWorkSet.clear();
 
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);

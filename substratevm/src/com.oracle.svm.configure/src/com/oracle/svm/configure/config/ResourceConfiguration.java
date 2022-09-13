@@ -64,7 +64,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void injectResource(ConfigurationCondition condition, Module module, String resourcePath, byte[] resourceContent) {
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
             VMError.shouldNotReachHere("Resource injection is only supported via Feature implementation");
         }
 

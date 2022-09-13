@@ -94,7 +94,7 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void injectResource(ConfigurationCondition condition, Module module, String resourcePath, byte[] resourceContent) {
+                public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
                 }
 
                 @Override
