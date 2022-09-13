@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
@@ -61,8 +62,8 @@ public class ExperimentParserTest {
         }
 
         @Override
-        public NamedReader getProftoolOutput() {
-            return getReaderForResource(RESOURCE_DIR + "profile.json");
+        public Optional<NamedReader> getProftoolOutput() {
+            return Optional.of(getReaderForResource(RESOURCE_DIR + "profile.json"));
         }
 
         @Override

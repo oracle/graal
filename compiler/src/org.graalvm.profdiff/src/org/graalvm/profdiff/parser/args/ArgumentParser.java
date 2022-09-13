@@ -31,9 +31,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Builds and parses arguments.
+ * Assembles and parses arguments.
  */
-public abstract class ArgumentParser {
+public class ArgumentParser {
     /**
      * The map of argument names to option arguments. Option argument names start with the "--"
      * prefix. They may be required or optional.
@@ -82,27 +82,29 @@ public abstract class ArgumentParser {
                 throw new MissingArgumentException(argument.getName());
             }
         }
-        if (nextPositionalArg < positionalArguments.size()) {
+        if (nextPositionalArg < positionalArguments.size() && positionalArguments.get(nextPositionalArg).isRequired()) {
             throw new MissingArgumentException(positionalArguments.get(nextPositionalArg).getName());
         }
     }
 
     /**
-     * Gets the subparser group argument if this parser contains a subparser group.
+     * Gets {@link CommandGroup the command group} argument if this parser contains a command group.
      */
-    protected Optional<ArgumentSubparserGroup> getSubparserGroup() {
+    protected Optional<CommandGroup> getCommandGroup() {
         if (positionalArguments.isEmpty()) {
             return Optional.empty();
         }
-        int last = positionalArguments.size() - 1;
-        if (positionalArguments.get(last) instanceof ArgumentSubparserGroup) {
-            return Optional.of((ArgumentSubparserGroup) positionalArguments.get(last));
+        Argument last = positionalArguments.get(positionalArguments.size() - 1);
+        if (last instanceof CommandGroup) {
+            return Optional.of((CommandGroup) last);
         }
         return Optional.empty();
     }
 
     /**
-     * Adds an argument to the list of program arguments.
+     * Adds an argument to the list of program arguments. Verifies that there is up to 1 command
+     * group, which must be the last positional arguments. Also verifies that optional positional
+     * arguments are not followed by required positional arguments.
      *
      * @param argument the program argument to be added
      */
@@ -110,9 +112,14 @@ public abstract class ArgumentParser {
         if (argument.isOptionArgument()) {
             optionArguments.put(argument.getName(), argument);
         } else {
-            if (getSubparserGroup().isPresent()) {
-                throw new RuntimeException("Only one subparser group per argument parser is possible, " +
-                                "and it must be the last positional argument.");
+            if (!positionalArguments.isEmpty()) {
+                Argument last = positionalArguments.get(positionalArguments.size() - 1);
+                if (last instanceof CommandGroup) {
+                    throw new RuntimeException("Only one subparser group per argument parser is possible, and it must be the last positional argument.");
+                }
+                if (!last.isRequired() && argument.isRequired()) {
+                    throw new RuntimeException("Optional positional arguments cannot be followed by required positional arguments.");
+                }
             }
             positionalArguments.add(argument);
         }
@@ -163,6 +170,20 @@ public abstract class ArgumentParser {
     }
 
     /**
+     * Adds an optional program argument with a default value that expects a string.
+     *
+     * @param name the name of the argument
+     * @param defaultValue the value of the argument when no value is set in the program arguments
+     * @param help the help message in the program usage string
+     * @return the created argument instance
+     */
+    public StringArgument addStringArgument(String name, String defaultValue, String help) {
+        StringArgument argument = new StringArgument(name, defaultValue, help);
+        addArgument(argument);
+        return argument;
+    }
+
+    /**
      * Adds a flag holding a boolean that is true iff the option is present in the program
      * arguments.
      *
@@ -193,15 +214,21 @@ public abstract class ArgumentParser {
     }
 
     /**
-     * Adds an argument that expects a command name that will parse the rest of the arguments. Only
-     * one subparser group per parser is possible, and it must be the last positional argument.
+     * Adds a positional argument that expects a command name. The returned {@link CommandGroup}
+     * should be populated with commands. The selected command from the command group will then
+     * parse the rest of the arguments. Only one command group per parser is possible, and it must
+     * be the last positional argument.
      *
      * @param name the name of the command group
      * @param help the help message for the command group
-     * @return the command group
+     * @return the added command group
      */
-    public ArgumentSubparserGroup addSubparserGroup(String name, String help) {
-        ArgumentSubparserGroup subparserGroup = new ArgumentSubparserGroup(name, help);
+    public CommandGroup addCommandGroup(String name, String help) {
+        if (name.startsWith(Argument.OPTION_PREFIX)) {
+            throw new RuntimeException("Command group must be a positional argument, i.e., the name must not start with " +
+                            Argument.OPTION_PREFIX + ".");
+        }
+        CommandGroup subparserGroup = new CommandGroup(name, help);
         addArgument(subparserGroup);
         return subparserGroup;
     }

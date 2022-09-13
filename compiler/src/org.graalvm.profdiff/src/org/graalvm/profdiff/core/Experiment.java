@@ -26,13 +26,11 @@ package org.graalvm.profdiff.core;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.graalvm.profdiff.util.Writer;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.profdiff.util.Writer;
 
 /**
  * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class
@@ -58,6 +56,13 @@ public class Experiment {
     private final ExperimentId experimentId;
 
     /**
+     * {@code true} if proftool data of the experiment is available, i.e., {@link #totalPeriod} and
+     * {@link CompilationUnit#getPeriod()} contain any useful information. The {@link #executionId}
+     * is also sourced from proftool.
+     */
+    private final boolean profileAvailable;
+
+    /**
      * The total period of all executed methods including non-graal executions.
      */
     private final long totalPeriod;
@@ -77,8 +82,16 @@ public class Experiment {
      * Maps {@link CompilationUnit#getCompilationMethodName() compilation method names} to methods
      * with a matching name in this experiment.
      */
-    private final Map<String, List<CompilationUnit>> methodsByName;
+    private final EconomicMap<String, List<CompilationUnit>> compilationUnitsByName;
 
+    /**
+     * Constructs an experiment with an execution profile.
+     *
+     * @param executionId the execution ID of the experiment
+     * @param experimentId the ID of the experiment
+     * @param totalPeriod the total period of all executed methods including non-graal executions
+     * @param totalProftoolMethods the total number of methods collected by proftool
+     */
     public Experiment(
                     String executionId,
                     ExperimentId experimentId,
@@ -87,9 +100,25 @@ public class Experiment {
         this.compilationUnits = new ArrayList<>();
         this.executionId = executionId;
         this.experimentId = experimentId;
+        this.profileAvailable = true;
         this.totalPeriod = totalPeriod;
         this.totalProftoolMethods = totalProftoolMethods;
-        this.methodsByName = new HashMap<>();
+        this.compilationUnitsByName = EconomicMap.create();
+    }
+
+    /**
+     * Constructs an experiment without execution profile.
+     *
+     * @param experimentId the ID of the experiment
+     */
+    public Experiment(ExperimentId experimentId) {
+        this.compilationUnits = new ArrayList<>();
+        this.executionId = null;
+        this.experimentId = experimentId;
+        this.profileAvailable = false;
+        this.totalPeriod = 0;
+        this.totalProftoolMethods = 0;
+        this.compilationUnitsByName = EconomicMap.create();
     }
 
     /**
@@ -137,6 +166,22 @@ public class Experiment {
         return compilationUnits;
     }
 
+    public EconomicMap<String, List<CompilationUnit>> getCompilationUnitsByName() {
+        return compilationUnitsByName;
+    }
+
+    /**
+     * Returns whether proftool data is available to the experiment. If it is not, there is no
+     * information about the period of execution of the experiment and individual compilation units.
+     * We also do not have the {@link #getExecutionId() executionId}, which also comes from
+     * proftool.
+     *
+     * @return {@code true} if proftool data is available
+     */
+    public boolean isProfileAvailable() {
+        return profileAvailable;
+    }
+
     /**
      * Groups hot compilation units by method name.
      *
@@ -170,18 +215,26 @@ public class Experiment {
     public void writeExperimentSummary(Writer writer) {
         String graalExecutionPercent = String.format("%.2f", (double) getGraalPeriod() / totalPeriod * 100);
         String graalHotExecutionPercent = String.format("%.2f", (double) countHotGraalPeriod() / totalPeriod * 100);
-        writer.writeln("Experiment " + experimentId + " with execution ID " + executionId);
+        writer.write("Experiment " + experimentId);
+        if (executionId != null) {
+            writer.writeln(" with execution ID " + executionId);
+        } else {
+            writer.writeln();
+        }
         writer.increaseIndent();
         writer.writeln("Collected optimization logs for " + compilationUnits.size() + " methods");
-        writer.writeln("Collected proftool data for " + totalProftoolMethods + " methods");
-        writer.writeln("Graal-compiled methods account for " + graalExecutionPercent + "% of execution");
-        writer.writeln(countHotCompilationUnits() + " hot compilation units account for " + graalHotExecutionPercent + "% of execution");
+        if (profileAvailable) {
+            writer.writeln("Collected proftool data for " + totalProftoolMethods + " methods");
+            writer.writeln("Graal-compiled methods account for " + graalExecutionPercent + "% of execution");
+            writer.writeln(countHotCompilationUnits() + " hot compilation units account for " + graalHotExecutionPercent + "% of execution");
+        }
         writer.decreaseIndent();
     }
 
     /**
      * Writes the list of compilations (including compilation ID, share of the execution and hotness
-     * for each compilation) for a method with header identifying this experiment.
+     * for each compilation) for a method with header identifying this experiment. If there is no
+     * {@link #profileAvailable}, information about execution is omitted.
      *
      * @param writer the destination writer
      * @param compilationMethodName the compilation method name to summarize
@@ -189,19 +242,29 @@ public class Experiment {
     public void writeCompilationUnits(Writer writer, String compilationMethodName) {
         writer.writeln("In experiment " + experimentId);
         writer.increaseIndent();
-        List<CompilationUnit> methods = methodsByName.get(compilationMethodName);
+        List<CompilationUnit> methods = compilationUnitsByName.get(compilationMethodName);
         if (methods == null) {
             writer.writeln("No compilations");
             writer.decreaseIndent();
             return;
         }
-        methods = methods.stream().sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod())).collect(Collectors.toList());
-        long hotMethodCount = methods.stream().filter(CompilationUnit::isHot).count();
-        writer.writeln(methods.size() + " compilations (" + hotMethodCount + " of which are hot)");
+        methods = methods.stream().sorted(Comparator.comparingLong(compilationUnit -> -compilationUnit.getPeriod())).collect(Collectors.toList());
+        writer.write(methods.size() + " compilations");
+        if (profileAvailable) {
+            long hotMethodCount = methods.stream().filter(CompilationUnit::isHot).count();
+            writer.writeln(" (" + hotMethodCount + " of which are hot)");
+        } else {
+            writer.writeln();
+        }
         writer.writeln("Compilations");
         writer.increaseIndent();
         for (CompilationUnit compilationUnit : methods) {
-            writer.writeln(compilationUnit.getCompilationId() + " (" + compilationUnit.createExecutionSummary() + ((compilationUnit.isHot()) ? ") *hot*" : ")"));
+            writer.write(compilationUnit.getCompilationId());
+            if (profileAvailable) {
+                writer.writeln(" (" + compilationUnit.createExecutionSummary() + ((compilationUnit.isHot()) ? ") *hot*" : ")"));
+            } else {
+                writer.writeln();
+            }
         }
         writer.decreaseIndent(2);
     }
@@ -224,7 +287,33 @@ public class Experiment {
         assert compilationUnit.getExperiment() == this;
         graalPeriod = null;
         compilationUnits.add(compilationUnit);
-        List<CompilationUnit> methods = methodsByName.computeIfAbsent(compilationUnit.getCompilationMethodName(), k -> new ArrayList<>());
+        List<CompilationUnit> methods = compilationUnitsByName.get(compilationUnit.getCompilationMethodName());
+        if (methods == null) {
+            methods = new ArrayList<>();
+            compilationUnitsByName.put(compilationUnit.getCompilationMethodName(), methods);
+        }
         methods.add(compilationUnit);
+    }
+
+    /**
+     * Preprocess the compilation units of the experiment according to the provided
+     * {@link VerbosityLevel}. Preprocessing includes removing some branches from optimization
+     * and/or inlining trees, and partially sorting them. The intention is to show less output and
+     * produce fewer differences after tree matching for lower verbosity levels.
+     *
+     * @param verbosityLevel the verbosity level to designate the level of preprocessing
+     */
+    public void preprocessCompilationUnits(VerbosityLevel verbosityLevel) {
+        compilationUnits.forEach(compilationUnit -> {
+            if (verbosityLevel.shouldSortInliningTree()) {
+                compilationUnit.sortInliningTree();
+            }
+            if (verbosityLevel.shouldRemoveVeryDetailedPhases()) {
+                compilationUnit.removeVeryDetailedPhases();
+            }
+            if (verbosityLevel.shouldSortUnorderedPhases()) {
+                compilationUnit.sortUnorderedPhases();
+            }
+        });
     }
 }

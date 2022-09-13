@@ -30,6 +30,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.profdiff.core.ExperimentId;
 
@@ -57,8 +58,9 @@ public class ExperimentFilesImpl implements ExperimentFiles {
      * optimization log.
      *
      * @param experimentId the ID of this experiment
-     * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson)
-     * @param optimizationLogPath the path to the directory which contains the optimization logs
+     * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson), can be
+     *            {@code null} if the experiment does not have any associated proftool output
+     * @param optimizationLogPath the path to the directory containing optimization logs
      */
     public ExperimentFilesImpl(ExperimentId experimentId, String proftoolOutputPath, String optimizationLogPath) {
         this.experimentId = experimentId;
@@ -67,8 +69,11 @@ public class ExperimentFilesImpl implements ExperimentFiles {
     }
 
     @Override
-    public NamedReader getProftoolOutput() throws FileNotFoundException {
-        return new NamedReader(proftoolOutputPath, new FileReader(proftoolOutputPath));
+    public Optional<NamedReader> getProftoolOutput() throws FileNotFoundException {
+        if (proftoolOutputPath == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new NamedReader(proftoolOutputPath, new FileReader(proftoolOutputPath)));
     }
 
     /**

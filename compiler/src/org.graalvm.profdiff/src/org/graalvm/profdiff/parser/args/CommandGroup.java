@@ -27,23 +27,25 @@ package org.graalvm.profdiff.parser.args;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.profdiff.command.Command;
 
 /**
- * Represents a program argument that parses a single string as a command name, which invokes
- * {@link ArgumentSubparser a subparser}. The subparser is then responsible for parsing the rest of
- * the arguments.
+ * Represents a program argument that parses a single string as the command name. Using that string,
+ * it selects a matching {@link Command} according to its {@link Command#getName() command name}.
+ * The {@link #getSelectedCommand() selected command}'s {@link Command#getArgumentParser() argument
+ * parser} is then used to parse the rest of the arguments.
  */
-public class ArgumentSubparserGroup extends Argument {
+public class CommandGroup extends Argument {
 
     /**
-     * Individual subparsers mapped by commands that invoke them.
+     * Individual commands in this group mapped by their name.
      */
-    private final EconomicMap<String, ArgumentSubparser> subparsers;
+    private final EconomicMap<String, Command> commands;
 
     /**
-     * The subparser that was invoked during parsing.
+     * The command that was selected in the argument list.
      */
-    private ArgumentSubparser invokedSubparser;
+    private Command selectedCommand;
 
     /**
      * Constructs an argument group.
@@ -51,29 +53,25 @@ public class ArgumentSubparserGroup extends Argument {
      * @param name the name of the argument group
      * @param help the help message for the argument group
      */
-    ArgumentSubparserGroup(String name, String help) {
+    public CommandGroup(String name, String help) {
         super(name, true, help);
-        subparsers = EconomicMap.create();
+        commands = EconomicMap.create();
     }
 
     /**
-     * Adds a subparser to this subparser group and returns it.
+     * Adds a command to this command group.
      *
-     * @param command the command that invokes the added subparser
-     * @param help the help message for the added subparser
-     * @return the added command
+     * @param command the command to be added
      */
-    public ArgumentSubparser addSubparser(String command, String help) {
-        ArgumentSubparser subparser = new ArgumentSubparser(command, help);
-        subparsers.put(command, subparser);
-        return subparser;
+    public void addCommand(Command command) {
+        commands.put(command.getName(), command);
     }
 
     /**
-     * Gets the subparser that was invoked during parsing.
+     * Gets the command that was selected in the parsed argument list.
      */
-    public ArgumentSubparser getInvokedSubparser() {
-        return invokedSubparser;
+    public Command getSelectedCommand() {
+        return selectedCommand;
     }
 
     /**
@@ -83,8 +81,8 @@ public class ArgumentSubparserGroup extends Argument {
      */
     public String createUsage() {
         StringBuilder sb = new StringBuilder("Commands:\n");
-        for (ArgumentSubparser subparser : subparsers.getValues()) {
-            sb.append(String.format("  %-20s ", subparser.getCommand())).append(subparser.getHelp()).append('\n');
+        for (Command command : commands.getValues()) {
+            sb.append(String.format("  %-20s ", command.getName())).append(command.getHelp()).append('\n');
         }
         return sb.toString();
     }
@@ -92,11 +90,11 @@ public class ArgumentSubparserGroup extends Argument {
     @Override
     int parse(String[] args, int offset) throws InvalidArgumentException, UnknownArgumentException, MissingArgumentException {
         String command = args[offset];
-        invokedSubparser = subparsers.get(args[offset]);
-        if (invokedSubparser == null) {
+        selectedCommand = commands.get(args[offset]);
+        if (selectedCommand == null) {
             throw new InvalidArgumentException(getName(), "invalid command name: " + command);
         }
-        invokedSubparser.parse(Arrays.copyOfRange(args, offset + 1, args.length));
+        selectedCommand.getArgumentParser().parse(Arrays.copyOfRange(args, offset + 1, args.length));
         return args.length;
     }
 }

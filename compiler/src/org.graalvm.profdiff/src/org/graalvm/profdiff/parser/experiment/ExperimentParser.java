@@ -29,11 +29,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.profdiff.core.CompilationUnitBuilder;
 import org.graalvm.profdiff.core.Experiment;
+import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
@@ -60,10 +62,6 @@ public class ExperimentParser {
         this.experimentFiles = experimentFiles;
     }
 
-    public ExperimentFiles getExperimentFiles() {
-        return experimentFiles;
-    }
-
     /**
      * Parses the experiment by combining proftool output and an optimization log. The optimization
      * log is read first and all compiled methods are parsed. The proftool output is then used to
@@ -82,26 +80,31 @@ public class ExperimentParser {
             methodByCompilationId.put(method.getCompilationId(), method);
         }
 
-        ProftoolLog proftoolLog = parseProftoolLog(experimentFiles.getProftoolOutput());
+        Experiment experiment;
+        Optional<ExperimentFiles.NamedReader> proftoolLogReader = experimentFiles.getProftoolOutput();
+        if (proftoolLogReader.isPresent()) {
+            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogReader.get());
 
-        // augment optimization logs with proftool data
-        for (ProftoolMethod method : proftoolLog.code) {
-            if (method.level == null || method.level != GRAAL_COMPILER_LEVEL) {
-                continue;
+            for (ProftoolMethod method : proftoolLog.code) {
+                if (method.level == null || method.level != GRAAL_COMPILER_LEVEL) {
+                    continue;
+                }
+                CompilationUnitBuilder builder = methodByCompilationId.get(method.compilationId);
+                if (builder == null) {
+                    System.out.println("Warning: Compilation ID " + method.compilationId + " not found in the optimization log");
+                } else {
+                    builder.setPeriod(method.period);
+                }
             }
-            CompilationUnitBuilder builder = methodByCompilationId.get(method.compilationId);
-            if (builder == null) {
-                System.out.println("Warning: Compilation ID " + method.compilationId + " not found in the optimization log");
-            } else {
-                builder.setPeriod(method.period);
-            }
+
+            experiment = new Experiment(
+                            proftoolLog.executionId,
+                            experimentFiles.getExperimentId(),
+                            proftoolLog.totalPeriod,
+                            proftoolLog.code.size());
+        } else {
+            experiment = new Experiment(experimentFiles.getExperimentId());
         }
-
-        Experiment experiment = new Experiment(
-                        proftoolLog.executionId,
-                        experimentFiles.getExperimentId(),
-                        proftoolLog.totalPeriod,
-                        proftoolLog.code.size());
         for (CompilationUnitBuilder builder : methodByCompilationId.values()) {
             builder.setExperiment(experiment);
             experiment.addCompilationUnit(builder.build());
@@ -298,5 +301,30 @@ public class ExperimentParser {
             return (List<Object>) object;
         }
         throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, List.class, object);
+    }
+
+    /**
+     * Parses an experiment by reading the provided logs. If anything fails, it prints the error to
+     * stderr and exits.
+     *
+     * @param experimentId the ID of the parsed experiment
+     * @param proftoolPath the file path to the JSON proftool output (mx profjson), can be
+     *            {@code null} if the experiment does not have any associated proftool output
+     * @param optimizationLogPath the path to the directory containing optimization logs
+     * @return an experiment parsed from the provided files
+     */
+    public static Experiment parseOrExit(ExperimentId experimentId, String proftoolPath, String optimizationLogPath) {
+        ExperimentFiles files = new ExperimentFilesImpl(experimentId, proftoolPath, optimizationLogPath);
+        ExperimentParser parser = new ExperimentParser(files);
+        try {
+            return parser.parse();
+        } catch (IOException e) {
+            System.err.println("Could not read the files of the experiment " + experimentId + ": " + e.getMessage());
+            System.exit(1);
+        } catch (ExperimentParserError e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+        }
+        return null;
     }
 }

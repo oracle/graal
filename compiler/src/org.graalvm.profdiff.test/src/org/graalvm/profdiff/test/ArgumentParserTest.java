@@ -28,8 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.profdiff.parser.args.ArgumentSubparser;
-import org.graalvm.profdiff.parser.args.ArgumentSubparserGroup;
+import org.graalvm.profdiff.command.Command;
+import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
+import org.graalvm.profdiff.parser.args.ArgumentParser;
+import org.graalvm.profdiff.parser.args.CommandGroup;
 import org.graalvm.profdiff.parser.args.DoubleArgument;
 import org.graalvm.profdiff.parser.args.EnumArgument;
 import org.graalvm.profdiff.parser.args.FlagArgument;
@@ -39,6 +41,7 @@ import org.graalvm.profdiff.parser.args.MissingArgumentException;
 import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
 import org.graalvm.profdiff.parser.args.UnknownArgumentException;
+import org.graalvm.profdiff.util.Writer;
 import org.junit.Test;
 
 public class ArgumentParserTest {
@@ -49,32 +52,94 @@ public class ArgumentParserTest {
         BAR
     }
 
+    private static final class CommandFoo implements Command {
+        private final ArgumentParser argumentParser = new ArgumentParser();
+
+        @Override
+        public String getName() {
+            return "foo";
+        }
+
+        @Override
+        public String getHelp() {
+            return "Command foo.";
+        }
+
+        @Override
+        public ArgumentParser getArgumentParser() {
+            return argumentParser;
+        }
+
+        @Override
+        public void invoke(Writer writer) {
+
+        }
+
+        @Override
+        public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
+
+        }
+    }
+
+    private static final class CommandBar implements Command {
+        private final ArgumentParser argumentParser = new ArgumentParser();
+
+        private final FlagArgument flagArgument;
+
+        private CommandBar() {
+            flagArgument = argumentParser.addFlagArgument("--bar-flag", "A flag argument for the bar command.");
+        }
+
+        @Override
+        public String getName() {
+            return "bar";
+        }
+
+        @Override
+        public String getHelp() {
+            return "Command foo.";
+        }
+
+        @Override
+        public ArgumentParser getArgumentParser() {
+            return argumentParser;
+        }
+
+        @Override
+        public void invoke(Writer writer) {
+
+        }
+
+        @Override
+        public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
+
+        }
+    }
+
     private static class ProgramArguments {
-        static final double DEFAULT_DOUBLE = 3.14;
+        private static final double DEFAULT_DOUBLE = 3.14;
 
-        static final int DEFAULT_INT = 42;
+        private static final int DEFAULT_INT = 42;
 
-        static final TestEnum DEFAULT_ENUM = TestEnum.FOO;
+        private static final TestEnum DEFAULT_ENUM = TestEnum.FOO;
 
-        ProgramArgumentParser argumentParser;
+        private final ProgramArgumentParser argumentParser;
 
-        DoubleArgument doubleArgument;
+        private final DoubleArgument doubleArgument;
 
-        IntegerArgument integerArgument;
+        private final IntegerArgument integerArgument;
 
-        FlagArgument flagArgument;
+        private final FlagArgument flagArgument;
 
-        StringArgument stringArgument;
+        private final StringArgument stringArgument;
 
-        EnumArgument<TestEnum> enumArgument;
+        private final EnumArgument<TestEnum> enumArgument;
 
-        ArgumentSubparserGroup subparserGroup;
+        private final CommandGroup commandGroup;
 
-        ArgumentSubparser subparserFoo;
+        private final CommandFoo commandFoo;
 
-        ArgumentSubparser subparserBar;
-
-        FlagArgument subparserBarFlag;
+        private final CommandBar commandBar;
 
         ProgramArguments() {
             argumentParser = new ProgramArgumentParser("program", "Program description.");
@@ -83,10 +148,11 @@ public class ArgumentParserTest {
             flagArgument = argumentParser.addFlagArgument("--flag", "A flag argument.");
             stringArgument = argumentParser.addStringArgument("string", "A string argument.");
             enumArgument = argumentParser.addEnumArgument("--enum", DEFAULT_ENUM, "An enum argument.");
-            subparserGroup = argumentParser.addSubparserGroup("command", "Commands.");
-            subparserFoo = subparserGroup.addSubparser("foo", "Foo command.");
-            subparserBar = subparserGroup.addSubparser("bar", "Bar command.");
-            subparserBarFlag = subparserBar.addFlagArgument("--bar-flag", "A flag argument for the bar command.");
+            commandGroup = argumentParser.addCommandGroup("command", "Commands.");
+            commandFoo = new CommandFoo();
+            commandGroup.addCommand(commandFoo);
+            commandBar = new CommandBar();
+            commandGroup.addCommand(commandBar);
         }
     }
 
@@ -100,7 +166,7 @@ public class ArgumentParserTest {
         assertEquals(ProgramArguments.DEFAULT_INT, programArguments.integerArgument.getValue().intValue());
         assertFalse(programArguments.flagArgument.getValue());
         assertEquals(ProgramArguments.DEFAULT_ENUM, programArguments.enumArgument.getValue());
-        assertEquals(programArguments.subparserFoo, programArguments.subparserGroup.getInvokedSubparser());
+        assertEquals(programArguments.commandFoo, programArguments.commandGroup.getSelectedCommand());
     }
 
     @Test
@@ -113,8 +179,8 @@ public class ArgumentParserTest {
         assertEquals(123, programArguments.integerArgument.getValue().intValue());
         assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
         assertTrue(programArguments.flagArgument.getValue());
-        assertEquals(programArguments.subparserBar, programArguments.subparserGroup.getInvokedSubparser());
-        assertTrue(programArguments.subparserBarFlag.getValue());
+        assertEquals(programArguments.commandBar, programArguments.commandGroup.getSelectedCommand());
+        assertTrue(programArguments.commandBar.flagArgument.getValue());
     }
 
     @Test
@@ -127,7 +193,7 @@ public class ArgumentParserTest {
         assertEquals(123, programArguments.integerArgument.getValue().intValue());
         assertEquals(TestEnum.BAR, programArguments.enumArgument.getValue());
         assertTrue(programArguments.flagArgument.getValue());
-        assertEquals(programArguments.subparserFoo, programArguments.subparserGroup.getInvokedSubparser());
+        assertEquals(programArguments.commandFoo, programArguments.commandGroup.getSelectedCommand());
     }
 
     @Test

@@ -25,7 +25,7 @@
 package org.graalvm.profdiff.parser.args;
 
 /**
- * Builds and parses program arguments.
+ * Assembles and parses program arguments. This is the root parser of the program.
  */
 public class ProgramArgumentParser extends ArgumentParser {
     /**
@@ -67,8 +67,8 @@ public class ProgramArgumentParser extends ArgumentParser {
         for (Argument argument : optionArguments.values()) {
             sb.append(String.format("  %-20s ", argument.getName())).append(argument.getHelp()).append('\n');
         }
-        if (getSubparserGroup().isPresent()) {
-            sb.append("\n\n").append(getSubparserGroup().get().createUsage());
+        if (getCommandGroup().isPresent()) {
+            sb.append("\n\n").append(getCommandGroup().get().createUsage());
         }
         return sb.toString();
     }

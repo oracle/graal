@@ -121,9 +121,9 @@ public abstract class Argument {
      * @return next value of the offset where the next argument is expected to begin
      * @throws InvalidArgumentException there was no value provided for this argument
      * @throws MissingArgumentException a required argument is missing in the program arguments
-     *             (from an {@link ArgumentSubparser})
-     * @throws UnknownArgumentException a value was provided for an unknown argument (from an
-     *             {@link ArgumentSubparser})
+     *             (from a nested {@link ArgumentParser})
+     * @throws UnknownArgumentException a value was provided for an unknown argument (from a nested
+     *             {@link ArgumentParser})
      */
     abstract int parse(String[] args, int offset) throws InvalidArgumentException, UnknownArgumentException, MissingArgumentException;
 

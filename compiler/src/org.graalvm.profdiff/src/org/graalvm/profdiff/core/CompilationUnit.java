@@ -95,7 +95,8 @@ public class CompilationUnit {
     /**
      * Creates and returns a summary that specifies the execution time of this compilation unit
      * relative to the total execution time and relative to the execution time of all graal-compiled
-     * methods.
+     * methods. This is only possible when proftool data is {@link Experiment#isProfileAvailable()
+     * available} to the experiment.
      *
      * Example of a returned string:
      *
@@ -106,6 +107,7 @@ public class CompilationUnit {
      * @return a summary of the relative execution time
      */
     public String createExecutionSummary() {
+        assert experiment.isProfileAvailable();
         String graalPercent = String.format("%.2f", (double) period / experiment.getGraalPeriod() * 100);
         String totalPercent = String.format("%.2f", (double) period / experiment.getTotalPeriod() * 100);
         return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
@@ -190,12 +192,18 @@ public class CompilationUnit {
 
     /**
      * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
-     * and the optimization and inlining tree to the destination writer.
+     * and the optimization and inlining tree to the destination writer. The execution summary is
+     * omitted when proftool data is not {@link Experiment#isProfileAvailable() available} to the
+     * experiment.
      *
      * @param writer the destination writer
      */
     public void write(Writer writer) {
-        writer.writeln("Compilation " + compilationId + " (" + createExecutionSummary() + ") in experiment " + experiment.getExperimentId());
+        writer.write("Compilation " + compilationId);
+        if (experiment.isProfileAvailable()) {
+            writer.write(" (" + createExecutionSummary() + ")");
+        }
+        writer.writeln(" in experiment " + experiment.getExperimentId());
         writer.increaseIndent();
         if (inliningTreeRoot == null) {
             writer.writeln("Inlining tree not available");

@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.profdiff.core.ExperimentId;
 
@@ -72,11 +73,12 @@ public interface ExperimentFiles {
     ExperimentId getExperimentId();
 
     /**
-     * Gets the {@link NamedReader} reading the JSON output of proftool (mx profjson).
+     * Gets the {@link NamedReader} reading the JSON output of proftool (mx profjson). Returns
+     * {@link Optional#empty()} if the experiment is not associated with a proftool output.
      *
      * @return the reader with the proftool output
      */
-    NamedReader getProftoolOutput() throws FileNotFoundException;
+    Optional<NamedReader> getProftoolOutput() throws FileNotFoundException;
 
     /**
      * Gets the list of readers reading an optimization log. Each reader describes one compiled
