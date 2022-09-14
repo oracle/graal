@@ -96,11 +96,11 @@ public final class GraphEffectList extends EffectList {
     }
 
     public void ensureAdded(ValueNode node, FixedNode position) {
+        assert !(node instanceof FixedWithNextNode) || position != null;
         add("ensure added", graph -> {
-            assert position.isAlive();
-            assert node instanceof FixedNode;
+            assert position == null || position.isAlive();
             if (!node.isAlive()) {
-                graph.addOrUniqueWithInputs(node);
+                graph.addWithoutUniqueWithInputs(node);
                 if (node instanceof FixedWithNextNode) {
                     graph.addBeforeFixed(position, (FixedWithNextNode) node);
                 }

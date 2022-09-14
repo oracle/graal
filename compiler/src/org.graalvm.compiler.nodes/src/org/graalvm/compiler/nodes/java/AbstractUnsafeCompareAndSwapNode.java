@@ -160,12 +160,8 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
             return;
         }
         tool.getDebug().log(DETAILED_LEVEL, "%s.virtualize() -> Success: virtualizing", this);
-        if (!equalsNode.isAlive()) {
-            tool.addNode(equalsNode);
-        }
-        if (!fieldValue.isAlive() && !(fieldValue instanceof VirtualObjectNode)) {
-            tool.addNode(fieldValue);
-        }
+        tool.ensureAdded(equalsNode);
+        tool.ensureAdded(fieldValue);
         finishVirtualize(tool, equalsNode, currentValue);
     }
 
