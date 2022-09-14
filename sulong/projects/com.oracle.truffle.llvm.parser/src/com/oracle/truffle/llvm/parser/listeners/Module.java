@@ -86,6 +86,11 @@ public final class Module implements ParserListener {
         index = new AtomicInteger(0);
     }
 
+    @Override
+    public void exit() {
+        module.setTotalSize(index.get());
+    }
+
     // private static final int STRTAB_RECORD_OFFSET = 2;
     // private static final int STRTAB_RECORD_OFFSET_INDEX = 0;
     // private static final int STRTAB_RECORD_LENGTH_INDEX = 1;

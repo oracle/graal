@@ -57,7 +57,8 @@ public final class LLVMParserResult {
                     List<GlobalVariable> threadLocalGlobals,
                     int threadLocalGlobalObjectCounter,
                     DataLayout dataLayout,
-                    TargetTriple targetTriple) {
+                    TargetTriple targetTriple,
+                    int totalSize) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
         this.externalFunctions = externalFunctions;
@@ -67,7 +68,8 @@ public final class LLVMParserResult {
         this.externalGlobals = externalGlobals;
         this.dataLayout = dataLayout;
         this.targetTriple = targetTriple;
-        this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size() + threadLocalGlobals.size();
+        assert totalSize >= definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size() + threadLocalGlobals.size();
+        this.symbolTableSize = totalSize;
     }
 
     public LLVMParserRuntime getRuntime() {
