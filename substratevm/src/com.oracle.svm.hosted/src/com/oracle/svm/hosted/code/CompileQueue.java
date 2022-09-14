@@ -251,7 +251,7 @@ public class CompileQueue {
         }
     }
 
-    private interface Task extends DebugContextRunnable {
+    protected interface Task extends DebugContextRunnable {
         @Override
         default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
             return new DebugContext.Builder(options, factories).description(getDescription()).build();

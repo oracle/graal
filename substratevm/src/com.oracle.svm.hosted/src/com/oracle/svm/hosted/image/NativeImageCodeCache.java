@@ -246,9 +246,7 @@ public abstract class NativeImageCodeCache {
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-            final HostedMethod method = pair.getLeft();
-            final CompilationResult compilation = pair.getRight();
-            codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset(), codeSizeFor(method));
+            encodeMethod(codeInfoEncoder, pair);
         }
 
         ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
@@ -385,6 +383,12 @@ public abstract class NativeImageCodeCache {
         assert verifyMethods(codeInfoEncoder, imageCodeInfo);
     }
 
+    protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
+        final HostedMethod method = pair.getLeft();
+        final CompilationResult compilation = pair.getRight();
+        codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset(), codeSizeFor(method));
+    }
+
     private void verifyDeoptEntries(CodeInfo codeInfo) {
         boolean hasError = false;
         List<Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>>> deoptEntries = new ArrayList<>(SubstrateCompilationDirectives.singleton().getDeoptEntries().entrySet());
@@ -494,7 +498,7 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+    protected boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             HostedMethod method = pair.getLeft();
             CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo);

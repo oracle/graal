@@ -62,7 +62,7 @@ import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
 
 import jdk.internal.module.Modules;
 
-class ClassLoaderSupportImpl extends ClassLoaderSupport {
+public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
@@ -71,7 +71,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
+    public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
 
         imageClassLoader = classLoaderSupport.getClassLoader();
