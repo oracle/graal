@@ -102,6 +102,8 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -775,8 +777,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     Object[] enterThreadChanged(boolean notifyEnter, boolean enterReverted, boolean pollSafepoint, boolean deactivateSafepoints, boolean polyglotThreadFirstEnter) {
         PolyglotThreadInfo enteredThread = null;
         Object[] prev = null;
+        Thread current = Thread.currentThread();
+        if (JDKAccessor.isVirtualThread(current) && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
+            throw PolyglotEngineException.illegalState(
+                            "Using polyglot contexts on Java virtual threads is currently not supported with an optimizing Truffle runtime. " +
+                                            "As a workaround you may add the -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime JVM argument to switch to a non-optimizing runtime when using virtual threads. " +
+                                            "Please note that performance is severly reduced in this mode. Loom support for optimizing runtimes will be added in a future release.");
+        }
         try {
-            Thread current = Thread.currentThread();
             if (current instanceof SystemThread) {
                 throw PolyglotEngineException.illegalState("Context cannot be entered on system threads.");
             }
@@ -796,6 +804,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 if (deactivateSafepoints && threadInfo != PolyglotThreadInfo.NULL) {
                     threadLocalActions.notifyThreadActivation(threadInfo, false);
                 }
+
                 checkClosedOrDisposing();
                 assert threadInfo != null;
 
