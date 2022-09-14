@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -171,7 +172,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
          * for {@link BasePhase#canApply}.
          */
         public static Optional<NotApplicable> undefinedSpeculationLog(BasePhase<?> phase, GraphState graphState) {
-            return notApplicableIf(graphState.getSpeculationLog() == null, Optional.of(new NotApplicable(phase.getName() + " needs a " + SpeculationLog.class)));
+            return notApplicableIf(graphState.getSpeculationLog() == null, Optional.of(new NotApplicable(phase.getName() + " needs a " + SpeculationLog.class.getSimpleName())));
         }
 
         /**
@@ -400,18 +401,22 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         OptionValues options = graph.getOptions();
-        if (GraalOptions.VerifyPhasePlan.getValue(options)) {
-            Optional<NotApplicable> canBeApplied = this.canApply(graph.getGraphState());
-            if (canBeApplied.isPresent()) {
-                String name = this.getClass().getName();
-                if (name.contains(".svm.") || name.contains(".truffle.")) {
-                    // GR-39494: canApply(GraphState) not yet implemented by SVM or Truffle
-                    // phases.
-                } else {
+
+        Optional<NotApplicable> canBeApplied = this.canApply(graph.getGraphState());
+        if (canBeApplied.isPresent()) {
+            String name = this.getClass().getName();
+            if (name.contains(".svm.") || name.contains(".truffle.")) {
+                // GR-39494: canApply(GraphState) not yet implemented by SVM or Truffle
+                // phases.
+            } else {
+                if (GraalOptions.VerifyPhasePlan.getValue(options)) {
                     GraalError.shouldNotReachHere(graph + ": " + name + ": " + canBeApplied.get());
+                } else {
+                    throw new PermanentBailoutException("Invalid phase plan for " + graph + ": " + name + ": " + canBeApplied.get());
                 }
             }
         }
+
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
