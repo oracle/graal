@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,11 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 
 import java.util.ArrayList;
-import java.util.BitSet;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -92,17 +96,83 @@ public abstract class AbstractLookupNode extends EspressoNode {
         } else {
             methodName = key;
         }
-        BitSet seenArity = new BitSet();
-        // we will disambiguate overloads with arity
+        Map<Integer, List<Method>> methodsByArity = new HashMap<>();
+        // we will first disambiguate overloads with arity
+        // then proceed to check if the parameter types are
+        // incompatible, if not we don't support invoking
+        // ambiguous members
         for (Method.MethodVersion m : getMethodArray(klass)) {
             if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
-                int arity = m.getMethod().getParameterCount();
-                if (seenArity.get(arity)) {
-                    return false;
+                Integer arity = m.getMethod().getParameterCount();
+                List<Method> methods = methodsByArity.get(arity);
+                if (methods == null) {
+                    methods = new ArrayList<>();
+                    methodsByArity.put(arity, methods);
                 }
-                seenArity.set(arity);
+                methods.add(m.getMethod());
             }
         }
-        return !seenArity.isEmpty();
+        if (methodsByArity.isEmpty()) {
+            return false;
+        }
+
+        for (List<Method> overloads : methodsByArity.values()) {
+            if (overloads.size() > 1) {
+                // Type checking required to disambiguate!
+                // If below sorting throws, it means that parameter types
+                // for at least two overloaded methods are compatible
+                // meaning we can't disambiguate.
+                Map<Method, Klass[]> parameterTypeCache = new HashMap<>(overloads.size());
+                // cache parameter types to avoid resolving multiple times
+                // in comparator
+                for (Method overload : overloads) {
+                    Klass[] parameterTypes = overload.resolveParameterKlasses();
+                    parameterTypeCache.put(overload, parameterTypes);
+                }
+
+                try {
+                    Collections.sort(overloads, new Comparator<Method>() {
+                        @Override
+                        public int compare(Method m1, Method m2) throws IllegalArgumentException {
+                            Klass[] m1Types = parameterTypeCache.get(m1);
+                            Klass[] m2Types = parameterTypeCache.get(m2);
+                            for (int i = 0; i < m1Types.length; i++) {
+                                if (!canConvert(m1Types[i], m2Types[i])) {
+                                    return 0;
+                                }
+                            }
+                            // all types are compatible meaning
+                            // we can't disambiguate
+                            throw new IllegalArgumentException();
+                        }
+                    });
+                } catch (IllegalArgumentException e) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean canConvert(Klass m1Type, Klass m2Type) {
+        if (m1Type.isPrimitive()) {
+            if (m2Type.isPrimitive()) {
+                // char and boolean are the only types
+                // that are not numbers, all others can
+                // be converted in one direction
+                if (m1Type == m2Type) {
+                    return true;
+                } else if (m1Type == getMeta()._boolean || m1Type == getMeta()._char) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                return false; // m2Type not primitive
+            }
+        } else {
+            // isAssignableFrom in either direction qualifies
+            return m1Type.isAssignable(m2Type) || m2Type.isAssignable(m1Type);
+        }
     }
 }
