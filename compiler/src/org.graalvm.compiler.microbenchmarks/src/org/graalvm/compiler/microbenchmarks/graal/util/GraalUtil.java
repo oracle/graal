@@ -133,7 +133,7 @@ public class GraalUtil {
     }
 
     public static StructuredGraph getGraph(GraalState graal, ResolvedJavaMethod javaMethod, boolean useProfilingInfo) {
-        StructuredGraph.Builder builder = new StructuredGraph.Builder(graal.options, graal.debug, AllowAssumptions.YES).method(javaMethod);
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(graal.options, graal.debug, AllowAssumptions.YES).method(javaMethod).speculationLog(javaMethod.getSpeculationLog());
         if (!useProfilingInfo) {
             builder.profileProvider(null);
         }
