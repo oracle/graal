@@ -29,8 +29,12 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -65,18 +69,50 @@ public class AMD64VectorBlend {
         public static final LIRInstructionClass<VexBlendOp> TYPE = LIRInstructionClass.create(VexBlendOp.class);
 
         @Opcode private final AMD64Assembler.VexRVMROp opcode;
+        @Temp({REG}) Value[] temps;
 
-        public VexBlendOp(AMD64Assembler.VexRVMROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y, AllocatableValue mask) {
+        public VexBlendOp(AMD64Assembler.VexRVMROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y, AllocatableValue mask, AMD64 arch) {
             super(TYPE, size, result, x, y, mask);
             this.opcode = opcode;
+
+            // we need temps when AVX512 is enabled and the vector register might be in the range
+            // 16-31 which cannot be expressed with a VEX encoding and so we have to move the value
+            // into a supported register
+            temps = opcode.isSupported(arch, size, true) ? Value.NO_VALUES
+                            : new Value[]{AMD64.xmm5.asValue(x.getValueKind()), AMD64.xmm6.asValue(y.getValueKind()), AMD64.xmm7.asValue(result.getValueKind()),
+                                            AMD64.xmm8.asValue(mask.getValueKind())};
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            Register xReg = asRegister(x);
+            if (AMD64BaseAssembler.isAVX512Register(xReg) && !opcode.isSupported(masm, size, true)) {
+                AMD64Assembler.VexMoveOp.VMOVDQU32.emit(masm, size, AMD64.xmm5, xReg);
+                xReg = AMD64.xmm5;
+            }
+            Register maskReg = asRegister(mask);
+            if (AMD64BaseAssembler.isAVX512Register(maskReg) && !opcode.isSupported(masm, size, true)) {
+                AMD64Assembler.VexMoveOp.VMOVDQU32.emit(masm, size, AMD64.xmm8, maskReg);
+                maskReg = AMD64.xmm8;
+            }
+            Register finalReg = asRegister(result);
+            Register resultReg = finalReg;
+            if (AMD64BaseAssembler.isAVX512Register(finalReg) && !opcode.isSupported(masm, size, true)) {
+                AMD64Assembler.VexMoveOp.VMOVDQU32.emit(masm, size, AMD64.xmm6, xReg);
+                resultReg = AMD64.xmm6;
+            }
             if (isRegister(y)) {
-                opcode.emit(masm, size, asRegister(result), asRegister(mask), asRegister(x), asRegister(y));
+                Register yReg = asRegister(y);
+                if (AMD64BaseAssembler.isAVX512Register(yReg) && !opcode.isSupported(masm, size, true)) {
+                    AMD64Assembler.VexMoveOp.VMOVDQU32.emit(masm, size, AMD64.xmm7, yReg);
+                    yReg = AMD64.xmm7;
+                }
+                opcode.emit(masm, size, resultReg, maskReg, xReg, yReg);
             } else {
-                opcode.emit(masm, size, asRegister(result), asRegister(mask), asRegister(x), (AMD64Address) crb.asAddress(y));
+                opcode.emit(masm, size, resultReg, maskReg, xReg, (AMD64Address) crb.asAddress(y));
+            }
+            if (!finalReg.equals(resultReg)) {
+                AMD64Assembler.VexMoveOp.VMOVDQU32.emit(masm, size, finalReg, resultReg);
             }
         }
     }
