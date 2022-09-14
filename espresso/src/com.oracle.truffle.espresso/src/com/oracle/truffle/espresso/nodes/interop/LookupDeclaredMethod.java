@@ -43,7 +43,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {
-                    "klass.equals(cachedKlass)",
+                    "klass.equals(cachedKlass.getKlass())",
                     "key.equals(cachedMethodName)",
                     "publicOnly == cachedPublicOnly",
                     "isStatic == cachedIsStatic",

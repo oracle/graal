@@ -66,10 +66,10 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 }
             }
         }
-        if (!skipArityCheck && result == null && maxOverallArity >= 0) {
+        if (!skipArityCheck && result.isEmpty() && maxOverallArity >= 0) {
             throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
-        return result.isEmpty() ? null : result.toArray(new Method[result.size()]);
+        return result.isEmpty() ? null : result.toArray(new Method[0]);
     }
 
     private static boolean matchMethod(Method m, String methodName, String signature, boolean isStatic, boolean publicOnly) {
