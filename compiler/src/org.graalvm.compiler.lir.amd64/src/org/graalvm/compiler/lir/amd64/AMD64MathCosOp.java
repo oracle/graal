@@ -425,6 +425,10 @@ public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        /*
+         * This code relies on recordExternalAddress providing the same address when called
+         * repeatedly. Especially for piInvTable.
+         */
         Label block0 = new Label();
         Label block1 = new Label();
         Label block2 = new Label();
