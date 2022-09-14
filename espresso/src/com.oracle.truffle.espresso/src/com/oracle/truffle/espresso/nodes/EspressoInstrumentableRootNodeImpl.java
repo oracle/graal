@@ -113,7 +113,6 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
         return getMethodVersion().getSource();
     }
 
-
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.RootTag.class) {

@@ -288,7 +288,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -1506,7 +1505,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             clear(frame, slot);
         }
     }
-
 
     @Override
     MethodVersion getMethodVersion() {
