@@ -58,7 +58,8 @@ final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
 
     @Override
     boolean isTrivial() {
-        return bytecodeNode.isTrivial();
+        // Instrumented nodes are not trivial.
+        return !(bytecodeNode instanceof WrapperNode) && bytecodeNode.isTrivial();
     }
 
     @Override
