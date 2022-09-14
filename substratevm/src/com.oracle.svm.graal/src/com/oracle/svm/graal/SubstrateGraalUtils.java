@@ -38,13 +38,14 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -88,7 +89,6 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
                 StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
-                TTY.printf("Compilation log %s\n", graph.getSpeculationLog());
                 return compileGraph(runtimeConfig, suites, lirSuites, method, graph);
             }
 
@@ -148,6 +148,17 @@ public class SubstrateGraalUtils {
     @SuppressWarnings("try")
     private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
+        Suites s = suites;
+        if (graph.getSpeculationLog() == null || graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
+            /*
+             * Certain runtime compilation settings/setups can require explicit exceptions or the
+             * removal of speculative optimizations.
+             */
+            s = s.copy();
+            s.getHighTier().removeSubTypePhases(Speculative.class);
+            s.getMidTier().removeSubTypePhases(Speculative.class);
+            s.getLowTier().removeSubTypePhases(Speculative.class);
+        }
 
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
             /*
@@ -169,7 +180,7 @@ public class SubstrateGraalUtils {
 
             try (Indent indent2 = debug.logAndIndent("do compilation")) {
                 SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
-                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, null, suites, lirSuites, result,
+                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, null, s, lirSuites, result,
                                 CompilationResultBuilderFactory.Default, false);
                 return result;
             }
