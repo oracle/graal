@@ -1065,7 +1065,7 @@ if llvm_supported:
         name='SubstrateVM LLVM',
         short_name='svml',
         dir_name='svm',
-        installable_id='native-image',
+        installable_id='native-image-llvm-backend',
         license_files=[],
         third_party_license_files=[],
         dependencies=['SubstrateVM'],
