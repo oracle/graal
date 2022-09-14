@@ -157,9 +157,14 @@ public final class ThreadsHandler implements ThreadsListener {
                             StringBuilder sb = new StringBuilder();
                             int idx = 0;
                             while (matcher.find()) {
+                                sb.append(logMessage.substring(idx, matcher.start()));
                                 String expression = matcher.group(1);
-                                DebugValue value = VariablesHandler.getDebugValue(event.getTopStackFrame(), expression);
-                                sb.append(logMessage.substring(idx, matcher.start())).append(value.toDisplayString());
+                                try {
+                                    DebugValue value = VariablesHandler.getDebugValue(event.getTopStackFrame(), expression);
+                                    sb.append(value.toDisplayString());
+                                } catch (DebugException ex) {
+                                    sb.append("Error: " + ex.getLocalizedMessage());
+                                }
                                 idx = matcher.end();
                             }
                             sb.append(logMessage.substring(idx));
