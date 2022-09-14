@@ -105,11 +105,11 @@ public final class GraphEffectList extends EffectList {
      * @param position The fixed node before which the node should be added if not yet present.
      */
     public void ensureAdded(ValueNode node, FixedNode position) {
+        assert !(node instanceof FixedWithNextNode) || position != null;
         add("ensure added", graph -> {
-            assert position.isAlive();
-            assert node instanceof FixedNode;
+            assert position == null || position.isAlive();
             if (!node.isAlive()) {
-                graph.addOrUniqueWithInputs(node);
+                graph.addWithoutUniqueWithInputs(node);
                 if (node instanceof FixedWithNextNode) {
                     graph.addBeforeFixed(position, (FixedWithNextNode) node);
                 }
@@ -143,14 +143,8 @@ public final class GraphEffectList extends EffectList {
      *
      * @param node The floating node to be added to the graph if not yet present.
      */
-    public void ensureFloatingAdded(ValueNode node) {
-        add("ensure floating added", graph -> {
-            assert node instanceof FloatingNode;
-            assert !node.isDeleted();
-            if (!node.isAlive()) {
-                graph.addWithoutUniqueWithInputs(node);
-            }
-        });
+    void ensureFloatingAdded(ValueNode node) {
+        ensureAdded(node, null);
     }
 
     /**
