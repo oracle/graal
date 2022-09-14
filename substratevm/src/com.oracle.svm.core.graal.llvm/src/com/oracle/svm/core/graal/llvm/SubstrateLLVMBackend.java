@@ -28,7 +28,9 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.hosted.image.sources.SourceManager;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
@@ -61,10 +63,13 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public class SubstrateLLVMBackend extends SubstrateBackend {
     private static final TimerKey EmitLLVM = DebugContext.timer("EmitLLVM").doc("Time spent generating LLVM from HIR.");
     private static final TimerKey BackEnd = DebugContext.timer("BackEnd").doc("Time spent in EmitLLVM and Populate.");
+    //TODO: Avoid this lock if possible
+    private ReentrantLock imageSingletonesLock = new ReentrantLock();
 
     public SubstrateLLVMBackend(Providers providers) {
         super(providers);
@@ -121,6 +126,13 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
             NodeLLVMBuilder nodeBuilder = newNodeLLVMBuilder(graph, generator);
 
             /* LLVM generation */
+            if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+                imageSingletonesLock.lock();
+                if (ImageSingletons.contains(SourceManager.class) == false) {
+                    ImageSingletons.add(SourceManager.class, new SourceManager());
+                }
+                imageSingletonesLock.unlock();
+            }
             generate(nodeBuilder, graph);
             byte[] bitcode = generator.getBitcode();
             result.setTargetCode(bitcode, bitcode.length);

@@ -470,7 +470,9 @@ public abstract class NativeImage extends AbstractImage {
             if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
                 Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
                 try (Timer.StopTimer t = timer.start()) {
-                    ImageSingletons.add(SourceManager.class, new SourceManager());
+                    if (ImageSingletons.contains(SourceManager.class) == false) {
+                        ImageSingletons.add(SourceManager.class, new SourceManager());
+                    }
                     DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap, metaAccess);
                     objectFile.installDebugInfo(provider);
                 }
