@@ -101,6 +101,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
@@ -1095,13 +1096,9 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             protected ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field) {
                 if (field instanceof AnalysisField) {
-                    AnalysisField analysisField = (AnalysisField) field;
-                    analysisField.registerAsAccessed();
-                    analysisField.registerAsUnsafeAccessed();
-                    return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(analysisField.getJavaField()), b);
-                } else {
-                    return ConstantNode.forLong(field.getOffset());
+                    ((AnalysisField) field).registerAsUnsafeAccessed();
                 }
+                return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(((OriginalFieldProvider) field).getJavaField()), b);
             }
 
             @Override
