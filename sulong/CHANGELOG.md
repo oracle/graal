@@ -3,6 +3,9 @@
 Changes:
 
 * Updated LLVM toolchain to version 14.0.6.
+* Improved support for x86 extended precision float.
+  It is now possible to call native (e.g. libc) functions with `long double` arguments on x86.
+  The `long double` variants of `math.h` functions now use full precision. Previously they were implemented using `double` arithmetic.
 
 # Version 22.2.0
 
