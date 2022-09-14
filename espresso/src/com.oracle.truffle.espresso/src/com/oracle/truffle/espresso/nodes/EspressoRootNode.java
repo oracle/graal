@@ -69,7 +69,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
-    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoInstrumentableRootNode methodNode, boolean usesMonitors) {
+    private EspressoRootNode(FrameDescriptor frameDescriptor, EspressoInstrumentableRootNode methodNode, boolean usesMonitors) {
         super(methodNode.getMethodVersion().getMethod().getLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? SLOT_UNINITIALIZED : SLOT_UNUSED;
@@ -168,19 +168,37 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return NodeUtil.countNodes(body, node -> node instanceof EspressoInstrumentableNode && ((EspressoInstrumentableNode) node).hasTag(StandardTags.RootBodyTag.class)) == 1;
     }
 
+    /**
+     * Creates a root node that can execute the Java bytecodes of the given method. The given method
+     * must be a concrete, non-native Java method.
+     */
     public static EspressoRootNode createForBytecodes(Method.MethodVersion methodVersion) {
         BytecodeNode bytecodeNode = new BytecodeNode(methodVersion);
         return create(bytecodeNode.getFrameDescriptor(), new MethodWithBytecodeNode(bytecodeNode));
     }
 
+    /**
+     * Creates a root node that can execute a native Java method.
+     */
     public static EspressoRootNode createNative(Method.MethodVersion methodVersion, TruffleObject nativeMethod) {
         return create(null, new NativeMethodNode(nativeMethod, methodVersion));
     }
 
+    /**
+     * Creates a root node that can execute a native Java method, implemented in Java for Espresso,
+     * without going to native code.
+     *
+     * Used to link native calls implemented in Java that are bound with JNI's
+     * {@code registerNatives} e.g. JVM_IHashCode, JVM_IsNaN, JVM_ArrayCopy.
+     */
     public static EspressoRootNode createIntrinsifiedNative(Method.MethodVersion methodVersion, CallableFromNative.Factory factory, Object env) {
         return create(null, new IntrinsifiedNativeMethodNode(methodVersion, factory, env));
     }
 
+    /**
+     * Creates a root node that can execute a substitution e.g. an implementation of the method in
+     * host Java, instead of the original givenmethod.
+     */
     public static EspressoRootNode createSubstitution(Method.MethodVersion methodVersion, JavaSubstitution.Factory factory) {
         return create(null, new IntrinsicSubstitutorNode(methodVersion, factory));
     }
