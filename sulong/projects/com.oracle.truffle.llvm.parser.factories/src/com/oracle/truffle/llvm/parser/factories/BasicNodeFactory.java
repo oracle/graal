@@ -1423,6 +1423,19 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.powi.f80":
                 case "llvm.powi.f80.i32":
                     return LLVM80BitFloat.createPowNode(args[1], args[2]);
+                case "llvm.sqrt.f80":
+                case "llvm.log.f80":
+                case "llvm.log2.f80":
+                case "llvm.log10.f80":
+                case "llvm.rint.f80":
+                case "llvm.ceil.f80":
+                case "llvm.floor.f80":
+                case "llvm.exp.f80":
+                case "llvm.exp2.f80":
+                case "llvm.sin.f80":
+                case "llvm.cos.f80":
+                    String[] split = intrinsicName.split("\\.");
+                    return LLVM80BitFloat.createUnary(split[1], args[1]);
                 case "llvm.round.f32":
                 case "llvm.round.f64":
                 case "llvm.round.f80":

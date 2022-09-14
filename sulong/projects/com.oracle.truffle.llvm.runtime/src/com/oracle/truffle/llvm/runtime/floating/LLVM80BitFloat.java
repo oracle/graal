@@ -64,6 +64,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatUnaryNativeCallNodeGen;
 
 @ValueType
 @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
@@ -603,19 +604,19 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
 
     public abstract static class FP80Node extends LLVMExpressionNode {
 
-        public abstract LLVM80BitFloat execute(Object... args);
-    }
+        final String name;
 
-    @NodeChild(value = "x", type = LLVMExpressionNode.class)
-    @NodeChild(value = "y", type = LLVMExpressionNode.class)
-    abstract static class LLVM80BitFloatNativeCallNode extends FP80Node {
-        private final String name;
         private final String functionName;
-        @CompilerDirectives.CompilationFinal protected ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
+        private final String signature;
 
-        LLVM80BitFloatNativeCallNode(String name) {
+        final ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
+
+        public abstract LLVM80BitFloat execute(Object... args);
+
+        FP80Node(String name, String signature) {
             this.name = name;
             this.functionName = "__sulong_fp80_" + name;
+            this.signature = signature;
             this.nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
         }
 
@@ -625,12 +626,27 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
             if (nativeContextExtension == null) {
                 return null;
             } else {
-                return nativeContextExtension.getWellKnownNativeFunction(functionName, "(FP80,FP80):FP80");
+                return nativeContextExtension.getWellKnownNativeFunction(functionName, signature);
             }
+        }
+
+        protected NativeContextExtension.WellKnownNativeFunctionAndSignature getFunction() {
+            NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(LLVMContext.get(this));
+            return nativeContextExtension.getWellKnownNativeFunctionAndSignature(functionName, signature);
         }
 
         protected LLVMNativeConvertNode createToFP80() {
             return LLVMNativeConvertNode.createFromNative(PrimitiveType.X86_FP80);
+        }
+
+    }
+
+    @NodeChild(value = "x", type = LLVMExpressionNode.class)
+    @NodeChild(value = "y", type = LLVMExpressionNode.class)
+    abstract static class LLVM80BitFloatNativeCallNode extends FP80Node {
+
+        LLVM80BitFloatNativeCallNode(String name) {
+            super(name, "(FP80,FP80):FP80");
         }
 
         @Specialization(guards = "function != null")
@@ -649,8 +665,7 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
         protected LLVM80BitFloat doCallAOT(Object x, Object y,
                         @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
                         @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
-            NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(LLVMContext.get(this));
-            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = nativeContextExtension.getWellKnownNativeFunctionAndSignature(functionName, "(UINT64,UINT64,UINT64):VOID");
+            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = getFunction();
             try {
                 Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x, y);
                 return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
@@ -694,6 +709,39 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
         }
     }
 
+    @NodeChild(value = "x", type = LLVMExpressionNode.class)
+    abstract static class LLVM80BitFloatUnaryNativeCallNode extends FP80Node {
+
+        LLVM80BitFloatUnaryNativeCallNode(String name) {
+            super(name, "(FP80):FP80");
+        }
+
+        @Specialization(guards = "function != null")
+        protected LLVM80BitFloat doCall(Object x,
+                        @Cached("createFunction()") WellKnownNativeFunctionNode function,
+                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
+            try {
+                Object ret = function.execute(x);
+                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
+            } catch (InteropException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
+        protected LLVM80BitFloat doCallAOT(Object x,
+                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
+                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
+            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = getFunction();
+            try {
+                Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x);
+                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
+            } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
     public static FP80Node createAddNode() {
         return LLVM80BitFloatNativeCallNodeGen.create("add", null, null);
     }
@@ -716,5 +764,9 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
 
     public static FP80Node createPowNode(LLVMExpressionNode x, LLVMExpressionNode y) {
         return LLVM80BitFloatNativeCallNodeGen.create("pow", x, y);
+    }
+
+    public static FP80Node createUnary(String name, LLVMExpressionNode x) {
+        return LLVM80BitFloatUnaryNativeCallNodeGen.create(name, x);
     }
 }

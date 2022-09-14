@@ -52,3 +52,20 @@ long double __sulong_fp80_mod(long double x, long double y) {
 long double __sulong_fp80_pow(long double x, long double y) {
     return powl(x, y);
 }
+
+#define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
+    long double __sulong_fp80_##fn(long double value) {                                                                                              \
+        return fn##l(value);                                                                                                                         \
+    }
+
+DECLARE_UNARY_INTRINSIC(sqrt)
+DECLARE_UNARY_INTRINSIC(log)
+DECLARE_UNARY_INTRINSIC(log2)
+DECLARE_UNARY_INTRINSIC(log10)
+DECLARE_UNARY_INTRINSIC(rint)
+DECLARE_UNARY_INTRINSIC(ceil)
+DECLARE_UNARY_INTRINSIC(floor)
+DECLARE_UNARY_INTRINSIC(exp)
+DECLARE_UNARY_INTRINSIC(exp2)
+DECLARE_UNARY_INTRINSIC(sin)
+DECLARE_UNARY_INTRINSIC(cos)
