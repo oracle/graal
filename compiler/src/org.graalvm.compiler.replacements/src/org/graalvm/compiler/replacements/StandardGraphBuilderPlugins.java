@@ -2171,7 +2171,7 @@ public class StandardGraphBuilderPlugins {
 
         protected abstract boolean canApply(GraphBuilderContext b);
 
-        protected abstract ValueNode getFieldOffset(InvocationPluginHelper helper, ResolvedJavaType type, String fieldName);
+        protected abstract ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field);
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode len, ValueNode out, ValueNode outOffset) {
@@ -2181,7 +2181,8 @@ public class StandardGraphBuilderPlugins {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
                 ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
-                ValueNode usedOffset = getFieldOffset(helper, receiverType, "used");
+                ResolvedJavaField used = helper.getField(receiverType, "used");
+                ValueNode usedOffset = getFieldOffset(b, used);
 
                 ValueNode nonNullReceiver = receiver.get();
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
