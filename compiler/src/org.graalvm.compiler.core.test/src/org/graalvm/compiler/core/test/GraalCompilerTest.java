@@ -276,9 +276,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
 
         if (getSpeculationLog() == null) {
-            ret.getHighTier().removeSpeculativePhases();
-            ret.getMidTier().removeSpeculativePhases();
-            ret.getLowTier().removeSpeculativePhases();
+            ret.getHighTier().removeSubTypePhases(Speculative.class);
+            ret.getMidTier().removeSubTypePhases(Speculative.class);
+            ret.getLowTier().removeSubTypePhases(Speculative.class);
         }
 
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);

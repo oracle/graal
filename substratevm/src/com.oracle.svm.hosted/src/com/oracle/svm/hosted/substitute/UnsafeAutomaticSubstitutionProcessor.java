@@ -49,7 +49,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -1098,7 +1097,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                         .method(clinit)
                         .recordInlinedMethods(false)
                         .build();
-        graph.getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        graph.getGraphState().configureExplicitExceptions();
 
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true),
                         context.getOptimisticOptimizations());

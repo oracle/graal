@@ -84,7 +84,6 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
     public Optional<NotApplicable> canApply(GraphState graphState) {
         return NotApplicable.combineConstraints(
                         super.canApply(graphState),
-                        NotApplicable.undefinedSpeculationLog(this, graphState),
                         NotApplicable.notApplicableIf(!graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards must be allowed."))));
     }
 
@@ -93,6 +92,9 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
     protected void run(StructuredGraph graph, MidTierContext context) {
         DebugContext debug = graph.getDebug();
         final SpeculationLog speculationLog = graph.getSpeculationLog();
+        if (speculationLog == null) {
+            return;
+        }
         if (graph.hasLoops() && context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions())) {
             LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             final ControlFlowGraph cfg = data.getCFG();

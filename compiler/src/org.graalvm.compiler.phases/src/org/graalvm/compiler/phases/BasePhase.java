@@ -34,8 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -140,7 +138,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
          * for {@link BasePhase#canApply}.
          */
         public static Optional<NotApplicable> mustRunAfter(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
-            return notApplicableIf(graphState.isBeforeStage(flag), Optional.of(new NotApplicable(phase.getName() + " must run after the " + flag + " stage")));
+            return notApplicableIf(graphState.isBeforeStage(flag),
+                            Optional.of(new NotApplicable(phase.getName() + " must run after the " + flag + " stage while graph has stages " + graphState.getStageFlags())));
         }
 
         /**
@@ -409,11 +408,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 // GR-39494: canApply(GraphState) not yet implemented by SVM or Truffle
                 // phases.
             } else {
-                if (GraalOptions.VerifyPhasePlan.getValue(options)) {
-                    GraalError.shouldNotReachHere(graph + ": " + name + ": " + canBeApplied.get());
-                } else {
-                    throw new PermanentBailoutException("Invalid phase plan for " + graph + ": " + name + ": " + canBeApplied.get());
-                }
+                GraalError.shouldNotReachHere(graph + ": " + name + ": " + canBeApplied.get());
             }
         }
 

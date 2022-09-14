@@ -32,6 +32,8 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -96,7 +98,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         super.build(startInstruction, startFrameState);
 
         /* We never have floating guards in AOT compiled code. */
-        getGraph().getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        getGraph().getGraphState().configureExplicitExceptions();
 
         assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub ";
     }

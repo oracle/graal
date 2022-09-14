@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -87,6 +88,7 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
                 StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
+                TTY.printf("Compilation log %s\n", graph.getSpeculationLog());
                 return compileGraph(runtimeConfig, suites, lirSuites, method, graph);
             }
 

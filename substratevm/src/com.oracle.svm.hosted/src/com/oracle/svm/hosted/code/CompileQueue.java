@@ -70,6 +70,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -848,9 +849,8 @@ public class CompileQueue {
                 if (needParsing) {
                     GraphBuilderConfiguration gbConf = createHostedGraphBuilderConfiguration(providers, method);
                     new HostedGraphBuilderPhase(providers, gbConf, getOptimisticOpts(), null, providers.getWordTypes()).apply(graph);
-
                 } else {
-                    graph.getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
+                    graph.getGraphState().configureExplicitExceptionsIfNecessary();
                 }
 
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
@@ -879,6 +879,8 @@ public class CompileQueue {
                         ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
+
+                GraalError.guarantee(graph.isAfterStage(StageFlag.GUARD_LOWERING), "Hosted compilations must have explicit exceptions " + graph);
 
                 beforeEncode(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);
@@ -1066,6 +1068,7 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config) {
+
         if (NativeImageOptions.PrintAOTCompilation.getValue()) {
             System.out.println("Compiling " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
         }
@@ -1075,6 +1078,11 @@ public class CompileQueue {
 
             VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
             StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
+
+            GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
+                            "Hosted compilations must have explicit exceptions [guard stage] " + graph + "=" + graph.getGraphState().getGuardsStage());
+            GraalError.guarantee(graph.isAfterStage(StageFlag.GUARD_LOWERING),
+                            "Hosted compilations must have explicit exceptions [guard lowering]" + graph + "=" + graph.getGraphState().getStageFlags() + "->" + graph.getGuardsStage());
 
             if (method.compilationInfo.specializedArguments != null) {
                 // Do the specialization: replace the argument locals with the constant arguments.

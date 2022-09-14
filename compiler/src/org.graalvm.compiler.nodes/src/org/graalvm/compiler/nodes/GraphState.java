@@ -549,6 +549,22 @@ public final class GraphState {
         this.guardsStage = guardsStage;
     }
 
+    public boolean isPreparedForExplicitExceptions() {
+        return guardsStage == GuardsStage.FIXED_DEOPTS && isAfterStage(StageFlag.GUARD_LOWERING);
+    }
+
+    public void configureExplicitExceptions() {
+        assert !isPreparedForExplicitExceptions();
+        setGuardsStage(GraphState.GuardsStage.FIXED_DEOPTS);
+        setAfterStage(StageFlag.GUARD_LOWERING);
+    }
+
+    public void configureExplicitExceptionsIfNecessary() {
+        if (!isPreparedForExplicitExceptions()) {
+            configureExplicitExceptions();
+        }
+    }
+
     /**
      * Indicates FSA has been applied to this graph. (See {@link #setGuardsStage(GuardsStage)} and
      * {@link #setAfterStage(StageFlag)})
