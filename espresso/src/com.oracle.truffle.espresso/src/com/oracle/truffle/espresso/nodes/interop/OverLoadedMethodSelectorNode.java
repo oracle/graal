@@ -66,7 +66,7 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
                 // try converting the parameters, if no exception
                 // the candidate stands
                 try {
-                    convertedArgs[i] = toEspressoNode.execute(arguments[j], parameters[j]);
+                    convertedArgs[j] = toEspressoNode.execute(arguments[j], parameters[j]);
                 } catch (UnsupportedTypeException e) {
                     canConvert = false;
                     break;
