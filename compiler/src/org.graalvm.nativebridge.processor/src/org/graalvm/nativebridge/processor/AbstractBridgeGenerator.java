@@ -28,6 +28,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -36,14 +37,18 @@ import javax.lang.model.type.IntersectionType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.UnionType;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
@@ -59,14 +64,16 @@ abstract class AbstractBridgeGenerator {
     final AbstractBridgeParser parser;
     final DefinitionData definitionData;
     final Types types;
+    final BinaryNameCache binaryNameCache;
 
     private final AbstractTypeCache typeCache;
 
-    AbstractBridgeGenerator(AbstractBridgeParser parser, DefinitionData definitionData, AbstractTypeCache typeCache) {
+    AbstractBridgeGenerator(AbstractBridgeParser parser, DefinitionData definitionData, AbstractTypeCache typeCache, BinaryNameCache binaryNameCache) {
         this.parser = parser;
         this.definitionData = definitionData;
         this.types = parser.types;
         this.typeCache = typeCache;
+        this.binaryNameCache = binaryNameCache;
     }
 
     final FactoryMethodInfo resolveFactoryMethod(CharSequence factoryMethodName, CharSequence startPointSimpleName, CharSequence endPointSimpleName,
@@ -338,14 +345,16 @@ abstract class AbstractBridgeGenerator {
 
         private final NativeBridgeProcessor processor;
         private final AbstractTypeCache cache;
+        private final BinaryNameCache binaryNameCache;
         final MarshallerData marshallerData;
         final Types types;
 
-        MarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache) {
+        MarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache, BinaryNameCache binaryNameCache) {
             this.processor = processor;
             this.marshallerData = marshallerData;
             this.types = types;
             this.cache = cache;
+            this.binaryNameCache = binaryNameCache;
         }
 
         @SuppressWarnings("unused")
@@ -544,33 +553,28 @@ abstract class AbstractBridgeGenerator {
             return value != null && value;
         }
 
-        final void generateCopyHSObjectArrayToHotSpot(CodeBuilder currentBuilder, TypeMirror guestArrayComponentType,
-                        CharSequence hsTargetArrayVariable, boolean copyContent, CharSequence guestArray,
-                        CharSequence guestArrayOffsetSnippet, CharSequence guestArrayLengthSnippet,
-                        CharSequence jniEnvFieldName, Function<CharSequence, CharSequence> marshallFunction) {
+        final CharSequence marshallCopyHSObjectArrayToHotSpot(CodeBuilder currentBuilder, TypeMirror guestArrayComponentType, CharSequence guestArray,
+                        CharSequence guestArrayOffsetSnippet, CharSequence guestArrayLengthSnippet, CharSequence jniEnvFieldName) {
+            CharSequence componentTypeBinaryName = binaryNameCache.getCacheEntry(guestArrayComponentType);
+            CharSequence useOffset = guestArrayOffsetSnippet != null ? guestArrayOffsetSnippet : "0";
+            return new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "createHSArray", jniEnvFieldName, guestArray, useOffset, guestArrayLengthSnippet, componentTypeBinaryName).build();
+        }
+
+        final void generateAllocateJObjectArray(CodeBuilder currentBuilder, TypeMirror guestArrayComponentType, CharSequence guestArray,
+                        CharSequence hsTargetArrayVariable, CharSequence guestArrayLengthSnippet, CharSequence jniEnvFieldName) {
+            currentBuilder.lineStart("if (").write(guestArray).write(" != null) ").lineEnd("{");
+            currentBuilder.indent();
             CharSequence nullptr = new CodeBuilder(currentBuilder).invokeStatic(cache.wordFactory, "nullPointer").build();
-            CharSequence componentTypeCanonicalName = new CodeBuilder(currentBuilder).invoke(new CodeBuilder(currentBuilder).classLiteral(guestArrayComponentType).build(),
-                            "getCanonicalName").build();
-            CharSequence componentTypeBinaryName = new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "getBinaryName", componentTypeCanonicalName).build();
+            CharSequence componentTypeBinaryName = binaryNameCache.getCacheEntry(guestArrayComponentType);
             CharSequence hsArrayComponentType = new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "findClass", jniEnvFieldName, nullptr, componentTypeBinaryName, "true").build();
-            currentBuilder.lineStart(hsTargetArrayVariable).write(" = ").invokeStatic(cache.jniUtil, "NewObjectArray", jniEnvFieldName, guestArrayLengthSnippet, hsArrayComponentType,
-                            nullptr).lineEnd(";");
-            if (copyContent) {
-                CharSequence indexVariable = hsTargetArrayVariable + "Index";
-                currentBuilder.lineStart().forLoop(List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(indexVariable).write(" = 0").build()),
-                                new CodeBuilder(currentBuilder).write(indexVariable).write(" < ").write(guestArrayLengthSnippet).build(),
-                                List.of(new CodeBuilder(currentBuilder).write(indexVariable).write("++").build())).lineEnd(" {");
-                currentBuilder.indent();
-                CharSequence hsResultElementVariable = hsTargetArrayVariable + "Element";
-                CharSequence guestArrayPosition = guestArrayOffsetSnippet != null ? new CodeBuilder(currentBuilder).write(guestArrayOffsetSnippet).write(" + ").write(indexVariable).build()
-                                : indexVariable;
-                CharSequence arrayElement = new CodeBuilder(currentBuilder).arrayElement(guestArray, guestArrayPosition).build();
-                CharSequence value = marshallFunction.apply(arrayElement);
-                currentBuilder.lineStart().write(cache.jObject).space().write(hsResultElementVariable).write(" = ").write(value).lineEnd(";");
-                currentBuilder.lineStart().invokeStatic(cache.jniUtil, "SetObjectArrayElement", jniEnvFieldName, hsTargetArrayVariable, indexVariable, hsResultElementVariable).lineEnd(";");
-                currentBuilder.dedent();
-                currentBuilder.line("}");
-            }
+            currentBuilder.lineStart(hsTargetArrayVariable).write(" = ").invokeStatic(cache.jniUtil, "NewObjectArray", jniEnvFieldName, guestArrayLengthSnippet, hsArrayComponentType, nullptr).lineEnd(
+                            ";");
+            currentBuilder.dedent();
+            currentBuilder.line("} else {");
+            currentBuilder.indent();
+            currentBuilder.lineStart(hsTargetArrayVariable).write(" = ").write(nullptr).lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
         }
 
         final void generateCopyHotSpotToHSObjectArray(CodeBuilder currentBuilder, CharSequence guestTargetArrayVariable, CharSequence guestArrayOffsetSnippet, CharSequence guestArrayLengthSnippet,
@@ -605,7 +609,12 @@ abstract class AbstractBridgeGenerator {
                                 new CodeBuilder(currentBuilder).write(indexVariable).write(" < ").write(arrayLengthSnippet).build(),
                                 List.of(new CodeBuilder(currentBuilder).write(indexVariable).write("++").build())).lineEnd(" {");
                 currentBuilder.indent();
-                CharSequence pos = arrayOffsetParameter != null ? new CodeBuilder(currentBuilder).write(arrayOffsetParameter).write(" + ").write(indexVariable).build() : indexVariable;
+                CharSequence pos;
+                if (arrayOffsetParameter != null) {
+                    pos = new CodeBuilder(currentBuilder).write(arrayOffsetParameter).write(" + ").write(indexVariable).build();
+                } else {
+                    pos = indexVariable;
+                }
                 CharSequence parameterElement = new CodeBuilder(currentBuilder).arrayElement(parameterName, pos).build();
                 currentBuilder.lineStart().invoke(outputVar, "writeLong",
                                 marshallFunction.apply(parameterElement)).lineEnd(";");
@@ -777,6 +786,98 @@ abstract class AbstractBridgeGenerator {
             this.result = result;
             this.binaryInput = binaryInput;
             this.unmarshalled = unmarshalled;
+        }
+    }
+
+    static final class BinaryNameCache {
+
+        private final Types types;
+        private final Elements elements;
+        private final AbstractTypeCache typeCache;
+        private final Map<TypeElement, String> cachedNameByType;
+
+        private BinaryNameCache(Types types, Elements elements, AbstractTypeCache typeCache, Map<TypeElement, String> cachedNameByType) {
+            this.types = types;
+            this.elements = elements;
+            this.typeCache = typeCache;
+            this.cachedNameByType = cachedNameByType;
+        }
+
+        CharSequence getCacheEntry(TypeMirror type) {
+            TypeMirror rawType = types.erasure(type);
+            if (rawType.getKind() != TypeKind.DECLARED) {
+                throw new IllegalArgumentException(rawType + " must be declared type");
+            }
+            TypeElement element = (TypeElement) ((DeclaredType) rawType).asElement();
+            CharSequence result = cachedNameByType.get(element);
+            if (result == null) {
+                throw new IllegalArgumentException("No foreign reference array marshaller for " + element.getQualifiedName());
+            }
+            return result;
+        }
+
+        void generateCache(CodeBuilder builder) {
+            Map<String, TypeElement> ordered = new TreeMap<>();
+            for (Map.Entry<TypeElement, String> e : cachedNameByType.entrySet()) {
+                ordered.put(e.getValue(), e.getKey());
+            }
+            for (Map.Entry<String, TypeElement> e : ordered.entrySet()) {
+                String cacheEntryName = e.getKey();
+                TypeElement typeElement = e.getValue();
+                CharSequence cacheEntryValue = '"' + elements.getBinaryName(typeElement).toString().replace('.', '/') + '"';
+                builder.lineStart().writeModifiers(Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)).space().write(typeCache.string).space().write(cacheEntryName).write(" = ").write(
+                                cacheEntryValue).lineEnd(";");
+            }
+        }
+
+        static BinaryNameCache create(DefinitionData definitionData, boolean hostToIsolate, Types types, Elements elements, AbstractTypeCache typeCache) {
+            Map<TypeElement, String> typeToCacheEntry = new HashMap<>();
+            Map<String, TypeElement> simpleNameCacheEntryToType = new HashMap<>();
+            for (DeclaredType type : findJObjectArrayComponentTypes(definitionData, hostToIsolate, types)) {
+                TypeElement componentElement = (TypeElement) type.asElement();
+                String cacheEntry = cacheEntryName(componentElement.getSimpleName());
+                TypeElement existingElement = simpleNameCacheEntryToType.get(cacheEntry);
+                if (existingElement != null && !existingElement.equals(componentElement)) {
+                    // Simple name already used, switch to fqn.
+                    typeToCacheEntry.put(existingElement, cacheEntryName(existingElement.getQualifiedName()));
+                    cacheEntry = cacheEntryName(componentElement.getQualifiedName());
+                    typeToCacheEntry.put(componentElement, cacheEntry);
+                } else {
+                    // Use simple name
+                    typeToCacheEntry.put(componentElement, cacheEntry);
+                    simpleNameCacheEntryToType.put(cacheEntry, componentElement);
+                }
+            }
+            return new BinaryNameCache(types, elements, typeCache, typeToCacheEntry);
+        }
+
+        private static Collection<? extends DeclaredType> findJObjectArrayComponentTypes(DefinitionData definitionData, boolean hostToIsolate, Types types) {
+            Collection<DeclaredType> result = new ArrayList<>();
+            for (MethodData method : definitionData.toGenerate) {
+                if (isReferenceArray(method.getReturnTypeMarshaller(), method.type.getReturnType(), hostToIsolate)) {
+                    result.add(getComponentType(method.type.getReturnType(), types));
+                }
+                List<? extends TypeMirror> parameterTypes = method.type.getParameterTypes();
+                for (int i = 0; i < parameterTypes.size(); i++) {
+                    TypeMirror parameterType = parameterTypes.get(i);
+                    if (isReferenceArray(method.getParameterMarshaller(i), parameterType, hostToIsolate)) {
+                        result.add(getComponentType(parameterType, types));
+                    }
+                }
+            }
+            return result;
+        }
+
+        private static boolean isReferenceArray(MarshallerData marshallerData, TypeMirror type, boolean hostToIsolate) {
+            return marshallerData.isReference() && hostToIsolate != marshallerData.sameDirection && type.getKind() == TypeKind.ARRAY;
+        }
+
+        private static DeclaredType getComponentType(TypeMirror arrayType, Types types) {
+            return (DeclaredType) types.erasure(((ArrayType) arrayType).getComponentType());
+        }
+
+        private static String cacheEntryName(CharSequence name) {
+            return name.toString().replace('.', '_').toUpperCase() + "_BINARY_NAME";
         }
     }
 }

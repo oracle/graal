@@ -75,7 +75,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
     HotSpotToNativeBridgeGenerator(AbstractBridgeParser parser, TypeCache typeCache, DefinitionData definitionData,
                     String[] sharedNames, String[] unsharedNames) {
-        super(parser, definitionData, typeCache);
+        super(parser, definitionData, typeCache, BinaryNameCache.create(definitionData, true, parser.types, parser.elements, typeCache));
         assert sharedNames.length == 2 : "Names must be an array of the form `{startPointName, endPointName}`";
         assert unsharedNames.length == 2 : "Names must be an array of the form `{startPointName, endPointName}`";
         this.typeCache = typeCache;
@@ -116,7 +116,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
     @Override
     HotSpotToNativeMarshallerSnippets marshallerSnippets(MarshallerData marshallerData) {
-        return HotSpotToNativeMarshallerSnippets.forData(parser.processor, definitionData, marshallerData, types, typeCache);
+        return HotSpotToNativeMarshallerSnippets.forData(parser.processor, definitionData, marshallerData, types, typeCache, binaryNameCache);
     }
 
     private void generateHSToNativeStartPoint(CodeBuilder builder, FactoryMethodInfo factoryMethodInfo) {
@@ -442,8 +442,9 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         builder.lineEnd("");
 
+        binaryNameCache.generateCache(builder);
+
         generateMarshallerFields(builder, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
-        builder.line("");
 
         if (!definitionData.getAllCustomMarshallers().isEmpty()) {
             builder.methodStart(EnumSet.of(Modifier.STATIC), null,
@@ -753,21 +754,22 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         final TypeCache cache;
 
-        HotSpotToNativeMarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache typeCache) {
-            super(processor, marshallerData, types, typeCache);
+        HotSpotToNativeMarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache typeCache, BinaryNameCache binaryNameCache) {
+            super(processor, marshallerData, types, typeCache, binaryNameCache);
             this.cache = typeCache;
         }
 
-        static HotSpotToNativeMarshallerSnippets forData(NativeBridgeProcessor processor, DefinitionData data, MarshallerData marshallerData, Types types, TypeCache typeCache) {
+        static HotSpotToNativeMarshallerSnippets forData(NativeBridgeProcessor processor, DefinitionData data, MarshallerData marshallerData,
+                        Types types, TypeCache typeCache, BinaryNameCache binaryNameCache) {
             switch (marshallerData.kind) {
                 case VALUE:
-                    return new DirectSnippets(processor, marshallerData, types, typeCache);
+                    return new DirectSnippets(processor, marshallerData, types, typeCache, binaryNameCache);
                 case REFERENCE:
-                    return new ReferenceSnippets(processor, data, marshallerData, types, typeCache);
+                    return new ReferenceSnippets(processor, data, marshallerData, types, typeCache, binaryNameCache);
                 case RAW_REFERENCE:
-                    return new RawReferenceSnippets(processor, marshallerData, types, typeCache);
+                    return new RawReferenceSnippets(processor, marshallerData, types, typeCache, binaryNameCache);
                 case CUSTOM:
-                    return new CustomSnippets(processor, marshallerData, types, typeCache);
+                    return new CustomSnippets(processor, marshallerData, types, typeCache, binaryNameCache);
                 default:
                     throw new IllegalArgumentException(String.valueOf(marshallerData.kind));
             }
@@ -775,8 +777,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         private static final class DirectSnippets extends HotSpotToNativeMarshallerSnippets {
 
-            DirectSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache cache) {
-                super(processor, marshallerData, types, cache);
+            DirectSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache cache, BinaryNameCache binaryNameCache) {
+                super(processor, marshallerData, types, cache, binaryNameCache);
             }
 
             @Override
@@ -904,8 +906,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
             private final DefinitionData data;
 
-            ReferenceSnippets(NativeBridgeProcessor processor, DefinitionData data, MarshallerData marshallerData, Types types, TypeCache cache) {
-                super(processor, marshallerData, types, cache);
+            ReferenceSnippets(NativeBridgeProcessor processor, DefinitionData data, MarshallerData marshallerData, Types types, TypeCache cache, BinaryNameCache binaryNameCache) {
+                super(processor, marshallerData, types, cache, binaryNameCache);
                 this.data = data;
             }
 
@@ -1073,12 +1075,12 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             CharSequence preMarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName) {
                 if (resultType.getKind() == TypeKind.ARRAY) {
                     TypeMirror hsResultType = jniTypeForJavaType(getEndPointMethodParameterType(resultType), types, cache);
-                    currentBuilder.lineStart().write(hsResultType).space().write(HOTSPOT_RESULT_VARIABLE).lineEnd(";");
-                    currentBuilder.lineStart("if (").write(invocationSnippet).write(" != null) ").lineEnd("{");
-                    currentBuilder.indent();
                     TypeMirror componentType = ((ArrayType) resultType).getComponentType();
                     CharSequence hsArrayLength = new CodeBuilder(currentBuilder).memberSelect(invocationSnippet, "length", false).build();
                     if (marshallerData.sameDirection) {
+                        currentBuilder.lineStart().write(hsResultType).space().write(HOTSPOT_RESULT_VARIABLE).lineEnd(";");
+                        currentBuilder.lineStart("if (").write(invocationSnippet).write(" != null) ").lineEnd("{");
+                        currentBuilder.indent();
                         CharSequence hsResultHandlesVariable = HOTSPOT_RESULT_VARIABLE + "Handles";
                         currentBuilder.lineStart().write(types.getArrayType(types.getPrimitiveType(TypeKind.LONG))).space().write(hsResultHandlesVariable).write(" = ").newArray(
                                         types.getPrimitiveType(TypeKind.LONG), hsArrayLength).lineEnd(";");
@@ -1093,17 +1095,16 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                         currentBuilder.dedent();
                         currentBuilder.line("}");
                         currentBuilder.lineStart(HOTSPOT_RESULT_VARIABLE).write(" = ").invokeStatic(cache.jniUtil, "createHSArray", jniEnvFieldName, hsResultHandlesVariable).lineEnd(";");
+                        currentBuilder.dedent();
+                        currentBuilder.line("} else {");
+                        currentBuilder.indent();
+                        currentBuilder.lineStart(HOTSPOT_RESULT_VARIABLE).write(" = ").invokeStatic(cache.wordFactory, "nullPointer").lineEnd(";");
+                        currentBuilder.dedent();
+                        currentBuilder.line("}");
+                        return HOTSPOT_RESULT_VARIABLE;
                     } else {
-                        generateCopyHSObjectArrayToHotSpot(currentBuilder, componentType, HOTSPOT_RESULT_VARIABLE, true, invocationSnippet, null, hsArrayLength, jniEnvFieldName,
-                                        (arrayElement) -> marshallResult(currentBuilder, componentType, arrayElement, null, jniEnvFieldName));
+                        return marshallCopyHSObjectArrayToHotSpot(currentBuilder, componentType, invocationSnippet, null, hsArrayLength, jniEnvFieldName);
                     }
-                    currentBuilder.dedent();
-                    currentBuilder.line("} else {");
-                    currentBuilder.indent();
-                    currentBuilder.lineStart(HOTSPOT_RESULT_VARIABLE).write(" = ").invokeStatic(cache.wordFactory, "nullPointer").lineEnd(";");
-                    currentBuilder.dedent();
-                    currentBuilder.line("}");
-                    return HOTSPOT_RESULT_VARIABLE;
                 }
                 return null;
             }
@@ -1146,6 +1147,15 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                         currentBuilder.dedent();
                         currentBuilder.line("}");
                     } else {
+                        CharSequence arrayVariable = outArrayLocal(parameterName);
+                        parameterValueOverride.put(parameterName.toString(), arrayVariable);
+
+                        currentBuilder.lineStart().write(parameterType).space().write(arrayVariable).lineEnd(";");
+                        currentBuilder.lineStart().write("if (").invoke(parameterName, "isNonNull").lineEnd("){");
+                        currentBuilder.indent();
+                        boolean needsCopy = out == null || in != null; // Default direction modifier
+                                                                       // (`in`) or explicit `in`
+                                                                       // modifier.
                         CharSequence arrayLengthParameter = null;
                         CharSequence arrayOffsetParameter = null;
                         if (in != null) {
@@ -1156,20 +1166,21 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                             arrayOffsetParameter = getArrayOffsetParameterName(out);
                         }
                         if (arrayLengthParameter == null) {
-                            arrayLengthParameter = new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "GetArrayLength", jniEnvFieldName, parameterName).build();
+                            CharSequence getArrayLengthSnippet = new CodeBuilder(currentBuilder).invokeStatic(cache.jniUtil, "GetArrayLength", jniEnvFieldName, parameterName).build();
+                            if (needsCopy) {
+                                // Create a local variable to prevent an expensive GetArrayLength VM
+                                // call inside a loop
+                                arrayLengthParameter = parameterName + "Length";
+                                currentBuilder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(arrayLengthParameter).write(" = ").write(getArrayLengthSnippet).lineEnd(";");
+                            } else {
+                                arrayLengthParameter = getArrayLengthSnippet;
+                            }
                         }
                         if (arrayOffsetParameter != null) {
                             parameterValueOverride.put(arrayOffsetParameter.toString(), "0");
                         }
-                        CharSequence arrayVariable = outArrayLocal(parameterName);
-                        parameterValueOverride.put(parameterName.toString(), arrayVariable);
-
-                        currentBuilder.lineStart().write(parameterType).space().write(arrayVariable).lineEnd(";");
-                        currentBuilder.lineStart().write("if (").invoke(parameterName, "isNonNull").lineEnd("){");
-                        currentBuilder.indent();
                         currentBuilder.lineStart(arrayVariable).write(" = ").newArray(componentType, arrayLengthParameter).lineEnd(";");
-                        if (out == null || in != null) {
-                            // Default direction modifier (`in`) or explicit `in` modifier.
+                        if (needsCopy) {
                             generateCopyHotSpotToHSObjectArray(currentBuilder, arrayVariable, null, arrayLengthParameter, parameterName, arrayOffsetParameter, jniEnvFieldName,
                                             (element) -> unmarshallParameter(currentBuilder, componentType, element, null, jniEnvFieldName));
                         }
@@ -1229,11 +1240,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                             }
                             CharSequence arrayOffsetParameter = getArrayOffsetParameterName(out);
                             CharSequence arrayNullCheck = new CodeBuilder(currentBuilder).write(arrayVariable).write(" != null").build();
-                            if (trimToResult) {
-                                currentBuilder.lineStart("if (").write(arrayNullCheck).write(" && ").write(resultVariableName).lineEnd(" > 0) {");
-                            } else {
-                                currentBuilder.lineStart("if (").write(arrayNullCheck).lineEnd(") {");
-                            }
+                            currentBuilder.lineStart("if (").write(arrayNullCheck).lineEnd(") {");
                             currentBuilder.indent();
                             String arrayIndexVariable = outArrayLocal(parameterName) + "Index";
                             currentBuilder.lineStart().forLoop(
@@ -1273,8 +1280,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         private static final class RawReferenceSnippets extends HotSpotToNativeMarshallerSnippets {
 
-            RawReferenceSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache cache) {
-                super(processor, marshallerData, types, cache);
+            RawReferenceSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache cache, BinaryNameCache binaryNameCache) {
+                super(processor, marshallerData, types, cache, binaryNameCache);
             }
 
             @Override
@@ -1307,8 +1314,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         private static final class CustomSnippets extends HotSpotToNativeMarshallerSnippets {
 
-            CustomSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache cache) {
-                super(processor, marshallerData, types, cache);
+            CustomSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, TypeCache cache, BinaryNameCache binaryNameCache) {
+                super(processor, marshallerData, types, cache, binaryNameCache);
             }
 
             @Override
