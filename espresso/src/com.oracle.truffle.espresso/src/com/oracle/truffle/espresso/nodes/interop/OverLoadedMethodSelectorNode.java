@@ -38,49 +38,45 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
 
     static final int LIMIT = 2;
 
-    public abstract Method[] execute(Method[] candidates, Object[] arguments);
+    public abstract OverloadedMethodWithArgs[] execute(Method[] candidates, Object[] arguments);
 
-    @Specialization(guards = {"same(candidates, cachedCandidates)", "arguments.length == toEspressoNodes.length"}, limit = "LIMIT")
-    Method[] doCached(Method[] candidates,
+    @Specialization(guards = {"same(candidates, cachedCandidates)"}, limit = "LIMIT")
+    OverloadedMethodWithArgs[] doCached(Method[] candidates,
                     Object[] arguments,
                     @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
-                    @Cached(value = "createToEspresso(arguments.length)") ToEspressoNode[] toEspressoNodes) {
-        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNodes);
+                    @Cached ToEspressoNode toEspressoNode) {
+        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNode);
     }
 
     @Specialization(replaces = "doCached")
-    Method[] doGeneric(Method[] candidates, Object[] arguments) {
-        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), createToEspresso(arguments.length));
+    OverloadedMethodWithArgs[] doGeneric(Method[] candidates, Object[] arguments, @Cached ToEspressoNode toEspressoNode) {
+        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), toEspressoNode);
     }
 
-    private Method[] selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode[] toEspressoNodes) {
-        ArrayList<Method> fitByType = new ArrayList<>(candidates.length);
+    private OverloadedMethodWithArgs[] selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode toEspressoNode) {
+        ArrayList<OverloadedMethodWithArgs> fitByType = new ArrayList<>(candidates.length);
 
         for (int i = 0; i < candidates.length; i++) {
             Method candidate = candidates[i];
             Klass[] parameters = parameterKlasses[i];
             boolean canConvert = true;
+            Object[] convertedArgs = new Object[parameters.length];
             for (int j = 0; j < parameters.length; j++) {
                 // try converting the parameters, if no exception
                 // the candidate stands
                 try {
-                    toEspressoNodes[j].execute(arguments[j], parameters[j]);
+                    convertedArgs[i] = toEspressoNode.execute(arguments[j], parameters[j]);
                 } catch (UnsupportedTypeException e) {
                     canConvert = false;
                     break;
                 }
             }
             if (canConvert) {
-                fitByType.add(candidate);
+                fitByType.add(new OverloadedMethodWithArgs(candidate, convertedArgs));
             }
         }
-        return fitByType.toArray(new Method[fitByType.size()]);
-    }
-
-    @TruffleBoundary
-    static ToEspressoNode[] createToEspresso(int length) {
-        return InvokeEspressoNode.createToEspresso(length);
+        return fitByType.toArray(new OverloadedMethodWithArgs[fitByType.size()]);
     }
 
     static boolean same(Method[] methods, Method[] cachedMethods) {
@@ -90,7 +86,7 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         if (methods.length != cachedMethods.length) {
             return false;
         }
-        for (int i = 0; i < methods.length; i++) {
+        for (int i = 0; i < cachedMethods.length; i++) {
             if (methods[i] != cachedMethods[i]) {
                 return false;
             }
@@ -98,11 +94,30 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         return true;
     }
 
+    @TruffleBoundary
     static Klass[][] resolveParameterKlasses(Method[] methods) {
         Klass[][] resolved = new Klass[methods.length][];
         for (int i = 0; i < methods.length; i++) {
             resolved[i] = methods[i].resolveParameterKlasses();
         }
         return resolved;
+    }
+
+    public final class OverloadedMethodWithArgs {
+        private final Method method;
+        private final Object[] convertedArgs;
+
+        private OverloadedMethodWithArgs(Method method, Object[] convertedArgs) {
+            this.method = method;
+            this.convertedArgs = convertedArgs;
+        }
+
+        public Method getMethod() {
+            return method;
+        }
+
+        public Object[] getConvertedArgs() {
+            return convertedArgs;
+        }
     }
 }

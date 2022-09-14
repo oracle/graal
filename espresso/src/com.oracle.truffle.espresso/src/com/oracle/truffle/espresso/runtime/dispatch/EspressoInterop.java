@@ -984,10 +984,10 @@ public class EspressoInterop extends BaseInterop {
             } else {
                 // multiple overloaded methods found
                 // find method with type matches
-                Method[] typeMatched = selectorNode.execute(candidates, arguments);
+                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = selectorNode.execute(candidates, arguments);
                 if (typeMatched != null && typeMatched.length == 1) {
                     // single match found!
-                    return invoke.execute(typeMatched[0], receiver, arguments);
+                    return invoke.execute(typeMatched[0].getMethod(), receiver, typeMatched[0].getConvertedArgs(), true);
                 } else {
                     // We could try to de-disambiguate by selecting the most
                     // specific method overload if any.

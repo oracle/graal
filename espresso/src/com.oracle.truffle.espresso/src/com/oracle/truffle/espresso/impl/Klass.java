@@ -30,7 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -79,6 +78,7 @@ import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
+import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -232,9 +232,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
                 return invoke.execute(method, null, arguments);
             } else {
-                Method[] typeMatched = overloadSelector.execute(candidates, arguments);
+                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = overloadSelector.execute(candidates, arguments);
                 if (typeMatched != null && typeMatched.length == 1) {
-                    return invoke.execute(typeMatched[0], null, arguments);
+                    return invoke.execute(typeMatched[0].getMethod(), null, typeMatched[0].getConvertedArgs(), true);
                 }
             }
         }
@@ -408,9 +408,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     invoke.execute(initMethod, newObject, arguments);
                     return newObject;
                 } else {
-                    Method[] typeMatched = overloadSelector.execute(initCandidates, arguments);
+                    OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = overloadSelector.execute(initCandidates, arguments);
                     if (typeMatched != null && typeMatched.length == 1) {
-                        return invoke.execute(typeMatched[0], null, arguments);
+                        return invoke.execute(typeMatched[0].getMethod(), null, typeMatched[0].getConvertedArgs(), true);
                     }
                 }
             }
