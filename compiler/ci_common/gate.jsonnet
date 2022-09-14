@@ -187,7 +187,10 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
-    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-17-linux-amd64": {},
+    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-17-linux-amd64": {
+      notify_groups: [],
+      notify_emails: ["gergo.barany@oracle.com"],
+    },
 
     "weekly-compiler-test-labsjdk-11-windows-amd64": t("55:00"),
     "weekly-compiler-test-labsjdk-11-darwin-amd64": {},
@@ -197,7 +200,10 @@
     "weekly-compiler-test_avx0-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_avx1-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_javabase-labsjdk-17-linux-amd64": {},
-    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-17-linux-amd64": {},
+    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-17-linux-amd64": {
+      notify_groups: [],
+      notify_emails: ["gergo.barany@oracle.com"],
+    },
     "weekly-compiler-benchmarktest-labsjdk-17Debug-linux-amd64": {},
 
     "weekly-compiler-coverage*": {},
