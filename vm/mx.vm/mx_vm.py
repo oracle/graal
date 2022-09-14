@@ -178,10 +178,15 @@ ce_fastr_components = ce_components + llvm_components + ['R', 'bRMain', 'llrn', 
 ce_no_native_components = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm', 'libpoly', 'poly']
 
 mx_sdk_vm.register_vm_config('ce', ['insight', 'insightheap', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm'], _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('ce', ['insight', 'insightheap', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm'], _suite, env_file='ce-win-19')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-aarch64')
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-aarch64-19')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin')
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin-19')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin-aarch64')
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin-aarch64-19')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-19')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['js'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['js', 'njs', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['llrn', 'llp', 'llrc', 'llrl'], _suite, env_file='ce-llvm')
