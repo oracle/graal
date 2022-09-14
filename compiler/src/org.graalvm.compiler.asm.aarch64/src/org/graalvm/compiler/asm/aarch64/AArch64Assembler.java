@@ -182,9 +182,8 @@ import jdk.vm.ci.code.TargetDescription;
  * Manual version G-a. The latest copy of the manual can be found
  * <a href="https://developer.arm.com/documentation/ddi0487/latest">here</a>.
  */
-public abstract class AArch64Assembler extends Assembler {
+public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
-    private final EnumSet<CPUFeature> features;
     private final EnumSet<Flag> flags;
 
     public static class LogicalBitmaskImmediateEncoding {
@@ -1203,13 +1202,8 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     public AArch64Assembler(TargetDescription target) {
-        super(target);
-        this.features = ((AArch64) target.arch).getFeatures().clone();
+        super(target, ((AArch64) target.arch).getFeatures().clone());
         this.flags = ((AArch64) target.arch).getFlags();
-    }
-
-    public final EnumSet<CPUFeature> getFeatures() {
-        return features;
     }
 
     public final EnumSet<Flag> getFlags() {

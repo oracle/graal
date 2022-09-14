@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
-
-import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Replacements;
@@ -37,6 +34,8 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -47,8 +46,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link SubstitutionProcessor#chainUpInOrder(SubstitutionProcessor...) chain} of them.
  */
 public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
-    private static final Class<?>[] FILTER_ANNOTATIONS = {NodeIntrinsic.class, Operation.class, CConstant.class};
-
     private final SubstitutionProcessor processor;
     private final Replacements replacements;
 
@@ -67,13 +64,10 @@ public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
             assert !(method instanceof WrappedJavaMethod) : "Must not see AnalysisMethod or HostedMethod here";
             return method;
         }
-        for (Annotation annotation : method.getAnnotations()) {
-            for (Class<?> c : FILTER_ANNOTATIONS) {
-                if (annotation.annotationType() == c) {
-                    return method;
-                }
-            }
-            assert annotation.annotationType() != CFunction.class : "CFunction must have been handled by another SubstitutionProcessor";
+        assert !GuardedAnnotationAccess.isAnnotationPresent(method, CFunction.class) : "CFunction must have been handled by another SubstitutionProcessor";
+        if (GuardedAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || GuardedAnnotationAccess.isAnnotationPresent(method, Operation.class) ||
+                        GuardedAnnotationAccess.isAnnotationPresent(method, CConstant.class)) {
+            return method;
         }
         boolean isHandledByPlugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, HostedOptionValues.singleton()) != null;
         if (isHandledByPlugin) {

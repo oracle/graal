@@ -206,6 +206,11 @@ public interface DebugInfoProvider {
 
     public interface DebugMethodInfo extends DebugMemberInfo {
         /**
+         * @return the line number for the outer or inlined segment.
+         */
+        int line();
+
+        /**
          * @return an array of DebugLocalInfo objects holding details of this method's parameters
          */
         DebugLocalInfo[] getParamInfo();
@@ -282,12 +287,6 @@ public interface DebugInfoProvider {
          *         reported at this line represented as an offset into the code segment.
          */
         int addressHi();
-
-        /**
-         * @return the line number for the outer or inlined segment.
-         */
-        int line();
-
     }
 
     /**

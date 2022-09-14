@@ -58,16 +58,17 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 5272,
-          lineEnd   = 5439,
-          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
-          sha1      = "dde6c3a58860fe4182bb03861710e6ed5b55cb51")
+          lineStart = 5274,
+          lineEnd   = 5470,
+          commit    = "0c6094e79602fe85a88e3131710bb39813364ad2",
+          sha1      = "e14f719ca43804ed529ee5e2f3ad245d4ca1af9a")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_aes.cpp",
           lineStart = 490,
           lineEnd   = 780,
@@ -165,6 +166,11 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        assert stateValue.getPlatformKind().equals(AMD64Kind.QWORD) : stateValue;
+        assert htblValue.getPlatformKind().equals(AMD64Kind.QWORD) : htblValue;
+        assert originalDataValue.getPlatformKind().equals(AMD64Kind.QWORD) : originalDataValue;
+        assert originalBlocksValue.getPlatformKind().equals(AMD64Kind.DWORD) : originalBlocksValue;
+
         if (masm.supports(AMD64.CPUFeature.AVX)) {
             Label labelBeginProcess = new Label();
             Label labelBlock8Reduction = new Label();
@@ -183,7 +189,7 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
             Register blocks = asRegister(blocksValue);
 
             masm.movq(inputData, originalData);
-            masm.movq(blocks, originalBlocks);
+            masm.movl(blocks, originalBlocks);
 
             // temporary variables to hold input data and input state
             Register data = xmm1;
@@ -197,7 +203,7 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
             Register bswapMask = xmm2;
             Register lswapMask = xmm14;
 
-            masm.testqAndJcc(blocks, blocks, ConditionFlag.Zero, labelExitGHASH, false);
+            masm.testlAndJcc(blocks, blocks, ConditionFlag.Zero, labelExitGHASH, false);
 
             // Check if Hashtable (1*16) has been already generated
             // For anything less than 8 blocks, we generate only the first power of H.
@@ -345,7 +351,7 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
             Register blocks = asRegister(blocksValue);
 
             masm.movq(data, originalData);
-            masm.movq(blocks, originalBlocks);
+            masm.movl(blocks, originalBlocks);
 
             Register xmmTemp0 = xmm0;
             Register xmmTemp1 = xmm1;
@@ -445,7 +451,7 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
             masm.pxor(xmmTemp3, xmmTemp2);
             masm.pxor(xmmTemp6, xmmTemp3);      // the result is in xmm6
 
-            masm.decqAndJcc(blocks, AMD64Assembler.ConditionFlag.Zero, labelExit, false);
+            masm.declAndJcc(blocks, AMD64Assembler.ConditionFlag.Zero, labelExit, false);
             masm.movdqu(xmmTemp0, xmmTemp6);
             masm.addq(data, 16);
             masm.jmp(labelGHASHLoop);

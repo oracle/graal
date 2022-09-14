@@ -150,12 +150,12 @@ suite = {
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
       "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
-      "sha1" : "5aa80db98a1d040dc1917a063bf059326e2afad7",
-      "sourceSha1" : "40a51050dfe481a7542f9eb7b1d8fb484a1eb2c1",
+      "sha1" : "455ce1a77540b37fa59b8d2920de4cb54fe4d896",
+      "sourceSha1" : "383f3f85e50145605c0585ffb10da480513054df",
       "maven" : {
         "groupId" : "org.graalvm.visualvm.modules",
         "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
-        "version" : "2.1.3",
+        "version" : "2.1.4",
       },
     },
 

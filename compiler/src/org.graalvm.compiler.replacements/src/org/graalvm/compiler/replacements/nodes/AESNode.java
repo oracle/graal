@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
+
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -40,6 +43,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -99,9 +103,17 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
         return KILLED_LOCATIONS;
     }
 
+    public static EnumSet<?> minFeaturesAMD64() {
+        return EnumSet.of(AVX, AES);
+    }
+
+    public static EnumSet<?> minFeaturesAARCH64() {
+        return EnumSet.of(AArch64.CPUFeature.AES);
+    }
+
     @NodeIntrinsic
-    @GenerateStub(name = "aesEncrypt", parameters = {"ENCRYPT"})
-    @GenerateStub(name = "aesDecrypt", parameters = {"DECRYPT"})
+    @GenerateStub(name = "aesEncrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", parameters = {"ENCRYPT"})
+    @GenerateStub(name = "aesDecrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", parameters = {"DECRYPT"})
     public static native void apply(Pointer from,
                     Pointer to,
                     Pointer key,

@@ -142,16 +142,10 @@ public final class PropertyImpl extends Property {
         }
     }
 
-    private static boolean verifyShapeParameters(DynamicObject store, Shape oldShape, Shape newShape) {
-        assert store.getShape() == oldShape : "wrong shape";
-        assert newShape.isValid() : "invalid shape";
-        return true;
-    }
-
     /** @since 0.17 or earlier */
     @Override
     public void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        assert verifyShapeParameters(store, oldShape, newShape);
+        assert verifyShapeParameter(store, oldShape);
         try {
             ((LocationImpl) getLocation()).set(store, value, oldShape, newShape);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {

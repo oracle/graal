@@ -49,7 +49,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       // for compatibility with macOS High Sierra
       MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
-    capabilities+: ['darwin_mojave'],
+    capabilities+: ['darwin_mojave', 'ram32gb'],
   },
 
   windows: self.common + graal_common.windows_amd64 + {

@@ -32,13 +32,20 @@ package com.oracle.objectfile.debugentry;
  */
 public abstract class MemberEntry {
     protected FileEntry fileEntry;
+    protected int line;
     protected final String memberName;
     protected final StructureTypeEntry ownerType;
     protected final TypeEntry valueType;
     protected final int modifiers;
 
     public MemberEntry(FileEntry fileEntry, String memberName, StructureTypeEntry ownerType, TypeEntry valueType, int modifiers) {
+        this(fileEntry, 0, memberName, ownerType, valueType, modifiers);
+    }
+
+    public MemberEntry(FileEntry fileEntry, int line, String memberName, StructureTypeEntry ownerType, TypeEntry valueType, int modifiers) {
+        assert line >= 0;
         this.fileEntry = fileEntry;
+        this.line = line;
         this.memberName = memberName;
         this.ownerType = ownerType;
         this.valueType = valueType;
@@ -75,8 +82,8 @@ public abstract class MemberEntry {
         return fileEntry;
     }
 
-    public String fieldName() {
-        return memberName;
+    public int getLine() {
+        return line;
     }
 
     public StructureTypeEntry ownerType() {

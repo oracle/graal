@@ -42,18 +42,16 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
     private final int targetSlotIndex;
 
-    private final boolean staticAccess;
-    private final boolean primitiveAccess;
+    private final byte accessMode;
 
-    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, boolean staticAccess, boolean primitiveAccess) {
+    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, byte accessMode) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type);
         this.targetSlotIndex = targetSlotIndex;
-        this.staticAccess = staticAccess;
-        this.primitiveAccess = primitiveAccess;
+        this.accessMode = accessMode;
     }
 
     public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, targetSlotIndex, type, false, false);
+        this(frame, frameSlotIndex, targetSlotIndex, type, VirtualFrameAccessFlags.NON_STATIC);
     }
 
     @Override
@@ -70,14 +68,10 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectVirtual.entryCount() && frameSlotIndex < primitiveVirtual.entryCount()) {
                 if (targetSlotIndex < tagVirtual.entryCount() && targetSlotIndex < objectVirtual.entryCount() && targetSlotIndex < primitiveVirtual.entryCount()) {
                     tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
-                    if (staticAccess) {
-                        if (primitiveAccess) {
-                            tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
-                        } else {
-                            tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
-                        }
-                    } else {
+                    if ((accessMode & VirtualFrameAccessFlags.OBJECT_FLAG) != 0) {
                         tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
+                    }
+                    if ((accessMode & VirtualFrameAccessFlags.PRIMITIVE_FLAG) != 0) {
                         tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                     }
                     tool.delete();

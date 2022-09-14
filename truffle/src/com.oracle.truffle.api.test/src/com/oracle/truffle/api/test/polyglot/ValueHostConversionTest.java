@@ -76,6 +76,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -191,6 +192,28 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     @Test
     public void testBasicExamplesLambda() {
         assertEquals(42, context.asValue(new FortyTwoSuplier()).execute().asInt());
+    }
+
+    public interface SupplierExtension extends Supplier<Integer> {
+        @Override
+        Integer get();
+    }
+
+    private class SuplierExtensionImpl implements SupplierExtension {
+        @Override
+        public Integer get() {
+            return 42;
+        }
+    }
+
+    @Test
+    public void testSpecificJniNameCall() {
+        assertEquals(42, context.asValue(new SuplierExtensionImpl()).invokeMember("get__Ljava_lang_Integer_2").asInt());
+    }
+
+    @Test
+    public void testSpecificJniNameCallSuper() {
+        assertEquals(42, context.asValue(new SuplierExtensionImpl()).invokeMember("get__Ljava_lang_Object_2").asInt());
     }
 
     public static class JavaRecord {
@@ -1221,6 +1244,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     // Methods annotated with @CallerSensitive use reflection, even on JVM, so we test that case.
     @Test
     public void testExceptionFramesCallerSensitive() throws NoSuchFieldException {
+        Assume.assumeTrue("GR-40767", Runtime.version().feature() < 19);
         // We cannot easily mark a method as @CallerSensitive (the annotation moved between JDK 8
         // and 9), so we use an existing method marked as @CallerSensitive, Field#get().
         Field field = TestExceptionFramesCallerSensitive.class.getField("testField");
@@ -1230,7 +1254,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
             Assert.fail();
         } catch (PolyglotException e) {
             assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof IllegalArgumentException);
+            assertTrue(String.valueOf(e.asHostException()), e.asHostException() instanceof IllegalArgumentException);
             Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
             StackFrame frame = frameIterator.next();
             while (!(frame.toHostFrame().getMethodName().equals("get") &&

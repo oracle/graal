@@ -225,6 +225,11 @@ public class CompilationResult {
     private int totalFrameSize = -1;
     private int maxInterpreterFrameSize = -1;
 
+    /**
+     * The minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    private int minDataSectionItemAlignment = 1;
+
     private StackSlot customStackArea = null;
 
     /**
@@ -454,6 +459,14 @@ public class CompilationResult {
     public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
         checkOpen();
         this.maxInterpreterFrameSize = maxInterpreterFrameSize;
+    }
+
+    /**
+     * Sets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    public void setMinDataSectionItemAlignment(int alignment) {
+        checkOpen();
+        this.minDataSectionItemAlignment = alignment;
     }
 
     /**
@@ -837,7 +850,7 @@ public class CompilationResult {
         if (closed) {
             throw new IllegalStateException("Cannot re-close compilation result " + this);
         }
-        dataSection.close(options);
+        dataSection.close(options, minDataSectionItemAlignment);
         closed = true;
     }
 }

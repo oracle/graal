@@ -59,6 +59,7 @@ import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
@@ -116,6 +117,10 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        assert fromValue.getPlatformKind().equals(AArch64Kind.QWORD) : fromValue;
+        assert toValue.getPlatformKind().equals(AArch64Kind.QWORD) : toValue;
+        assert keyValue.getPlatformKind().equals(AArch64Kind.QWORD) : keyValue;
+
         Register from = asRegister(fromValue); // source array address
         Register to = asRegister(toValue);     // destination array address
         Register key = asRegister(keyValue);   // key array address

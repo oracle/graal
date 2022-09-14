@@ -114,3 +114,24 @@ any `LLVMNode`. The follow steps configure this in Eclipse:
    1. Set the qualified type name to `com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode`
    2. Set the snippet to
       `com.oracle.truffle.llvm.runtime.LLVMNodeUtils.stackTraceAndAST(this)`
+
+## Debugging Utilities
+
+The class `LLVMDebugPointer` contains functions that may be useful while
+debugging an application. For example, given the pointer `char ** myPtr`, the
+code snippet `LLVMDebugPointer.of(myPtr).deref().readHex(18)` can be used to
+return the bytes `myPtr[0][0]` to `myPtr[0][17]`, such as:
+
+```
+00000000  4e 75 6c 6c 21 00 00 00 01 00 00 00 00 00 00 00  Null!...........
+00000010  00 00                                            ..
+```
+
+The class contains the following functions:
+
+* `readI8/.../readI64` to read the integer value at the pointer address
+* `readHex(n)` returns the hex output of the `n` bytes at the pointer address
+* `readAsciiString` returns the null-terminated string at the pointer address
+* `deref` debug the pointer at the pointer address
+* `asHex` format the pointer address as a hex value
+* `increment(n)` shift the pointer by `n` bytes

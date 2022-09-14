@@ -54,6 +54,33 @@
         ]
     },
     {
+        "name": "graalvm-ce-java19",
+        "core": true,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
         "name": "js-standalone-svm-java11",
         "core": true,
         "jdk": "jdk_11",
@@ -189,6 +216,29 @@
         ]
     },
     {
+        "name": "llvm-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            }
+        ]
+    },
+    {
         "name": "llvm-toolchain-installable-java11",
         "core": false,
         "jdk": "jdk_11",
@@ -215,6 +265,29 @@
         "name": "llvm-toolchain-installable-java17",
         "core": false,
         "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            }
+        ]
+    },
+    {
+        "name": "llvm-toolchain-installable-java19",
+        "core": false,
+        "jdk": "jdk_19",
         "artifacts": [
             {
                 "os": "linux",
@@ -289,6 +362,33 @@
         ]
     },
     {
+        "name": "native-image-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
         "name": "python-installable-svm-java11",
         "core": false,
         "jdk": "jdk_11",
@@ -335,6 +435,29 @@
         ]
     },
     {
+        "name": "python-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            }
+        ]
+    },
+    {
         "name": "r-installable-java11",
         "core": false,
         "jdk": "jdk_11",
@@ -353,6 +476,21 @@
         "name": "r-installable-java17",
         "core": false,
         "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "r-installable-java19",
+        "core": false,
+        "jdk": "jdk_19",
         "artifacts": [
             {
                 "os": "linux",
@@ -411,6 +549,29 @@
         ]
     },
     {
+        "name": "ruby-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            }
+        ]
+    },
+    {
         "name": "wasm-installable-svm-java11",
         "core": false,
         "jdk": "jdk_11",
@@ -437,6 +598,29 @@
         "name": "wasm-installable-svm-java17",
         "core": false,
         "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "wasm-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
         "artifacts": [
             {
                 "os": "linux",
@@ -595,6 +779,33 @@
         ]
     },
     {
+        "name": "nodejs-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
         "name": "js-installable-svm-java11",
         "core": false,
         "jdk": "jdk_11",
@@ -649,6 +860,33 @@
         ]
     },
     {
+        "name": "js-installable-svm-java19",
+        "core": false,
+        "jdk": "jdk_19",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
         "name": "visualvm-installable-ce-java11",
         "core": false,
         "jdk": "jdk_11",
@@ -679,6 +917,33 @@
         "name": "visualvm-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "visualvm-installable-ce-java19",
+        "core": false,
+        "jdk": "jdk_19",
         "artifacts": [
             {
                 "os": "linux",

@@ -2,8 +2,9 @@ name: GraalVM Gate
 
 on:
   push:
-    branches-ignore:
-      - 'github/**'
+    branches:
+      - 'master'
+      - 'release/**'
     paths-ignore:
       - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
