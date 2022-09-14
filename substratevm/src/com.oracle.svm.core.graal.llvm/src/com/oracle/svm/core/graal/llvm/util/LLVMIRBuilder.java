@@ -32,9 +32,12 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMDIBuilderRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMetadataRef;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
@@ -54,6 +57,9 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.ValueNode;
 
 public class LLVMIRBuilder implements AutoCloseable {
     private static final String DEFAULT_INSTR_NAME = "";
@@ -62,7 +68,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     private LLVMBuilderRef builder;
     private LLVMModuleRef module;
     private LLVMValueRef function;
-
+    public LLVMDIBuilderRef diBuilder;
+    // Maps filenames to a compile unit
+    public HashMap<String, LLVMMetadataRef> diFilenameToCU;
+    // Maps function names to a LLVM SubPrograms
+    public  HashMap<String, LLVMMetadataRef> diFunctionToSP;
     private final boolean primary;
     private final LLVMHelperFunctions helpers;
 
@@ -70,6 +80,15 @@ public class LLVMIRBuilder implements AutoCloseable {
         this.context = LLVM.LLVMContextCreate();
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
         this.module = LLVM.LLVMModuleCreateWithNameInContext(name, context);
+        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+            String dbgInfoFlagName = "Debug Info Version";
+            LLVMValueRef dbgInfoVal = LLVM.LLVMConstInt(LLVM.LLVMInt32TypeInContext(context), LLVM.LLVMDebugMetadataVersion(), 0);
+            LLVM.LLVMAddModuleFlag(this.module, LLVM.LLVMModuleFlagBehaviorWarning, dbgInfoFlagName,
+                    dbgInfoFlagName.length(), LLVM.LLVMValueAsMetadata(dbgInfoVal));
+            this.diBuilder = LLVM.LLVMCreateDIBuilder(this.module);
+            diFilenameToCU = new HashMap<String, LLVMMetadataRef>();
+            diFunctionToSP = new HashMap<String, LLVMMetadataRef>();
+        }
         this.primary = true;
         this.helpers = new LLVMHelperFunctions(this);
     }
@@ -78,6 +97,11 @@ public class LLVMIRBuilder implements AutoCloseable {
         this.context = primary.context;
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
         this.module = primary.module;
+        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+            this.diBuilder = LLVM.LLVMCreateDIBuilder(this.module);
+            diFilenameToCU = new HashMap<String, LLVMMetadataRef>();
+            diFunctionToSP = new HashMap<String, LLVMMetadataRef>();
+        }
         this.function = null;
         this.primary = false;
         this.helpers = null;
@@ -113,6 +137,12 @@ public class LLVMIRBuilder implements AutoCloseable {
     public void close() {
         LLVM.LLVMDisposeBuilder(builder);
         builder = null;
+        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+            LLVM.LLVMDIBuilderFinalize(diBuilder);
+            diFilenameToCU.clear();
+            diFunctionToSP.clear();
+            diBuilder = null;
+        }
         if (primary) {
             LLVM.LLVMDisposeModule(module);
             module = null;
@@ -797,6 +827,89 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public void buildDebugtrap() {
         buildIntrinsicCall("llvm.debugtrap", functionType(voidType()));
+    }
+
+    private LLVMMetadataRef getCompileUnit(String filename, LLVMMetadataRef diFile) {
+        final String producer = "Graal Compiler";
+        LLVMMetadataRef compileUnit;
+        if (diFilenameToCU.containsKey(filename)) {
+            compileUnit = diFilenameToCU.get(filename);
+        } else {
+            compileUnit = LLVM.LLVMDIBuilderCreateCompileUnit(diBuilder, LLVM.LLVMDWARFSourceLanguageJava, diFile, producer, producer.length(),
+                    0, "", 0, 0, "", 0, LLVM.LLVMDWARFEmissionFull,
+                    0, 1, 1, "", 0, "", 0);
+
+
+            diFilenameToCU.put(filename, compileUnit);
+
+        }
+        return compileUnit;
+    }
+
+    private LLVMMetadataRef getSubProgram(String filename, String funcName, LLVMMetadataRef diFile) {
+        // Key to map a function to its LLVM Sub Program
+        String key = filename + ":" + funcName;
+        LLVMMetadataRef subProgram;
+        if (diFunctionToSP.containsKey(key)) {
+            subProgram = diFunctionToSP.get(key);
+        } else {
+            //TODO: Create the correct function type, currently all functions are treated as "void" (DWARF type float: 0x4) return types with no paramenters
+            String typeName = "void";
+            LLVMMetadataRef[] paramType = {LLVM.LLVMDIBuilderCreateBasicType(diBuilder, typeName,
+                    typeName.length(), 32, 4, 0)};
+            PointerPointer<LLVMMetadataRef> paramTypeP = new PointerPointer<LLVMMetadataRef>(paramType);
+
+            LLVMMetadataRef spType = LLVM.LLVMDIBuilderCreateSubroutineType(diBuilder,
+                    diFile, paramTypeP, 1, 0);
+            //TODO: Get the function and scope line num if possible
+            subProgram = LLVM.LLVMDIBuilderCreateFunction(
+                    diBuilder, diFile, funcName, funcName.length(), funcName, funcName.length(),
+                    diFile, 0, // Func Line
+                    spType, 0, 1,
+                    0, // Scope Line
+                    0, 0);
+            diFunctionToSP.put(key, subProgram);
+        }
+        return subProgram;
+    }
+
+    public void buildDebugInfoForInstr(ValueNode node, LLVMValueRef instr) {
+        /* If the LLVMValueRef is of the type of instruction, function or basic block, then add source location information
+        to this reference if the `node` contains it
+         */
+        if ((LLVM.LLVMGetValueKind(instr) == LLVM.LLVMInstructionValueKind) ||
+                (LLVM.LLVMGetValueKind(instr) == LLVM.LLVMBasicBlockValueKind)
+                || (LLVM.LLVMGetValueKind(instr) == LLVM.LLVMFunctionValueKind)) {
+            if (node.getNodeSourcePosition() != null) {
+                NodeSourcePosition position = node.getNodeSourcePosition();
+                DebugContext debugContext = node.getDebug();
+                LLVMDebugLineInfo dbgLineInfo = new LLVMDebugLineInfo(debugContext, position);
+                int lineNum = dbgLineInfo.line();
+                dbgLineInfo.computeFullFilePath();
+                String filename = dbgLineInfo.fileName();
+
+                if (filename != null) {
+                    String directory = String.valueOf(dbgLineInfo.filePath());
+                    String funcName = dbgLineInfo.methodName();
+                    /* To add debug location information in the LLVM IR:
+                    1. A compile unit needs to be created which acts as a unit of translation, usually a compile unit is
+                    associated with a file
+                    2. Scope needs to be attached to each DILocation metadata. Here, a subProgram corresponding to the function
+                    is used to satisfy this scope requirement
+                    3. The DILocation is created and set to the instruction reference
+                    Source: https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl09.html and
+                    https://llvm.org/docs/SourceLevelDebugging.html
+                     */
+                    LLVMMetadataRef diFile = LLVM.LLVMDIBuilderCreateFile(diBuilder, filename, filename.length(), directory, directory.length());
+                    getCompileUnit(filename, diFile);
+                    LLVMMetadataRef subProgram = getSubProgram(filename, funcName, diFile);
+
+                    LLVMMetadataRef diLocation = LLVM.LLVMDIBuilderCreateDebugLocation(context, lineNum, 0, subProgram, null);
+                    LLVM.LLVMSetCurrentDebugLocation2(builder, diLocation);
+                    LLVM.LLVMSetInstDebugLocation(builder, instr);
+                }
+            }
+        }
     }
 
     public LLVMValueRef functionEntryCount(LLVMValueRef count) {

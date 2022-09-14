@@ -49,5 +49,8 @@ public class LLVMOptions {
     @Option(help = "Enable LLVM bitcode optimizations")//
     public static final HostedOptionKey<Boolean> BitcodeOptimizations = new HostedOptionKey<>(false);
 
+    @Option(help = "Include source code level debug info in the output LLVM IR", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> IncludeLLVMSourceDebugInfo = new HostedOptionKey<>(false);
+
     public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMMaxFunctionsPerBatch, CustomLD, BitcodeOptimizations);
 }

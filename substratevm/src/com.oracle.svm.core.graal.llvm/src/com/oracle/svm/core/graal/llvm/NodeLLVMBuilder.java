@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -796,6 +797,12 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                         "value type doesn't match node stamp (" + node.stamp(NodeView.DEFAULT).toString() + ")", llvmOperand.get());
 
         gen.getDebugInfoPrinter().setValueName(llvmOperand, node);
+        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+            if (llvmOperand.get() instanceof LLVMValueRef) {
+                LLVMValueRef instr = llvmOperand.get();
+                builder.buildDebugInfoForInstr(node, instr);
+            }
+        }
         valueMap.put(node, llvmOperand);
         return operand;
     }
