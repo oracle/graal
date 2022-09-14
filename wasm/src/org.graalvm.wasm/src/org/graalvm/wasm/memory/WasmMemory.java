@@ -40,7 +40,8 @@
  */
 package org.graalvm.wasm.memory;
 
-import static java.lang.Integer.compareUnsigned;
+import static java.lang.Long.compareUnsigned;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 
@@ -78,17 +79,17 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     /**
      * @see #declaredMinSize()
      */
-    protected final int declaredMinSize;
+    protected final long declaredMinSize;
 
     /**
      * @see #declaredMaxSize()
      */
-    protected final int declaredMaxSize;
+    protected final long declaredMaxSize;
 
     /**
      * @see #minSize()
      */
-    protected int currentMinSize;
+    protected long currentMinSize;
 
     /**
      * The maximum practical size of this memory instance (measured in number of
@@ -100,33 +101,36 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from {@link #declaredMaxSize()}, which can be higher.
      */
-    protected final int maxAllowedSize;
+    protected final long maxAllowedSize;
 
     /**
      * Optional grow callback to notify the embedder .
      */
     private Object growCallback;
 
-    protected WasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+    protected final boolean is64Bit;
+
+    protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean is64Bit) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
-        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert is64Bit || compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
+        assert is64Bit || compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert !is64Bit || compareUnsigned(maxAllowedSize, MAX_MEMORY_64_INSTANCE_SIZE) <= 0;
+        assert !is64Bit || compareUnsigned(declaredMaxSize, MAX_MEMORY_64_INSTANCE_SIZE) <= 0;
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
         this.currentMinSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
+        this.is64Bit = is64Bit;
     }
-
-    public abstract void copy(Node node, int src, int dst, int n);
 
     /**
      * The current size of this memory instance (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
      * pages}).
      */
-    public abstract int size();
+    public abstract long size();
 
     /**
      * The current size of this memory instance (measured in bytes).
@@ -139,7 +143,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from the current minimum size, which can be larger.
      */
-    public final int declaredMinSize() {
+    public final long declaredMinSize() {
         return declaredMinSize;
     }
 
@@ -152,22 +156,26 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from the internal maximum allowed size, which can be lower.
      */
-    public final int declaredMaxSize() {
+    public final long declaredMaxSize() {
         return declaredMaxSize;
     }
 
     /**
      * The current minimum size of the memory (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
-     * pages}). The size can change based on calls to {@link #grow(int)}.
+     * pages}). The size can change based on calls to {@link #grow(long)}.
      * <p>
      * This is a lower bound on this memory's size. This memory can only be imported with a lower or
      * equal minimum size.
      */
-    public final int minSize() {
+    public final long minSize() {
         return currentMinSize;
     }
 
-    public abstract boolean grow(int extraPageSize);
+    public final boolean isIs64Bit() {
+        return is64Bit;
+    }
+
+    public abstract boolean grow(long extraPageSize);
 
     /**
      * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
@@ -230,32 +238,32 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     /**
      * Initializes the content of the memory based on the given data instance.
-     * 
+     *
      * @param dataInstance The source data instance that should be copied to the memory
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
      */
-    public abstract void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length);
+    public abstract void initialize(byte[] dataInstance, int sourceOffset, long destinationOffset, int length);
 
     /**
      * Fills the memory with the given value.
-     * 
+     *
      * @param offset The offset in the memory
      * @param length The number of bytes that should be filled
      * @param value The value that should be used for filling the memory
      */
-    public abstract void fill(int offset, int length, byte value);
+    public abstract void fill(long offset, long length, byte value);
 
     /**
      * Copies data from another memory into this memory.
-     * 
+     *
      * @param source The source memory
      * @param sourceOffset The offset in the source memory
      * @param destinationOffset The offset in this memory
      * @param length The number of bytes that should be copied
      */
-    public abstract void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length);
+    public abstract void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length);
 
     @TruffleBoundary
     protected final WasmException trapOutOfBounds(Node node, long address, int length) {

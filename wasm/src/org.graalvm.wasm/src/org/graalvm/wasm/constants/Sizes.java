@@ -44,10 +44,17 @@ package org.graalvm.wasm.constants;
 public final class Sizes {
     public static final int MAX_TABLE_DECLARATION_SIZE = 0xffff_ffff;
     public static final int MAX_MEMORY_DECLARATION_SIZE = 65536;
+
+    public static final long MAX_MEMORY_64_DECLARED_SIZE = 281474976710656L;
     public static final int MEMORY_PAGE_SIZE = 65536;
 
     public static final int MAX_TABLE_INSTANCE_SIZE = Integer.MAX_VALUE;
     public static final int MAX_MEMORY_INSTANCE_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
+
+    // 64 TB
+    public static final long MAX_MEMORY_64_INSTANCE_BYTE_SIZE = 0x3a3529440000L;
+
+    public static final long MAX_MEMORY_64_INSTANCE_SIZE = MAX_MEMORY_64_INSTANCE_BYTE_SIZE / MEMORY_PAGE_SIZE;
 
     private Sizes() {
     }

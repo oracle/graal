@@ -183,6 +183,33 @@ public abstract class BinaryStreamParser {
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
+    public static long peekUnsignedInt64(byte[] data, int initialOffset, boolean checkValid) {
+        long result = 0;
+        int shift = 0;
+        int currentOffset = initialOffset;
+        byte b = (byte) 0x80;
+        while ((b & 0x80) != 0 && shift != 77) {
+            b = peek1(data, currentOffset);
+            result |= ((b & 0x7FL) << shift);
+            shift += 7;
+            currentOffset++;
+        }
+
+        if (checkValid) {
+            if (shift == 77) {
+                throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
+            } else if (shift == 70 && (b & 0b0111_1110) != 0) {
+                throw WasmException.create(Failure.INTEGER_TOO_LARGE);
+            }
+        }
+
+        if (shift != 70 && (b & 0x40) != 0) {
+            return result | (~0L << shift);
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long peekSignedInt64(byte[] data, int initialOffset, boolean checkValid) {
         long result = 0;
         int shift = 0;

@@ -40,19 +40,14 @@
  */
 package org.graalvm.wasm.memory;
 
-import static java.lang.Integer.compareUnsigned;
+import static java.lang.Long.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
-import com.oracle.truffle.api.Assumption;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
@@ -60,28 +55,22 @@ import com.oracle.truffle.api.nodes.Node;
 public final class ByteArrayWasmMemory extends WasmMemory {
     private final WasmByteArrayBuffer byteArrayBuffer;
 
-    private ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
-        this.byteArrayBuffer = new WasmByteArrayBuffer();
+    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean is64Bit) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, is64Bit);
+        if (declaredMaxSize * MEMORY_PAGE_SIZE > MAX_MEMORY_INSTANCE_SIZE) {
+            this.byteArrayBuffer = new WasmMultiByteArrayBuffer();
+        } else {
+            this.byteArrayBuffer = new WasmSingleByteArrayBuffer();
+        }
         this.byteArrayBuffer.allocate(initialSize * MEMORY_PAGE_SIZE);
     }
 
-    public ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    public ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean is64Bit) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, is64Bit);
     }
 
     @Override
-    public void copy(Node node, int src, int dst, int n) {
-        try {
-            System.arraycopy(byteArrayBuffer.buffer(), src, byteArrayBuffer.buffer(), dst, n);
-        } catch (final IndexOutOfBoundsException e) {
-            // TODO: out of bounds might be in (dest, dest+n).
-            throw trapOutOfBounds(node, src, n);
-        }
-    }
-
-    @Override
-    public int size() {
+    public long size() {
         return byteArrayBuffer.size();
     }
 
@@ -92,14 +81,14 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     @TruffleBoundary
-    public synchronized boolean grow(int extraPageSize) {
+    public synchronized boolean grow(long extraPageSize) {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return true;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
             // ensure computation of targetByteSize does not overflow.
-            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
             byteArrayBuffer.grow(targetByteSize);
             currentMinSize = size() + extraPageSize;
             invokeGrowCallback();
@@ -117,8 +106,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public int load_i32(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getInt(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getInt(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
@@ -126,8 +117,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getLong(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getLong(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
@@ -135,8 +128,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public float load_f32(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getFloat(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getFloat(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
@@ -144,8 +139,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public double load_f64(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getDouble(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getDouble(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
@@ -153,8 +150,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public int load_i32_8s(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getByte(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
@@ -162,8 +161,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public int load_i32_8u(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return 0x0000_00ff & ByteArraySupport.littleEndian().getByte(byteArrayBuffer.buffer(), address);
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
@@ -171,8 +172,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public int load_i32_16s(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getShort(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
@@ -180,8 +183,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public int load_i32_16u(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return 0x0000_ffff & ByteArraySupport.littleEndian().getShort(byteArrayBuffer.buffer(), address);
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
@@ -189,8 +194,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64_8s(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getByte(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
@@ -198,8 +205,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64_8u(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(byteArrayBuffer.buffer(), address);
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
@@ -207,8 +216,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64_16s(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getShort(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
@@ -216,8 +227,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64_16u(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(byteArrayBuffer.buffer(), address);
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
@@ -225,8 +238,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64_32s(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return ByteArraySupport.littleEndian().getInt(byteArrayBuffer.buffer(), address);
+            return ByteArraySupport.littleEndian().getInt(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
@@ -234,8 +249,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public long load_i64_32u(Node node, long address) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(byteArrayBuffer.buffer(), address);
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
@@ -243,8 +260,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i32(Node node, long address, int value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putInt(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putInt(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
@@ -252,8 +271,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64(Node node, long address, long value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putLong(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putLong(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
@@ -262,8 +283,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_f32(Node node, long address, float value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putFloat(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putFloat(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
@@ -271,8 +294,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_f64(Node node, long address, double value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putDouble(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putDouble(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
@@ -280,8 +305,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i32_8(Node node, long address, byte value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putByte(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putByte(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
@@ -289,8 +316,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i32_16(Node node, long address, short value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putShort(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putShort(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
@@ -298,8 +327,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64_8(Node node, long address, byte value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putByte(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putByte(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
@@ -307,8 +338,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64_16(Node node, long address, short value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putShort(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putShort(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
@@ -316,37 +349,39 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64_32(Node node, long address, int value) {
+        final byte[] buffer = byteArrayBuffer.segment(address);
+        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
         try {
-            ByteArraySupport.littleEndian().putInt(byteArrayBuffer.buffer(), address, value);
+            ByteArraySupport.littleEndian().putInt(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length) {
+    public void initialize(byte[] dataInstance, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
+        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.segment(destinationOffset), byteArrayBuffer.segmentOffsetAsInt(destinationOffset), length);
     }
 
     @Override
     @TruffleBoundary
-    public void fill(int offset, int length, byte value) {
+    public void fill(long offset, long length, byte value) {
         assert offset + length <= byteSize();
-        Arrays.fill(byteArrayBuffer.buffer(), offset, offset + length, value);
+        byteArrayBuffer.fill(offset, length, value);
     }
 
     @Override
-    public void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length) {
+    public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         assert source instanceof ByteArrayWasmMemory;
         assert destinationOffset < byteSize();
         ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
-        System.arraycopy(s.byteArrayBuffer.buffer(), sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
+        byteArrayBuffer.copyFrom(s.byteArrayBuffer, sourceOffset, destinationOffset, length);
     }
 
     @Override
     public WasmMemory duplicate() {
-        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize);
+        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, is64Bit);
         byteArrayBuffer.copyTo(other.byteArrayBuffer);
         return other;
     }
@@ -359,77 +394,5 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public ByteBuffer asByteBuffer() {
         return null;
-    }
-
-    private static final class WasmByteArrayBuffer {
-        private static final int MAX_CONSTANT_ATTEMPTS = 5;
-
-        @CompilationFinal private Assumption constantMemoryBufferAssumption;
-
-        @CompilationFinal(dimensions = 0) private byte[] constantBuffer;
-        private byte[] dynamicBuffer;
-
-        private int constantAttempts = 0;
-
-        private WasmByteArrayBuffer() {
-        }
-
-        @TruffleBoundary
-        void allocate(final int byteSize) {
-            constantBuffer = null;
-            dynamicBuffer = null;
-            if (constantAttempts < MAX_CONSTANT_ATTEMPTS) {
-                constantMemoryBufferAssumption = Assumption.create("ConstantMemoryBuffer");
-                constantAttempts++;
-            }
-            try {
-                if (constantMemoryBufferAssumption.isValid()) {
-                    constantBuffer = new byte[byteSize];
-                } else {
-                    dynamicBuffer = new byte[byteSize];
-                }
-            } catch (OutOfMemoryError error) {
-                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
-            }
-        }
-
-        byte[] buffer() {
-            if (constantMemoryBufferAssumption.isValid()) {
-                return constantBuffer;
-            }
-            return dynamicBuffer;
-        }
-
-        int size() {
-            return buffer().length / MEMORY_PAGE_SIZE;
-        }
-
-        int byteSize() {
-            return buffer().length;
-        }
-
-        void grow(final int targetSize) {
-            final byte[] currentBuffer = buffer();
-            constantMemoryBufferAssumption.invalidate("Memory grow");
-            allocate(targetSize);
-            System.arraycopy(currentBuffer, 0, buffer(), 0, currentBuffer.length);
-        }
-
-        void reset(final int byteSize) {
-            constantMemoryBufferAssumption.invalidate("Memory reset");
-            allocate(byteSize);
-        }
-
-        void close() {
-            constantBuffer = null;
-            dynamicBuffer = null;
-        }
-
-        @TruffleBoundary
-        void copyTo(final WasmByteArrayBuffer other) {
-            final byte[] currentBuffer = buffer();
-            final byte[] otherBuffer = other.buffer();
-            System.arraycopy(currentBuffer, 0, otherBuffer, 0, currentBuffer.length);
-        }
     }
 }

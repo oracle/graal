@@ -426,4 +426,8 @@ public abstract class AbstractBinarySuite {
             return binary;
         }
     }
+
+    public static byte[] hexToBinary(String hex) {
+        return WasmTestUtils.hexStringToByteArray("00 61 73 6D 01 00 00 00", hex);
+    }
 }

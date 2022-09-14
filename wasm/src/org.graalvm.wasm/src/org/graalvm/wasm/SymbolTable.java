@@ -176,7 +176,7 @@ public abstract class SymbolTable {
         /**
          * Lower bound on memory size.
          */
-        public final int initialSize;
+        public final long initialSize;
 
         /**
          * Upper bound on memory size.
@@ -184,11 +184,14 @@ public abstract class SymbolTable {
          * <em>Note:</em> this is the upper bound defined by the module. A memory instance might
          * have a lower internal max allowed size in practice.
          */
-        public final int maximumSize;
+        public final long maximumSize;
 
-        public MemoryInfo(int initialSize, int maximumSize) {
+        public final boolean is64bit;
+
+        public MemoryInfo(long initialSize, long maximumSize, boolean is64bit) {
             this.initialSize = initialSize;
             this.maximumSize = maximumSize;
+            this.is64bit = is64bit;
         }
     }
 
@@ -924,21 +927,21 @@ public abstract class SymbolTable {
         return table.elemType;
     }
 
-    public void allocateMemory(int declaredMinSize, int declaredMaxSize) {
+    public void allocateMemory(long declaredMinSize, long declaredMaxSize, boolean is64Bit) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(declaredMinSize, declaredMaxSize);
+        memory = new MemoryInfo(declaredMinSize, declaredMaxSize, is64Bit);
         module().addLinkAction((context, instance) -> {
-            final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit());
+            final long maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit());
             module().limits().checkMemoryInstanceSize(declaredMinSize);
             final WasmMemory wasmMemory;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty memory when in memory overhead mode.
-                wasmMemory = new ByteArrayWasmMemory(0, 0, 0);
+                wasmMemory = new ByteArrayWasmMemory(0, 0, 0, false);
             } else if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-                wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
+                wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, is64Bit);
             } else {
-                wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
+                wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, is64Bit);
             }
             final int memoryIndex = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
@@ -949,7 +952,7 @@ public abstract class SymbolTable {
     public void allocateExternalMemory(WasmMemory externalMemory) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(externalMemory.declaredMinSize(), externalMemory.declaredMaxSize());
+        memory = new MemoryInfo(externalMemory.declaredMinSize(), externalMemory.declaredMaxSize(), externalMemory.isIs64Bit());
         module().addLinkAction((context, instance) -> {
             final int memoryIndex = context.memories().registerExternal(externalMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
@@ -957,10 +960,11 @@ public abstract class SymbolTable {
         });
     }
 
-    public void importMemory(String moduleName, String memoryName, int initSize, int maxSize) {
+    public void importMemory(String moduleName, String memoryName, long initSize, long maxSize, boolean is64Bit) {
         checkNotParsed();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName, ImportIdentifier.MEMORY);
+        memory = new MemoryInfo(initSize, maxSize, is64Bit);
         importSymbol(importedMemoryDescriptor);
         module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, importedMemoryDescriptor, initSize, maxSize));
     }
@@ -971,7 +975,11 @@ public abstract class SymbolTable {
     }
 
     boolean memoryExists() {
-        return importedMemoryDescriptor != null || memory != null;
+        return memory != null;
+    }
+
+    boolean isMemory64Bit() {
+        return memory.is64bit;
     }
 
     public void exportMemory(String name) {

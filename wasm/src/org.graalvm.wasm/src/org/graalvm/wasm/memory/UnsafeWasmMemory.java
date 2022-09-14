@@ -40,7 +40,7 @@
  */
 package org.graalvm.wasm.memory;
 
-import static java.lang.Integer.compareUnsigned;
+import static java.lang.Long.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
@@ -61,23 +61,23 @@ import sun.misc.Unsafe;
 public final class UnsafeWasmMemory extends WasmMemory {
 
     private long startAddress;
-    private int size;
+    private long size;
 
     private ByteBuffer buffer;
 
     private static final Unsafe unsafe;
     private static final long addressOffset;
 
-    private UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+    private UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean is64Bit) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, is64Bit);
         this.size = declaredMinSize;
         final long byteSize = byteSize();
         this.buffer = allocateBuffer(byteSize);
         this.startAddress = getBufferAddress(buffer);
     }
 
-    public UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    public UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean is64Bit) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, is64Bit);
     }
 
     @TruffleBoundary
@@ -105,13 +105,6 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void copy(Node node, int src, int dst, int n) {
-        validateAddress(node, src, n);
-        validateAddress(node, dst, n);
-        unsafe.copyMemory(startAddress + src, startAddress + dst, n);
-    }
-
-    @Override
     public void reset() {
         size = declaredMinSize;
         buffer = allocateBuffer(byteSize());
@@ -120,25 +113,25 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public int size() {
+    public long size() {
         return size;
     }
 
     @Override
     public long byteSize() {
-        return Integer.toUnsignedLong(size) * MEMORY_PAGE_SIZE;
+        return size * MEMORY_PAGE_SIZE;
     }
 
     @Override
     @TruffleBoundary
-    public boolean grow(int extraPageSize) {
+    public boolean grow(long extraPageSize) {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return true;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
-            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
             final long sourceByteSize = byteSize();
             ByteBuffer updatedBuffer = allocateBuffer(targetByteSize);
             final long updatedStartAddress = getBufferAddress(updatedBuffer);
@@ -309,20 +302,21 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length) {
+    public void initialize(byte[] dataInstance, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        buffer.position(destinationOffset);
+        // TODO: find solution for 64-bit
+        buffer.position((int) destinationOffset);
         buffer.put(dataInstance, sourceOffset, length);
     }
 
     @Override
-    public void fill(int offset, int length, byte value) {
+    public void fill(long offset, long length, byte value) {
         assert offset + length <= byteSize();
         unsafe.setMemory(startAddress + offset, length, value);
     }
 
     @Override
-    public void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length) {
+    public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         assert source instanceof UnsafeWasmMemory;
         assert destinationOffset + length < byteSize();
         final UnsafeWasmMemory s = (UnsafeWasmMemory) source;
@@ -331,7 +325,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @Override
     public WasmMemory duplicate() {
-        final UnsafeWasmMemory other = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize);
+        final UnsafeWasmMemory other = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, is64Bit);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
     }

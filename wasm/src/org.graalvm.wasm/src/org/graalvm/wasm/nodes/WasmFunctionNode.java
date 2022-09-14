@@ -303,6 +303,7 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.util.ExtraDataAccessor;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1036,9 +1037,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += offsetDelta;
                     // endregion
 
-                    int baseAddress = popInt(frame, stackPointer - 1);
-                    final long address = effectiveMemoryAddress(memOffset, baseAddress);
-
+                    final long address;
+                    if (memory.isIs64Bit()) {
+                        long baseAddress = popLong(frame, stackPointer - 1);
+                        address = effectiveMemoryAddress(memOffset, baseAddress);
+                    } else {
+                        int baseAddress = popInt(frame, stackPointer - 1);
+                        address = effectiveMemoryAddress(memOffset, baseAddress);
+                    }
                     int value = memory.load_i32(this, address);
                     pushInt(frame, stackPointer - 1, value);
                     break;
@@ -1098,8 +1104,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case MEMORY_SIZE: {
                     // Skip the 0x00 constant.
                     offset++;
-                    int pageSize = memory.size();
-                    pushInt(frame, stackPointer, pageSize);
+                    long pageSize = memory.size();
+                    if (memory.isIs64Bit()) {
+                        pushLong(frame, stackPointer, pageSize);
+                    } else {
+                        pushInt(frame, stackPointer, (int) pageSize);
+                    }
                     stackPointer++;
                     break;
                 }
@@ -1107,12 +1117,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Skip the 0x00 constant.
                     offset++;
                     stackPointer--;
-                    int extraSize = popInt(frame, stackPointer);
-                    int pageSize = memory.size();
-                    if (memory.grow(extraSize)) {
-                        pushInt(frame, stackPointer, pageSize);
+                    final long extraSize;
+                    final long pageSize = memory.size();
+                    if (memory.isIs64Bit()) {
+                        extraSize = popLong(frame, stackPointer);
+                        if (memory.grow(extraSize)) {
+                            pushLong(frame, stackPointer, pageSize);
+                        } else {
+                            pushLong(frame, stackPointer, -1L);
+                        }
                     } else {
-                        pushInt(frame, stackPointer, -1);
+                        extraSize = popInt(frame, stackPointer);
+                        if (memory.grow(extraSize)) {
+                            pushInt(frame, stackPointer, (int) pageSize);
+                        } else {
+                            pushInt(frame, stackPointer, -1);
+                        }
                     }
                     stackPointer++;
                     break;
@@ -1803,6 +1823,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return Integer.toUnsignedLong(dynamicAddress) + Integer.toUnsignedLong(staticAddressOffset);
     }
 
+    private static long effectiveMemoryAddress(int staticAddressOffset, long dynamicAddress) {
+        try {
+            return Math.addExact(staticAddressOffset, dynamicAddress);
+        } catch (ArithmeticException e) {
+            throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Memory address too large");
+        }
+    }
+
     private void executeMiscUnaryOp(VirtualFrame frame, int stackPointer, int opcode) {
         switch (opcode) {
             case I32_CLZ:
@@ -1945,8 +1973,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private void load(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, int memOffset) {
-        final int baseAddress = popInt(frame, stackPointer);
-        final long address = effectiveMemoryAddress(memOffset, baseAddress);
+        final long address;
+        if (memory.isIs64Bit()) {
+            final long baseAddress = popLong(frame, stackPointer);
+            address = effectiveMemoryAddress(memOffset, baseAddress);
+        } else {
+            final int baseAddress = popInt(frame, stackPointer);
+            address = effectiveMemoryAddress(memOffset, baseAddress);
+        }
 
         switch (opcode) {
             case I32_LOAD: {
@@ -2025,8 +2059,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private void store(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, int memOffset) {
-        final int baseAddress = popInt(frame, stackPointer - 2);
-        final long address = effectiveMemoryAddress(memOffset, baseAddress);
+        final long address;
+        if (memory.isIs64Bit()) {
+            final long baseAddress = popLong(frame, stackPointer - 2);
+            address = effectiveMemoryAddress(memOffset, baseAddress);
+        } else {
+            final int baseAddress = popInt(frame, stackPointer - 2);
+            address = effectiveMemoryAddress(memOffset, baseAddress);
+        }
 
         switch (opcode) {
             case I32_STORE: {

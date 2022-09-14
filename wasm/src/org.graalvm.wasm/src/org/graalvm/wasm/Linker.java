@@ -65,6 +65,8 @@ import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
+import static org.graalvm.wasm.Assert.assertUnsignedLongGreaterOrEqual;
+import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import static org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
@@ -330,7 +332,7 @@ public class Linker {
         resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
-    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int declaredMinSize, int declaredMaxSize) {
+    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, long declaredMinSize, long declaredMaxSize) {
         final String importedModuleName = importDescriptor.moduleName;
         final String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {
@@ -354,8 +356,8 @@ public class Linker {
             // https://webassembly.github.io/spec/core/exec/modules.html#limits
             // If no max size is declared, then declaredMaxSize value will be
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
-            assertUnsignedIntLessOrEqual(declaredMinSize, memory.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertUnsignedIntGreaterOrEqual(declaredMaxSize, memory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertUnsignedLongLessOrEqual(declaredMinSize, memory.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertUnsignedLongGreaterOrEqual(declaredMaxSize, memory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setMemory(memory);
         };
         resolutionDag.resolveLater(new ImportMemorySym(instance.name(), importDescriptor), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);

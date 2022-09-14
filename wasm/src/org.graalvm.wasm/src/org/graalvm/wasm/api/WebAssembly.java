@@ -661,14 +661,14 @@ public class WebAssembly extends Dictionary {
     public static WasmMemory memAlloc(int initial, int maximum) {
         if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds max memory size");
-        } else if (compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+        } else if (Long.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds implementation limit");
         }
-        final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
+        final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         if (WasmContext.get(null).environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-            return new UnsafeWasmMemory(initial, maximum, maxAllowedSize);
+            return new UnsafeWasmMemory(initial, maximum, maxAllowedSize, false);
         } else {
-            return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
+            return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize, false);
         }
     }
 
