@@ -13,7 +13,6 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -23,7 +22,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
 
@@ -37,12 +35,7 @@ public class ParallelGCImpl extends ParallelGC {
     private int allWorkersBusy;
     private final AtomicInteger busyWorkers = new AtomicInteger(0);
 
-    /// create only as many as needed
-    private static final ThreadLocalBuffer[] BUFFERS =
-            IntStream.range(0, MAX_WORKERS_COUNT).mapToObj(i -> new ThreadLocalBuffer()).toArray(ThreadLocalBuffer[]::new);
-    private static final FastThreadLocalObject<ThreadLocalBuffer> localBuffer =
-            FastThreadLocalFactory.createObject(ThreadLocalBuffer.class, "ParallelGCImpl.bufferTL");
-    private int currentBuffer;
+    private static final ChunkBuffer buffer = new ChunkBuffer();
 
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
@@ -83,8 +76,7 @@ public class ParallelGCImpl extends ParallelGC {
      */
     public void push(Pointer ptr) {
         assert !isInParallelPhase();
-        BUFFERS[currentBuffer].push(ptr);
-        currentBuffer = (currentBuffer + 1) % workerCount;
+        buffer.push(ptr);
     }
 
     /**
@@ -92,7 +84,7 @@ public class ParallelGCImpl extends ParallelGC {
      */
     public void pushToLocalBuffer(Pointer ptr) {
         assert isInParallelPhase();
-        localBuffer.get().push(ptr);
+        buffer.push(ptr);
     }
 
     @Override
@@ -102,12 +94,9 @@ public class ParallelGCImpl extends ParallelGC {
 
         workerCount = getWorkerCount(); ///cmp serialGC vs pargc with 1 worker
         allWorkersBusy = ~(-1 << workerCount) & (-1 << 1);
-        for (int i = 0; i < workerCount; i++) {
-            BUFFERS[i].runtimeInit();
-            if (i > 0) {
-                // We reuse the gc thread for one of the workers, so number of worker threads is `workerCount - 1`
-                startWorkerThread(i);
-            }
+        for (int i = 1; i < workerCount; i++) {
+            // We reuse the gc thread for worker #0
+            startWorkerThread(i);
         }
     }
 
@@ -130,8 +119,6 @@ public class ParallelGCImpl extends ParallelGC {
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 debugLog().string("WW start ").unsigned(n).newline();
 
-                final ThreadLocalBuffer buffer = BUFFERS[n];
-                localBuffer.set(buffer);
                 getStats().install();
                 while (true) {
                     try {
@@ -143,7 +130,7 @@ public class ParallelGCImpl extends ParallelGC {
                         } while ((busyWorkers.get() & (1 << n)) == 0);
 
                         debugLog().string("WW run ").unsigned(n).newline();
-                        drain(buffer);
+                        drainBuffer();
                         int witness = busyWorkers.get();
                         int expected;
                         do {
@@ -151,7 +138,9 @@ public class ParallelGCImpl extends ParallelGC {
                             witness = busyWorkers.compareAndExchange(expected, expected & ~(1 << n));
                         } while (witness != expected);
                         if (busyWorkers.get() == 0) {
+                            mutex.lock();
                             seqPhase.signal();
+                            mutex.unlock();
                         }
                         debugLog().string("WW idle ").unsigned(n).newline();
                     } catch (Throwable ex) {
@@ -171,20 +160,19 @@ public class ParallelGCImpl extends ParallelGC {
         busyWorkers.set(allWorkersBusy);
         parPhase.broadcast();     // let worker threads run
 
-        localBuffer.set(BUFFERS[0]);
-        drain(BUFFERS[0]);
+        drainBuffer();
 
+        mutex.lock();
         while (busyWorkers.get() != 0) {
-            mutex.lock();
             debugLog().string("PP wait busy=").unsigned(busyWorkers.get()).newline();
             seqPhase.block();     // wait for them to become idle
-            mutex.unlock();
         }
+        mutex.unlock();
 
         inParallelPhase = false;
     }
 
-    private void drain(ThreadLocalBuffer buffer) {
+    private void drainBuffer() {
         Object obj;
         while ((obj = buffer.pop()) != null) {
             getVisitor().doVisitObject(obj);
