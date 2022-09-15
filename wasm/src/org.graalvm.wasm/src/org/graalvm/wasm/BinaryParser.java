@@ -662,29 +662,41 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(t);
                     break;
                 }
-                case Instructions.LOCAL_GET: {
-                    final int localOffset = offset;
+                case Instructions.LOCAL_GET:
+                case Instructions.LOCAL_GET_REF: {
+                    final int instructionOffset = offset - 1;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
-                    state.push(locals[localIndex]);
-                    state.addLocalOp(locals[localIndex], offset - localOffset, localIndex);
+                    final byte localType = locals[localIndex];
+                    state.push(localType);
+                    if (WasmType.isReferenceType(localType)) {
+                        replaceInstruction(instructionOffset, (byte) Instructions.LOCAL_GET_REF);
+                    }
                     break;
                 }
-                case Instructions.LOCAL_SET: {
-                    final int localOffset = offset;
+                case Instructions.LOCAL_SET:
+                case Instructions.LOCAL_SET_REF: {
+                    final int instructionOffset = offset - 1;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
-                    state.popChecked(locals[localIndex]);
-                    state.addLocalOp(locals[localIndex], offset - localOffset, localIndex);
+                    final byte localType = locals[localIndex];
+                    state.popChecked(localType);
+                    if (WasmType.isReferenceType(localType)) {
+                        replaceInstruction(instructionOffset, (byte) Instructions.LOCAL_SET_REF);
+                    }
                     break;
                 }
-                case Instructions.LOCAL_TEE: {
-                    final int localOffset = offset;
+                case Instructions.LOCAL_TEE:
+                case Instructions.LOCAL_TEE_REF: {
+                    final int instructionOffset = offset - 1;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
-                    state.popChecked(locals[localIndex]);
-                    state.push(locals[localIndex]);
-                    state.addLocalOp(locals[localIndex], offset - localOffset, localIndex);
+                    final byte localType = locals[localIndex];
+                    state.popChecked(localType);
+                    state.push(localType);
+                    if (WasmType.isReferenceType(localType)) {
+                        replaceInstruction(instructionOffset, (byte) Instructions.LOCAL_TEE_REF);
+                    }
                     break;
                 }
                 case Instructions.GLOBAL_GET: {

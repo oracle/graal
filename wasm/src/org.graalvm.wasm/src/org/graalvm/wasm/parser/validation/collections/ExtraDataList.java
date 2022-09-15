@@ -53,7 +53,6 @@ import org.graalvm.wasm.parser.validation.collections.entries.IfEntry;
 import org.graalvm.wasm.parser.validation.collections.entries.IndirectCallEntry;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
-import org.graalvm.wasm.parser.validation.collections.entries.LocalOpEntry;
 import org.graalvm.wasm.parser.validation.collections.entries.UnconditionalBranchEntry;
 
 /**
@@ -132,10 +131,6 @@ public class ExtraDataList implements ExtraDataFormatHelper {
 
     public void addCall(int nodeIndex) {
         addEntry(new CallEntry(nodeIndex, this));
-    }
-
-    public void addLocalOp(byte valueType, int valueLength, int localIndex) {
-        addEntry(new LocalOpEntry(localIndex, valueType, valueLength, this));
     }
 
     /**

@@ -220,8 +220,11 @@ import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_SAT_F64_U;
 import static org.graalvm.wasm.constants.Instructions.I64_XOR;
 import static org.graalvm.wasm.constants.Instructions.IF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_GET;
+import static org.graalvm.wasm.constants.Instructions.LOCAL_GET_REF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_SET;
+import static org.graalvm.wasm.constants.Instructions.LOCAL_SET_REF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_TEE;
+import static org.graalvm.wasm.constants.Instructions.LOCAL_TEE_REF;
 import static org.graalvm.wasm.constants.Instructions.LOOP;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_COPY;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_FILL;
@@ -316,7 +319,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.util.ExtraDataAccessor;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
@@ -883,65 +885,67 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case LOCAL_GET: {
-                    final int value = extraData[extraOffset];
-                    CompilerAsserts.partialEvaluationConstant(value);
-                    final boolean compact = value >= 0;
-                    CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator = value << 1 >> 30;
-                    final int length = value << 3 >> 19;
-                    offset += length;
-                    final int index;
-                    if (compact) {
-                        index = value & 0x0000_ffff;
-                        extraOffset += ExtraDataAccessor.COMPACT_LOCAL_OP_LENGTH;
-                    } else {
-                        index = extraData[extraOffset + 1];
-                        extraOffset += ExtraDataAccessor.EXTENDED_LOCAL_OP_LENGTH;
-                    }
-
-                    local_get(frame, stackPointer, index, typeIndicator);
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_get(frame, stackPointer, index);
+                    stackPointer++;
+                    break;
+                }
+                case LOCAL_GET_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_get_ref(frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case LOCAL_SET: {
-                    final int value = extraData[extraOffset];
-                    CompilerAsserts.partialEvaluationConstant(value);
-                    final boolean compact = value >= 0;
-                    CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator = value << 1 >> 30;
-                    final int length = value << 3 >> 19;
-                    offset += length;
-                    final int index;
-                    if (compact) {
-                        index = value & 0x0000_ffff;
-                        extraOffset += ExtraDataAccessor.COMPACT_LOCAL_OP_LENGTH;
-                    } else {
-                        index = extraData[extraOffset + 1];
-                        extraOffset += ExtraDataAccessor.EXTENDED_LOCAL_OP_LENGTH;
-                    }
-
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
                     stackPointer--;
-                    local_set(frame, stackPointer, index, typeIndicator);
+                    local_set(frame, stackPointer, index);
+                    break;
+                }
+                case LOCAL_SET_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    stackPointer--;
+                    local_set_ref(frame, stackPointer, index);
                     break;
                 }
                 case LOCAL_TEE: {
-                    final int value = extraData[extraOffset];
-                    CompilerAsserts.partialEvaluationConstant(value);
-                    final boolean compact = value >= 0;
-                    CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator = value << 1 >> 30;
-                    final int length = value << 3 >> 19;
-                    offset += length;
-                    final int index;
-                    if (compact) {
-                        index = value & 0x0000_ffff;
-                        extraOffset += ExtraDataAccessor.COMPACT_LOCAL_OP_LENGTH;
-                    } else {
-                        index = extraData[extraOffset + 1];
-                        extraOffset += ExtraDataAccessor.EXTENDED_LOCAL_OP_LENGTH;
-                    }
-
-                    local_tee(frame, stackPointer - 1, index, typeIndicator);
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_tee(frame, stackPointer - 1, index);
+                    break;
+                }
+                case LOCAL_TEE_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_tee_ref(frame, stackPointer - 1, index);
                     break;
                 }
                 case GLOBAL_GET: {
@@ -2039,49 +2043,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static void local_tee(VirtualFrame frame, int stackPointer, int index, int valueType) {
-        switch (valueType) {
-            case PRIMITIVE_TYPES:
-                WasmFrame.copyPrimitive(frame, stackPointer, index);
-                break;
-            case REFERENCE_TYPES:
-                WasmFrame.copyReference(frame, stackPointer, index);
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
+    private static void local_tee(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyPrimitive(frame, stackPointer, index);
+    }
+
+    private static void local_tee_ref(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyReference(frame, stackPointer, index);
+    }
+
+    private static void local_set(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyPrimitive(frame, stackPointer, index);
+        if (CompilerDirectives.inCompiledCode()) {
+            WasmFrame.dropPrimitive(frame, stackPointer);
         }
     }
 
-    private static void local_set(VirtualFrame frame, int stackPointer, int index, int valueType) {
-        switch (valueType) {
-            case PRIMITIVE_TYPES:
-                WasmFrame.copyPrimitive(frame, stackPointer, index);
-                if (CompilerDirectives.inCompiledCode()) {
-                    WasmFrame.dropPrimitive(frame, stackPointer);
-                }
-                break;
-            case REFERENCE_TYPES:
-                WasmFrame.copyReference(frame, stackPointer, index);
-                if (CompilerDirectives.inCompiledCode()) {
-                    WasmFrame.dropReference(frame, stackPointer);
-                }
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
+    private static void local_set_ref(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyReference(frame, stackPointer, index);
+        if (CompilerDirectives.inCompiledCode()) {
+            WasmFrame.dropReference(frame, stackPointer);
         }
     }
 
-    private static void local_get(VirtualFrame frame, int stackPointer, int index, int valueType) {
-        switch (valueType) {
-            case PRIMITIVE_TYPES:
-                WasmFrame.copyPrimitive(frame, index, stackPointer);
-                break;
-            case REFERENCE_TYPES:
-                WasmFrame.copyReference(frame, index, stackPointer);
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
+    private static void local_get(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyPrimitive(frame, index, stackPointer);
+    }
+
+    private static void local_get_ref(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyReference(frame, index, stackPointer);
     }
 
     private static void i32_eqz(VirtualFrame frame, int stackPointer) {

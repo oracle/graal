@@ -365,4 +365,11 @@ public abstract class BinaryStreamParser {
         }
         data = updatedData;
     }
+
+    protected void replaceInstruction(int instructionOffset, byte newInstruction) {
+        if (instructionOffset < 0 || instructionOffset >= data.length) {
+            throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, "Cannot replace out of bounds opcode");
+        }
+        data[instructionOffset] = newInstruction;
+    }
 }

@@ -271,6 +271,13 @@ public final class Instructions {
     public static final int TABLE_SIZE = 16;
     public static final int TABLE_FILL = 17;
 
+    // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
+    // used in other ways in the future)
+
+    public static final int LOCAL_GET_REF = 0x1D;
+    public static final int LOCAL_SET_REF = 0x1E;
+    public static final int LOCAL_TEE_REF = 0x1F;
+
     private static String[] decodingTable = new String[256];
 
     private Instructions() {

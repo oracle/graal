@@ -47,7 +47,6 @@ import java.util.Arrays;
 
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.validation.ParserState;
-import org.graalvm.wasm.util.ExtraDataUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -65,18 +64,8 @@ public class ExtraDataSuite {
         return (t << 30) | (r << 23) | (s << 16);
     }
 
-    private static int compactLocalOp(byte valueType, int valueLength, int localIndex) {
-        final int t = ExtraDataUtil.getTypeIndicator(valueType);
-        final int l = Short.toUnsignedInt((short) localIndex);
-        return (t << 29) | (valueLength << 16) | l;
-    }
-
     private static int extendedTargetInfo(int extraDataTarget) {
         return 0x8000_0000 | extraDataTarget;
-    }
-
-    private static int extendedLocalOp(byte valueType, int valueLength) {
-        return compactLocalOp(valueType, valueLength, 0) | 0x8000_0000;
     }
 
     @Test
@@ -317,36 +306,6 @@ public class ExtraDataSuite {
         state.pop();
         state.exit(21, true);
         final int[] expected = {compactTargetInfo(10, 2), compactStackChange(3, 2, 0)};
-        Assert.assertArrayEquals(expected, state.extraData());
-    }
-
-    @Test
-    public void testLocalIndex() {
-        ParserState state = new ParserState();
-        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
-        state.addLocalOp(WasmType.I32_TYPE, 1, 0);
-        state.exit(10, false);
-        final int[] expected = {compactLocalOp(WasmType.I32_TYPE, 1, 0)};
-        Assert.assertArrayEquals(expected, state.extraData());
-    }
-
-    @Test
-    public void testCompactLocalIndexMax() {
-        ParserState state = new ParserState();
-        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
-        state.addLocalOp(WasmType.I32_TYPE, 3, 65535);
-        state.exit(10, false);
-        final int[] expected = {compactLocalOp(WasmType.I32_TYPE, 3, 65535)};
-        Assert.assertArrayEquals(expected, state.extraData());
-    }
-
-    @Test
-    public void testExtendedLocalIndexMin() {
-        ParserState state = new ParserState();
-        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
-        state.addLocalOp(WasmType.I32_TYPE, 3, 65536);
-        state.exit(10, false);
-        final int[] expected = {extendedLocalOp(WasmType.I32_TYPE, 3), 65536};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 }
