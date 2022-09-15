@@ -70,13 +70,22 @@ abstract class HSReferenceArrayOperations extends HSObject implements ReferenceA
     public abstract void acceptGuest(@ByReference(NativeRecord.class) Record[] records);
 
     @Override
+    public abstract void acceptGuestWithMarshalledParameter(@ByReference(NativeRecord.class) Record[] records, List<String> list);
+
+    @Override
     public abstract void acceptGuestSubArray(@In(arrayOffsetParameter = "offset", arrayLengthParameter = "length") @ByReference(NativeRecord.class) Record[] records, int offset, int length);
 
     @Override
     public abstract void fillGuest(@Out @ByReference(NativeRecord.class) Record[] records);
 
     @Override
+    public abstract void fillGuestWithMarshalledParameter(@Out @ByReference(NativeRecord.class) Record[] records, List<String> list);
+
+    @Override
     public abstract List<String> fillGuestWithMarshalledResult(@Out @ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract List<String> fillGuestWithMarshalledResultAndParameter(@Out @ByReference(NativeRecord.class) Record[] records, List<String> list);
 
     @Override
     public abstract int fillGuestSubArray(@Out(arrayOffsetParameter = "offset", arrayLengthParameter = "length", trimToResult = true) @ByReference(NativeRecord.class) Record[] records, int offset,
@@ -90,7 +99,13 @@ abstract class HSReferenceArrayOperations extends HSObject implements ReferenceA
     public abstract void exchangeGuest(@In @Out @ByReference(NativeRecord.class) Record[] records);
 
     @Override
+    public abstract void exchangeGuestWithMarshalledParameter(@In @Out @ByReference(NativeRecord.class) Record[] records, List<String> list);
+
+    @Override
     public abstract List<String> exchangeGuestWithMarshalledResult(@In @Out @ByReference(NativeRecord.class) Record[] records);
+
+    @Override
+    public abstract List<String> exchangeGuestWithMarshalledResultAndParameter(@In @Out @ByReference(NativeRecord.class) Record[] records, List<String> list);
 
     @Override
     public abstract int exchangeGuestSubArray(

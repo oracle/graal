@@ -44,11 +44,17 @@ public interface ReferenceArrayOperations {
 
     void acceptGuest(Record[] records);
 
+    void acceptGuestWithMarshalledParameter(Record[] records, List<String> list);
+
     void acceptGuestSubArray(Record[] records, int offset, int length);
 
     void fillGuest(Record[] records);
 
+    void fillGuestWithMarshalledParameter(Record[] records, List<String> list);
+
     List<String> fillGuestWithMarshalledResult(Record[] records);
+
+    List<String> fillGuestWithMarshalledResultAndParameter(Record[] records, List<String> list);
 
     int fillGuestSubArray(Record[] records, int offset, int length);
 
@@ -56,7 +62,11 @@ public interface ReferenceArrayOperations {
 
     void exchangeGuest(Record[] records);
 
+    void exchangeGuestWithMarshalledParameter(Record[] records, List<String> list);
+
     List<String> exchangeGuestWithMarshalledResult(Record[] records);
+
+    List<String> exchangeGuestWithMarshalledResultAndParameter(Record[] records, List<String> list);
 
     int exchangeGuestSubArray(Record[] records, int offset, int length);
 
