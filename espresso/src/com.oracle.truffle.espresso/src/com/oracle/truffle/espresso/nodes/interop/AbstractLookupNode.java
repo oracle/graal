@@ -168,8 +168,13 @@ public abstract class AbstractLookupNode extends EspressoNode {
                     return true;
                 }
             } else {
-                return false; // m2Type not primitive
+                if (m1Type == getMeta()._char && m2Type == getMeta().java_lang_String) {
+                    return true;
+                }
+                return false;
             }
+        } else if (m2Type == getMeta()._char && m1Type == getMeta().java_lang_String) {
+            return true;
         } else {
             // isAssignableFrom in either direction qualifies
             return m1Type.isAssignable(m2Type) || m2Type.isAssignable(m1Type);
