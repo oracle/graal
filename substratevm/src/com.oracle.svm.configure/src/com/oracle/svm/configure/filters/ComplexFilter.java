@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.Map;
 
 public class ComplexFilter implements ConfigurationFilter {
-    private HierarchyFilterNode hierarchyFilterNode;
+    private final HierarchyFilterNode hierarchyFilterNode;
     private final RegexFilter regexFilter = new RegexFilter();
 
     public ComplexFilter(HierarchyFilterNode hierarchyFilterNode) {
@@ -42,7 +42,6 @@ public class ComplexFilter implements ConfigurationFilter {
         writer.append('{');
         writer.indent().newline();
         hierarchyFilterNode.printJson(writer);
-        writer.append(",\n").newline();
         regexFilter.printJson(writer);
         writer.unindent().newline();
         writer.append('}').newline();
@@ -61,9 +60,5 @@ public class ComplexFilter implements ConfigurationFilter {
 
     public HierarchyFilterNode getHierarchyFilterNode() {
         return hierarchyFilterNode;
-    }
-
-    public void setHierarchyFilterNode(HierarchyFilterNode hierarchyFilterNode) {
-        this.hierarchyFilterNode = hierarchyFilterNode;
     }
 }

@@ -27,9 +27,6 @@
 # ----------------------------------------------------------------------------------------------------
 import os
 import re
-import tempfile
-import json
-from genericpath import exists
 from os.path import basename, dirname, getsize, join
 from traceback import print_tb
 import inspect
@@ -149,10 +146,6 @@ class NativeImageVM(GraalVm):
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
             self.profile_file_extension = '.iprof'
             self.stages = bm_suite.stages(args)
-            if vm.jdk_profiles_collect:  # forbid image build/run in the profile collection execution mode
-                for stage in ('image', 'run'):
-                    if stage in self.stages:
-                        self.stages.remove(stage)
             self.last_stage = self.stages[-1]
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
@@ -218,8 +211,6 @@ class NativeImageVM(GraalVm):
         self.config = None
         self.stages = None
         self.ml = None
-        self.jdk_profiles_collect = False
-        self.cached_jdk_pgo = False
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self._configure_from_name(config_name)
@@ -240,7 +231,7 @@ class NativeImageVM(GraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
-               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<jdk_profiles>jdk-profiles-collect-|cached-jdk-pgo-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
         match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
@@ -310,42 +301,6 @@ class NativeImageVM(GraalVm):
 
         if matching.group("ml") is not None:
             self.ml = matching.group("ml")[:-1]
-
-        if matching.group("jdk_profiles") is not None:
-            config = matching.group("jdk_profiles")[:-1]
-            if config == 'jdk-profiles-collect':
-                self.jdk_profiles_collect = True
-                self.pgo_instrumented_iterations = 1
-
-                def generate_profiling_package_prefixes():
-                    # run the native-image-configure tool to gather the jdk package prefixes
-                    native_image_configure_command = mx.cmd_suffix(join(mx_sdk_vm.graalvm_home(), 'bin', 'native-image-configure'))
-                    if not exists(native_image_configure_command):
-                        mx.abort('Failed to find the native-image-configure command at {}.'.format(native_image_configure_command))
-                    tmp = tempfile.NamedTemporaryFile()
-                    ret = mx.run([native_image_configure_command, 'generate-filters',
-                                  '--include-packages-from-modules=java.base',
-                                  '--exclude-classes=org.graalvm.**', '--exclude-classes=com.oracle.**',  # remove internal packages
-                                  '--output-file={}'.format(tmp.name)], nonZeroIsFatal=True)
-                    if ret != 0:
-                        mx.abort('Native image configure command failed.')
-
-                    # format the profiling package prefixes
-                    with open(tmp.name, 'r') as f:
-                        prefixes = json.loads(f.read())
-                        if 'rules' not in prefixes:
-                            mx.abort('Native image configure command failed. Can not generate rules.')
-                        rules = prefixes['rules']
-                        rules = map(lambda r: r['includeClasses'][:-2], filter(lambda r: 'includeClasses' in r, rules))
-                        return ','.join(rules)
-                self.generate_profiling_package_prefixes = generate_profiling_package_prefixes
-            elif config == 'cached-jdk-pgo':
-                self.cached_jdk_pgo = True
-            else:
-                mx.abort('Unknown jdk profiles configuration: {}'.format(config))
-            # choose appropriate profiles
-            jdk_profiles = 'JDK{}_PROFILES'.format(str(mx.get_jdk().version).split('.')[0])
-            self.cached_profiles_base_dir = mx.library(jdk_profiles).get_path(True)
 
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
@@ -818,8 +773,6 @@ class NativeImageVM(GraalVm):
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-        if self.jdk_profiles_collect:
-            instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:ProfilingPackagePrefixes={}'.format(self.generate_profiling_package_prefixes())]
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -844,12 +797,7 @@ class NativeImageVM(GraalVm):
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
-        if self.cached_jdk_pgo:
-            cached_profiles = ','.join(list(map(lambda f: os.path.join(self.cached_profiles_base_dir, f), os.listdir(self.cached_profiles_base_dir))))
-            jdk_profiles_args = ['-H:CachedPGOEnabled={}'.format(cached_profiles)]
-        else:
-            jdk_profiles_args = []
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args + jdk_profiles_args
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
             if self.use_upx:
