@@ -88,7 +88,7 @@ GEN_NUMERIC_TEST(DOUBLE, double)
 GEN_NUMERIC_TEST(POINTER, intptr_t)
 #if defined(__x86_64__)
 /*
- * Note that this only defined on the GNU toolchain. The equivalent macro for the Visual Studio
+ * Note that this is only defined on the GNU toolchain. The equivalent macro for the Visual Studio
  * compiler would be _M_AMD64. This is on purpose not checked here, since Visual Studio does not
  * support FP80, it treats the `long double` type as double precision.
  */
