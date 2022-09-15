@@ -48,7 +48,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Speculative;
-import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -152,7 +151,7 @@ public class SubstrateGraalUtils {
     private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
         Suites s = suites;
-        if (graph.getSpeculationLog() == null || graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
+        if (graph.getSpeculationLog() == null) {
             /*
              * Certain runtime compilation settings/setups can require explicit exceptions or the
              * removal of speculative optimizations.
@@ -161,14 +160,18 @@ public class SubstrateGraalUtils {
             s.getHighTier().removeSubTypePhases(Speculative.class);
             s.getMidTier().removeSubTypePhases(Speculative.class);
             s.getLowTier().removeSubTypePhases(Speculative.class);
+        }
 
+        if (graph.getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
+            s = s.copy();
             s.getHighTier().removeSubTypePhases(FloatingGuardPhase.class);
             s.getMidTier().removeSubTypePhases(FloatingGuardPhase.class);
             s.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
         }
 
         if (graph.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING)) {
-            s.getMidTier().removeSubTypePhases(GuardLoweringPhase.class);
+            s = s.copy();
+            s.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
         }
 
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
