@@ -168,10 +168,12 @@ ce_aarch64_19_complete_components = ce_win_19_complete_components + ['llp', 'llr
 ce_aarch64_complete_components = ce_win_complete_components + ['llp', 'llrc', 'llrl', 'llrn', 'pyn', 'pynl', 'rby', 'rbyl', 'svml']
 ce_19_complete_components = ce_aarch64_19_complete_components + ['R', 'bRMain']
 ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain']
-ce_darwin_aarch64_19_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'nfi-libffi', 'ni', 'nic', 'nil', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
 ce_darwin_aarch64_complete_components = list(ce_aarch64_complete_components)
 ce_darwin_aarch64_complete_components.remove('gwa')  # GR-39032
 ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
+ce_darwin_aarch64_19_complete_components = list(ce_darwin_aarch64_complete_components)
+ce_darwin_aarch64_complete_components.remove('ejvm') # GR-40518
+ce_darwin_aarch64_complete_components.remove('java') # GR-40518
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'tfl', 'tflm']
 ce_python_components = llvm_components + ['bgu', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm']
 ce_fastr_components = ce_components + llvm_components + ['R', 'bRMain', 'llrn', 'llp', 'sllvmvm', 'llrc', 'ni', 'nil', 'svm', 'bgu', 'svmsl', 'svmnfi', 'snative-image-agent', 'bnative-image', 'snative-image-diagnostics-agent', 'llrl']
