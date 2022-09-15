@@ -880,7 +880,7 @@ public class CompileQueue {
                     }
                 }
 
-                GraalError.guarantee(graph.isAfterStage(StageFlag.GUARD_LOWERING), "Hosted compilations must have explicit exceptions " + graph);
+                GraalError.guarantee(graph.isAfterStage(StageFlag.GUARD_LOWERING), "Hosted compilations must have explicit exceptions %s %s", graph, graph.getGraphState().getStageFlags());
 
                 beforeEncode(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);

@@ -41,11 +41,14 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Speculative;
+import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -158,6 +161,14 @@ public class SubstrateGraalUtils {
             s.getHighTier().removeSubTypePhases(Speculative.class);
             s.getMidTier().removeSubTypePhases(Speculative.class);
             s.getLowTier().removeSubTypePhases(Speculative.class);
+
+            s.getHighTier().removeSubTypePhases(FloatingGuardPhase.class);
+            s.getMidTier().removeSubTypePhases(FloatingGuardPhase.class);
+            s.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
+        }
+
+        if (graph.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING)) {
+            s.getMidTier().removeSubTypePhases(GuardLoweringPhase.class);
         }
 
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
