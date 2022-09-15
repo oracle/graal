@@ -133,7 +133,7 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 parameterTypeCache.put(overload, parameterTypes);
             }
 
-            Outer : for (int i = 0; i < overloads.size() - 1; i++) {
+            Outer: for (int i = 0; i < overloads.size() - 1; i++) {
                 Method m1 = overloads.get(i);
                 Klass[] m1Types = parameterTypeCache.get(m1);
                 boolean canInvoke = true;
@@ -169,9 +169,9 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 if (m1Type == m2Type) {
                     return true;
                 } else if (m1Type == getMeta()._boolean ||
-                        m2Type == getMeta()._boolean ||
-                        m1Type == getMeta()._char ||
-                        m2Type == getMeta()._char) {
+                                m2Type == getMeta()._boolean ||
+                                m1Type == getMeta()._char ||
+                                m2Type == getMeta()._char) {
                     return false;
                 } else {
                     return true;
