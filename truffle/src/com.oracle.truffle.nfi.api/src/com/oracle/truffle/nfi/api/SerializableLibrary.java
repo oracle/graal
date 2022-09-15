@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,59 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include <stdint.h>
-#include <trufflenfi.h>
+package com.oracle.truffle.nfi.api;
 
-#include "common.h"
+import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 
-#define GEN_NUMERIC_TEST(name, type) \
-    \
-    EXPORT type increment_##name(type arg) { \
-        return arg + 1; \
-    } \
-    \
-    EXPORT type decrement_##name(type arg) { \
-        return arg - 1; \
-    } \
-    \
-    EXPORT type call_closure_##name(type (*fn)(type), type arg) { \
-        return fn(arg); \
-    } \
-    \
-    EXPORT type callback_##name(type (*fn)(type), type arg) { \
-        return fn(arg + 1) * 2; \
-    } \
-    \
-    typedef type (*fnptr_##name)(type); \
-    \
-    EXPORT fnptr_##name callback_ret_##name() { \
-        return increment_##name; \
-    } \
-    \
-    EXPORT type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv *env, fnptr_##name), type arg) { \
-        fnptr_##name wrapped = wrapFn(env, increment_##name); \
-        int ret = wrapped(arg + 1) * 2; \
-        (*env)->releaseClosureRef(env, wrapped); \
-        return ret; \
+@GenerateLibrary
+@GenerateAOT
+public abstract class SerializableLibrary extends Library {
+
+    public boolean isSerializable(@SuppressWarnings("unused") Object value) {
+        return false;
     }
 
-
-GEN_NUMERIC_TEST(SINT8, int8_t)
-GEN_NUMERIC_TEST(UINT8, uint8_t)
-GEN_NUMERIC_TEST(SINT16, int16_t)
-GEN_NUMERIC_TEST(UINT16, uint16_t)
-GEN_NUMERIC_TEST(SINT32, int32_t)
-GEN_NUMERIC_TEST(UINT32, uint32_t)
-GEN_NUMERIC_TEST(SINT64, int64_t)
-GEN_NUMERIC_TEST(UINT64, uint64_t)
-GEN_NUMERIC_TEST(FLOAT, float)
-GEN_NUMERIC_TEST(DOUBLE, double)
-GEN_NUMERIC_TEST(POINTER, intptr_t)
-#if defined(__x86_64__)
-/*
- * Note that this is only defined on the GNU toolchain. The equivalent macro for the Visual Studio
- * compiler would be _M_AMD64. This is on purpose not checked here, since Visual Studio does not
- * support FP80, it treats the `long double` type as double precision.
- */
-GEN_NUMERIC_TEST(FP80, long double)
-#endif
+    public void serialize(@SuppressWarnings("unused") Object value, @SuppressWarnings("unused") Object buffer) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,30 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.api;
+#include <math.h>
+#include "longdouble.h"
 
-public interface LLVMArithmetic {
-    LLVMArithmeticOpNode createAddNode();
+int main(void) {
+    long double x = M_PIl;
+    long double z;
 
-    LLVMArithmeticOpNode createSubNode();
+    z = cosl(x);
 
-    LLVMArithmeticOpNode createMulNode();
+    printfp("result", &z);
 
-    LLVMArithmeticOpNode createDivNode();
-
-    LLVMArithmeticOpNode createRemNode();
-
-    LLVMArithmeticCompareNode createCmpNode();
-
-    abstract class LLVMArithmeticNode extends LLVMNode {
-        public abstract boolean canCompute(Object x, Object y);
-    }
-
-    abstract class LLVMArithmeticOpNode extends LLVMArithmeticNode {
-        public abstract LLVMArithmetic execute(Object x, Object y);
-    }
-
-    abstract class LLVMArithmeticCompareNode extends LLVMArithmeticNode {
-        public abstract int execute(Object x, Object y);
-    }
+    return 0;
 }

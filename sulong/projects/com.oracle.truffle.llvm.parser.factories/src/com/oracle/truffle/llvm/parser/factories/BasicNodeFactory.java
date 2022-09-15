@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -1412,15 +1413,29 @@ public class BasicNodeFactory implements NodeFactory {
                     return createMemmoveIntrinsic(args);
                 case "llvm.pow.f32":
                 case "llvm.pow.f64":
-                case "llvm.pow.f80":
                 case "llvm.powi.f32":
                 case "llvm.powi.f64":
-                case "llvm.powi.f80":
                 case "llvm.powi.f32.i32":
                 case "llvm.powi.f64.i16":
                 case "llvm.powi.f64.i32":
-                case "llvm.powi.f80.i32":
                     return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.pow.f80":
+                case "llvm.powi.f80":
+                case "llvm.powi.f80.i32":
+                    return LLVM80BitFloat.createPowNode(args[1], args[2]);
+                case "llvm.sqrt.f80":
+                case "llvm.log.f80":
+                case "llvm.log2.f80":
+                case "llvm.log10.f80":
+                case "llvm.rint.f80":
+                case "llvm.ceil.f80":
+                case "llvm.floor.f80":
+                case "llvm.exp.f80":
+                case "llvm.exp2.f80":
+                case "llvm.sin.f80":
+                case "llvm.cos.f80":
+                    String[] split = intrinsicName.split("\\.");
+                    return LLVM80BitFloat.createUnary(split[1], args[1]);
                 case "llvm.round.f32":
                 case "llvm.round.f64":
                 case "llvm.round.f80":

@@ -166,19 +166,17 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
 
     public abstract static class LLVM80BitFloatLiteralNode extends LLVMSimpleLiteralNode {
 
-        private final boolean sign;
-        private final int exponent;
+        private final short expSign;
         private final long fraction;
 
         public LLVM80BitFloatLiteralNode(LLVM80BitFloat literal) {
-            this.sign = literal.getSign();
-            this.exponent = literal.getExponent();
+            this.expSign = literal.getExpSign();
             this.fraction = literal.getFraction();
         }
 
         @Specialization
         public LLVM80BitFloat do80BitFloat() {
-            return new LLVM80BitFloat(sign, exponent, fraction);
+            return new LLVM80BitFloat(expSign, fraction);
         }
     }
 

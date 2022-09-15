@@ -171,6 +171,7 @@ public class NFITest {
     }
 
     static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
+    static final boolean IS_AMD64 = System.getProperty("os.arch").equals("amd64");
 
     protected static Object lookupAndBindDefault(String name, String signature) {
         if (IS_WINDOWS) {
