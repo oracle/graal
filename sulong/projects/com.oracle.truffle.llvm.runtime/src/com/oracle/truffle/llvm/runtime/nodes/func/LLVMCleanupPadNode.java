@@ -27,53 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.runtime.nodes.func;
 
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException.LLVMUserExceptionWindows;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class CleanupPadInstruction extends ValueInstruction {
+@NodeField(name = "exceptionSlot", type = int.class)
+public abstract class LLVMCleanupPadNode extends LLVMExpressionNode {
 
-    private SymbolImpl value;
-    private SymbolImpl[] clauseSymbols;
-    private final Type[] argTypes;
+    abstract int getExceptionSlot();
 
-    private CleanupPadInstruction(Type[] argTypes) {
-        super(PrimitiveType.I64);
-        this.argTypes = argTypes;
+    @Specialization
+    long doCleanupPad(VirtualFrame frame) {
+        LLVMStack stack = (LLVMStack) frame.getArguments()[0];
+        LLVMUserExceptionWindows exception = (LLVMUserExceptionWindows) frame.getObject(getExceptionSlot());
+        long oldStackPointer = stack.getStackPointer();
+        stack.setStackPointer(exception.getStackPointer());
+        return oldStackPointer;
     }
 
-    public SymbolImpl[] getClauseSymbols() {
-        return clauseSymbols;
-    }
-
-    public Type[] getArgTypes() {
-        return argTypes;
-    }
-
-    @Override
-    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
-        if (value == oldValue) {
-            value = newValue;
-        }
-    }
-
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    public static CleanupPadInstruction generate(SymbolTable table, int index, Type[] argTypes, int[] argValues) {
-        CleanupPadInstruction l = new CleanupPadInstruction(argTypes);
-        SymbolImpl[] clauseSymbols = new SymbolImpl[argValues.length];
-        for (int i = 0; i < argValues.length; i++) {
-            clauseSymbols[i] = table.getForwardReferenced(argValues[i], l);
-        }
-        l.value = table.getForwardReferencedOrNull(index, l);
-        l.clauseSymbols = clauseSymbols;
-        return l;
+    public static LLVMCleanupPadNode create(int exceptionSlot) {
+        return LLVMCleanupPadNodeGen.create(exceptionSlot);
     }
 }

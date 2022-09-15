@@ -38,6 +38,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException.LLVMUserExceptionWindows;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -48,15 +49,18 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "throwInfo", type = LLVMExpressionNode.class)
 public abstract class LLVMRaiseExceptionWindows extends LLVMExpressionNode {
 
-    @Specialization(guards = "throwInfo.isSame(cachedThrowInfo)", limit = "3")
-    public Object doRaise(LLVMPointer exceptionObject, @SuppressWarnings("unused") LLVMPointer throwInfo, @Cached("throwInfo") LLVMPointer cachedThrowInfo,
+    @Specialization(guards = {"!throwInfo.isNull()", "throwInfo.isSame(cachedThrowInfo)"}, limit = "3")
+    public Object doRaise(LLVMPointer exceptionObject, @SuppressWarnings("unused") LLVMPointer throwInfo,
+                    @Cached("throwInfo") LLVMPointer cachedThrowInfo,
                     @Cached("getImageBase(cachedThrowInfo)") LLVMPointer imageBase) {
-        throw new LLVMUserExceptionWindows(this, imageBase, exceptionObject, cachedThrowInfo);
+        LLVMStack stack = getContext().getThreadingStack().getStack(this);
+        throw new LLVMUserExceptionWindows(this, imageBase, exceptionObject, cachedThrowInfo, stack.getStackPointer());
     }
 
-    @Specialization(replaces = "doRaise")
+    @Specialization(guards = "!throwInfo.isNull()", replaces = "doRaise")
     public Object doFallback(LLVMPointer exceptionObject, LLVMPointer throwInfo) {
-        throw new LLVMUserExceptionWindows(this, getImageBase(throwInfo), exceptionObject, throwInfo);
+        LLVMStack stack = getContext().getThreadingStack().getStack(this);
+        throw new LLVMUserExceptionWindows(this, getImageBase(throwInfo), exceptionObject, throwInfo, stack.getStackPointer());
     }
 
     @TruffleBoundary
