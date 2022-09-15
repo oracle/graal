@@ -109,7 +109,7 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         -1);
 
-        @Option(help = "Maximum number of errounous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(
+        @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(
                         100);
     }
 
@@ -159,6 +159,11 @@ public class PermissionsFeature implements Feature {
      * Classes for reflective accesses which are opaque for permission analysis.
      */
     private AnalysisType reflectionFieldAccessorFactory;
+
+    @Override
+    public String getDescription() {
+        return "Detects privileged calls in Truffle languages";
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
