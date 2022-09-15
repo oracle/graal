@@ -115,43 +115,51 @@ public abstract class AbstractLookupNode extends EspressoNode {
         if (methodsByArity.isEmpty()) {
             return false;
         }
-
+        // do a run through to see if there's an arity
+        // with a single overloaded method
         for (List<Method> overloads : methodsByArity.values()) {
-            if (overloads.size() > 1) {
-                // Type checking required to disambiguate!
-                // If below sorting throws, it means that parameter types
-                // for at least two overloaded methods are compatible
-                // meaning we can't disambiguate.
-                Map<Method, Klass[]> parameterTypeCache = new HashMap<>(overloads.size());
-                // cache parameter types to avoid resolving multiple times
-                // in comparator
-                for (Method overload : overloads) {
-                    Klass[] parameterTypes = overload.resolveParameterKlasses();
-                    parameterTypeCache.put(overload, parameterTypes);
-                }
+            if (overloads.size() == 1) {
+                return true;
+            }
+        }
 
-                try {
-                    Collections.sort(overloads, new Comparator<Method>() {
-                        @Override
-                        public int compare(Method m1, Method m2) throws IllegalArgumentException {
-                            Klass[] m1Types = parameterTypeCache.get(m1);
-                            Klass[] m2Types = parameterTypeCache.get(m2);
-                            for (int i = 0; i < m1Types.length; i++) {
-                                if (!canConvert(m1Types[i], m2Types[i])) {
-                                    return 0;
-                                }
-                            }
-                            // all types are compatible meaning
-                            // we can't disambiguate
-                            throw new IllegalArgumentException();
+        // OK, Type checking required to disambiguate!
+        // a member is invocable if one or more
+        // overloaded methods can be called
+        for (List<Method> overloads : methodsByArity.values()) {
+            Map<Method, Klass[]> parameterTypeCache = new HashMap<>(overloads.size());
+            // cache parameter types to avoid resolving multiple times
+            // in comparator
+            for (Method overload : overloads) {
+                Klass[] parameterTypes = overload.resolveParameterKlasses();
+                parameterTypeCache.put(overload, parameterTypes);
+            }
+
+            Outer : for (int i = 0; i < overloads.size() - 1; i++) {
+                Method m1 = overloads.get(i);
+                Klass[] m1Types = parameterTypeCache.get(m1);
+                boolean canInvoke = true;
+                for (int j = 0; j < overloads.size(); j++) {
+                    if (i == j) {
+                        continue;
+                    }
+                    Method m2 = overloads.get(j);
+                    Klass[] m2Types = parameterTypeCache.get(m2);
+                    for (int k = 0; k < m1Types.length; k++) {
+                        canInvoke &= !canConvert(m1Types[k], m2Types[k]);
+                        if (!canInvoke) {
+                            continue Outer;
                         }
-                    });
-                } catch (IllegalArgumentException e) {
-                    return false;
+                    }
+                }
+                if (canInvoke) {
+                    // found one overloaded method that can be called
+                    // given the right set of arguments
+                    return true;
                 }
             }
         }
-        return true;
+        return false;
     }
 
     private boolean canConvert(Klass m1Type, Klass m2Type) {
@@ -162,19 +170,17 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 // be converted in one direction
                 if (m1Type == m2Type) {
                     return true;
-                } else if (m1Type == getMeta()._boolean || m1Type == getMeta()._char) {
+                } else if (m1Type == getMeta()._boolean ||
+                        m2Type == getMeta()._boolean ||
+                        m1Type == getMeta()._char ||
+                        m2Type == getMeta()._char) {
                     return false;
                 } else {
                     return true;
                 }
             } else {
-                if (m1Type == getMeta()._char && m2Type == getMeta().java_lang_String) {
-                    return true;
-                }
                 return false;
             }
-        } else if (m2Type == getMeta()._char && m1Type == getMeta().java_lang_String) {
-            return true;
         } else {
             // isAssignableFrom in either direction qualifies
             return m1Type.isAssignable(m2Type) || m2Type.isAssignable(m1Type);
