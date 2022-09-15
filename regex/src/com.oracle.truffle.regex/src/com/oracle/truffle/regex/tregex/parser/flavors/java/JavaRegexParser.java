@@ -323,7 +323,7 @@ public final class JavaRegexParser implements RegexParser {
             addCharClass(CodePointSet.create('\n'));
             nextSequence();
             addCharClass(CodePointSet.create('\n'));
-            popGroup();
+//            popGroup();
             addDollar();
             popGroup();
             popGroup();
