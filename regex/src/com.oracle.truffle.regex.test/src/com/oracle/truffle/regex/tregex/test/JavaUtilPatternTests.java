@@ -199,7 +199,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test(".\\Z", 0, "abc\ndef");
     }
 
-    @Test(expected = UnsupportedRegexException.class)
+    @Test(expected = UnsupportedOperationException.class)
     public void anchorBailout() {
         test("\\G\\w", 0, "abc def");
     }
@@ -224,7 +224,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}?", 0, "aaaaa");
     }
 
-    @Test(expected = UnsupportedRegexException.class)
+    @Test(expected = Exception.class)
     public void quantifiersBailout() {
         test("abc?+c", 0, "abcc");
         test("a{2,4}+a", 0, "aaaaa");
@@ -239,7 +239,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}+a", 0, "aa");
     }
 
-    @Test(expected = UnsupportedRegexException.class)
+    @Test(expected = UnsupportedOperationException.class)
     public void atomicGroupBailout() {
         test("a(?>bc|b)c", 0, "abcc");
     }
