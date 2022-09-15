@@ -38,8 +38,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions.SulongCanCatchWindowsNode;
+import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions.SulongEHCopyWindowsNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException.LLVMUserExceptionWindows;
@@ -110,7 +110,7 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
         protected LLVMCatchSwitchImpl(int exceptionSlot, int[] targetBlocks, int unwindBlock, LLVMExpressionNode getStack, LLVMStatementNode[] phiNodes) {
             this.targetBlocks = targetBlocks;
             this.phiNodes = phiNodes;
-            this.conditions = new CatchPadEntryNode[targetBlocks.length];
+            this.conditions = new CatchPadEntryNode[unwindBlock >= 0 ? targetBlocks.length - 1 : targetBlocks.length];
             this.unwindBlock = unwindBlock;
             this.getStack = getStack;
             this.exceptionSlot = exceptionSlot;
@@ -141,7 +141,7 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
 
         @Override
         public int getConditionalSuccessorCount() {
-            return hasDefaultBlock() ? conditions.length - 1 : conditions.length;
+            return conditions.length;
         }
 
         @Override
@@ -245,9 +245,9 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
     public abstract static class CatchPadEntryNode extends LLVMInstrumentableNode {
         protected final PointerType exceptionType;
         // See ehdata_values.h lines 81 and following for the meaning of the attributes
-        protected final long attributes;
+        protected final int attributes;
 
-        protected CatchPadEntryNode(PointerType exceptionType, long attributes) {
+        protected CatchPadEntryNode(PointerType exceptionType, int attributes) {
             this.exceptionType = exceptionType;
             this.attributes = attributes;
         }
@@ -257,6 +257,7 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
         }
 
         @Child private SulongCanCatchWindowsNode canCatch;
+        @Child private SulongEHCopyWindowsNode ehCopy;
         @Child private SulongCanCatchWindowsNode exceptionSlot;
 
         abstract boolean execute(VirtualFrame frame, LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer imageBase, long stackPointer);
@@ -266,12 +267,20 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
             return new CatchPadEntryNodeWrapper(this, this, probe);
         }
 
-        public LLVMBitcodeLibraryFunctions.SulongCanCatchWindowsNode getCanCatch() {
+        public SulongCanCatchWindowsNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchWindowsNode(getContext()));
+                canCatch = insert(new SulongCanCatchWindowsNode(getContext()));
             }
             return canCatch;
+        }
+
+        public SulongEHCopyWindowsNode getEHCopy() {
+            if (ehCopy == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ehCopy = insert(new SulongEHCopyWindowsNode(getContext()));
+            }
+            return ehCopy;
         }
 
         protected CopyExceptionNode createExceptionNode() {
@@ -295,13 +304,11 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public boolean doExecute(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer imageBase, long stackPointer, LLVMPointer catchType, LLVMPointer exceptionSlotPointer,
-                        @Cached("createExceptionNode()") CopyExceptionNode copyException) {
-            if (catchType.isNull() || getCanCatch().canCatch(stack, thrownObject, throwInfo, catchType, imageBase)) {
-                if (!exceptionSlotPointer.isNull()) {
-                    copyException.execute(thrownObject, isReference(), exceptionSlotPointer);
-                }
+        public boolean doExecute(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer imageBase, long stackPointer, LLVMPointer catchType, LLVMPointer exceptionOut) {
+            LLVMPointer catchableType = null;
+            if (catchType.isNull() || !(catchableType = getCanCatch().canCatch(stack, thrownObject, throwInfo, catchType, imageBase)).isNull()) {
                 stack.setStackPointer(stackPointer);
+                getEHCopy().copy(stack, thrownObject, catchableType, imageBase, exceptionOut, attributes);
                 return true;
             }
 
@@ -309,7 +316,7 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
         }
     }
 
-    public static CatchPadEntryNode createCatchPadEntryNode(LLVMExpressionNode catchType, long attributes, LLVMExpressionNode exceptionSlot, PointerType exceptionType) {
+    public static CatchPadEntryNode createCatchPadEntryNode(LLVMExpressionNode catchType, int attributes, LLVMExpressionNode exceptionSlot, PointerType exceptionType) {
         return CatchPadEntryNodeGen.create(exceptionType, attributes, null, null, null, null, null, catchType, exceptionSlot);
     }
 }

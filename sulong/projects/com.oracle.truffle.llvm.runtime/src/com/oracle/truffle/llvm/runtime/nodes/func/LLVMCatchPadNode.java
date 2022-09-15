@@ -42,9 +42,12 @@ public abstract class LLVMCatchPadNode extends LLVMExpressionNode {
     abstract int getExceptionSlot();
 
     @Specialization
-    long doCleanupPad(VirtualFrame frame) {
+    long doCatchPad(VirtualFrame frame) {
         LLVMStack stack = (LLVMStack) frame.getArguments()[0];
         LLVMUserExceptionWindows exception = (LLVMUserExceptionWindows) frame.getObject(getExceptionSlot());
+
+        getLanguage().contextThreadLocal.get().pushException(exception);
+
         // In Windows, catch handlers are treated as functions which should be
         // called before the stack is cleaned up. We solve this problem by
         // saving the pre-unwind stack pointer and restoring it before the catch
