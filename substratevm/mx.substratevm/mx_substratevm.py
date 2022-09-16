@@ -1068,7 +1068,10 @@ if llvm_supported:
         installable_id='native-image-llvm-backend',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['SubstrateVM'],
+        dependencies=[
+            'SubstrateVM',
+            'LLVM.org toolchain',
+        ],
         builder_jar_distributions=[
             'substratevm:SVM_LLVM',
             'substratevm:LLVM_WRAPPER_SHADOWED',
