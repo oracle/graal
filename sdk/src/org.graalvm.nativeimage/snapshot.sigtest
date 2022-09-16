@@ -119,9 +119,22 @@ CLSS public abstract interface java.util.function.BooleanSupplier
  anno 0 java.lang.FunctionalInterface()
 meth public abstract boolean getAsBoolean()
 
+CLSS public final org.graalvm.nativeimage.AnnotationAccess
+meth public static <%0 extends java.lang.annotation.Annotation> {%%0} getAnnotation(java.lang.reflect.AnnotatedElement,java.lang.Class<{%%0}>)
+meth public static boolean isAnnotationPresent(java.lang.reflect.AnnotatedElement,java.lang.Class<? extends java.lang.annotation.Annotation>)
+meth public static java.lang.Class<? extends java.lang.annotation.Annotation>[] getAnnotationTypes(java.lang.reflect.AnnotatedElement)
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.CurrentIsolate
 meth public static org.graalvm.nativeimage.Isolate getIsolate()
 meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread()
+supr java.lang.Object
+
+CLSS public org.graalvm.nativeimage.AnnotationAccess
+cons public init()
+meth public static <%0 extends java.lang.annotation.Annotation> {%%0} getAnnotation(java.lang.reflect.AnnotatedElement,java.lang.Class<{%%0}>)
+meth public static boolean isAnnotationPresent(java.lang.reflect.AnnotatedElement,java.lang.Class<? extends java.lang.annotation.Annotation>)
+meth public static java.lang.Class<? extends java.lang.annotation.Annotation>[] getAnnotationTypes(java.lang.reflect.AnnotatedElement)
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.ImageInfo
