@@ -37,6 +37,7 @@ import org.graalvm.profdiff.core.CompilationUnitBuilder;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.InliningTreeNode;
+import org.graalvm.profdiff.core.ProftoolMethod;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.util.json.JSONParser;
@@ -85,15 +86,15 @@ public class ExperimentParser {
         if (proftoolLogReader.isPresent()) {
             ProftoolLog proftoolLog = parseProftoolLog(proftoolLogReader.get());
 
-            for (ProftoolMethod method : proftoolLog.code) {
-                if (method.level == null || method.level != GRAAL_COMPILER_LEVEL) {
+            for (ProftoolMethod method : proftoolLog.methods) {
+                if (method.getLevel() == null || method.getLevel() != GRAAL_COMPILER_LEVEL) {
                     continue;
                 }
-                CompilationUnitBuilder builder = methodByCompilationId.get(method.compilationId);
+                CompilationUnitBuilder builder = methodByCompilationId.get(method.getCompilationId());
                 if (builder == null) {
-                    System.out.println("Warning: Compilation ID " + method.compilationId + " not found in the optimization log");
+                    System.out.println("Warning: Compilation ID " + method.getCompilationId() + " not found in the optimization log");
                 } else {
-                    builder.setPeriod(method.period);
+                    builder.setPeriod(method.getPeriod());
                 }
             }
 
@@ -101,7 +102,7 @@ public class ExperimentParser {
                             proftoolLog.executionId,
                             experimentFiles.getExperimentId(),
                             proftoolLog.totalPeriod,
-                            proftoolLog.code.size());
+                            proftoolLog.methods);
         } else {
             experiment = new Experiment(experimentFiles.getExperimentId());
         }
@@ -190,16 +191,10 @@ public class ExperimentParser {
         return new Optimization(optimizationName, eventName, position, properties);
     }
 
-    private static class ProftoolMethod {
-        String compilationId;
-        long period;
-        Integer level;
-    }
-
     private static class ProftoolLog {
         String executionId;
         long totalPeriod;
-        List<ProftoolMethod> code = new ArrayList<>();
+        List<ProftoolMethod> methods = new ArrayList<>();
     }
 
     private ProftoolLog parseProftoolLog(ExperimentFiles.NamedReader profOutput) throws IOException, ExperimentParserError {
@@ -213,14 +208,18 @@ public class ExperimentParser {
             List<Object> codeObjects = expectList(root, "code", false);
             for (Object codeObject : codeObjects) {
                 EconomicMap<String, Object> code = expectMap(codeObject, "root.code[]", false);
-                ProftoolMethod method = new ProftoolMethod();
-                method.compilationId = expectString(code, "compileId", true);
-                if (method.compilationId != null && method.compilationId.endsWith("%")) {
-                    method.compilationId = method.compilationId.substring(0, method.compilationId.length() - 1);
+                String compilationId = expectString(code, "compileId", true);
+                if (compilationId != null && compilationId.endsWith("%")) {
+                    compilationId = compilationId.substring(0, compilationId.length() - 1);
                 }
-                method.period = expectLong(code, "period");
-                method.level = expectIntegerNullable(code, "level");
-                proftoolLog.code.add(method);
+                String name = expectString(code, "name", false);
+                int colonIndex = name.indexOf(':');
+                if (colonIndex != -1 && colonIndex + 2 <= name.length()) {
+                    name = name.substring(colonIndex + 2);
+                }
+                long period = expectLong(code, "period");
+                Integer level = expectIntegerNullable(code, "level");
+                proftoolLog.methods.add(new ProftoolMethod(compilationId, name, level, period));
             }
             return proftoolLog;
         } catch (JSONParserException parserException) {

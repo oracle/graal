@@ -27,6 +27,7 @@ package org.graalvm.profdiff.core;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -68,11 +69,6 @@ public class Experiment {
     private final long totalPeriod;
 
     /**
-     * The total number of methods collected by proftool.
-     */
-    private final int totalProftoolMethods;
-
-    /**
      * A cached sum of execution periods of the {@link #compilationUnits}. Initially {@code null}
      * and computed on demand.
      */
@@ -85,24 +81,29 @@ public class Experiment {
     private final EconomicMap<String, List<CompilationUnit>> compilationUnitsByName;
 
     /**
+     * The list of all methods collected by proftool.
+     */
+    private final List<ProftoolMethod> proftoolMethods;
+
+    /**
      * Constructs an experiment with an execution profile.
      *
      * @param executionId the execution ID of the experiment
      * @param experimentId the ID of the experiment
      * @param totalPeriod the total period of all executed methods including non-graal executions
-     * @param totalProftoolMethods the total number of methods collected by proftool
+     * @param proftoolMethods the list of all methods collected by proftool
      */
     public Experiment(
                     String executionId,
                     ExperimentId experimentId,
                     long totalPeriod,
-                    int totalProftoolMethods) {
+                    List<ProftoolMethod> proftoolMethods) {
         this.compilationUnits = new ArrayList<>();
         this.executionId = executionId;
         this.experimentId = experimentId;
         this.profileAvailable = true;
         this.totalPeriod = totalPeriod;
-        this.totalProftoolMethods = totalProftoolMethods;
+        this.proftoolMethods = proftoolMethods;
         this.compilationUnitsByName = EconomicMap.create();
     }
 
@@ -117,7 +118,7 @@ public class Experiment {
         this.experimentId = experimentId;
         this.profileAvailable = false;
         this.totalPeriod = 0;
-        this.totalProftoolMethods = 0;
+        this.proftoolMethods = List.of();
         this.compilationUnitsByName = EconomicMap.create();
     }
 
@@ -208,7 +209,8 @@ public class Experiment {
     /**
      * Writes a summary of the experiment. Includes the number of methods collected (proftool and
      * optimization log), relative period of graal-compiled methods, the number and relative period
-     * of hot methods.
+     * of hot methods and the list of top proftool methods. Execution statistics are omitted if the
+     * profile is not available.
      *
      * @param writer the destination writer
      */
@@ -224,9 +226,21 @@ public class Experiment {
         writer.increaseIndent();
         writer.writeln("Collected optimization logs for " + compilationUnits.size() + " methods");
         if (profileAvailable) {
-            writer.writeln("Collected proftool data for " + totalProftoolMethods + " methods");
+            writer.writeln("Collected proftool data for " + proftoolMethods.size() + " methods");
             writer.writeln("Graal-compiled methods account for " + graalExecutionPercent + "% of execution");
             writer.writeln(countHotCompilationUnits() + " hot compilation units account for " + graalHotExecutionPercent + "% of execution");
+            writer.writeln(String.format("%.2f billion cycles total", (double) totalPeriod / ProftoolMethod.BILLION));
+            writer.writeln("Top methods");
+            writer.increaseIndent();
+            writer.writeln("Execution     Cycles  Level      ID  Method");
+            for (ProftoolMethod method : proftoolMethods.stream().sorted((method1, method2) -> Long.compare(method2.getPeriod(), method1.getPeriod())).limit(10).collect(Collectors.toList())) {
+                double execution = (double) method.getPeriod() / totalPeriod * 100;
+                double cycles = (double) method.getPeriod() / ProftoolMethod.BILLION;
+                String level = Objects.toString(method.getLevel(), "");
+                String compilationId = Objects.toString(method.getCompilationId(), "");
+                writer.writeln(String.format("%8.2f%% %10.2f %6s %7s  %s", execution, cycles, level, compilationId, method.getName()));
+            }
+            writer.decreaseIndent();
         }
         writer.decreaseIndent();
     }

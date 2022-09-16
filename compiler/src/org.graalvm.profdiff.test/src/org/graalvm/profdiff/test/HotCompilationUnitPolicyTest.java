@@ -26,11 +26,12 @@ package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.profdiff.core.CompilationUnit;
-import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Experiment;
+import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.junit.Test;
@@ -39,7 +40,7 @@ public class HotCompilationUnitPolicyTest {
     @Test
     public void testHotMethodPolicy() {
         OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
-        Experiment experiment = new Experiment("1", ExperimentId.ONE, 100, 100);
+        Experiment experiment = new Experiment("1", ExperimentId.ONE, 100, List.of());
         experiment.addCompilationUnit(new CompilationUnit("foo1", "foo", null, rootPhase, 5, experiment));
         experiment.addCompilationUnit(new CompilationUnit("foo2", "foo", null, rootPhase, 35, experiment));
         experiment.addCompilationUnit(new CompilationUnit("foo3", "foo", null, rootPhase, 30, experiment));
