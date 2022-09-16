@@ -572,7 +572,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
+        public synchronized Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
             Module runtimeModule = getRuntimeModuleForHostedModule(loader, hostedModuleName, true);
             if (runtimeModule != null) {
                 return runtimeModule;
