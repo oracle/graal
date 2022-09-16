@@ -1062,7 +1062,7 @@ llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "a
 if llvm_supported:
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         suite=suite,
-        name='SubstrateVM LLVM',
+        name='Native Image LLVM Backend',
         short_name='svml',
         dir_name='svm',
         installable_id='native-image-llvm-backend',
