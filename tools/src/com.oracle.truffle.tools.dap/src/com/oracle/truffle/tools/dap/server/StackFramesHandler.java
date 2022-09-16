@@ -152,7 +152,7 @@ public final class StackFramesHandler {
         return null;
     }
 
-    public static Variable evaluateOnStackFrame(ThreadsHandler.SuspendedThreadInfo info, int frameId, String expression) {
+    public static Variable evaluateOnStackFrame(ThreadsHandler.SuspendedThreadInfo info, int frameId, String expression) throws DebugException {
         FrameWrapper frameWrapper = info.getById(FrameWrapper.class, frameId);
         DebugStackFrame frame = frameWrapper != null ? frameWrapper.getFrame() : null;
         if (frame != null) {

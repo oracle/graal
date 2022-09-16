@@ -641,7 +641,7 @@ public class DebugProtocolServer {
                             sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create(), seq, false, command, sequenceNum.getAndIncrement()).setMessage("cancelled"));
                         } else if (isExceptionWithMessage(throwable)) {
                             sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
-                                            asExceptionWithMessage(throwable).getDebugMessage()), seq, false, command, sequenceNum.getAndIncrement()).setMessage(throwable.getMessage()));
+                                            asExceptionWithMessage(throwable).getDebugMessage()), seq, false, command, sequenceNum.getAndIncrement()).setMessage(throwable.getCause().getMessage()));
                         } else {
                             final String msg = throwable.getMessage() != null ? throwable.getMessage() : "";
                             server.getLogger().log(Level.SEVERE, msg, throwable);
