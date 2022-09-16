@@ -33,6 +33,7 @@
 
 #include <conio.h>
 #include <direct.h>
+#include <errno.h>
 #include <float.h>
 #include <io.h>
 #include <math.h>
@@ -41,9 +42,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/utime.h>
 #include <time.h>
 
@@ -442,7 +443,7 @@ REDIR_FUNC intptr_t spawnvpe(int mode, const char *cmdname, const char *const *a
     return _spawnvpe(mode, cmdname, argv, envp);
 }
 
-REDIR_FUNC int stat(const char *path, struct __stat32 *buffer) {
+REDIR_FUNC int stat(const char *path, struct _stat32 *buffer) {
     return _stat32(path, buffer);
 }
 
