@@ -115,8 +115,9 @@ abstract class HostToTypeNode extends Node {
                     @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
                     @Cached("allowsImplementation(context, targetType)") boolean allowsImplementation,
                     @Cached HostTargetMappingNode targetMapping,
+                    @CachedLibrary(limit="3") HostLibrary library,
                     @Cached BranchProfile error) {
-        return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, context, interop, useCustomTargetTypes, targetMapping, error);
+        return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, context, interop, useCustomTargetTypes, library, targetMapping, error);
     }
 
     @TruffleBoundary
@@ -141,7 +142,7 @@ abstract class HostToTypeNode extends Node {
         return convertImpl(operand, targetType, genericType, allowsImplementation(context, targetType),
                         isPrimitiveTarget(targetType), context,
                         InteropLibrary.getUncached(operand),
-                        useTargetMapping,
+                        useTargetMapping, HostLibrary.getUncached(),
                         HostTargetMappingNode.getUncached(),
                         BranchProfile.getUncached());
     }
@@ -151,8 +152,7 @@ abstract class HostToTypeNode extends Node {
         return value.toString();
     }
 
-    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType,
-                    HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, HostTargetMappingNode targetMapping, BranchProfile error) {
+    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType, HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, HostLibrary library, HostTargetMappingNode targetMapping, BranchProfile error) {
         if (useCustomTargetTypes) {
             Object result = targetMapping.execute(value, targetType, context, interop, false, HIGHEST, STRICT);
             if (result != HostTargetMappingNode.NO_RESULT) {
@@ -167,8 +167,8 @@ abstract class HostToTypeNode extends Node {
             }
         }
         HostLanguage language = HostLanguage.get(interop);
-        if (HostObject.isJavaInstance(language, targetType, value)) {
-            return HostObject.valueOf(language, value);
+        if (HostObject.isJavaInstance(language, library, targetType, value)) {
+            return HostObject.valueOf(language, library, value);
         }
 
         if (useCustomTargetTypes) {
@@ -221,10 +221,7 @@ abstract class HostToTypeNode extends Node {
     }
 
     @SuppressWarnings({"unused"})
-    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
-                    HostContext hostContext, int priority,
-                    InteropLibrary interop,
-                    HostTargetMappingNode targetMapping) {
+    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation, HostContext hostContext, int priority, InteropLibrary interop, HostTargetMappingNode targetMapping, HostLibrary library) {
         if (targetMapping != null) {
             /*
              * For canConvert the order of target type mappings does not really matter, as the
@@ -252,7 +249,7 @@ abstract class HostToTypeNode extends Node {
             }
         }
         HostLanguage language = HostLanguage.get(interop);
-        if (HostObject.isJavaInstance(language, targetType, value)) {
+        if (HostObject.isJavaInstance(language, library, targetType, value)) {
             return true;
         }
 
@@ -300,7 +297,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (value instanceof TruffleObject) {
-            if (priority < HOST_PROXY && HostObject.isInstance(language, value)) {
+            if (priority < HOST_PROXY && HostObject.isInstance(language, library, value)) {
                 return false;
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
@@ -382,8 +379,8 @@ abstract class HostToTypeNode extends Node {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         assert !interop.isNull(value); // already handled
         Object obj;
-        if (HostObject.isJavaInstance(hostContext.language, targetType, value)) {
-            obj = HostObject.valueOf(hostContext.language, value);
+        if (HostObject.isJavaInstance(hostContext.language, HostLibrary.getUncached(), targetType, value)) {
+            obj = HostObject.valueOf(hostContext.language, HostLibrary.getUncached(), value);
         } else if (targetType == Object.class) {
             obj = convertToObject(hostContext, value, interop);
         } else if (targetType == List.class) {

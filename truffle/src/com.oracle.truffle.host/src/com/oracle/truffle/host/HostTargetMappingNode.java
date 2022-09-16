@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -149,12 +150,13 @@ abstract class HostTargetMappingNode extends Node {
         protected Object doDefault(Object receiver, @SuppressWarnings("unused") HostTargetMapping cachedMapping,
                         HostContext context, InteropLibrary interop, boolean checkOnly,
                         @Cached ConditionProfile acceptsProfile,
+                        @CachedLibrary(limit="3") HostLibrary library,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,
                         @Cached HostToTypeNode toHostRecursive) {
             CompilerAsserts.partialEvaluationConstant(checkOnly);
             Object convertedValue = NO_RESULT;
             if (acceptsProfile.profile(HostToTypeNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType,
-                            allowsImplementation, context, HostToTypeNode.LOWEST, interop, null))) {
+                            allowsImplementation, context, HostToTypeNode.LOWEST, interop, null, library))) {
                 if (!checkOnly || cachedMapping.accepts != null) {
                     convertedValue = toHostRecursive.execute(context, receiver, cachedMapping.sourceType, cachedMapping.sourceType, false);
                 }

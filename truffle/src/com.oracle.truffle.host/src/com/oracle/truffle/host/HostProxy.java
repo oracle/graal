@@ -88,7 +88,7 @@ import com.oracle.truffle.api.utilities.TriState;
 
 @SuppressWarnings("deprecation")
 @ExportLibrary(InteropLibrary.class)
-final class HostProxy implements TruffleObject {
+final class HostProxy implements TruffleObject, HostInstance {
 
     static final int LIMIT = 5;
 
@@ -734,17 +734,17 @@ final class HostProxy implements TruffleObject {
         return System.identityHashCode(receiver.proxy);
     }
 
-    public static boolean isProxyGuestObject(HostLanguage language, TruffleObject value) {
-        return isProxyGuestObject(language, (Object) value);
+    public static boolean isProxyGuestObject(HostLanguage language, HostLibrary library, TruffleObject value) {
+        return isProxyGuestObject(language, library, (Object) value);
     }
 
-    public static boolean isProxyGuestObject(HostLanguage language, Object value) {
-        Object unwrapped = HostLanguage.unwrapIfScoped(language, value);
+    public static boolean isProxyGuestObject(HostLanguage language, HostLibrary library, Object value) {
+        Object unwrapped = HostLanguage.unwrapIfScoped(language, library, value);
         return unwrapped instanceof HostProxy;
     }
 
-    public static Proxy toProxyHostObject(HostLanguage language, Object value) {
-        Object v = HostLanguage.unwrapIfScoped(language, value);
+    public static Proxy toProxyHostObject(HostLanguage language, HostLibrary library, Object value) {
+        Object v = HostLanguage.unwrapIfScoped(language, library, value);
         return ((HostProxy) v).proxy;
     }
 

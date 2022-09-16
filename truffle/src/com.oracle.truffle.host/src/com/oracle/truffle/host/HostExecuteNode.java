@@ -381,7 +381,7 @@ abstract class HostExecuteNode extends Node {
                      * continue to not apply.
                      */
                     if (!HostToTypeNode.canConvert(arg, paramType, paramType, null, context, priority,
-                                    InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached())) {
+                                    InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached(), HostLibrary.getUncached())) {
                         HostTargetMapping[] otherMappings = cache.getMappings(paramType);
                         if (otherPossibleMappings == null) {
                             otherPossibleMappings = new LinkedHashSet<>();
@@ -471,7 +471,7 @@ abstract class HostExecuteNode extends Node {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
                 return !HostToTypeNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
                                 null, hostContext, HostToTypeNode.COERCE,
-                                InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached());
+                                InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached(), HostLibrary.getUncached());
             } else {
                 assert args.length != parameterCount;
                 return true;
@@ -565,13 +565,13 @@ abstract class HostExecuteNode extends Node {
 
         SingleMethod best;
         for (int priority : HostToTypeNode.PRIORITIES) {
-            best = findBestCandidate(applicableByArity, args, hostContext, false, priority, cachedArgTypes);
+            best = findBestCandidate(applicableByArity, args, hostContext, HostLibrary.getUncached(), false, priority, cachedArgTypes);
             if (best != null) {
                 return best;
             }
 
             if (anyVarArgs) {
-                best = findBestCandidate(applicableByArity, args, hostContext, true, priority, cachedArgTypes);
+                best = findBestCandidate(applicableByArity, args, hostContext, HostLibrary.getUncached(), true, priority, cachedArgTypes);
                 if (best != null) {
                     return best;
                 }
@@ -581,8 +581,7 @@ abstract class HostExecuteNode extends Node {
     }
 
     @SuppressWarnings("static-method")
-    private SingleMethod findBestCandidate(List<SingleMethod> applicableByArity, Object[] args, HostContext hostContext, boolean varArgs, int priority,
-                    TypeCheckNode[] cachedArgTypes) throws UnsupportedTypeException {
+    private SingleMethod findBestCandidate(List<SingleMethod> applicableByArity, Object[] args, HostContext hostContext, HostLibrary library, boolean varArgs, int priority, TypeCheckNode[] cachedArgTypes) throws UnsupportedTypeException {
         List<SingleMethod> candidates = new ArrayList<>();
 
         if (!varArgs) {
@@ -596,7 +595,7 @@ abstract class HostExecuteNode extends Node {
                     for (int i = 0; i < paramCount; i++) {
                         if (!HostToTypeNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
                                         hostContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
-                                        HostTargetMappingNode.getUncached())) {
+                                        HostTargetMappingNode.getUncached(), HostLibrary.getUncached())) {
                             applicable = false;
                             break;
                         }
@@ -616,7 +615,7 @@ abstract class HostExecuteNode extends Node {
                     for (int i = 0; i < parameterCount - 1; i++) {
                         if (!HostToTypeNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
                                         hostContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
-                                        HostTargetMappingNode.getUncached())) {
+                                        HostTargetMappingNode.getUncached(), HostLibrary.getUncached())) {
                             applicable = false;
                             break;
                         }
@@ -633,7 +632,7 @@ abstract class HostExecuteNode extends Node {
                         for (int i = parameterCount - 1; i < args.length; i++) {
                             if (!HostToTypeNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, null,
                                             hostContext, priority,
-                                            InteropLibrary.getFactory().getUncached(args[i]), HostTargetMappingNode.getUncached())) {
+                                            InteropLibrary.getFactory().getUncached(args[i]), HostTargetMappingNode.getUncached(), library)) {
                                 applicable = false;
                                 break;
                             }
@@ -656,7 +655,7 @@ abstract class HostExecuteNode extends Node {
 
                 return best;
             } else {
-                SingleMethod best = findMostSpecificOverload(hostContext, candidates, args, varArgs, priority);
+                SingleMethod best = findMostSpecificOverload(hostContext, library, candidates, args, varArgs, priority);
                 if (best != null) {
                     if (cachedArgTypes != null) {
                         fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority, hostContext);
@@ -670,10 +669,10 @@ abstract class HostExecuteNode extends Node {
         return null;
     }
 
-    private static SingleMethod findMostSpecificOverload(HostContext context, List<SingleMethod> candidates, Object[] args, boolean varArgs, int priority) {
+    private static SingleMethod findMostSpecificOverload(HostContext context, HostLibrary library, List<SingleMethod> candidates, Object[] args, boolean varArgs, int priority) {
         assert candidates.size() >= 2;
         if (candidates.size() == 2) {
-            int res = compareOverloads(context, candidates.get(0), candidates.get(1), args, varArgs, priority);
+            int res = compareOverloads(context, library, candidates.get(0), candidates.get(1), args, varArgs, priority);
             return res == 0 ? null : (res < 0 ? candidates.get(0) : candidates.get(1));
         }
 
@@ -685,7 +684,7 @@ abstract class HostExecuteNode extends Node {
             SingleMethod cand = candIt.next();
             boolean add = false;
             for (Iterator<SingleMethod> bestIt = best.iterator(); bestIt.hasNext();) {
-                int res = compareOverloads(context, cand, bestIt.next(), args, varArgs, priority);
+                int res = compareOverloads(context, library, cand, bestIt.next(), args, varArgs, priority);
                 if (res == 0) {
                     add = true;
                 } else if (res < 0) {
@@ -707,7 +706,7 @@ abstract class HostExecuteNode extends Node {
         return null; // ambiguous
     }
 
-    private static int compareOverloads(HostContext context, SingleMethod m1, SingleMethod m2, Object[] args, boolean varArgs, int priority) {
+    private static int compareOverloads(HostContext context, HostLibrary library, SingleMethod m1, SingleMethod m2, Object[] args, boolean varArgs, int priority) {
         int res = 0;
         assert !varArgs || m1.isVarArgs() && m2.isVarArgs();
         assert varArgs || (m1.getParameterCount() == m2.getParameterCount() && args.length == m1.getParameterCount());
@@ -717,7 +716,7 @@ abstract class HostExecuteNode extends Node {
             if (t1 == t2) {
                 continue;
             }
-            int r = compareByPriority(context, t1, t2, args[i], priority);
+            int r = compareByPriority(context, library, t1, t2, args[i], priority);
             if (r == 0) {
                 r = compareAssignable(t1, t2);
                 if (r == 0) {
@@ -739,7 +738,7 @@ abstract class HostExecuteNode extends Node {
         return varArgs && i >= parameterTypes.length - 1 ? parameterTypes[parameterTypes.length - 1].getComponentType() : parameterTypes[i];
     }
 
-    private static int compareByPriority(HostContext context, Class<?> t1, Class<?> t2, Object arg, int priority) {
+    private static int compareByPriority(HostContext context, HostLibrary library, Class<?> t1, Class<?> t2, Object arg, int priority) {
         if (priority <= HostToTypeNode.STRICT) {
             return 0;
         }
@@ -749,8 +748,8 @@ abstract class HostExecuteNode extends Node {
             if (p > priority) {
                 break;
             }
-            boolean p1 = HostToTypeNode.canConvert(arg, t1, t1, null, context, p, argInterop, mapping);
-            boolean p2 = HostToTypeNode.canConvert(arg, t2, t2, null, context, p, argInterop, mapping);
+            boolean p1 = HostToTypeNode.canConvert(arg, t1, t1, null, context, p, argInterop, mapping, library);
+            boolean p2 = HostToTypeNode.canConvert(arg, t2, t2, null, context, p, argInterop, mapping, library);
             if (p1 != p2) {
                 return p1 ? -1 : 1;
             }
@@ -1036,12 +1035,19 @@ abstract class HostExecuteNode extends Node {
 
     static final class PrimitiveType extends TypeCheckNode {
         final Class<?> targetType;
+        @Child HostLibrary targetLibrary;
         @CompilationFinal(dimensions = 1) final Class<?>[] otherTypes;
+        @Children HostLibrary[] otherLibraries;
         final int priority;
 
         PrimitiveType(Class<?> targetType, Class<?>[] otherTypes, int priority) {
             this.targetType = targetType;
+            this.targetLibrary = HostLibrary.getFactory().createDispatched(1);
             this.otherTypes = otherTypes;
+            this.otherLibraries = new HostLibrary[this.otherTypes.length];
+            for (int i = 0; i < this.otherLibraries.length; i++) {
+                this.otherLibraries[i] = HostLibrary.getFactory().createDispatched(1);
+            }
             this.priority = priority;
         }
 
@@ -1080,12 +1086,14 @@ abstract class HostExecuteNode extends Node {
         @ExplodeLoop
         @Override
         public boolean execute(Object value, InteropLibrary interop, HostContext context) {
-            for (Class<?> otherType : otherTypes) {
-                if (HostToTypeNode.canConvert(value, otherType, otherType, null, context, priority, interop, null)) {
+            for (int i = 0; i < otherTypes.length; i++) {
+                Class<?> otherType = otherTypes[i];
+                HostLibrary otherLibrary = otherLibraries[i];
+                if (HostToTypeNode.canConvert(value, otherType, otherType, null, context, priority, interop, null, otherLibrary)) {
                     return false;
                 }
             }
-            return HostToTypeNode.canConvert(value, targetType, targetType, null, context, priority, interop, null);
+            return HostToTypeNode.canConvert(value, targetType, targetType, null, context, priority, interop, null, targetLibrary);
         }
     }
 

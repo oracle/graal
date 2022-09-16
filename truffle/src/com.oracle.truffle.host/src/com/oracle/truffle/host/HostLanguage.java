@@ -90,11 +90,12 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         return new HostContext(this, env);
     }
 
-    static Object unwrapIfScoped(HostLanguage language, Object o) {
+    static Object unwrapIfScoped(HostLanguage language, HostLibrary library, Object o) {
+        HostInstance host = library.asHostInstance(o);
         if (language == null || !language.methodScopingEnabled) {
-            return o;
+            return host;
         }
-        return language.unwrapIfScoped(o);
+        return language.unwrapIfScoped(host);
     }
 
     @Override

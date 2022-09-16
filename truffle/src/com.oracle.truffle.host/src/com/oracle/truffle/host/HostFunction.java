@@ -54,7 +54,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.utilities.TriState;
 
 @ExportLibrary(InteropLibrary.class)
-final class HostFunction implements TruffleObject {
+final class HostFunction implements TruffleObject, HostInstance {
 
     final Object obj;
     final HostMethodDesc method;
@@ -66,12 +66,12 @@ final class HostFunction implements TruffleObject {
         this.context = context;
     }
 
-    public static boolean isInstance(HostLanguage language, TruffleObject obj) {
-        return isInstance(language, (Object) obj);
+    public static boolean isInstance(HostLanguage language, HostLibrary library, TruffleObject obj) {
+        return isInstance(language, library, (Object) obj);
     }
 
-    public static boolean isInstance(HostLanguage language, Object obj) {
-        return HostLanguage.unwrapIfScoped(language, obj) instanceof HostFunction;
+    public static boolean isInstance(HostLanguage language, HostLibrary library, Object obj) {
+        return HostLanguage.unwrapIfScoped(language, library, obj) instanceof HostFunction;
     }
 
     @SuppressWarnings("static-method")

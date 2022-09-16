@@ -163,7 +163,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
 
     @Override
     public boolean isHostValue(Object value) {
-        Object obj = HostLanguage.unwrapIfScoped(language, value);
+        Object obj = HostLanguage.unwrapIfScoped(language, HostLibrary.getUncached(), value);
         return (obj instanceof HostObject) ||
                         (obj instanceof HostFunction) ||
                         (obj instanceof HostException) ||
@@ -172,12 +172,12 @@ public class HostLanguageService extends AbstractHostLanguageService {
 
     @Override
     public Object unboxHostObject(Object hostValue) {
-        return HostObject.valueOf(language, hostValue);
+        return HostObject.valueOf(language, HostLibrary.getUncached(), hostValue);
     }
 
     @Override
     public Object unboxProxyObject(Object hostValue) {
-        return HostProxy.toProxyHostObject(language, hostValue);
+        return HostProxy.toProxyHostObject(language, HostLibrary.getUncached(), hostValue);
     }
 
     @Override
@@ -206,22 +206,22 @@ public class HostLanguageService extends AbstractHostLanguageService {
 
     @Override
     public boolean isHostFunction(Object value) {
-        return HostFunction.isInstance(language, value);
+        return HostFunction.isInstance(language, HostLibrary.getUncached(), value);
     }
 
     @Override
     public boolean isHostObject(Object value) {
-        return HostObject.isInstance(language, value);
+        return HostObject.isInstance(language, HostLibrary.getUncached(), value);
     }
 
     @Override
     public boolean isHostProxy(Object value) {
-        return HostProxy.isProxyGuestObject(language, value);
+        return HostProxy.isProxyGuestObject(language, HostLibrary.getUncached(), value);
     }
 
     @Override
     public boolean isHostSymbol(Object obj) {
-        Object o = HostLanguage.unwrapIfScoped(language, obj);
+        Object o = HostLanguage.unwrapIfScoped(language, HostLibrary.getUncached(), obj);
         if (o instanceof HostObject) {
             return ((HostObject) o).isStaticClass();
         }
@@ -262,8 +262,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
         assert targetContext != valueContext;
         if (value instanceof TruffleObject) {
             assert value instanceof TruffleObject;
-            if (HostObject.isInstance(language, value)) {
-                return HostObject.withContext(language, value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            if (HostObject.isInstance(language, HostLibrary.getUncached(), value)) {
+                return HostObject.withContext(language, HostLibrary.getUncached(), value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (value instanceof HostProxy) {
                 return HostProxy.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (valueContext == null) {

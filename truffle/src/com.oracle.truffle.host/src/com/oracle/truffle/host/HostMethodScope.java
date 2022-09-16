@@ -185,19 +185,24 @@ final class HostMethodScope {
     }
 
     @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-    static final class PinnedObject implements TruffleObject {
-
+    @ExportLibrary(HostLibrary.class)
+    static final class PinnedObject implements TruffleObject, HostInstance {
         final Object delegate;
 
         PinnedObject(Object delegate) {
             this.delegate = delegate;
         }
 
+        @ExportMessage
+        HostInstance asHostInstance(@CachedLibrary(limit = "3") HostLibrary library) {
+            return library.asHostInstance(delegate);
+        }
     }
 
     @SuppressWarnings("deprecation")
     @ExportLibrary(ReflectionLibrary.class)
-    static final class ScopedObject implements TruffleObject {
+    @ExportLibrary(HostLibrary.class)
+    static final class ScopedObject implements TruffleObject, HostInstance {
 
         static final Object OTHER_VALUE = new Object();
         static final ReflectionLibrary OTHER_VALUE_UNCACHED = ReflectionLibrary.getFactory().getUncached(OTHER_VALUE);
@@ -253,6 +258,11 @@ final class HostMethodScope {
             } else {
                 return returnValue;
             }
+        }
+        
+        @ExportMessage
+        HostInstance asHostInstance(@CachedLibrary(limit="3") HostLibrary library) {
+            return library.asHostInstance(delegate);
         }
 
         @TruffleBoundary

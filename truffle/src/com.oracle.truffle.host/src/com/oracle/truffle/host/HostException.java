@@ -49,7 +49,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
  */
 @SuppressWarnings("serial")
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-final class HostException extends AbstractTruffleException {
+final class HostException extends AbstractTruffleException implements HostInstance {
 
     private final Throwable original;
     final HostObject delegate;
