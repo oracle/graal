@@ -544,7 +544,7 @@ public class NativeImage {
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
             }
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise"));
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), true, "truffle-api", "truffle-compiler", "truffle-runtime", "truffle-enterprise"));
             if (modulePathBuild) {
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             }
@@ -2044,6 +2044,10 @@ public class NativeImage {
     }
 
     protected static List<Path> getJars(Path dir, String... jarBaseNames) {
+        return getJars(dir, false, jarBaseNames);
+    }
+
+    private static List<Path> getJars(Path dir, boolean optional, String... jarBaseNames) {
         try {
             List<String> baseNameList = Arrays.asList(jarBaseNames);
             return Files.list(dir)
@@ -2061,7 +2065,12 @@ public class NativeImage {
                             })
                             .collect(Collectors.toList());
         } catch (IOException e) {
-            throw showError("Unable to use jar-files from directory " + dir, e);
+            if (optional) {
+                LogUtils.warning("Unable to use jar-files from directory " + dir);
+                return Collections.emptyList();
+            } else {
+                throw showError("Unable to use jar-files from directory " + dir, e);
+            }
         }
     }
 
