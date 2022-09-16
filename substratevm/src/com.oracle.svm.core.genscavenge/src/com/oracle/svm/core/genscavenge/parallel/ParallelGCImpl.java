@@ -6,6 +6,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
+import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.locks.VMCondition;
@@ -19,6 +20,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,8 +42,10 @@ public class ParallelGCImpl extends ParallelGC {
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
      */
-    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> chunkTL =
-            FastThreadLocalFactory.createWord("ParallelGCImpl.chunkTL");
+    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> allocChunkTL =
+            FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkTL");
+    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> scannedChunkTL =
+            FastThreadLocalFactory.createWord("ParallelGCImpl.scannedChunkTL");
 
     public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
     private final VMCondition seqPhase = new VMCondition(mutex);
@@ -62,28 +66,19 @@ public class ParallelGCImpl extends ParallelGC {
         singleton().waitForIdleImpl();
     }
 
+    public static AlignedHeapChunk.AlignedHeader getThreadLocalScannedChunk() {
+        return scannedChunkTL.get();
+    }
+
     public static AlignedHeapChunk.AlignedHeader getThreadLocalChunk() {
-        return chunkTL.get();
+        return allocChunkTL.get();
     }
 
     public static void setThreadLocalChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        chunkTL.set(chunk);
+        allocChunkTL.set(chunk);
     }
 
-    /**
-     * To be invoked in sequential GC phase. Pushes object pointer to one of the workers' buffers
-     * in round-robin fashion, attempting to balance load between workers.
-     */
-    public void push(Pointer ptr) {
-        assert !isInParallelPhase();
-        buffer.push(ptr);
-    }
-
-    /**
-     * To be invoked in parallel GC phase. Pushes object pointer to current worker's thread local buffer.
-     */
-    public void pushToLocalBuffer(Pointer ptr) {
-        assert isInParallelPhase();
+    public void push(HeapChunk.Header<?> ptr) {
         buffer.push(ptr);
     }
 
@@ -173,11 +168,23 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     private void drainBuffer() {
-        Object obj;
-        while ((obj = buffer.pop()) != null) {
-            getVisitor().doVisitObject(obj);
-        }
-        chunkTL.set(WordFactory.nullPointer());
+        debugLog().string("WW drain size=").unsigned(buffer.size()).newline();
+        do {
+            HeapChunk.Header<?> chunk;
+            while ((chunk = buffer.pop()).notEqual(WordFactory.nullPointer())) {
+                debugLog().string("WW drain chunk=").zhex(chunk).newline();
+                AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) chunk, getVisitor());
+            }
+            AlignedHeapChunk.AlignedHeader tlab = allocChunkTL.get();
+            debugLog().string("WW drain tlab=").zhex(tlab).newline();
+            if (tlab.notEqual(WordFactory.nullPointer())) {
+                scannedChunkTL.set(tlab);
+                AlignedHeapChunk.walkObjectsInline(tlab, getVisitor());
+            }
+        } while (buffer.size() > 0 || allocChunkTL.get().notEqual(scannedChunkTL.get()));
+
+        allocChunkTL.set(WordFactory.nullPointer());
+        scannedChunkTL.set(WordFactory.nullPointer());
     }
 
     private GreyToBlackObjectVisitor getVisitor() {

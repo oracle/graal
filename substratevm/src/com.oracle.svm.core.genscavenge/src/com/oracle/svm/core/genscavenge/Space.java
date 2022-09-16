@@ -182,7 +182,7 @@ public final class Space {
             return result;
         }
         /* Slow-path: try allocating a new chunk for the requested memory. */
-        return allocateInNewChunk(objectSize);
+        return allocateInNewChunk(oldChunk, objectSize);
     }
 
     /**
@@ -196,9 +196,12 @@ public final class Space {
         return AlignedHeapChunk.freeMemory(oldChunk, objectSize);
     }
 
-    private Pointer allocateInNewChunk(UnsignedWord objectSize) {
+    private Pointer allocateInNewChunk(AlignedHeapChunk.AlignedHeader oldChunk, UnsignedWord objectSize) {
         if (ParallelGC.isSupported()) {
             ParallelGCImpl.mutex.lock();
+            if (oldChunk.notEqual(ParallelGCImpl.getThreadLocalScannedChunk())) {
+                ParallelGCImpl.singleton().push(oldChunk);
+            }
         }
         AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
         if (ParallelGC.isSupported()) {
@@ -382,9 +385,6 @@ public final class Space {
         Object copy = copyAlignedObject(original);
         if (copy != null) {
             ObjectHeaderImpl.installForwardingPointer(original, copy);
-            if (ParallelGC.isSupported()) {
-                ParallelGCImpl.singleton().push(Word.objectToUntrackedPointer(copy));
-            }
         }
         return copy;
     }
@@ -434,7 +434,6 @@ public final class Space {
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
             }
-            ParallelGCImpl.singleton().pushToLocalBuffer(copyMemory);
             return copy;
         } else {
             // Retract speculatively allocated memory
@@ -488,10 +487,8 @@ public final class Space {
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
         if (ParallelGCImpl.isInParallelPhase()) {
+            ParallelGCImpl.singleton().push(chunk);
             ParallelGCImpl.mutex.unlock();
-            if (!AlignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
-                throw VMError.shouldNotReachHere();
-            }
         }
 
         if (this.isOldSpace()) {
@@ -514,10 +511,8 @@ public final class Space {
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
         if (ParallelGCImpl.isInParallelPhase()) {
+            assert false;///
             ParallelGCImpl.mutex.unlock();
-            if (!UnalignedHeapChunk.walkObjectsInline(chunk, GCImpl.getGCImpl().getGreyToBlackObjectVisitor())) {
-                throw VMError.shouldNotReachHere();
-            }
         }
 
         if (this.isOldSpace()) {

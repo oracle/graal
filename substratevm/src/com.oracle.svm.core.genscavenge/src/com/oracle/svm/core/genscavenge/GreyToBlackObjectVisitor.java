@@ -59,16 +59,6 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectInline(Object o) {
-        if (ParallelGC.isSupported() && !ParallelGCImpl.isInParallelPhase()) {
-            ParallelGCImpl.singleton().push(Word.objectToUntrackedPointer(o));
-            return true;
-        } else {
-            return doVisitObject(o);
-        }
-    }
-
-    @AlwaysInline("GC performance")
-    public boolean doVisitObject(Object o) {
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);
         return true;
