@@ -1057,32 +1057,33 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 ))
 
+ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='Native Image LLVM Backend',
+    short_name='svml',
+    dir_name='svm',
+    installable_id='native-image-llvm-backend',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'SubstrateVM',
+        'LLVM.org toolchain',
+    ],
+    builder_jar_distributions=[
+        'substratevm:SVM_LLVM',
+        'substratevm:LLVM_WRAPPER_SHADOWED',
+        'substratevm:JAVACPP_SHADOWED',
+        'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+        'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
+    ],
+    stability="experimental-earlyadopter",
+    installable=True,
+    jlink=False,
+)
 # GR-34811
 llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64"))
 if llvm_supported:
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='Native Image LLVM Backend',
-        short_name='svml',
-        dir_name='svm',
-        installable_id='native-image-llvm-backend',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=[
-            'SubstrateVM',
-            'LLVM.org toolchain',
-        ],
-        builder_jar_distributions=[
-            'substratevm:SVM_LLVM',
-            'substratevm:LLVM_WRAPPER_SHADOWED',
-            'substratevm:JAVACPP_SHADOWED',
-            'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
-            'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
-        ],
-        stability="experimental-earlyadopter",
-        jlink=False,
-        installable=True,
-    ))
+    mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
