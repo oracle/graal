@@ -269,7 +269,8 @@ local repo_config = import '../../repo-configuration.libsonnet';
       name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java17-linux-amd64',
     },
 
-    vm_common.gate_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(is_gate=true)    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-linux-amd64'},
+    # TODO re-enable once GR-40785 is fixed
+    # vm_common.gate_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(is_gate=true)    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-linux-amd64'},
     vm_common.gate_vm_linux_amd64 + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64'},
   ],
 
