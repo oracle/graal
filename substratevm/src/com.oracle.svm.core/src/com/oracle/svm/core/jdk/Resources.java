@@ -222,6 +222,19 @@ public final class Resources {
         }
 
         ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
+        if (moduleName == null && entry == null) {
+            /*
+             * If no moduleName is specified and entry was not found as classpath-resource we have
+             * to search for the resource in all modules in the image.
+             */
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                entry = Resources.get(module.getName(), resourceName);
+                if (entry != null) {
+                    break;
+                }
+            }
+        }
+
         if (entry == null) {
             return null;
         }
