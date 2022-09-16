@@ -1078,6 +1078,7 @@ ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
     ],
     stability="experimental-earlyadopter",
     installable=True,
+    extra_installable_qualifiers=['ce'],
     jlink=False,
 )
 # GR-34811
