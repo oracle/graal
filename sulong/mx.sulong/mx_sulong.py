@@ -428,7 +428,11 @@ class ToolchainConfig(object):
 
     def get_toolchain_tool(self, tool):
         if tool in self._supported_tools():
-            return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
+            ret = os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
+            if mx.is_windows() and ret.endswith('.exe') and not os.path.exists(ret):
+                # this might be a bootstrap toolchain without native-image, so we have to replace .exe with .cmd
+                ret = ret[:-4] + '.cmd'
+            return ret
         elif tool in self.llvm_binutil_tools:
             return os.path.join(self.bootstrap_provider(), 'bin', _cmd_sub(tool.lower()))
         else:
