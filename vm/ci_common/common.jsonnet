@@ -95,6 +95,7 @@ local devkits = common_json.devkits;
   sulong_linux: common_json.sulong.deps.common + common_json.sulong.deps.linux,
   sulong_darwin_amd64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_amd64,
   sulong_darwin_aarch64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_aarch64,
+  sulong_windows: common_json.sulong.deps.common + common_json.sulong.deps.windows,
 
   # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
   truffleruby_linux_amd64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux + graal_common.ol7,
@@ -665,11 +666,11 @@ local devkits = common_json.devkits;
 
   # Windows/AMD64
   deploy_vm_base_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_amd64("11") + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_base_windows_amd64("java11") + {name: 'daily-deploy-vm-base-java11-windows-amd64'},
-  deploy_vm_installable_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_amd64("11") + self.js_windows_jdk11 + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_installables_windows_amd64("java11") + {name: 'daily-deploy-vm-installable-java11-windows-amd64', diskspace_required: "31GB"},
+  deploy_vm_installable_java11_windows_amd64: vm.vm_java_11 + self.svm_common_windows_amd64("11") + self.js_windows_jdk11 + self.sulong_windows + self.deploy_daily_vm_windows_jdk11 + self.deploy_graalvm_installables_windows_amd64("java11") + {name: 'daily-deploy-vm-installable-java11-windows-amd64', diskspace_required: "31GB"},
   deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64("java17") + {name: 'daily-deploy-vm-base-java17-windows-amd64'},
-  deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64("java17") + {name: 'daily-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB"},
+  deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.sulong_windows + self.deploy_daily_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64("java17") + {name: 'daily-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB"},
   deploy_vm_base_java19_windows_amd64: vm.vm_java_19 + self.svm_common_windows_amd64("19") + self.js_windows_jdk19 + self.deploy_daily_vm_windows_jdk19 + self.deploy_graalvm_base_windows_amd64("java19") + {name: 'daily-deploy-vm-base-java19-windows-amd64'},
-  deploy_vm_installable_java19_windows_amd64: vm.vm_java_19 + self.svm_common_windows_amd64("19") + self.js_windows_jdk19 + self.deploy_daily_vm_windows_jdk19 + self.deploy_graalvm_installables_windows_amd64("java19") + {name: 'daily-deploy-vm-installable-java19-windows-amd64', diskspace_required: "31GB"},
+  deploy_vm_installable_java19_windows_amd64: vm.vm_java_19 + self.svm_common_windows_amd64("19") + self.js_windows_jdk19 + self.sulong_windows + self.deploy_daily_vm_windows_jdk19 + self.deploy_graalvm_installables_windows_amd64("java19") + {name: 'daily-deploy-vm-installable-java19-windows-amd64', diskspace_required: "31GB"},
 
   #
   # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
