@@ -379,8 +379,8 @@ class ToolchainConfig(object):
         self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
-        self.tool_map = {tool: [_cmd_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
-        self.path_map = {_cmd_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
+        self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
+        self.path_map = {_exe_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
         # register mx command
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],

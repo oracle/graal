@@ -334,9 +334,10 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
     def launchers(self):
         for tool in self.suite.toolchain._supported_tools():
             for exe in self.suite.toolchain._tool_to_aliases(tool):
+                cmd = exe
                 if mx.is_windows() and exe.endswith('.exe'):
-                    exe = exe[:-4] + ".cmd"
-                result = os.path.join(self.get_output_root(), exe)
+                    cmd = exe[:-4] + ".cmd"
+                result = os.path.join(self.get_output_root(), cmd)
                 yield result, tool, exe
 
     def ninja_toolchain_path(self):
@@ -346,7 +347,10 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
         if single:
             raise ValueError("Cannot produce single result for BootstrapToolchainLauncherProject")
         for result, _, exe in self.launchers():
-            yield result, os.path.join('bin', exe)
+            cmd = exe
+            if mx.is_windows() and exe.endswith('.exe'):
+                cmd = exe[:-4] + ".cmd"
+            yield result, os.path.join('bin', cmd)
         toolchain_path = self.ninja_toolchain_path()
         yield toolchain_path, os.path.basename(toolchain_path)
 
