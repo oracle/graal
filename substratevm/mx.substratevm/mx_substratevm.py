@@ -227,7 +227,9 @@ def vm_executable_path(executable, config=None):
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
-    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods', '-H:+ReportExceptionStackTraces']
+    base_args = ['--no-fallback', '-H:+ReportExceptionStackTraces']
+    if mx_sdk_vm_impl.has_component('LibGraal'):
+        base_args += ['-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
     if mx.get_opts().verbose:
         base_args += ['--verbose']

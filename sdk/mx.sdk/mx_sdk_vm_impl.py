@@ -1308,9 +1308,10 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 '--no-fallback',
                 '-march=compatibility',  # Target maximum portability of all GraalVM images.
                 '-H:+AssertInitializationSpecifiedForAllClasses',
-                '-H:+EnforceMaxRuntimeCompileMethods',
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ]
+            if has_component('LibGraal'):
+                build_args += ['-H:+EnforceMaxRuntimeCompileMethods']
             if _debug_images():
                 build_args += ['-ea', '-O0', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
             if _get_svm_support().generate_debug_info(image_config):
