@@ -109,7 +109,7 @@
             {
                 "os": "windows",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-macos-{arch}"
+                "name_template": "{name}-{version}-{os}-{arch}"
             }
 	]
     },
