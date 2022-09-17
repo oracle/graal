@@ -109,7 +109,7 @@
             {
                 "os": "windows",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-macos-{arch}"
+                "name_template": "{name}-{version}-{os}-{arch}"
             }
 	]
     },
@@ -189,6 +189,10 @@
             {
                 "os": "darwin",
                 "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
             }
         ]
     },
@@ -212,6 +216,10 @@
             {
                 "os": "darwin",
                 "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
             }
         ]
     },
@@ -235,6 +243,10 @@
             {
                 "os": "darwin",
                 "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
             }
         ]
     },
@@ -258,6 +270,10 @@
             {
                 "os": "darwin",
                 "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
             }
         ]
     },
@@ -281,6 +297,10 @@
             {
                 "os": "darwin",
                 "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
             }
         ]
     },
@@ -304,6 +324,10 @@
             {
                 "os": "darwin",
                 "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
             }
         ]
     },
