@@ -40,6 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureImpl;
+import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
@@ -64,6 +66,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -88,11 +91,16 @@ public final class PointsToAnalyzer {
     }
 
     private final StandalonePointsToAnalysis bigbang;
+    private final StandaloneAnalysisFeatureManager standaloneAnalysisFeatureManager;
+    private final ClassLoader analysisClassLoader;
     private final DebugContext debugContext;
+    private StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl onAnalysisExitAccess;
     private final String analysisTargetMainClass;
 
     @SuppressWarnings("try")
     private PointsToAnalyzer(String mainEntryClass, OptionValues options) {
+        analysisClassLoader = PointsToAnalyzer.class.getClassLoader();
+        standaloneAnalysisFeatureManager = new StandaloneAnalysisFeatureManager(options);
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
@@ -208,13 +216,24 @@ public final class PointsToAnalyzer {
     @SuppressWarnings("try")
     public int run() {
         registerEntryMethod();
+        registerFeatures();
         int exitCode = 0;
+        Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang, debugContext);
+        standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
         try (Timer t = new Timer("analysis", "standalone pointsto analysis")) {
-            bigbang.runAnalysis(debugContext, (analysisUniverse) -> true);
+            StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang,
+                            debugContext);
+            bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
+                bigbang.getHostVM().notifyClassReachabilityListener(analysisUniverse, config);
+                standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.duringAnalysis(config));
+                return !config.getAndResetRequireAnalysisIteration();
+            });
         } catch (Throwable e) {
             reportException(e);
             exitCode = 1;
         }
+        onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang, debugContext);
+        standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.onAnalysisExit(onAnalysisExitAccess));
         bigbang.getUnsupportedFeatures().report(bigbang);
         return exitCode;
     }
@@ -229,6 +248,14 @@ public final class PointsToAnalyzer {
 
     public AnalysisUniverse getResultUniverse() {
         return bigbang.getUniverse();
+    }
+
+    public Object getResultFromFeature(Class<? extends Feature> feature) {
+        return onAnalysisExitAccess.getResult(feature);
+    }
+
+    private void registerFeatures() {
+        standaloneAnalysisFeatureManager.registerFeaturesFromOptions();
     }
 
     private void registerEntryMethod() {
