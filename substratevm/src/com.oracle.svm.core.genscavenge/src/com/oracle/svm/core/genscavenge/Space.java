@@ -200,7 +200,7 @@ public final class Space {
         if (ParallelGC.isSupported()) {
             ParallelGCImpl.mutex.lock();
             if (oldChunk.notEqual(ParallelGCImpl.getThreadLocalScannedChunk())) {
-                ParallelGCImpl.singleton().push(oldChunk);
+                ParallelGCImpl.singleton().push(HeapChunk.asPointer(oldChunk));
             }
         }
         AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
@@ -487,7 +487,7 @@ public final class Space {
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
         if (ParallelGCImpl.isInParallelPhase()) {
-            ParallelGCImpl.singleton().push(chunk);
+            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk));
             ParallelGCImpl.mutex.unlock();
         }
 
@@ -511,7 +511,7 @@ public final class Space {
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
         if (ParallelGCImpl.isInParallelPhase()) {
-            assert false;///
+            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(0x01));
             ParallelGCImpl.mutex.unlock();
         }
 

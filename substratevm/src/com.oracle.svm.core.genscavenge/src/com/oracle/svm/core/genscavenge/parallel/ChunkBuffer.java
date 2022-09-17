@@ -2,6 +2,7 @@ package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.log.Log;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 /**
@@ -9,21 +10,22 @@ import org.graalvm.word.WordFactory;
  */
 public class ChunkBuffer {
     private static final int SIZE = 10 * 1024; ///handle overflow
-    private static final HeapChunk.Header<?>[] buffer = new HeapChunk.Header<?>[SIZE];
+    private static final Pointer[] buffer = new Pointer[SIZE];
     private int top;
 
     private Log debugLog() {
         return ParallelGCImpl.debugLog();
     }
 
-    void push(HeapChunk.Header<?> ptr) {
-        ParallelGCImpl.mutex.lock();
+    /**
+     * This method must be called with ParallelGCImpl.mutex locked
+     */
+    void push(Pointer ptr) {
         assert top < SIZE;
         buffer[top++] = ptr;
-        ParallelGCImpl.mutex.unlock();
     }
 
-    HeapChunk.Header<?> pop() {
+    Pointer pop() {
         ParallelGCImpl.mutex.lock();
         try {
             if (top > 0) {

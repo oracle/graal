@@ -7,6 +7,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.locks.VMCondition;
@@ -78,7 +79,7 @@ public class ParallelGCImpl extends ParallelGC {
         allocChunkTL.set(chunk);
     }
 
-    public void push(HeapChunk.Header<?> ptr) {
+    public void push(Pointer ptr) {
         buffer.push(ptr);
     }
 
@@ -170,10 +171,15 @@ public class ParallelGCImpl extends ParallelGC {
     private void drainBuffer() {
         debugLog().string("WW drain size=").unsigned(buffer.size()).newline();
         do {
-            HeapChunk.Header<?> chunk;
-            while ((chunk = buffer.pop()).notEqual(WordFactory.nullPointer())) {
-                debugLog().string("WW drain chunk=").zhex(chunk).newline();
-                AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) chunk, getVisitor());
+            Pointer ptr;
+            while ((ptr = buffer.pop()).notEqual(WordFactory.nullPointer())) {
+                debugLog().string("WW drain chunk=").zhex(ptr).newline();
+                if (ptr.and(0x01).notEqual(0)) {
+                    // unaligned chunk
+                    UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~0x01), getVisitor());
+                } else {
+                    AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) ptr, getVisitor());
+                }
             }
             AlignedHeapChunk.AlignedHeader tlab = allocChunkTL.get();
             debugLog().string("WW drain tlab=").zhex(tlab).newline();
