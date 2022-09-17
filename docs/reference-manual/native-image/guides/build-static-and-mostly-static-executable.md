@@ -39,7 +39,7 @@ The following prerequisites should be met:
  
 As a preparation step, install the `musl` toolchain, compile and install `zlib` into the toolchain.
 
-1. Download the `musl` toolchain from [musl.cc](https://musl.cc/). (We recommend [this one](http://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
+1. Download the `musl` toolchain from [musl.cc](https://musl.cc/). (We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
 2. Download the latest `zlib` library sources from [zlib.net](https://zlib.net/) and extract them. (This documentation uses `zlib-1.2.11`.)
 3. Create a new environment variable, named `CC`:
     ```bash
