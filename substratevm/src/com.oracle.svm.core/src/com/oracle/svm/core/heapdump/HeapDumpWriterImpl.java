@@ -530,7 +530,10 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
 
         /* Flush buffer stream and throw it away. */
         out.flush();
+        /* zero out allocated memory in order to be garbage collected */
         out = null;
+        fieldsMap = null;
+        classDataCache = null;
     }
 
     private void writeHeapRecordPrologue() throws IOException {
