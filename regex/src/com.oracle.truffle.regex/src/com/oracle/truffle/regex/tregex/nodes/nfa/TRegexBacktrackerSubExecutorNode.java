@@ -42,12 +42,12 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
 /**
- * Specialized {@link TRegexExecutorNode} for matching {@link LookAroundAssertion#isLiteral()
- * literal} {@link LookAroundAssertion}s.
+ * Common base class for executor nodes used in {@link TRegexBacktrackingNFAExecutorNode}, where the
+ * top-level executor represents a full regular expression, and all nested sub-executors represent
+ * look-around assertions.
  */
 public abstract class TRegexBacktrackerSubExecutorNode extends TRegexExecutorNode {
 
