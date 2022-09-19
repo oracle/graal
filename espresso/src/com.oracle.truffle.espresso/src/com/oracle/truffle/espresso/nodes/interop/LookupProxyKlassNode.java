@@ -52,7 +52,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     public abstract ObjectKlass execute(Object metaObject, String metaName, Klass targetType) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"targetType == cachedTargetType", "metaName == cachedMetaName"}, limit = "LIMIT")
+    @Specialization(guards = {"targetType == cachedTargetType", "cachedMetaName.equals(metaName)"}, limit = "LIMIT")
     ObjectKlass doCached(Object metaObject, String metaName, Klass targetType,
                     @Cached("metaObject") Object cachedMetaObject,
                     @Cached("targetType") Klass cachedTargetType,

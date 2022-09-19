@@ -682,6 +682,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return result;
     }
 
+    @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                    justification = "espressoClass is deliberately non-volatile since it uses \"Unsafe Local DCL + Safe Singleton\" as described in https://shipilev.net/blog/2014/safe-public-construction\n" +
+                                    "A static hasFinalInstanceField(StaticObject.class) assertion ensures correctness.")
     public final StaticObject initializeEspressoClass() {
         CompilerAsserts.neverPartOfCompilation();
         StaticObject result = this.espressoClass;
