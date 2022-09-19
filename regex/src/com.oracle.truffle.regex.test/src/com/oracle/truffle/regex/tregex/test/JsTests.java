@@ -168,8 +168,9 @@ public class JsTests extends RegexTestBase {
 
     @Test
     public void gr40877() {
-        // gets optimized away
-        test("(?!([]))(?:(^)\\2)+", "m", "", 0, false);
+        test("(?!([]))[a-z]", "", "a", 0, true, 0, 1, -1, -1);
+        test("(?<!([]))[a-z]", "", "a", 0, true, 0, 1, -1, -1);
+        test("(?!([]))(?:(^)\\2)+", "m", "", 0, true, 0, 0, -1, -1, 0, 0);
     }
 
     @Test
