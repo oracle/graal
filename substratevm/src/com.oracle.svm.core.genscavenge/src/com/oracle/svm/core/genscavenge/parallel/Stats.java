@@ -71,9 +71,10 @@ class RealStats extends Stats {
         totalStats.reset();
         log.string("PGC stats:").newline();
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-            StatsImpl stats = statsTL.get(vmThread);
-            if (stats != null) {
-                Thread jt = PlatformThreads.fromVMThread(vmThread);
+            Thread jt = PlatformThreads.fromVMThread(vmThread);
+            String jtName = jt.getName();
+            if (jt == Thread.currentThread() || jtName != null && jtName.startsWith("ParallelGCWorker-")) {
+                StatsImpl stats = statsTL.get(vmThread);
                 log.string("  ").string(jt.getName()).string(":").newline();
                 totalStats.objectVisitTime += stats.objectVisitTime;
                 totalStats.allocTime += stats.allocTime;
