@@ -1036,7 +1036,10 @@ public abstract class PlatformThreads {
         @Override
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.add(PlatformThreads.fromVMThread(cur));
+                Thread thread = PlatformThreads.fromVMThread(cur);
+                if (thread != null) {
+                    result.add(thread);
+                }
             }
         }
     }
