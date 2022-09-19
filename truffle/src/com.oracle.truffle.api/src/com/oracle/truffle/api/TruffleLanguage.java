@@ -2083,6 +2083,7 @@ public abstract class TruffleLanguage<C> {
          * @param hostObject the host object to convert
          * @since 19.0
          */
+        @TruffleBoundary
         public Object asGuestValue(Object hostObject) {
             try {
                 return LanguageAccessor.engineAccess().toGuestValue(null, hostObject, polyglotLanguageContext);
