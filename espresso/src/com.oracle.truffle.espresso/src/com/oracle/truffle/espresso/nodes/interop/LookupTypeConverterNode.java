@@ -38,7 +38,7 @@ public abstract class LookupTypeConverterNode extends EspressoNode {
     public abstract PolyglotTypeMappings.TypeConverter execute(String metaName) throws ClassCastException;
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"metaName == cachedMetaName"}, limit = "LIMIT")
+    @Specialization(guards = {"cachedMetaName.equals(metaName)"}, limit = "LIMIT")
     PolyglotTypeMappings.TypeConverter doCached(String metaName,
                     @Cached("metaName") String cachedMetaName,
                     @Cached("doUncached(metaName)") PolyglotTypeMappings.TypeConverter converter) throws ClassCastException {
