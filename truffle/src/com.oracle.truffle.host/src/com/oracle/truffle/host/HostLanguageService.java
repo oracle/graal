@@ -136,8 +136,17 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object hostContext, Object hostValue, boolean asValue) {
+    public Object createHostLibrary(int limit) {
+        if (limit <= 0) {
+            return HostLibrary.getUncached();
+        }
+        return HostLibrary.getFactory().createDispatched(limit);
+    }
+
+    @Override
+    public Object toGuestValue(Object hostContext, Object hostValue, boolean asValue, Object hostLibraryRaw) {
         HostContext context = (HostContext) hostContext;
+        HostLibrary hostLibrary = (HostLibrary) hostLibraryRaw;
         assert validHostValue(hostValue, context) : "polyglot unboxing should be a no-op at this point.";
         if (HostContext.isGuestPrimitive(hostValue)) {
             return hostValue;
@@ -258,12 +267,13 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object migrateValue(Object targetContext, Object value, Object valueContext) {
+    public Object migrateValue(Object targetContext, Object value, Object valueContext, Object hostLibraryRaw) {
         assert targetContext != valueContext;
         if (value instanceof TruffleObject) {
             assert value instanceof TruffleObject;
-            if (HostObject.isInstance(language, HostLibrary.getUncached(), value)) {
-                return HostObject.withContext(language, HostLibrary.getUncached(), value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            HostLibrary hostLibrary = (HostLibrary) hostLibraryRaw;
+            if (HostObject.isInstance(language, hostLibrary, value)) {
+                return HostObject.withContext(language, hostLibrary, value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (value instanceof HostProxy) {
                 return HostProxy.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (valueContext == null) {

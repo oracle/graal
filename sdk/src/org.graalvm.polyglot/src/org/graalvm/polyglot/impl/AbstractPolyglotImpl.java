@@ -705,6 +705,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object toGuestValue(Object internalContext, Object hostValue);
 
+        public abstract Object toGuestValue(Object polyglotContext, Object hostValue, Object hostLibrary);
+
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
 
         public abstract <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
@@ -773,7 +775,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 
-        public abstract Object toGuestValue(Object context, Object hostValue, boolean asValue);
+        public abstract Object createHostLibrary(int limit);
+
+        public abstract Object toGuestValue(Object context, Object hostValue, boolean asValue, Object hostLibrary);
 
         public abstract Object asHostDynamicClass(Object context, Class<?> value);
 
@@ -815,7 +819,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
-        public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
+        public abstract Object migrateValue(Object hostContext, Object value, Object valueContext, Object hostLibrary);
 
         public abstract void pin(Object receiver);
 

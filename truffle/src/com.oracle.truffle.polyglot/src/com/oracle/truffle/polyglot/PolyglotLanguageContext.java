@@ -837,6 +837,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return context.toGuestValue(node, receiver, false);
     }
 
+    public Node createHostLibrary(Node node, int limit) {
+        return context.createHostLibrary(limit);
+    }
+
     static final class ToHostValueNode {
 
         final APIAccess apiAccess;
@@ -1014,23 +1018,32 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     @GenerateUncached
     abstract static class ToGuestValueNode extends Node {
-
         abstract Object execute(PolyglotLanguageContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
-        Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(this, receiver);
+        Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver,
+            @Cached(value = "createHostLibrary(context, 3)", uncached = "createHostLibrary(context, 0)") Node hostLibrary
+        ) {
+            return context.toGuestValue(hostLibrary, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
-        Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(this, cachedReceiver.cast(receiver));
+        Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver,
+            @Cached(value = "createHostLibrary(context, 3)", uncached = "createHostLibrary(context, 0)") Node hostLibrary
+        ) {
+            return context.toGuestValue(hostLibrary, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        Object doUncached(PolyglotLanguageContext context, Object receiver) {
-            return context.toGuestValue(this, receiver);
+        Object doUncached(PolyglotLanguageContext context, Object receiver,
+            @Cached(value = "createHostLibrary(context, 3)", uncached = "createHostLibrary(context, 0)") Node hostLibrary
+        ) {
+            return context.toGuestValue(hostLibrary, receiver);
+        }
+
+        Node createHostLibrary(PolyglotLanguageContext context, int limit) {
+            return context.createHostLibrary(this, limit);
         }
     }
 

@@ -1276,10 +1276,16 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     Object migrateValue(Object value, PolyglotContextImpl valueContext) {
+        CompilerAsserts.neverPartOfCompilation();
+        Object uncached = engine.host.createHostLibrary(0);
+        return migrateValue(value, valueContext, uncached);
+    }
+
+    Object migrateValue(Object value, PolyglotContextImpl valueContext, Object hostLibrary) {
         if (!config.allowValueSharing) {
             throw failValueSharing();
         }
-        Object result = engine.host.migrateValue(this, value, valueContext);
+        Object result = engine.host.migrateValue(this, value, valueContext, hostLibrary);
         if (result != null) {
             // host made sure migration is fine
             return result;
@@ -1802,7 +1808,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } else {
                 targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(toGuestValue(null, hostValue, true));
+            Node hostLibrary = targetLanguageContext.createHostLibrary(null, 0);
+            return targetLanguageContext.asValue(toGuestValue(hostLibrary, hostValue, true));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {
@@ -1840,8 +1847,13 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 localContext = this;
             }
         }
-        Object value = PolyglotHostAccess.toGuestValue(localContext, hostValue);
-        return localEngine.host.toGuestValue(localContext.getHostContextImpl(), value, asValue);
+        Object value = PolyglotHostAccess.toGuestValue(localContext, hostValue, node);
+        return localEngine.host.toGuestValue(localContext.getHostContextImpl(), value, asValue, node);
+    }
+
+    Node createHostLibrary(int limit) {
+        PolyglotEngineImpl localEngine = this.engine;
+        return (Node) localEngine.host.createHostLibrary(limit);
     }
 
     boolean waitForThreads(long startMillis, long timeoutMillis) {

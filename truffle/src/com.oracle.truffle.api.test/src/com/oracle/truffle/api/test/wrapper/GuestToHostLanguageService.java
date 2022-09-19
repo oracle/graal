@@ -73,9 +73,13 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object context, Object hostValue, boolean asValue) {
-
+    public Object toGuestValue(Object context, Object hostValue, boolean asValue, Object hostLibrary) {
         return hostValue;
+    }
+
+    @Override
+    public Object createHostLibrary(int limit) {
+        return null;
     }
 
     @Override
@@ -171,7 +175,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object migrateValue(Object hostContext, Object value, Object valueContext) {
+    public Object migrateValue(Object hostContext, Object value, Object valueContext, Object hostLibrary) {
         return null;
     }
 

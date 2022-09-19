@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.List;
@@ -66,18 +67,25 @@ final class PolyglotHostAccess extends AbstractHostAccess {
 
     @Override
     public Object toGuestValue(Object polyglotContext, Object hostValue) {
+        CompilerAsserts.neverPartOfCompilation();
         PolyglotContextImpl internalContext = (PolyglotContextImpl) polyglotContext;
-        return toGuestValue(internalContext, hostValue);
+        return toGuestValue(internalContext, hostValue, internalContext.createHostLibrary(0));
     }
 
-    static Object toGuestValue(PolyglotContextImpl context, Object hostValue) {
+    @Override
+    public Object toGuestValue(Object polyglotContext, Object hostValue, Object hostLibrary) {
+        PolyglotContextImpl internalContext = (PolyglotContextImpl) polyglotContext;
+        return toGuestValue(internalContext, hostValue, hostLibrary);
+    }
+
+    static Object toGuestValue(PolyglotContextImpl context, Object hostValue, Object hostLibrary) {
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context.getAPIAccess().getContext(receiverValue);
             PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
             Object valueReceiver = context.getAPIAccess().getReceiver(receiverValue);
             if (valueContext != context) {
-                valueReceiver = context.migrateValue(valueReceiver, valueContext);
+                valueReceiver = context.migrateValue(valueReceiver, valueContext, hostLibrary);
             }
             return valueReceiver;
         } else if (PolyglotWrapper.isInstance(hostValue)) {

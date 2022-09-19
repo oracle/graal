@@ -68,6 +68,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -310,12 +311,12 @@ final class HostContext {
         return HostObject.forClass(receiver, this);
     }
 
-    Object toGuestValue(Node node, Object hostValue) {
+    Object toGuestValue(HostLibrary node, Object hostValue) {
         HostLanguage l = HostLanguage.get(node);
         HostContext context = HostContext.get(node);
         assert context == this;
-        Object result = l.access.toGuestValue(context.internalContext, hostValue);
-        return l.service.toGuestValue(context, result, false);
+        Object result = l.access.toGuestValue(context.internalContext, hostValue, node);
+        return l.service.toGuestValue(context, result, false, node);
     }
 
     static boolean isGuestPrimitive(Object receiver) {
@@ -338,19 +339,25 @@ final class HostContext {
         abstract Object execute(HostContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
-        Object doNull(HostContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(this, receiver);
+        Object doNull(
+            HostContext context, @SuppressWarnings("unused") Object receiver,
+            @CachedLibrary(limit = "3") HostLibrary hostLibrary
+        ) {
+            return context.toGuestValue(hostLibrary, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
-        Object doCached(HostContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(this, cachedReceiver.cast(receiver));
+        Object doCached(
+            HostContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver,
+            @CachedLibrary(limit = "3") HostLibrary hostLibrary
+        ) {
+            return context.toGuestValue(hostLibrary, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        Object doUncached(HostContext context, Object receiver) {
-            return context.toGuestValue(this, receiver);
+        Object doUncached(HostContext context, Object receiver, @CachedLibrary(limit = "3") HostLibrary hostLibrary) {
+            return context.toGuestValue(hostLibrary, receiver);
         }
     }
 
