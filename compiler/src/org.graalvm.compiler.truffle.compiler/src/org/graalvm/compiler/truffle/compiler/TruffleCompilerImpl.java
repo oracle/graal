@@ -518,8 +518,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             // them to encode the compilation tier, so escaping the target name is not necessary.
             String compilationName = wrapper.compilable.toString() + (wrapper.task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(wrapper.task.isFirstTier() ? config.firstTier() : config.lastTier());
-            CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, wrapper.compilable, asCompilationRequest(wrapper.compilationId), wrapper.listener,
-                            wrapper.task);
+            InstalledCode[] installedCode = {null};
+            CompilationResult compilationResult = compilePEGraph(graph,
+                            compilationName,
+                            graphBuilderSuite,
+                            wrapper.compilable,
+                            asCompilationRequest(wrapper.compilationId),
+                            wrapper.listener,
+                            wrapper.task,
+                            installedCode);
             if (wrapper.statistics != null) {
                 wrapper.statistics.afterLowTier(wrapper.compilable, graph);
             }
@@ -529,7 +536,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
 
             // Partial evaluation and installation are included in
             // compilation time and memory usage reported by printer
-            printer.finish(compilationResult);
+            printer.finish(compilationResult, installedCode[0]);
         } catch (Throwable t) {
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
@@ -594,7 +601,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
                     CompilableTruffleAST compilable,
                     CompilationRequest compilationRequest,
                     TruffleCompilerListener listener,
-                    TruffleCompilationTask task) {
+                    TruffleCompilationTask task,
+                    InstalledCode[] outInstalledCode) {
 
         replaceAnyExtendNodes(graph);
         DebugContext debug = graph.getDebug();
@@ -628,6 +636,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             InstalledCode installedCode = createInstalledCode(compilable);
             assert graph.getSpeculationLog() == result.getSpeculationLog();
             tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
+            if (outInstalledCode != null) {
+                outInstalledCode[0] = installedCode;
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }
