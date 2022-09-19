@@ -1,12 +1,11 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
-import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.log.Log;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 /**
- * Synchronized buffer where chunks to be scanned are stored.
+ * Synchronized buffer that stores "grey" heap chunks to be scanned.
  */
 public class ChunkBuffer {
     private static final int SIZE = 10 * 1024; ///handle overflow

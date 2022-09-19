@@ -511,7 +511,7 @@ public final class Space {
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
         if (ParallelGCImpl.isInParallelPhase()) {
-            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(0x01));
+            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(0x01));///magic
             ParallelGCImpl.mutex.unlock();
         }
 

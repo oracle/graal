@@ -170,11 +170,11 @@ public class ParallelGCImpl extends ParallelGC {
 
     private void drainBuffer() {
         debugLog().string("WW drain size=").unsigned(buffer.size()).newline();
-        do {
+        while (true) {
             Pointer ptr;
             while ((ptr = buffer.pop()).notEqual(WordFactory.nullPointer())) {
                 debugLog().string("WW drain chunk=").zhex(ptr).newline();
-                if (ptr.and(0x01).notEqual(0)) {
+                if (ptr.and(0x01).notEqual(0)) {///magic
                     // unaligned chunk
                     UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~0x01), getVisitor());
                 } else {
@@ -183,13 +183,17 @@ public class ParallelGCImpl extends ParallelGC {
             }
             AlignedHeapChunk.AlignedHeader tlab = allocChunkTL.get();
             debugLog().string("WW drain tlab=").zhex(tlab).newline();
-            if (tlab.notEqual(WordFactory.nullPointer())) {
+            if (tlab.equal(WordFactory.nullPointer())) {
+                break;
+            } else {
                 scannedChunkTL.set(tlab);
                 AlignedHeapChunk.walkObjectsInline(tlab, getVisitor());
+                if (allocChunkTL.get().equal(tlab)) {
+                    // this tlab is now black, retire it
+                    allocChunkTL.set(WordFactory.nullPointer());
+                }
             }
-        } while (buffer.size() > 0 || allocChunkTL.get().notEqual(scannedChunkTL.get()));
-
-        allocChunkTL.set(WordFactory.nullPointer());
+        }
         scannedChunkTL.set(WordFactory.nullPointer());
     }
 
