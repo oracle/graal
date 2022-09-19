@@ -145,6 +145,30 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 // Probably a word type, non-compatible stamp.
                 type = declaringType;
             } else {
+                // @formatter:off
+                /* Consider the following hierarchy:
+                 *
+                 * abstract class Base {
+                 *     public String bar() { return "Base"; }
+                 * }
+                 *
+                 * abstract class AbstractBaseImpl extends Base {
+                 *     @Override public String bar() { return "AbstractBaseImpl"; }
+                 * }
+                 *
+                 * final class ConcreteImpl extends AbstractBaseImpl { }
+                 *
+                 * To de-virtualize virtual calls to Base::bar, Base.findUniqueConcreteMethod(bar) -> null won't work
+                 * because there are two possible concrete methods available: Base::bar and AbstractBaseImpl::bar.
+                 * To overcome this limitation, the lookup can be done from a concrete leaf type, if it exists.
+                 * e.g.
+                 *   Base.findLeafConcreteSubtype() -> ConcreteImpl
+                 *   then ConcreteImpl.findUniqueConcreteMethod(bar) -> AbstractBaseImpl::bar
+                 *
+                 * By doing the lookup from a concrete leaf type, de-virtualization is more effective since we are 
+                 * looking up in the class hierarchy rather than down.
+                 */
+                // @formatter:on
                 // Narrow the receiver type to a unique concrete subtype, if it exists.
                 Stamp improvedStamp = receiverStamp.tryImproveWith(StampFactory.object(declaringType));
                 if (improvedStamp != null) {
