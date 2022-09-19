@@ -601,10 +601,12 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
+        @CompilerDirectives.TruffleBoundary
         final boolean isHostObject(Object value) {
             return LibFFIContext.get(this).env.isHostObject(value);
         }
 
+        @CompilerDirectives.TruffleBoundary
         final Object asHostObject(Object value) {
             return LibFFIContext.get(this).env.asHostObject(value);
         }
