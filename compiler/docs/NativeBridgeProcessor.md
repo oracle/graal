@@ -1,6 +1,6 @@
 ## Native bridge annotation processor
 
-The native bridge annotation processor generates code to simplify making calls between code executing in two disjoint JVM runtimes (e.g. Native Image and HotSpot) by generating stubs for calling foreign methods using a JNI interface. The processor can bridge interfaces, classes, and classes with custom dispatch. A single stub can bridge either a single class or a single interface. The supported data types are Java primitive types, `String`, arrays of primitive types, and foreign reference types. Custom types are supported using marshallers registered in the `JNIConfig.Builder`. The processor processes the [@GenerateHotSpotToNativeBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateHotSpotToNativeBridge.java) and [@GenerateNativeToHotSpotBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToHotSpotBridge.java) annotations.
+The native bridge annotation processor generates code to simplify making calls between code executing in two disjoint JVM runtimes (e.g. Native Image and HotSpot) by generating stubs for calling foreign methods using a JNI interface. The processor can bridge interfaces, classes, and classes with custom dispatch. A single stub can bridge either a single class or a single interface. The supported data types are Java primitive types, `String`, foreign reference types, and arrays of primitive types or foreign reference types. Custom types are supported using marshallers registered in the `JNIConfig.Builder`. The processor processes the [@GenerateHotSpotToNativeBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateHotSpotToNativeBridge.java) and [@GenerateNativeToHotSpotBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToHotSpotBridge.java) annotations.
 
 ### Bridging an interface
 
@@ -307,7 +307,7 @@ More foreign reference examples can be found in the [bridge processor tests](htt
 
 ### Arrays
 
-Arrays of primitive types are directly supported by the annotation processor. The array method parameters are by default treated as `in` parameters, the content of the array is copied to the called method. Sometimes it's needed to change this behavior and treat the array parameter as an `out` parameter. This can be done using an `@Out` annotation. The following example bridges a `read` method with an `out` array parameter.
+Arrays of primitive types or foreign reference types are directly supported by the annotation processor. The array method parameters are by default treated as `in` parameters, the content of the array is copied to the called method. Sometimes it's needed to change this behavior and treat the array parameter as an `out` parameter. This can be done using an `@Out` annotation. The following example bridges a `read` method with an `out` array parameter.
 
 ```java
 interface Reader {
@@ -339,6 +339,38 @@ The `@Out` annotation can be combined with the `@In` annotation for `in-out` arr
 @Override
 public abstract int read(@In @Out byte[] b, int off, int len);
 ```
+
+To pass an array of foreign references, you must annotate the array using the `@ByReference` annotation. The following example bridges a `register` method taking an array of HotSpot object references.
+
+```java
+interface EventConsumer {
+    void consumeEvent(String event);
+}
+
+interface EventSource {
+    void register(EventConsumer[] consumers);
+}
+
+@GenerateNativeToHotSpotBridge(jniConfig = ExampleJNIConfig.class)
+abstract class HSEventConsumer extends HSObject implements EventConsumer {
+    HSEventConsumer(JNIEnv jniEnv,  JObject reference) {
+        super(jniEnv, reference);
+    }
+}
+
+@GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
+abstract class NativeEventSource extends NativeObject implements EventSource {
+
+    NativeEventSource(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
+    }
+
+    @Override
+    public abstract void register(@ByReference(HSEventConsumer.class) EventConsumer[] consumers);
+}
+```
+
+More foreign references array examples can be found in the [bridge processor tests](https://github.com/oracle/graal/tree/master/compiler/src/org.graalvm.nativebridge.processor.test/src/org/graalvm/nativebridge/processor/test/references/).
 
 ### JNIConfig
 

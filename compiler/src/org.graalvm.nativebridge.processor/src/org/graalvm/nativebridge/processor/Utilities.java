@@ -249,4 +249,18 @@ final class Utilities {
     static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
         return (PackageElement) typeElement.getEnclosingElement();
     }
+
+    static CharSequence javaMemberName(CharSequence... nameComponents) {
+        StringBuilder result = new StringBuilder();
+        for (CharSequence component : nameComponents) {
+            if (result.length() == 0) {
+                result.append(component);
+            } else {
+                String strComponent = component.toString();
+                result.append(Character.toUpperCase(strComponent.charAt(0)));
+                result.append(strComponent.substring(1));
+            }
+        }
+        return result.toString();
+    }
 }
