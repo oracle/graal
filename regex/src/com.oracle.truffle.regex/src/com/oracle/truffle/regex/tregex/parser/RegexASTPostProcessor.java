@@ -90,7 +90,7 @@ public class RegexASTPostProcessor {
         if (properties.hasQuantifiers()) {
             UnrollQuantifiersVisitor.unrollQuantifiers(ast, compilationBuffer);
         }
-        CalcASTPropsVisitor.run(ast);
+        CalcASTPropsVisitor.run(ast, compilationBuffer);
         ast.createPrefix();
         InitIDVisitor.init(ast);
         if (ast.canTransformToDFA()) {
@@ -344,22 +344,6 @@ public class RegexASTPostProcessor {
             new OptimizeLookAroundsVisitor(ast, compilationBuffer).run(ast.getRoot());
         }
 
-        private void removeTerm(Sequence sequence, int i) {
-            ObjectArrayBuffer<Term> buf = compilationBuffer.getObjectBuffer1();
-            // stash successors of term to buffer
-            int size = sequence.size();
-            for (int j = i + 1; j < size; j++) {
-                buf.add(sequence.getLastTerm());
-                sequence.removeLastTerm();
-            }
-            // drop term
-            sequence.removeLastTerm();
-            // restore the stashed successors
-            for (int j = buf.length() - 1; j >= 0; j--) {
-                sequence.add(buf.get(j));
-            }
-        }
-
         @Override
         protected void leave(Sequence sequence) {
             int i = 0;
@@ -371,7 +355,7 @@ public class RegexASTPostProcessor {
                         if (replacement.isPresent()) {
                             sequence.replace(i, replacement.get());
                         } else {
-                            removeTerm(sequence, i);
+                            sequence.removeTerm(i, compilationBuffer);
                             i--;
                         }
                     }
