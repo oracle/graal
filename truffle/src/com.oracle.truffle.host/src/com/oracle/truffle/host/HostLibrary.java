@@ -1,5 +1,6 @@
 package com.oracle.truffle.host;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -10,6 +11,7 @@ abstract class HostLibrary extends Library {
     private static final HostLibrary UNCACHED = FACTORY.getUncached();
 
     static HostLibrary getUncached() {
+        CompilerAsserts.neverPartOfCompilation("HostLibrary needs to be fast on fast-path");
         return UNCACHED;
     }
     
