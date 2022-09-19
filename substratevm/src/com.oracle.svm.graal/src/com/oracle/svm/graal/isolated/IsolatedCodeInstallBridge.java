@@ -33,10 +33,9 @@ import jdk.vm.ci.code.InstalledCode;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle
- * compilation. It does not implement {@link InstalledCode} or {@link OptimizedAssumptionDependency}
- * in any meaningful way.
+ * compilation. It does not implement {@link InstalledCode} in any meaningful way.
  */
-public final class IsolatedCodeInstallBridge extends InstalledCode implements OptimizedAssumptionDependency {
+public class IsolatedCodeInstallBridge extends InstalledCode {
     private final ClientHandle<? extends SubstrateInstalledCode.Factory> factoryHandle;
     private ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle;
 
@@ -58,7 +57,7 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
         return installedCodeHandle;
     }
 
-    private static final String DO_NOT_CALL_REASON = IsolatedCodeInstallBridge.class.getSimpleName() +
+    protected static final String DO_NOT_CALL_REASON = IsolatedCodeInstallBridge.class.getSimpleName() +
                     " only acts as an accessor for cross-isolate data. None of the implemented methods may be called.";
 
     @Override
@@ -87,17 +86,7 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
     }
 
     @Override
-    public void onAssumptionInvalidated(Object source, CharSequence reason) {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
-
-    @Override
     public Object executeVarargs(Object... args) {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
-
-    @Override
-    public TruffleCompilable getCompilable() {
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 

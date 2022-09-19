@@ -39,7 +39,6 @@ import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.CompilerIsolateThread;
-import com.oracle.svm.graal.isolated.IsolatedCodeInstallBridge;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
@@ -138,7 +137,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
 
     @Override
     public InstalledCode createPreliminaryInstalledCode() {
-        return new IsolatedCodeInstallBridge(handle);
+        return new IsolatedTruffleCodeInstallBridge(handle);
     }
 
     @Override
