@@ -226,7 +226,7 @@ public final class PureNFA implements StateIndex<PureNFAState> {
         return null;
     }
 
-    private boolean mergeInitialStateMatcher(RegexAST ast, PureNFA nfa, CodePointSetAccumulator acc) {
+    private static boolean mergeInitialStateMatcher(RegexAST ast, PureNFA nfa, CodePointSetAccumulator acc) {
         for (PureNFATransition t : nfa.getUnAnchoredInitialState().getSuccessors()) {
             PureNFAState target = t.getTarget();
             switch (target.getKind()) {

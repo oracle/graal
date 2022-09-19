@@ -104,8 +104,8 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         return subTreeId;
     }
 
-    public void setSubTreeId(int globalSubTreeId) {
-        this.subTreeId = globalSubTreeId;
+    public void setSubTreeId(int subTreeId) {
+        this.subTreeId = subTreeId;
     }
 
     public SubTreeIndex getSubtrees() {
