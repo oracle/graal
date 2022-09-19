@@ -50,14 +50,15 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.UnsupportedCloneMethod;
 import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK17_0_2OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-
 
 /**
  * Substitution of {@link Reference}, which is the abstract base class of all non-strong reference
@@ -193,7 +194,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Override
     @KeepOriginal //
-    @TargetElement //
+    @TargetElement(onlyWith = UnsupportedCloneMethod.class) //
     protected native Object clone() throws CloneNotSupportedException;
 
     @Substitute //
