@@ -39,6 +39,9 @@ env:
   JDT: builtin
   MX_PATH: ${{ github.workspace }}/mx
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   build-graalvm:
     name: ${{ matrix.env.JDK }} ${{ matrix.env.GATE }} ${{ matrix.env.PRIMARY }} ${{ matrix.env.WITHOUT_VCS }}
