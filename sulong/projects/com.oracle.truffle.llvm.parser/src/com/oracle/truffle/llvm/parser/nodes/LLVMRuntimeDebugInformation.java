@@ -99,6 +99,7 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
             super(instructionIndex, variable);
         }
 
+        @Override
         public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
             return LLVMDebugObjectBuilder.UNAVAILABLE;
         }
