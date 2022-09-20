@@ -33,6 +33,9 @@
     common.jdk17_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('native-ce-llvm', guest_jvm_config='multi-tier')                                                       + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-multi_tier-jdk17-linux-amd64'},
     common.jdk17_weekly_bench_linux    + common.graal_benchmark('jvm-ce-llvm', common.scala_dacapo_jvm_warmup)                                                                       + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-reference-jdk17-linux-amd64'},
 
+    common.jdk17_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('jvm-ce-llvm'   , guest_jvm_config='multi-tier'     , extra_args=['--engine.CompilerThreads=3', '--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-multi_tier-3threads-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('native-ce-llvm', guest_jvm_config='multi-tier'     , extra_args=['--engine.CompilerThreads=3'])                                     + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-multi_tier-3threads-jdk17-linux-amd64'},
+
     // Scala DaCapo benchmarks
     common.jdk17_on_demand_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm'          , guest_jvm_config='single-tier'    , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-scala_dacapo-single_tier-jdk17-linux-amd64'},
     common.jdk17_on_demand_bench_linux + common.scala_dacapo_benchmark('native-ce-llvm'       , guest_jvm_config='single-tier')                                                      + {name: 'ondemand-bench-espresso-native-ce-scala_dacapo-single_tier-jdk17-linux-amd64'},
