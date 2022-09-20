@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,6 +44,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -250,12 +250,7 @@ final class TypeInitializerGraph {
         boolean isSubstituted = false;
         if (rt instanceof SubstitutionType) {
             SubstitutionType substitutionType = (SubstitutionType) rt;
-            for (Annotation annotation : substitutionType.getAnnotations()) {
-                if (annotation instanceof Substitute || annotation instanceof Delete) {
-                    isSubstituted = true;
-                    break;
-                }
-            }
+            isSubstituted = GuardedAnnotationAccess.isAnnotationPresent(substitutionType, Substitute.class) || GuardedAnnotationAccess.isAnnotationPresent(substitutionType, Delete.class);
         }
         types.put(t, isSubstituted ? Safety.UNSAFE : initialTypeInitializerSafety(t));
         dependencies.put(t, new HashSet<>());

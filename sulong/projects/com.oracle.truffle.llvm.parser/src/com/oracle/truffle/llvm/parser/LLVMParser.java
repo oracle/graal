@@ -85,11 +85,24 @@ public final class LLVMParser {
         defineAliases(module.getAliases(), targetDataLayout);
 
         return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, threadLocalGlobals, threadLocalGlobalObjectCounter, targetDataLayout,
-                        module.getTargetInformation(TargetTriple.class));
+                        module.getTargetInformation(TargetTriple.class), module.getTotalSize());
+    }
+
+    private static boolean ignoreGlobal(GlobalVariable g) {
+        String name = g.getName();
+        /*
+         * Dummy array to keep other globals alive during compilation and linking. We do not
+         * initialize it as it's not relevant for execution, and it can cause problems during module
+         * initialization (e.g. if a TLS variable is referenced).
+         */
+        return name.equals("llvm.used") || name.equals("llvm.compiler.used");
     }
 
     private void defineGlobals(List<GlobalVariable> globals, List<GlobalVariable> definedGlobals, List<GlobalVariable> externalGlobals, List<GlobalVariable> threadLocalGlobals) {
         for (GlobalVariable global : globals) {
+            if (ignoreGlobal(global)) {
+                continue;
+            }
             if (global.isExternal()) {
                 externalGlobals.add(global);
             } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,9 @@ public class NumericNFITest extends NFITest {
         for (NativeSimpleType type : NUMERIC_TYPES) {
             ret.add(new Object[]{type});
         }
+        if (IS_AMD64 && !IS_WINDOWS) {
+            ret.add(new Object[]{NativeSimpleType.FP80});
+        }
         return ret;
     }
 
@@ -122,6 +125,12 @@ public class NumericNFITest extends NFITest {
                             return UNCACHED_INTEROP.fitsInFloat(item);
                         case DOUBLE:
                             return UNCACHED_INTEROP.fitsInDouble(item);
+                        case FP80:
+                            /*
+                             * Nothing concrete to check here, since FP80 potentially doesn't fit in
+                             * any numeric interop type.
+                             */
+                            return true;
                     }
                 }
             } catch (UnsupportedMessageException ex) {
@@ -132,7 +141,9 @@ public class NumericNFITest extends NFITest {
         @Override
         public boolean matches(Object item) {
             try {
-                return matchesType(item) && UNCACHED_INTEROP.asLong(item) == expected;
+                long asLong = UNCACHED_INTEROP.asLong(item);
+                double asDouble = UNCACHED_INTEROP.asDouble(item);
+                return matchesType(item) && asLong == expected && asDouble == expected;
             } catch (UnsupportedMessageException ex) {
                 return false;
             }
@@ -140,9 +151,16 @@ public class NumericNFITest extends NFITest {
 
         @Override
         public void describeMismatch(Object item, Description description) {
-            super.describeMismatch(item, description);
+            Object displayString = UNCACHED_INTEROP.toDisplayString(item);
+            super.describeMismatch(displayString, description);
             if (!matchesType(item)) {
                 description.appendText(" (wrong type)");
+            } else {
+                try {
+                    long value = UNCACHED_INTEROP.asLong(item);
+                    description.appendText(" (converts to ").appendValue(value).appendText(")");
+                } catch (UnsupportedMessageException ex) {
+                }
             }
         }
 
@@ -160,7 +178,9 @@ public class NumericNFITest extends NFITest {
         Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(arg));
         Assert.assertTrue("fitsInLong", UNCACHED_INTEROP.fitsInLong(arg));
         try {
-            return UNCACHED_INTEROP.asLong(arg);
+            long asLong = UNCACHED_INTEROP.asLong(arg);
+            Assert.assertEquals("asDouble", asLong, (long) UNCACHED_INTEROP.asDouble(arg));
+            return asLong;
         } catch (UnsupportedMessageException ex) {
             throw new AssertionError(ex);
         }

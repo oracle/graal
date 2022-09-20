@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class CleanupPadInstruction extends ValueInstruction {
@@ -42,7 +42,7 @@ public final class CleanupPadInstruction extends ValueInstruction {
     private final Type[] argTypes;
 
     private CleanupPadInstruction(Type[] argTypes) {
-        super(MetaType.TOKEN);
+        super(PrimitiveType.I64);
         this.argTypes = argTypes;
     }
 

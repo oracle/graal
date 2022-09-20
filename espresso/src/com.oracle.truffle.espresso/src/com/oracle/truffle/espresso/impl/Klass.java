@@ -410,7 +410,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     public Object getMetaQualifiedName() {
         assert isMetaObject();
-        return getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+        return getTypeName();
     }
 
     @ExportMessage
@@ -512,6 +512,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @CompilationFinal //
     private Class<?> dispatch;
+
+    @CompilationFinal //
+    private StaticObject typeName;
 
     protected Object prepareThread;
 
@@ -679,6 +682,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return result;
     }
 
+    @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                    justification = "espressoClass is deliberately non-volatile since it uses \"Unsafe Local DCL + Safe Singleton\" as described in https://shipilev.net/blog/2014/safe-public-construction\n" +
+                                    "A static hasFinalInstanceField(StaticObject.class) assertion ensures correctness.")
     public final StaticObject initializeEspressoClass() {
         CompilerAsserts.neverPartOfCompilation();
         StaticObject result = this.espressoClass;
@@ -691,6 +697,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
         return result;
+    }
+
+    public final StaticObject getTypeName() {
+        if (typeName == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            typeName = (StaticObject) getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+        }
+        return typeName;
     }
 
     /**

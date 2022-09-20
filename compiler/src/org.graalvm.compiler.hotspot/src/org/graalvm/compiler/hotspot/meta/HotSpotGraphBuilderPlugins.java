@@ -703,8 +703,8 @@ public class HotSpotGraphBuilderPlugins {
             }
 
             @Override
-            protected ValueNode getFieldOffset(InvocationPluginHelper helper, ResolvedJavaType type, String fieldName) {
-                return helper.getFieldOffset(type, fieldName);
+            protected ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field) {
+                return ConstantNode.forLong(field.getOffset());
             }
 
             @Override

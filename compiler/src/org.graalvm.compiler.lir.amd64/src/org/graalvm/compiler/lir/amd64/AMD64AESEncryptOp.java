@@ -49,10 +49,10 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3581,
-          lineEnd   = 3672,
-          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
-          sha1      = "05aff5a50178ceef327feac219b55e354241a77b")
+          lineStart = 3575,
+          lineEnd   = 3666,
+          commit    = "0c6094e79602fe85a88e3131710bb39813364ad2",
+          sha1      = "c9f2bd7811e98336d14037382a8324968e56fc09")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
@@ -107,6 +107,10 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        assert fromValue.getPlatformKind().equals(AMD64Kind.QWORD) : fromValue;
+        assert toValue.getPlatformKind().equals(AMD64Kind.QWORD) : toValue;
+        assert keyValue.getPlatformKind().equals(AMD64Kind.QWORD) : keyValue;
+
         Label labelDoLast = new Label();
 
         Register from = asRegister(fromValue); // source array address

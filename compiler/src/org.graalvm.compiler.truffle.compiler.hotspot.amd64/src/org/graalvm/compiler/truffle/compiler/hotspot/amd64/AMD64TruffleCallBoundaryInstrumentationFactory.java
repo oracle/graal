@@ -62,7 +62,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
         return new TruffleCompilationResultBuilderFactory(metaAccess, config, registers) {
 
             @Override
-            public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+            public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler<?> asm, DataBuilder dataBuilder,
                             FrameContext frameContext,
                             OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
                 return new TruffleCallBoundaryInstrumentation(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {

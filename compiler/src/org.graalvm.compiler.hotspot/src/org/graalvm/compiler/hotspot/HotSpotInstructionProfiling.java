@@ -111,7 +111,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
      * After assembly the {@link HotSpotBackend#profileInstructions(LIR, CompilationResultBuilder)}
      * calls this method for patching the instruction counts into the counter increment code.
      */
-    public static void countInstructions(LIR lir, Assembler asm) {
+    public static void countInstructions(LIR lir, Assembler<?> asm) {
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {

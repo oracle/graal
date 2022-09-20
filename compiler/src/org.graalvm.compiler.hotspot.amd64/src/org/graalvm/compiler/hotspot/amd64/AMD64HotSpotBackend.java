@@ -226,6 +226,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
+        crb.setMinDataSectionItemAlignment(getMinDataSectionItemAlignment());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(deoptimizationRescueSlot);

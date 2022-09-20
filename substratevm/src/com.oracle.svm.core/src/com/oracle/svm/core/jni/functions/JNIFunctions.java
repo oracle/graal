@@ -32,10 +32,10 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -55,18 +55,18 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
@@ -617,19 +617,15 @@ public final class JNIFunctions {
 
     @TargetClass(java.nio.Buffer.class)
     static final class Target_java_nio_Buffer {
+        @Alias int capacity;
         @Alias long address;
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static WordPointer GetDirectBufferAddress(JNIEnvironment env, JNIObjectHandle handle) {
-        WordPointer address = WordFactory.nullPointer();
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (obj instanceof Target_java_nio_Buffer) {
-            Target_java_nio_Buffer buf = (Target_java_nio_Buffer) obj;
-            address = WordFactory.pointer(buf.address);
-        }
-        return address;
+        Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
+        return (buf == null) ? WordFactory.nullPointer() : WordFactory.pointer(buf.address);
     }
 
     /*
@@ -638,9 +634,9 @@ public final class JNIFunctions {
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOneLong.class)
-    static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle hbuf) {
-        Buffer buffer = JNIObjectHandles.getObject(hbuf);
-        return buffer.capacity();
+    static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle handle) {
+        Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
+        return (buf == null) ? -1 : buf.capacity;
     }
 
     /*
@@ -1332,6 +1328,22 @@ public final class JNIFunctions {
                 }
             }
             logHandler.fatalError();
+        }
+
+        /*
+         * Make sure the given handle identifies a direct buffer.
+         *
+         * The object is considered "a buffer" if it implements java.nio.Buffer. The buffer is
+         * considered "direct" if it implements sun.nio.ch.DirectBuffer.
+         */
+        @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "FindBugs does not understand substitution classes")
+        static Target_java_nio_Buffer directBufferFromJNIHandle(JNIObjectHandle handle) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (obj instanceof Target_java_nio_Buffer && obj instanceof sun.nio.ch.DirectBuffer) {
+                return (Target_java_nio_Buffer) obj;
+            } else {
+                return null;
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -407,6 +407,8 @@ public final class NFIContextExtension extends NativeContextExtension {
                     return "FLOAT";
                 case DOUBLE:
                     return "DOUBLE";
+                case X86_FP80:
+                    return "FP80";
                 default:
                     throw new UnsupportedNativeTypeException(primitiveType);
 

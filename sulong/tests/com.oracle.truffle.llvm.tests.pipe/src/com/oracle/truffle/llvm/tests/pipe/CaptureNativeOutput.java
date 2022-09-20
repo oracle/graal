@@ -111,4 +111,6 @@ public final class CaptureNativeOutput implements CaptureOutput {
     private static native int startCapturing(int fd, String tempFilename) throws IOException;
 
     private static native void stopCapturing(int oldStdout, int oldStderr) throws IOException;
+
+    public static native void flushStdFiles();
 }

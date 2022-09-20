@@ -68,7 +68,7 @@ public interface TestEngineConfig extends Comparable<TestEngineConfig> {
 
     /**
      * Suffix for mx distributions that can be used with this configuration.
-     * 
+     *
      * @see com.oracle.truffle.llvm.tests.options.TestOptions#getTestDistribution
      */
     String getDistributionSuffix();

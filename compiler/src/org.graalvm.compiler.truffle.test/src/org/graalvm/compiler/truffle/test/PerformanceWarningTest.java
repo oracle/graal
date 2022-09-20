@@ -474,4 +474,37 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             return "trivial";
         }
     }
+
+    private static final class RootNodeDevirtualizeInvokeVirtual extends TestRootNode {
+        Base base;
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return base.bar();
+        }
+
+        abstract static class Base {
+            public String bar() {
+                return "Base";
+            }
+        }
+
+        abstract static class AbstractBaseImpl extends Base {
+            @Override
+            public String bar() {
+                return "AbstractBaseImpl";
+            }
+        }
+
+        static final class ConcreteImpl extends AbstractBaseImpl {
+            public static void ensureInitialized() {
+            }
+        }
+    }
+
+    @Test
+    public void testDevirtualizeInvokeVirtual() {
+        RootNodeDevirtualizeInvokeVirtual.ConcreteImpl.ensureInitialized();
+        testHelper(new RootNodeDevirtualizeInvokeVirtual(), false, EMPTY_PERF_WARNINGS);
+    }
 }

@@ -81,7 +81,6 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
@@ -102,6 +101,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
@@ -641,6 +641,26 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
+    private static class FieldOffsetConstantProvider implements Function<CoreProviders, JavaConstant> {
+
+        private final Field javaField;
+
+        FieldOffsetConstantProvider(Field javaField) {
+            this.javaField = javaField;
+        }
+
+        @Override
+        public JavaConstant apply(CoreProviders providers) {
+            ResolvedJavaField rField = providers.getMetaAccess().lookupJavaField(javaField);
+            if (rField instanceof SharedField) {
+                long fieldOffset = ((SharedField) rField).getLocation();
+                assert fieldOffset > 0;
+                return JavaConstant.forLong(fieldOffset);
+            }
+            return null;
+        }
+    }
+
     private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess, boolean isSunMiscUnsafe) {
         if (!isValidField(targetField, isSunMiscUnsafe) || reason == ParsingReason.JITCompilation) {
             return false;
@@ -663,21 +683,7 @@ public class SubstrateGraphBuilderPlugins {
             }
         }
 
-        /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
-        Function<CoreProviders, JavaConstant> fieldOffsetConstantProvider = new Function<>() {
-            @Override
-            public JavaConstant apply(CoreProviders providers) {
-                ResolvedJavaField rField = providers.getMetaAccess().lookupJavaField(targetField);
-                if (rField instanceof SharedField) {
-                    long fieldOffset = ((SharedField) rField).getLocation();
-                    assert fieldOffset > 0;
-                    return JavaConstant.forLong(fieldOffset);
-                }
-                return null;
-            }
-        };
-
-        b.addPush(JavaKind.Long, LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), fieldOffsetConstantProvider, b));
+        b.addPush(JavaKind.Long, LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(targetField), b));
         return true;
     }
 
@@ -1088,9 +1094,11 @@ public class SubstrateGraphBuilderPlugins {
             }
 
             @Override
-            protected ValueNode getFieldOffset(InvocationPluginHelper helper, ResolvedJavaType type, String fieldName) {
-                AnalysisField analysisField = (AnalysisField) helper.getField(type, fieldName);
-                return ConstantNode.forInt(analysisField.wrapped.getOffset());
+            protected ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field) {
+                if (field instanceof AnalysisField) {
+                    ((AnalysisField) field).registerAsUnsafeAccessed();
+                }
+                return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(((OriginalFieldProvider) field).getJavaField()), b);
             }
 
             @Override

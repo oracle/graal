@@ -60,6 +60,11 @@ final class WindowsAMD64PlatformCapability extends BasicAMD64PlatformCapability<
     }
 
     @Override
+    public String[] getSulongDefaultLibraries() {
+        return new String[]{getLibsulongFilename(), getLibsulongxxFilename()};
+    }
+
+    @Override
     public LLVMSyscallOperationNode createSyscallNode(long index) {
         return LLVMUnsupportedSyscallNode.create(index);
     }

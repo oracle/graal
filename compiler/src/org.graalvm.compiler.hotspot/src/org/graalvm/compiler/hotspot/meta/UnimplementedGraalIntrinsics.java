@@ -348,7 +348,6 @@ public final class UnimplementedGraalIntrinsics {
         if (isJDK18OrHigher()) {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I",
-                            "java/lang/Math.unsignedMultiplyHigh(JJ)J",
                             "java/lang/StrictMath.max(DD)D",
                             "java/lang/StrictMath.max(FF)F",
                             "java/lang/StrictMath.max(II)I",

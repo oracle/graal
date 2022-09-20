@@ -87,6 +87,8 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
+import java.util.ListIterator;
+
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
  */
@@ -111,7 +113,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
         @Override
-        protected void processNode(Node node) {
+        protected void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter) {
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 for (MemoryPhiNode memoryPhi : mergeNode.memoryPhis().snapshot()) {

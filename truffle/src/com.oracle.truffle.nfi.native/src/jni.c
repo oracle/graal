@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -127,17 +127,25 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     // it's important to initialize "POINTER" first, because the primitive array types depend on it
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "POINTER", &ffi_type_pointer);
 
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "VOID",    &ffi_type_void);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT8",   &ffi_type_uint8);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT8",   &ffi_type_sint8);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT16",  &ffi_type_uint16);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT16",  &ffi_type_sint16);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT32",  &ffi_type_uint32);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT32",  &ffi_type_sint32);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT64",  &ffi_type_uint64);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT64",  &ffi_type_sint64);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FLOAT",   &ffi_type_float);
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "DOUBLE",  &ffi_type_double);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "VOID",   &ffi_type_void);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT8",  &ffi_type_uint8);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT8",  &ffi_type_sint8);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT16", &ffi_type_uint16);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT16", &ffi_type_sint16);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT32", &ffi_type_uint32);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT32", &ffi_type_sint32);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT64", &ffi_type_uint64);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT64", &ffi_type_sint64);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FLOAT",  &ffi_type_float);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "DOUBLE", &ffi_type_double);
+#if defined(__x86_64__)
+    /*
+     * Note that this is only defined on the GNU toolchain. The equivalent macro for the Visual Studio
+     * compiler would be _M_AMD64. This is on purpose not checked here, since Visual Studio does not
+     * support FP80, it treats the `long double` type as double precision.
+     */
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FP80",   &ffi_type_longdouble);
+#endif
 
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "STRING", &ffi_type_pointer);
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "OBJECT", &ffi_type_pointer);

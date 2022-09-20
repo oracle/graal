@@ -8,7 +8,7 @@ permalink: /reference-manual/native-image/debugging-and-diagnostics/
 # Debugging and Diagnostics
 
 Native Image provides utilities for debugging and inspecting the produced binary:
- - For debugging produced binaries, see [Debug Information](DebugInfo.md)
+ - For debugging produced binaries and obtaining performance profile statistics, see [Debug Information](DebugInfo.md)
  - For Java-like debugging of native executables in a running state, see [Debugging Native Executables](Debugging.md)
  - For generating heap dumps, see [Heap Dump Support](guides/create-heap-dump-from-native-executable.md)
  - For JFR events recording, see [JDK Flight Recorder (JFR)](JFR.md)

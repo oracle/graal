@@ -525,9 +525,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private static void registerMathFunctionIntrinsics() {
-        // TODO (chaeubl): There is no doubt that not all of these intrinsics are valid as they use
-        // double arithmetics to simulate floating arithmetics, which can change the precision.
-        // Furthermore, it is possible that there are mismatches between Java and C semantics.
+        // TODO (chaeubl): It is possible that there are mismatches between Java and C semantics.
         addFloatingPointMathFunction("sqrt", (args, nodeFactory) -> LLVMSqrtNodeGen.create(args.get(1)));
         addFloatingPointMathFunction("log", (args, nodeFactory) -> LLVMLogNodeGen.create(args.get(1)));
         addFloatingPointMathFunction("log2", (args, nodeFactory) -> LLVMLog2NodeGen.create(args.get(1)));
@@ -629,7 +627,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     private static void addFloatingPointMathFunction(String functionName, LLVMIntrinsicFactory factory) {
         add(functionName, factory, FACTORIES);
         add(functionName + "f", factory, FACTORIES);
-        add(functionName + "l", factory, FACTORIES);
     }
 
     private static void addIntegerMathFunction(String functionName, LLVMIntrinsicFactory factory) {

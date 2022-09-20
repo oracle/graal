@@ -228,7 +228,6 @@ public class CompileQueue {
 
     private SnippetReflectionProvider snippetReflection;
     private final FeatureHandler featureHandler;
-    protected final OptionValues compileOptions;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
 
     private volatile boolean inliningProgress;
@@ -404,7 +403,6 @@ public class CompileQueue {
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
-        this.compileOptions = getCustomizedOptions(debug);
 
         callForReplacements(debug, runtimeConfig);
     }
@@ -468,7 +466,6 @@ public class CompileQueue {
         if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
             ImageSingletons.lookup(HostedHeapDumpFeature.class).compileQueueAfterCompilation();
         }
-        metricValues.print(compileOptions);
     }
 
     private boolean suitesNotCreated() {
@@ -875,6 +872,7 @@ public class CompileQueue {
          * The static analysis always needs NodeSourcePosition. But for AOT compilation, we only
          * need to preserve them when explicitly enabled, to reduce memory pressure.
          */
+        OptionValues compileOptions = getCustomizedOptions(hMethod, debug);
         boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(compileOptions);
         StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), compileOptions, debug, trackNodeSourcePosition);
 
@@ -1122,7 +1120,7 @@ public class CompileQueue {
                     Bytecode code = new ResolvedJavaMethodBytecode(method);
                     // DebugContext debug = new DebugContext(options,
                     // providers.getSnippetReflection());
-                    graph = new SubstrateIntrinsicGraphBuilder(compileOptions, debug, providers,
+                    graph = new SubstrateIntrinsicGraphBuilder(getCustomizedOptions(method, debug), debug, providers,
                                     code).buildGraph(plugin);
                 }
             }
@@ -1132,7 +1130,7 @@ public class CompileQueue {
             }
             if (graph == null) {
                 needParsing = true;
-                graph = new StructuredGraph.Builder(compileOptions, debug)
+                graph = new StructuredGraph.Builder(getCustomizedOptions(method, debug), debug)
                                 .method(method)
                                 .recordInlinedMethods(false)
                                 .build();
@@ -1179,7 +1177,7 @@ public class CompileQueue {
                 beforeEncode(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
-                method.compilationInfo.setCompileOptions(compileOptions);
+                method.compilationInfo.setCompileOptions(getCustomizedOptions(method, debug));
                 checkTrivial(method, graph);
 
             } catch (Throwable ex) {
@@ -1221,7 +1219,7 @@ public class CompileQueue {
     protected void beforeEncode(HostedMethod method, StructuredGraph graph) {
     }
 
-    protected OptionValues getCustomizedOptions(DebugContext debug) {
+    protected OptionValues getCustomizedOptions(@SuppressWarnings("unused") HostedMethod method, DebugContext debug) {
         return debug.getOptions();
     }
 
@@ -1368,7 +1366,7 @@ public class CompileQueue {
         @Override
         public CompilationResultBuilder createBuilder(CodeGenProviders providers,
                         FrameMap frameMap,
-                        Assembler asm,
+                        Assembler<?> asm,
                         DataBuilder dataBuilder,
                         FrameContext frameContext,
                         OptionValues options,
