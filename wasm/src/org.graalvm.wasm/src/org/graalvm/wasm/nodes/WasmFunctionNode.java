@@ -280,12 +280,6 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.PRIMITIVE_TYPES;
 import static org.graalvm.wasm.util.ExtraDataAccessor.REFERENCE_TYPES;
-import static org.graalvm.wasm.util.ExtraDataAccessor.fifthValueUnsigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
@@ -301,6 +295,7 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.util.ExtraDataAccessor;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -514,7 +509,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case IF: {
                     stackPointer--;
-                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_IF_PROFILE_OFFSET : EXTENDED_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
@@ -524,51 +520,105 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         extraOffset += compact ? COMPACT_IF_LENGTH : EXTENDED_IF_LENGTH;
                     } else {
                         // Jump to the else branch.
-                        offset += secondValueSigned(extraData, extraOffset, compact);
-                        extraOffset += firstValueSigned(extraData, extraOffset, compact);
+                        final int offsetDelta;
+                        final int extraOffsetDelta;
+                        if (compact) {
+                            extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstExtraValue);
+                            offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
+                        } else {
+                            extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
+                            offsetDelta = extraData[extraOffset + 1];
+                        }
+                        offset += offsetDelta;
+                        extraOffset += extraOffsetDelta;
                     }
                     break;
                 }
                 case ELSE: {
                     // The then branch was executed at this point. Jump to end of the if statement.
-                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    offset += secondValueSigned(extraData, extraOffset, compact);
-                    extraOffset += firstValueUnsigned(extraData, extraOffset, compact);
+                    final int offsetDelta;
+                    final int extraOffsetDelta;
+                    if (compact) {
+                        extraOffsetDelta = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
+                        offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
+                    } else {
+                        extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
+                        offsetDelta = extraData[extraOffset + 1];
+                    }
+                    offset += offsetDelta;
+                    extraOffset += extraOffsetDelta;
                     break;
                 }
                 case END:
                     break;
                 case BR: {
-                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int typeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
-                    final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
-                    final int targetReturnLength = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetReturnLength);
+                    final int offsetDelta;
+                    final int extraOffsetDelta;
+                    final int typeIndicator;
+                    final int targetStackPointer;
+                    final int targetResultCount;
+                    final int secondExtraValue = extraData[extraOffset + 1];
+                    if (compact) {
+                        extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstExtraValue);
+                        offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
+                        typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondExtraValue);
+                        targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondExtraValue);
+                        targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondExtraValue);
+                    } else {
+                        extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
+                        offsetDelta = secondExtraValue;
+                        typeIndicator = extraData[extraOffset + 2];
+                        targetResultCount = extraData[extraOffset + 3];
+                        targetStackPointer = numLocals + extraData[extraOffset + 4];
+                    }
+
+                    unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                     // Jump to the target block.
-                    offset += secondValueSigned(extraData, extraOffset, compact);
-                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
-                    stackPointer = targetStackPointer + targetReturnLength;
+                    offset += offsetDelta;
+                    extraOffset += extraOffsetDelta;
+                    stackPointer = targetStackPointer + targetResultCount;
                     break;
                 }
                 case BR_IF: {
                     stackPointer--;
-                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
-                        final int typeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
-                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
-                        final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
+                        final int offsetDelta;
+                        final int extraOffsetDelta;
+                        final int typeIndicator;
+                        final int targetStackPointer;
+                        final int targetResultCount;
+                        final int secondExtraValue = extraData[extraOffset + 1];
+                        if (compact) {
+                            extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstExtraValue);
+                            offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
+                            typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondExtraValue);
+                            targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondExtraValue);
+                            targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondExtraValue);
+                        } else {
+                            extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
+                            offsetDelta = secondExtraValue;
+                            typeIndicator = extraData[extraOffset + 2];
+                            targetResultCount = extraData[extraOffset + 3];
+                            targetStackPointer = numLocals + extraData[extraOffset + 4];
+                        }
 
                         unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                         // Jump to the target block.
-                        offset += secondValueSigned(extraData, extraOffset, compact);
-                        extraOffset += firstValueSigned(extraData, extraOffset, compact);
+                        offset += offsetDelta;
+                        extraOffset += extraOffsetDelta;
                         stackPointer = targetStackPointer + targetResultCount;
                     } else {
                         // Skip label index.
@@ -580,10 +630,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case BR_TABLE: {
                     stackPointer--;
-                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     int index = popInt(frame, stackPointer);
-                    final int size = firstValueUnsigned(extraData, extraOffset, compact);
+                    final int size;
+                    if (compact) {
+                        size = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
+                    } else {
+                        size = ExtraDataAccessor.extendedFirstValueUnsigned(firstExtraValue);
+                    }
                     if (index < 0 || index >= size) {
                         // If unsigned index is larger or equal to the table size use the
                         // default (last) index.
@@ -598,15 +654,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                         updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int typeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
-                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
-                        final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
+                        final int offsetDelta;
+                        final int extraOffsetDelta;
+                        final int typeIndicator;
+                        final int targetStackPointer;
+                        final int targetResultCount;
+                        final int firstIndexExtraValue = extraData[indexOffset];
+                        final int secondIndexExtraValue = extraData[indexOffset + 1];
+                        if (compact) {
+                            extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstIndexExtraValue);
+                            offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstIndexExtraValue);
+                            typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondIndexExtraValue);
+                            targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondIndexExtraValue);
+                            targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondIndexExtraValue);
+                        } else {
+                            extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstIndexExtraValue);
+                            offsetDelta = secondIndexExtraValue;
+                            typeIndicator = extraData[indexOffset + 2];
+                            targetResultCount = extraData[indexOffset + 3];
+                            targetStackPointer = numLocals + extraData[indexOffset + 4];
+                        }
 
                         unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                         // Jump to the branch target.
-                        offset += secondValueSigned(extraData, indexOffset, compact);
-                        extraOffset += firstValueSigned(extraData, indexOffset, compact);
+                        offset += offsetDelta;
+                        extraOffset += extraOffsetDelta;
                         stackPointer = targetStackPointer + targetResultCount;
                         break;
                     } else {
@@ -618,15 +691,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
-                                final int typeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
-                                final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
-                                final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
+                                final int offsetDelta;
+                                final int extraOffsetDelta;
+                                final int typeIndicator;
+                                final int targetStackPointer;
+                                final int targetResultCount;
+                                final int firstIndexExtraValue = extraData[indexOffset];
+                                final int secondIndexExtraValue = extraData[indexOffset + 1];
+                                if (compact) {
+                                    extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstIndexExtraValue);
+                                    offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstIndexExtraValue);
+                                    typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondIndexExtraValue);
+                                    targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondIndexExtraValue);
+                                    targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondIndexExtraValue);
+                                } else {
+                                    extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstIndexExtraValue);
+                                    offsetDelta = secondIndexExtraValue;
+                                    typeIndicator = extraData[indexOffset + 2];
+                                    targetResultCount = extraData[indexOffset + 3];
+                                    targetStackPointer = numLocals + extraData[indexOffset + 4];
+                                }
 
                                 unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
 
                                 // Jump to the branch target.
-                                offset += secondValueSigned(extraData, indexOffset, compact);
-                                extraOffset += firstValueSigned(extraData, indexOffset, compact);
+                                offset += offsetDelta;
+                                extraOffset += extraOffsetDelta;
                                 stackPointer = targetStackPointer + targetResultCount;
                                 continue loop;
                             }
@@ -659,8 +749,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), paramCount, stackPointer);
                     stackPointer -= args.length;
 
-                    final boolean compact = extraData[extraOffset] >= 0;
-                    final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
+                    final int callNodeIndex;
+                    if (compact) {
+                        callNodeIndex = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
+                    } else {
+                        callNodeIndex = ExtraDataAccessor.extendedFirstValueUnsigned(firstExtraValue);
+                    }
                     extraOffset += CALL_LENGTH;
 
                     Object result = executeDirectCall(callNodeIndex, function, args);
@@ -764,7 +860,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Validate that the function type matches the expected type.
                     final boolean functionFromCurrentContext = functionInstanceContext == context;
 
-                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int firstExtraValue = extraData[extraOffset];
+                    final boolean compact = firstExtraValue >= 0;
                     final int profileOffset = extraOffset + (compact ? COMPACT_CALL_INDIRECT_PROFILE_OFFSET : EXTENDED_CALL_INDIRECT_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, functionFromCurrentContext)) {
                         // We can do a quick equivalence-class check.
@@ -800,7 +897,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         prev = null;
                     }
 
-                    final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
+                    final int callNodeIndex;
+                    if (compact) {
+                        callNodeIndex = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
+                    } else {
+                        callNodeIndex = ExtraDataAccessor.extendedFirstValueUnsigned(firstExtraValue);
+                    }
                     extraOffset += compact ? COMPACT_CALL_INDIRECT_LENGTH : EXTENDED_CALL_INDIRECT_LENGTH;
 
                     final Object result;
