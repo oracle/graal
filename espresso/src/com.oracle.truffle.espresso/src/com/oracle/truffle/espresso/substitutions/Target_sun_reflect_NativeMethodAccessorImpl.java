@@ -377,7 +377,12 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             Object arg;
             if (isForeignArray) {
                 try {
-                    adjustedArgs[i] = toEspressoNode.execute(interop.readArrayElement(rawForeign, i), paramKlass);
+                    arg = interop.readArrayElement(rawForeign, i);
+                    if (!paramKlass.isPrimitive() && !(arg instanceof StaticObject)) {
+                        // enable type conversions for object typed foreign objects
+                        paramKlass = meta.java_lang_Object;
+                    }
+                    adjustedArgs[i] = toEspressoNode.execute(arg, paramKlass);
                 } catch (UnsupportedTypeException | UnsupportedMessageException | InvalidArrayIndexException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unable to read argument from foreign object!");
