@@ -87,6 +87,9 @@ public class ReportCommand implements Command {
         experiment.writeExperimentSummary(writer);
         writer.writeln();
 
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer);
+        explanationWriter.explain();
+
         EconomicMap<String, List<CompilationUnit>> methods = experiment.getCompilationUnitsByName();
         if (proftoolArgument.getValue() != null) {
             methods = experiment.groupHotCompilationUnitsByMethod();

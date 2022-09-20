@@ -97,6 +97,9 @@ public class ExperimentDiffer {
             writer.writeln();
         }
 
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer);
+        explanationWriter.explain();
+
         MethodMatching matching = matcher.match(experiment1, experiment2);
 
         for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
