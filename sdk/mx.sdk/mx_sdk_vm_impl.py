@@ -609,7 +609,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
         assert _libpolyglot_component is None or len(_libpolyglot_component.library_configs) == 1
         _libpolyglot_macro_dir = (_macros_dir + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _macros_dir is not None and _libpolyglot_component is not None else None
-
+        _jlink_copyfiles = set()
         for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
             _component_type_base = _get_component_type_base(_component)
@@ -724,7 +724,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _svm_library_home = _component_base
                 _svm_library_dest = _svm_library_home + _library_config.destination
                 if not stage1 and _get_svm_support().is_supported():
-                    _source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
+                    if _skip_libraries(_library_config):
+                        _source_type = 'skip'
+                    else:
+                        _source_type = 'dependency'
+                        _jlink_copyfiles.add(_svm_library_dest[len('<jre_base>/'):])
                     _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
@@ -793,6 +797,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
+
+        if _jlink_copyfiles:
+            _add(layout, '<jdk_base>/conf/jlink.copyfiles', 'string:{}'.format('\n'.join(sorted(_jlink_copyfiles))))
 
         if has_graal_compiler:
             _add(layout, '<jre_base>/lib/jvmci/compiler-name', 'string:graal')
