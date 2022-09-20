@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.thread.ThreadStatus.JVMTI_THREAD_STATE_TERMINATED;
+
 import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +36,7 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -42,7 +45,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
@@ -257,7 +259,6 @@ public final class Target_java_lang_Thread {
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public native ThreadGroup getThreadGroup();
 
     @AnnotateOriginal
@@ -622,6 +623,23 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)
     native Thread.State threadState();
+
+    /**
+     * This is needed to make {@link Thread#getThreadGroup()} uninterruptible.
+     * {@link Thread#getThreadGroup()} checks for {@link #isTerminated()}, which calls
+     * {@link #threadState()}. Instead of making {@link #threadState()} uninterruptible, which would
+     * be difficult, we duplicate the code that determines the terminated state.
+     *
+     * Not that {@link Target_java_lang_VirtualThread} overrides
+     * {@link Target_java_lang_VirtualThread#isTerminated()} with a trivial implementation that can
+     * be made uninterruptible.
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isTerminated() {
+        return (holder.threadStatus & JVMTI_THREAD_STATE_TERMINATED) != 0;
+    }
 
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)

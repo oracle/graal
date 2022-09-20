@@ -38,6 +38,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.event.Event;
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
@@ -366,7 +368,7 @@ public class SubstrateJVM {
         options.memorySize.setUserValue(size);
     }
 
-    /** See {@link JVM#setMethodSamplingInterval}. */
+    /** See {@code JVM#setMethodSamplingInterval}. */
     public void setMethodSamplingInterval(long type, long intervalMillis) {
         long millis = intervalMillis;
         if (type != JfrEvent.ExecutionSample.getId()) {
@@ -528,6 +530,15 @@ public class SubstrateJVM {
     public boolean setCutoff(long eventTypeId, long cutoffTicks) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setCutoffTicks(cutoffTicks);
         return true;
+    }
+
+    public boolean setConfiguration(Class<? extends Event> eventClass, Target_jdk_jfr_internal_event_EventConfiguration configuration) {
+        DynamicHub.fromClass(eventClass).setJrfEventConfiguration(configuration);
+        return true;
+    }
+
+    public Target_jdk_jfr_internal_event_EventConfiguration getConfiguration(Class<? extends Event> eventClass) {
+        return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
