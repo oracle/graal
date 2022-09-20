@@ -73,6 +73,9 @@ public class FrameStateAssignmentPhase extends Phase {
                     GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateBefore(currentState);
                 }
+                if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateBefore().isValidForDeoptimization()) {
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateBefore()));
+                }
             }
 
             if (node instanceof StateSplit) {
@@ -94,6 +97,9 @@ public class FrameStateAssignmentPhase extends Phase {
                     GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.computeStateDuring(currentState);
                 }
+                if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateDuring().isValidForDeoptimization()) {
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateDuring()));
+                }
             }
 
             if (node instanceof DeoptimizingNode.DeoptAfter) {
@@ -101,6 +107,9 @@ public class FrameStateAssignmentPhase extends Phase {
                 if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
                     GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateAfter(currentState);
+                }
+                if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateAfter().isValidForDeoptimization()) {
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateAfter()));
                 }
             }
 
