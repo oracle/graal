@@ -257,7 +257,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * @param key1 the key of the first mapping
      * @param value1 the value of the first mapping
      * @return a map with the mapping
-     * @since 22.3
+     * @since 23.0
      */
     static <K, V> EconomicMap<K, V> of(K key1, V value1) {
         EconomicMap<K, V> map = EconomicMap.create(1);
@@ -273,7 +273,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * @param key2 the key of the second mapping
      * @param value2 the value of the second mapping
      * @return a map with two mappings
-     * @since 22.3
+     * @since 23.0
      */
     static <K, V> EconomicMap<K, V> of(K key1, V value1, K key2, V value2) {
         EconomicMap<K, V> map = EconomicMap.create(2);

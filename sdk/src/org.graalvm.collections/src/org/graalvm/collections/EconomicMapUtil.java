@@ -45,11 +45,11 @@ import java.util.Objects;
 /**
  * Utility methods for the {@link EconomicMap}.
  *
- * @since 22.3
+ * @since 23.0
  */
 public final class EconomicMapUtil {
     /**
-     * @since 22.3
+     * @since 23.0
      */
     private EconomicMapUtil() {
 
@@ -64,7 +64,7 @@ public final class EconomicMapUtil {
      * @param lhs the first map to be compared
      * @param rhs the second map to be compared
      * @return {@code true} iff the maps are equal
-     * @since 22.3
+     * @since 23.0
      */
     public static <K, V> boolean equals(UnmodifiableEconomicMap<K, V> lhs, UnmodifiableEconomicMap<K, V> rhs) {
         if (lhs == rhs) {
@@ -87,7 +87,7 @@ public final class EconomicMapUtil {
      *
      * @param map the input map or {@code null}
      * @return the hash code of the map
-     * @since 22.3
+     * @since 23.0
      */
     public static <K, V> int hashCode(UnmodifiableEconomicMap<K, V> map) {
         if (map == null) {
@@ -110,7 +110,7 @@ public final class EconomicMapUtil {
      *
      * @param map the input map
      * @return an {@link EconomicSet} of the keys contained in a map
-     * @since 22.3
+     * @since 23.0
      */
     public static <K, V> EconomicSet<K> keySet(EconomicMap<K, V> map) {
         EconomicSet<K> set = EconomicSet.create(map.size());
