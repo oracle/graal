@@ -606,6 +606,9 @@ public class CompilationResult {
 
     /**
      * Mark that the provided infopoint cannot be used as a deoptimization entrypoint.
+     *
+     * This distinction is necessary as native-image, in addition to deoptimization support, uses
+     * infopoints for stack traces and debugging information.
      */
     public void recordInvalidForDeoptimization(Infopoint infopoint) {
         checkOpen();

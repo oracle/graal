@@ -47,9 +47,9 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -816,7 +816,9 @@ public final class Deoptimizer {
                         targetFrame.getVirtualObjects().length == 0 &&
                         sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
         if (!compatibleState) {
-            String message = "Deoptimization is not possible.\n" +
+            long encodedBci = targetFrame.getEncodedBci();
+            String message = "Deoptimization is not possible. Please report this error.\n" +
+                            String.format("Location - encodedBci: %s (bci %s) - method: %s\n", encodedBci, FrameInfoDecoder.readableBci(encodedBci), targetFrame.getSourceReference()) +
                             String.format("Target Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s, virtual objects length-%s\n", targetFrame.getNumLocals(),
                                             targetFrame.getNumStack(), targetFrame.getNumLocks(), targetFrame.getValueInfos().length, targetFrame.getVirtualObjects().length) +
                             String.format("Source Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s\n", sourceFrame.getNumLocals(), sourceFrame.getNumStack(),

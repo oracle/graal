@@ -44,7 +44,6 @@ import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
@@ -222,14 +221,9 @@ public abstract class NonSnippetLowerings {
                             getCachedExceptionDescriptors, createExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
-            FrameState stateDuring = node.createStateDuring();
-            /*
-             * FrameStates attached to bytecode exception nodes are not a valid deoptimization state
-             * since these nodes are on the exceptional control flow path but before the exception
-             * handler itself.
-             */
-            stateDuring.invalidateForDeoptimization();
-            foreignCallNode.setStateDuring(stateDuring);
+            // this lowering is not present in deoptimizable code
+            foreignCallNode.setValidateDeoptFrameStates(false);
+            foreignCallNode.setStateDuring(node.createStateDuring());
             foreignCallNode.setStateAfter(node.stateAfter());
             graph.replaceFixedWithFixed(node, foreignCallNode);
         }
@@ -248,6 +242,8 @@ public abstract class NonSnippetLowerings {
                             throwCachedExceptionDescriptors, throwNewExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            // this lowering is not present in deoptimizable code
+            foreignCallNode.setValidateDeoptFrameStates(false);
             foreignCallNode.setStateDuring(node.stateBefore());
             node.replaceAndDelete(foreignCallNode);
 

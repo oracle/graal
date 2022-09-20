@@ -70,6 +70,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
+    private boolean validateDeoptFrameStates = true;
 
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
                     ForeignCallSignature signature, ValueNode... arguments) {
@@ -188,5 +189,14 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
         debugProperties.put("descriptorName", descriptor.getName());
         return debugProperties;
+    }
+
+    @Override
+    public boolean validateDeoptFrameStates() {
+        return validateDeoptFrameStates;
+    }
+
+    public void setValidateDeoptFrameStates(boolean value) {
+        validateDeoptFrameStates = value;
     }
 }
