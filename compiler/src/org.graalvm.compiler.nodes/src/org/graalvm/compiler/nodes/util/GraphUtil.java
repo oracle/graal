@@ -1309,12 +1309,18 @@ public class GraphUtil {
                 merge.setNext(newEnd);
                 int i = 0;
                 for (PhiNode phi : loopBegin.phis()) {
-                    ValueNode replacementPhi = replacementPhis.get(phi);
+                    PhiNode replacementPhi = replacementPhis.get(phi);
                     assert (phi instanceof ValuePhiNode && replacementPhi instanceof ValuePhiNode) || (phi instanceof MemoryPhiNode && replacementPhi instanceof MemoryPhiNode);
-                    phi.addInput(replacementPhi);
+                    ValueNode replacementValue = replacementPhi.singleValueOrThis();
+                    phi.addInput(replacementValue);
                     i++;
                 }
                 assert i == replacementPhis.size() : "did not consume all values";
+                for (PhiNode maybeUnused : replacementPhis.getValues()) {
+                    if (maybeUnused.hasNoUsages() && !maybeUnused.isDeleted()) {
+                        maybeUnused.safeDelete();
+                    }
+                }
 
                 return newEnd;
             }

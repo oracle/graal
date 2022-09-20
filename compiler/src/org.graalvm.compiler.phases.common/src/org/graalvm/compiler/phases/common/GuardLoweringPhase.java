@@ -48,6 +48,8 @@ import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
+import java.util.ListIterator;
+
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
  * {@link DeoptimizeNode DeoptimizeNodes}.
@@ -71,7 +73,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        protected void processNode(Node node) {
+        protected void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter) {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
                 FixedWithNextNode lowered = guard.lowerGuard();
