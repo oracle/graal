@@ -549,6 +549,10 @@ public final class GraphState {
         this.guardsStage = guardsStage;
     }
 
+    /**
+     * Determines if this graph state is configured in a way it only allows explicit exception
+     * edges, i.e., no floating guards or deopt nodes.
+     */
     public boolean isPreparedForExplicitExceptions() {
         return guardsStage == GuardsStage.FIXED_DEOPTS && isAfterStage(StageFlag.GUARD_LOWERING);
     }

@@ -25,7 +25,7 @@
 package org.graalvm.compiler.phases;
 
 /**
- * Interface for phases that require floating guards.
+ * Marker interface for phases that require floating guards.
  */
 public interface FloatingGuardPhase {
 

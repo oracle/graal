@@ -40,14 +40,10 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.GraphState.GuardsStage;
-import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -66,12 +62,12 @@ public class SubstrateGraalUtils {
 
     /** Does the compilation of the method and returns the compilation result. */
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
-        return doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), method);
+        return doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getLIRSuites(), method);
     }
 
     private static final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
-    public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SubstrateMethod method) {
+    public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, final SubstrateMethod method) {
         updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
 
         String methodString = method.format("%H.%n(%p)");
@@ -91,7 +87,7 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
                 StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
-                return compileGraph(runtimeConfig, suites, lirSuites, method, graph);
+                return compileGraph(runtimeConfig, GraalSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
             }
 
             @Override
@@ -139,7 +135,7 @@ public class SubstrateGraalUtils {
     }
 
     public static CompilationResult compileGraph(final SharedMethod method, final StructuredGraph graph) {
-        return compileGraph(GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), method, graph);
+        return compileGraph(GraalSupport.getRuntimeConfig(), GraalSupport.getMatchingSuitesForGraph(graph), GraalSupport.getLIRSuites(), method, graph);
     }
 
     public static class Options {
@@ -150,30 +146,6 @@ public class SubstrateGraalUtils {
     @SuppressWarnings("try")
     private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
-        Suites s = suites;
-        if (graph.getSpeculationLog() == null) {
-            /*
-             * Certain runtime compilation settings/setups can require explicit exceptions or the
-             * removal of speculative optimizations.
-             */
-            s = s.copy();
-            s.getHighTier().removeSubTypePhases(Speculative.class);
-            s.getMidTier().removeSubTypePhases(Speculative.class);
-            s.getLowTier().removeSubTypePhases(Speculative.class);
-        }
-
-        if (graph.getGuardsStage() == GuardsStage.FIXED_DEOPTS) {
-            s = s.copy();
-            s.getHighTier().removeSubTypePhases(FloatingGuardPhase.class);
-            s.getMidTier().removeSubTypePhases(FloatingGuardPhase.class);
-            s.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
-        }
-
-        if (graph.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING)) {
-            s = s.copy();
-            s.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
-        }
-
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
             /*
              * forceDump is often used during debugging, and we want to make sure that it keeps
@@ -194,7 +166,7 @@ public class SubstrateGraalUtils {
 
             try (Indent indent2 = debug.logAndIndent("do compilation")) {
                 SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
-                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, null, s, lirSuites, result,
+                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, null, suites, lirSuites, result,
                                 CompilationResultBuilderFactory.Default, false);
                 return result;
             }
