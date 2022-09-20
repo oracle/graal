@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -66,6 +65,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -106,6 +106,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -877,7 +878,7 @@ public final class JNIFunctions {
          * instead.
          */
         NewObjectWithObjectArrayArgFunctionPointer newObjectA = (NewObjectWithObjectArrayArgFunctionPointer) env.getFunctions().getNewObjectA();
-        JNIValue array = StackValue.get(JNIValue.class);
+        JNIValue array = UnsafeStackValue.get(JNIValue.class);
         array.setObject(messageHandle);
         JNIObjectHandle exception = newObjectA.invoke(env, clazzHandle, ctor, array);
         throw (Throwable) JNIObjectHandles.getObject(exception);
@@ -1000,7 +1001,7 @@ public final class JNIFunctions {
             throw new NullPointerException();
         }
         boolean pinned = false;
-        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             // Acquiring monitors via JNI associates them with the carrier thread via
             // JNIThreadOwnedMonitors, so we must pin the virtual thread
             try {
@@ -1048,7 +1049,7 @@ public final class JNIFunctions {
         }
         MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
-        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             try {
                 VirtualThreads.singleton().unpinCurrent();
             } catch (IllegalStateException e) { // not pinned?

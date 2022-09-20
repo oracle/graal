@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -41,10 +40,11 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 @AutomaticallyRegisteredImageSingleton(IsolateSupport.class)
 public final class IsolateSupportImpl implements IsolateSupport {
@@ -62,18 +62,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
         }
 
         try (CTypeConversion.CCharPointerHolder auxImagePath = CTypeConversion.toCString(parameters.getAuxiliaryImagePath())) {
-            CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
-            params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
-            params.setAuxiliaryImagePath(auxImagePath.get());
-            params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setVersion(4);
-            params.setIgnoreUnrecognizedArguments(false);
-            params.setExitWhenArgumentParsingFails(false);
-
+            int pkey = 0;
             if (MemoryProtectionProvider.isAvailable()) {
                 try {
-                    int pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
-                    params.setProtectionKey(pkey);
+                    pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
                 } catch (UnsupportedDomainException e) {
                     throw new IsolateException(e.getMessage());
                 }
@@ -102,12 +94,22 @@ public final class IsolateSupportImpl implements IsolateSupport {
                     argv.write(i + 1, ph.get());
                 }
             }
+
+            CEntryPointCreateIsolateParameters params = UnsafeStackValue.get(CEntryPointCreateIsolateParameters.class);
+            params.setProtectionKey(pkey);
+            params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
+            params.setAuxiliaryImagePath(auxImagePath.get());
+            params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
+            params.setVersion(4);
+            params.setIgnoreUnrecognizedArguments(false);
+            params.setExitWhenArgumentParsingFails(false);
             params.setArgc(argc);
             params.setArgv(argv);
 
             // Try to create the isolate.
-            IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);
+            IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);
             int result = CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr);
+            IsolateThread isolateThread = isolateThreadPtr.read();
 
             // Cleanup all native memory related to argv.
             if (params.getArgv().isNonNull()) {
@@ -118,13 +120,13 @@ public final class IsolateSupportImpl implements IsolateSupport {
             }
 
             throwOnError(result);
-            return isolateThreadPtr.read();
+            return isolateThread;
         }
     }
 
     @Override
     public IsolateThread attachCurrentThread(Isolate isolate) throws IsolateException {
-        IsolateThreadPointer isolateThread = StackValue.get(IsolateThreadPointer.class);
+        IsolateThreadPointer isolateThread = UnsafeStackValue.get(IsolateThreadPointer.class);
         throwOnError(CEntryPointNativeFunctions.attachThread(isolate, isolateThread));
         return isolateThread.read();
     }

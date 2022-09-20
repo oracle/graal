@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -34,7 +33,9 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
@@ -42,7 +43,6 @@ import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 @CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
@@ -51,7 +51,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
     protected String javaIoTmpdirValue() {
         /* Darwin has a per-user temp dir */
         int buflen = Limits.PATH_MAX();
-        CCharPointer tmpPath = StackValue.get(buflen);
+        CCharPointer tmpPath = UnsafeStackValue.get(buflen);
         UnsignedWord pathSize = Unistd.confstr(Unistd._CS_DARWIN_USER_TEMP_DIR(), tmpPath, WordFactory.unsigned(buflen));
         if (pathSize.aboveThan(0) && pathSize.belowOrEqual(buflen)) {
             return CTypeConversion.toJavaString(tmpPath);
@@ -93,7 +93,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
             return osVersionValue;
         }
 
-        Foundation.NSOperatingSystemVersion osVersion = StackValue.get(Foundation.NSOperatingSystemVersion.class);
+        Foundation.NSOperatingSystemVersion osVersion = UnsafeStackValue.get(Foundation.NSOperatingSystemVersion.class);
         Foundation.operatingSystemVersion(osVersion);
         if (osVersion.isNonNull()) {
             long major = osVersion.getMajorVersion();
