@@ -49,6 +49,10 @@ public final class MDExpression implements MDBaseNode {
         return operands.length;
     }
 
+    public boolean isOperandEmpty() {
+        return operands.length == 0;
+    }
+
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }

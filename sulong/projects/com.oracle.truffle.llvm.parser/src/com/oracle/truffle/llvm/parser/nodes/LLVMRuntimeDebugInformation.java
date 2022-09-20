@@ -92,6 +92,23 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
         public abstract boolean isInitialize();
     }
 
+    static class UnavailableLocalVariable extends LocalVarDebugInfo {
+
+        UnavailableLocalVariable(int instructionIndex, LLVMSourceSymbol variable) {
+
+            super(instructionIndex, variable);
+        }
+
+        public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
+            return LLVMDebugObjectBuilder.UNAVAILABLE;
+        }
+
+        @Override
+        public boolean isInitialize() {
+            return true;
+        }
+    }
+
     static class SimpleLocalVariable extends LocalVarDebugInfo {
 
         private final boolean mustDereference;
