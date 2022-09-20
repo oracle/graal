@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation.test.bml;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,16 +39,16 @@ class ReturnException extends ControlFlowException {
 
 class BMLRootNode extends RootNode {
 
-    @Children private final BMLNode[] children;
+    @Child BMLNode body;
 
-    BMLRootNode(BenchmarkLanguage lang, int locals, BMLNode... children) {
+    BMLRootNode(BenchmarkLanguage lang, int locals, BMLNode body) {
         super(lang, createFrame(locals));
-        this.children = children;
+        this.body = body;
     }
 
     private static FrameDescriptor createFrame(int locals) {
         FrameDescriptor.Builder b = FrameDescriptor.newBuilder(locals);
-        b.addSlots(locals, FrameSlotKind.Int);
+        b.addSlots(locals, FrameSlotKind.Illegal);
         return b.build();
     }
 
@@ -55,9 +56,7 @@ class BMLRootNode extends RootNode {
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         try {
-            for (BMLNode child : children) {
-                child.execute(frame);
-            }
+            body.execute(frame);
         } catch (ReturnException ex) {
             return ex.getValue();
         }
@@ -73,6 +72,21 @@ abstract class AddNode extends BMLNode {
     @Specialization
     public int addInts(int lhs, int rhs) {
         return lhs + rhs;
+    }
+
+    @Fallback
+    @SuppressWarnings("unused")
+    public Object fallback(Object lhs, Object rhs) {
+        throw new AssertionError();
+    }
+}
+
+@NodeChild(type = BMLNode.class)
+@NodeChild(type = BMLNode.class)
+abstract class ModNode extends BMLNode {
+    @Specialization
+    public int modInts(int lhs, int rhs) {
+        return lhs % rhs;
     }
 
     @Fallback
@@ -134,6 +148,46 @@ abstract class LoadLocalNode extends BMLNode {
     }
 }
 
+class IfNode extends BMLNode {
+    @Child BMLNode condition;
+    @Child BMLNode thenBranch;
+    @Child BMLNode elseBranch;
+
+    public static IfNode create(BMLNode condition, BMLNode thenBranch, BMLNode elseBranch) {
+        return new IfNode(condition, thenBranch, elseBranch);
+    }
+
+    IfNode(BMLNode condition, BMLNode thenBranch, BMLNode elseBranch) {
+        this.condition = condition;
+        this.thenBranch = thenBranch;
+        this.elseBranch = elseBranch;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        try {
+            if (condition.executeBool(frame)) {
+                thenBranch.execute(frame);
+            } else {
+                thenBranch.execute(frame);
+            }
+            return VOID;
+        } catch (UnexpectedResultException e) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+}
+
 class WhileNode extends BMLNode {
 
     @Child private BMLNode condition;
@@ -157,20 +211,50 @@ class WhileNode extends BMLNode {
             }
             return VOID;
         } catch (UnexpectedResultException e) {
-            throw new AssertionError();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        throw new AssertionError();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
-        throw new AssertionError();
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+}
+
+class BlockNode extends BMLNode {
+    @Children final BMLNode[] nodes;
+
+    public static final BlockNode create(BMLNode... nodes) {
+        return new BlockNode(nodes);
     }
 
+    BlockNode(BMLNode[] nodes) {
+        this.nodes = nodes;
+    }
+
+    @Override
+    @ExplodeLoop
+    public Object execute(VirtualFrame frame) {
+        for (BMLNode node : nodes) {
+            node.execute(frame);
+        }
+        return VOID;
+    }
+
+    @Override
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
 }
 
 abstract class ConstNode extends BMLNode {

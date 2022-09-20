@@ -61,9 +61,9 @@ public abstract class OperationNodes {
         this.parse = parse;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "cast", "rawtypes"})
     public <T extends RootNode & OperationRootNode> List<T> getNodes() {
-        return (List<T>) List.of(nodes);
+        return (List<T>) (List) List.of(nodes);
     }
 
     public boolean hasSources() {

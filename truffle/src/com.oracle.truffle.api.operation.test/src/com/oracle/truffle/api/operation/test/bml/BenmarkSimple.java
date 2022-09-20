@@ -46,11 +46,13 @@ import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_JU
 import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_JUMP_FALSE;
 import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_LD_LOC;
 import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_LESS;
+import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_MOD;
 import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_RETURN;
 import static com.oracle.truffle.api.operation.test.bml.ManualBytecodeNode.OP_ST_LOC;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
@@ -85,26 +87,93 @@ public class BenmarkSimple extends BaseBenchmark {
     private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
+    private static final int LOC_I = 4;
+    private static final int LOC_SUM = 5;
+    private static final int LOC_J = 6;
+    private static final int LOC_TEMP = 7;
+
     private static final short[] BYTECODE = {
+                    // i = 0
                     /* 00 */ OP_CONST, 0, 0,
-                    /* 03 */ OP_ST_LOC, 2,
-                    /* 05 */ OP_LD_LOC, 2,
-                    /* 07 */ OP_CONST, (short) (TARGET_AMOUNT >> 16), (short) (TARGET_AMOUNT & 0xffff),
-                    /* 10 */ OP_LESS,
-                    /* 11 */ OP_JUMP_FALSE, 35,
-                    /* 13 */ OP_LD_LOC, 2,
-                    /* 15 */ OP_CONST, 0, 1,
-                    /* 18 */ OP_ADD,
-                    /* 19 */ OP_CONST, 0, 1,
-                    /* 22 */ OP_ADD,
-                    /* 23 */ OP_CONST, 0, 1,
-                    /* 26 */ OP_ADD,
-                    /* 27 */ OP_CONST, 0, 1,
-                    /* 30 */ OP_ADD,
-                    /* 31 */ OP_ST_LOC, 2,
-                    /* 33 */ OP_JUMP, 5,
-                    /* 35 */ OP_CONST, 0, 0,
-                    /* 38 */ OP_RETURN
+                    /* 03 */ OP_ST_LOC, LOC_I,
+
+                    // sum = 0
+                    /* 05 */ OP_CONST, 0, 0,
+                    /* 08 */ OP_ST_LOC, LOC_SUM,
+
+                    // while (i < 5000) {
+                    /* while_0_start: */
+                    /* 10 */ OP_LD_LOC, LOC_I,
+                    /* 12 */ OP_CONST, 0, 5000,
+                    /* 15 */ OP_LESS,
+                    /* 16 */ OP_JUMP_FALSE, 83, // while_0_end
+
+                    // j = 0
+                    /* 18 */ OP_CONST, 0, 0,
+                    /* 21 */ OP_ST_LOC, LOC_J,
+
+                    // while (j < i) {
+                    /* while_1_start: */
+                    /* 23 */ OP_LD_LOC, LOC_J, // j
+                    /* 25 */ OP_LD_LOC, LOC_I, // i
+                    /* 27 */ OP_LESS,
+                    /* 28 */ OP_JUMP_FALSE, 66, // while_1_end
+
+                    // if (i % 3 < 1) {
+                    /* 30 */ OP_LD_LOC, LOC_I, // i
+                    /* 32 */ OP_CONST, 0, 3,
+                    /* 35 */ OP_MOD,
+                    /* 36 */ OP_CONST, 0, 1,
+                    /* 39 */ OP_LESS,
+                    /* 40 */ OP_JUMP_FALSE, 49, // if_else
+
+                    // temp = 0
+                    /* 42 */ OP_CONST, 0, 1,
+                    /* 45 */ OP_ST_LOC, LOC_TEMP, // temp
+
+                    // } else {
+                    /* 47 */ OP_JUMP, 57, // if_end
+                    /* if_else: */
+
+                    // temp = i % 3
+                    /* 49 */ OP_LD_LOC, LOC_I, // i
+                    /* 51 */ OP_CONST, 0, 3,
+                    /* 54 */ OP_MOD,
+                    /* 55 */ OP_ST_LOC, LOC_TEMP, // temp
+
+                    // } // if end
+                    /* if_end: */
+
+                    // j = j + temp
+                    /* 57 */ OP_LD_LOC, LOC_J, // j
+                    /* 59 */ OP_LD_LOC, LOC_TEMP, // temp
+                    /* 61 */ OP_ADD,
+                    /* 62 */ OP_ST_LOC, LOC_J, // j
+
+                    // } // while end
+                    /* 64 */ OP_JUMP, 23, // while_1_start
+                    /* while_1_end: */
+
+                    // sum = sum + j
+                    /* 66 */ OP_LD_LOC, LOC_SUM, // sum
+                    /* 68 */ OP_LD_LOC, LOC_J, // j
+                    /* 70 */ OP_ADD,
+                    /* 71 */ OP_ST_LOC, LOC_SUM, // sum
+
+                    // i = i + 1
+                    /* 73 */ OP_LD_LOC, LOC_I, // i
+                    /* 75 */ OP_CONST, 0, 1,
+                    /* 78 */ OP_ADD,
+                    /* 79 */ OP_ST_LOC, LOC_I, // i
+
+                    // } // while end
+                    /* 81 */ OP_JUMP, 10, // while_0_start
+                    /* while_0_end: */
+
+                    // return sum
+                    /* 83 */ OP_LD_LOC, LOC_SUM, // sum
+                    /* 85 */ OP_RETURN,
+
     };
 
     private Context context;
@@ -118,13 +187,31 @@ public class BenmarkSimple extends BaseBenchmark {
      *
      * <pre>
      * int i = 0;
-     * while (i < 100000) {
-     *     i = i + 1 + 1 + 1 + 1
+     * int sum = 0;
+     * while (i < 5000) {
+     *     int j = 0;
+     *     while (j < i) {
+     *         int temp;
+     *         if (i % 3 < 1) {
+     *             temp = 1;
+     *         } else {
+     *             temp = i % 3;
+     *         }
+     *         j = j + temp;
+     *     }
+     *     sum = sum + j;
+     *     i = i + 1;
      * }
-     * return 0;
+     * return sum;
      * </pre>
+     *
+     * The result should be 12498333.
      */
     static {
+        if (BYTECODE.length != 86) {
+            throw new AssertionError("bad bytecode length: " + BYTECODE.length);
+        }
+
         BenchmarkLanguage.registerName(NAME_TEST_LOOP, (lang, b) -> {
             createSimpleLoop(lang, b, MODE_NORMAL);
         });
@@ -136,32 +223,46 @@ public class BenmarkSimple extends BaseBenchmark {
         });
         BenchmarkLanguage.registerName2(NAME_MANUAL, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
-            b.addSlots(3, FrameSlotKind.Illegal);
+            b.addSlots(8, FrameSlotKind.Illegal);
             ManualBytecodeNode node = new ManualBytecodeNode(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName2(NAME_MANUAL_NO_BE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
-            b.addSlots(3, FrameSlotKind.Illegal);
+            b.addSlots(8, FrameSlotKind.Illegal);
             ManualBytecodeNodeNBE node = new ManualBytecodeNodeNBE(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName2(NAME_AST, lang -> {
-            return new BMLRootNode(lang, 1,
-                            StoreLocalNodeGen.create(0, ConstNodeGen.create(0)),
-                            WhileNode.create(
-                                            LessNodeGen.create(LoadLocalNodeGen.create(0), ConstNodeGen.create(TARGET_AMOUNT)),
-                                            StoreLocalNodeGen.create(0,
-                                                            AddNodeGen.create(
-                                                                            AddNodeGen.create(
-                                                                                            AddNodeGen.create(
-                                                                                                            AddNodeGen.create(
-                                                                                                                            LoadLocalNodeGen.create(0),
-                                                                                                                            ConstNodeGen.create(1)),
-                                                                                                            ConstNodeGen.create(1)),
-                                                                                            ConstNodeGen.create(1)),
-                                                                            ConstNodeGen.create(1)))),
-                            ReturnNodeGen.create(ConstNodeGen.create(0))).getCallTarget();
+            int iLoc = 0, sumLoc = 1, jLoc = 2, tempLoc = 3;
+            return new BMLRootNode(lang, 4, BlockNode.create(
+                            // i = 0
+                            StoreLocalNodeGen.create(iLoc, ConstNodeGen.create(0)),
+                            // sum = 0
+                            StoreLocalNodeGen.create(sumLoc, ConstNodeGen.create(0)),
+                            // while (i < 5000) {
+                            WhileNode.create(LessNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(5000)), BlockNode.create(
+                                            // j = 0
+                                            StoreLocalNodeGen.create(jLoc, ConstNodeGen.create(0)),
+                                            // while (j < i) {
+                                            WhileNode.create(LessNodeGen.create(LoadLocalNodeGen.create(jLoc), LoadLocalNodeGen.create(iLoc)), BlockNode.create(
+                                                            // if (i % 3 < 1) {
+                                                            IfNode.create(LessNodeGen.create(ModNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(3)), ConstNodeGen.create(1)),
+                                                                            // temp = 1
+                                                                            StoreLocalNodeGen.create(tempLoc, ConstNodeGen.create(1)),
+                                                                            // } else {
+                                                                            // temp = i % 3
+                                                                            StoreLocalNodeGen.create(tempLoc, ModNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(3)))),
+                                                            // }
+                                                            // j = j + temp
+                                                            StoreLocalNodeGen.create(jLoc, AddNodeGen.create(LoadLocalNodeGen.create(jLoc), LoadLocalNodeGen.create(tempLoc))))),
+                                            // }
+                                            // sum = sum + j
+                                            StoreLocalNodeGen.create(sumLoc, AddNodeGen.create(LoadLocalNodeGen.create(sumLoc), LoadLocalNodeGen.create(jLoc))),
+                                            // i = i + 1
+                                            StoreLocalNodeGen.create(iLoc, AddNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(1))))),
+                            // return sum
+                            ReturnNodeGen.create(LoadLocalNodeGen.create(sumLoc)))).getCallTarget();
         });
     }
 
@@ -197,44 +298,139 @@ public class BenmarkSimple extends BaseBenchmark {
         }
     }
 
-    private static void createSimpleLoop(BenchmarkLanguage lang, Builder b, int mode) {
-        OperationLocal i = b.createLocal();
+    private static void beginMod(Builder b, int mode) {
+        switch (mode) {
+            case MODE_NORMAL:
+                b.beginMod();
+                break;
+            case MODE_NO_BE:
+                b.beginModBoxed();
+                break;
+            case MODE_QUICKEN:
+                b.beginModQuickened();
+                break;
+            default:
+                throw new UnsupportedOperationException();
+        }
+    }
 
-        // i = 0
-        b.beginStoreLocal(i);
+    private static void endMod(Builder b, int mode) {
+        switch (mode) {
+            case MODE_NORMAL:
+                b.endMod();
+                break;
+            case MODE_NO_BE:
+                b.endModBoxed();
+                break;
+            case MODE_QUICKEN:
+                b.endModQuickened();
+                break;
+            default:
+                throw new UnsupportedOperationException();
+        }
+    }
+
+    private static void createSimpleLoop(BenchmarkLanguage lang, Builder b, int mode) {
+        OperationLocal iLoc = b.createLocal();
+        OperationLocal sumLoc = b.createLocal();
+        OperationLocal jLoc = b.createLocal();
+        OperationLocal tempLoc = b.createLocal();
+
+        // int i = 0;
+        b.beginStoreLocal(iLoc);
         b.emitConstObject(0);
         b.endStoreLocal();
 
-        // while (i < 100000) {
+        // int sum = 0;
+        b.beginStoreLocal(sumLoc);
+        b.emitConstObject(0);
+        b.endStoreLocal();
+
+        // while (i < 5000) {
         b.beginWhile();
         b.beginLess();
-        b.emitLoadLocal(i);
-        b.emitConstObject(100000);
+        b.emitLoadLocal(iLoc);
+        b.emitConstObject(5000);
+        b.endLess();
+        b.beginBlock();
+
+        // int j = 0;
+        b.beginStoreLocal(jLoc);
+        b.emitConstObject(0);
+        b.endStoreLocal();
+
+        // while (j < i) {
+        b.beginWhile();
+        b.beginLess();
+        b.emitLoadLocal(jLoc);
+        b.emitLoadLocal(iLoc);
+        b.endLess();
+        b.beginBlock();
+
+        // int temp;
+        // if (i % 3 < 1) {
+        b.beginIfThenElse();
+
+        b.beginLess();
+        beginMod(b, mode);
+        b.emitLoadLocal(iLoc);
+        b.emitConstObject(3);
+        endMod(b, mode);
+        b.emitConstObject(1);
         b.endLess();
 
-        // i = i + 1 + 1 + 1 + 1
-        b.beginStoreLocal(i);
-        beginAdd(b, mode);
-        beginAdd(b, mode);
-        beginAdd(b, mode);
-        beginAdd(b, mode);
-        b.emitLoadLocal(i);
+        // temp = 1;
+        b.beginStoreLocal(tempLoc);
         b.emitConstObject(1);
+        b.endStoreLocal();
+
+        // } else {
+        // temp = i % 3;
+        b.beginStoreLocal(tempLoc);
+        beginMod(b, mode);
+        b.emitLoadLocal(iLoc);
+        b.emitConstObject(3);
+        endMod(b, mode);
+        b.endStoreLocal();
+
+        // }
+        b.endIfThenElse();
+
+        // j = j + temp;
+        b.beginStoreLocal(jLoc);
+        beginAdd(b, mode);
+        b.emitLoadLocal(jLoc);
+        b.emitLoadLocal(tempLoc);
         endAdd(b, mode);
-        b.emitConstObject(1);
+        b.endStoreLocal();
+
+        // }
+        b.endBlock();
+        b.endWhile();
+
+        // sum = sum + j;
+        b.beginStoreLocal(sumLoc);
+        beginAdd(b, mode);
+        b.emitLoadLocal(sumLoc);
+        b.emitLoadLocal(jLoc);
         endAdd(b, mode);
-        b.emitConstObject(1);
-        endAdd(b, mode);
+        b.endStoreLocal();
+
+        // i = i + 1;
+        b.beginStoreLocal(iLoc);
+        beginAdd(b, mode);
+        b.emitLoadLocal(iLoc);
         b.emitConstObject(1);
         endAdd(b, mode);
         b.endStoreLocal();
 
         // }
+        b.endBlock();
         b.endWhile();
 
-        // return 0
+        // return sum;
         b.beginReturn();
-        b.emitConstObject(0);
+        b.emitLoadLocal(sumLoc);
         b.endReturn();
 
         b.publish(lang);
@@ -242,7 +438,7 @@ public class BenmarkSimple extends BaseBenchmark {
 
     @Setup(Level.Trial)
     public void setup() {
-        context = Context.create();
+        context = Context.newBuilder("bm").allowExperimentalOptions(true).build();
     }
 
     @Setup(Level.Iteration)
@@ -255,34 +451,43 @@ public class BenmarkSimple extends BaseBenchmark {
         context.leave();
     }
 
+    private static final boolean PRINT_RESULTS = System.getProperty("PrintResults") != null;
+
+    private void doEval(Source source) {
+        Value v = context.eval(source);
+        if (PRINT_RESULTS) {
+            System.err.println(source.getCharacters() + " = " + v);
+        }
+    }
+
     @Benchmark
     public void operation() {
-        context.eval(SOURCE_TEST_LOOP);
+        doEval(SOURCE_TEST_LOOP);
     }
 
     @Benchmark
     public void operationNoBe() {
-        context.eval(SOURCE_TEST_LOOP_NO_BE);
+        doEval(SOURCE_TEST_LOOP_NO_BE);
     }
 
     @Benchmark
     public void operationQuicken() {
-        context.eval(SOURCE_TEST_LOOP_QUICKEN);
+        doEval(SOURCE_TEST_LOOP_QUICKEN);
     }
 
     @Benchmark
     public void manual() {
-        context.eval(SOURCE_MANUAL);
+        doEval(SOURCE_MANUAL);
     }
 
     @Benchmark
     public void manualNoBE() {
-        context.eval(SOURCE_MANUAL_NO_BE);
+        doEval(SOURCE_MANUAL_NO_BE);
     }
 
     @Benchmark
     public void ast() {
-        context.eval(SOURCE_AST);
+        doEval(SOURCE_AST);
     }
 }
 

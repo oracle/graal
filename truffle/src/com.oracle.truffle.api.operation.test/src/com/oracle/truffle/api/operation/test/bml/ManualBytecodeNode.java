@@ -66,6 +66,7 @@ public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
     static final short OP_RETURN = 6;
     static final short OP_ST_LOC = 7;
     static final short OP_LD_LOC = 8;
+    static final short OP_MOD = 9;
 
     protected ManualBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
         super(language, frameDescriptor);
@@ -119,6 +120,15 @@ public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
                     int lhs = frame.getInt(sp - 2);
                     int rhs = frame.getInt(sp - 1);
                     frame.setInt(sp - 2, lhs + rhs);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_MOD: {
+                    int lhs = frame.getInt(sp - 2);
+                    int rhs = frame.getInt(sp - 1);
+                    frame.setInt(sp - 2, lhs % rhs);
                     sp -= 1;
                     bci += 1;
                     continue loop;
@@ -202,6 +212,7 @@ class ManualBytecodeNodeNBE extends RootNode {
     static final short OP_RETURN = 6;
     static final short OP_ST_LOC = 7;
     static final short OP_LD_LOC = 8;
+    static final short OP_MOD = 9;
 
     protected ManualBytecodeNodeNBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
         super(language, frameDescriptor);
@@ -236,6 +247,16 @@ class ManualBytecodeNodeNBE extends RootNode {
                     int lhs = (int) frame.getObject(sp - 2);
                     int rhs = (int) frame.getObject(sp - 1);
                     frame.setObject(sp - 2, lhs + rhs);
+                    frame.clear(sp - 1);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_MOD: {
+                    int lhs = (int) frame.getObject(sp - 2);
+                    int rhs = (int) frame.getObject(sp - 1);
+                    frame.setObject(sp - 2, lhs % rhs);
                     frame.clear(sp - 1);
                     sp -= 1;
                     bci += 1;

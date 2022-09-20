@@ -111,10 +111,26 @@ abstract class BMOperationRootNode extends RootNode implements OperationRootNode
     }
 
     @Operation
+    static final class Mod {
+        @Specialization
+        static int doInts(int left, int right) {
+            return left % right;
+        }
+    }
+
+    @Operation
     static final class AddQuickened {
         @Specialization
         static int doInts(int left, int right) {
             return left + right;
+        }
+    }
+
+    @Operation
+    static final class ModQuickened {
+        @Specialization
+        static int doInts(int left, int right) {
+            return left % right;
         }
     }
 
@@ -123,6 +139,14 @@ abstract class BMOperationRootNode extends RootNode implements OperationRootNode
         @Specialization
         static int doInts(int left, int right) {
             return left + right;
+        }
+    }
+
+    @Operation(disableBoxingElimination = true)
+    static final class ModBoxed {
+        @Specialization
+        static int doInts(int left, int right) {
+            return left % right;
         }
     }
 
