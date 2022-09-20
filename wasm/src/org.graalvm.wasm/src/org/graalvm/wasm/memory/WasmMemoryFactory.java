@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,22 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.memory;
 
-package org.graalvm.wasm.constants;
+import org.graalvm.wasm.constants.Sizes;
 
-public final class Sizes {
-    public static final int MAX_TABLE_DECLARATION_SIZE = 0xffff_ffff;
-    public static final int MAX_MEMORY_DECLARATION_SIZE = 65536;
-    public static final long MAX_MEMORY_64_DECLARED_SIZE = 281_474_976_710_656L;
-    public static final int MEMORY_PAGE_SIZE = 65536;
-
-    public static final int MAX_TABLE_INSTANCE_SIZE = Integer.MAX_VALUE;
-    public static final int MAX_MEMORY_INSTANCE_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
-
-    // 64 TB
-    public static final long MAX_MEMORY_64_INSTANCE_BYTE_SIZE = 64_000_000_000_000L;
-    public static final long MAX_MEMORY_64_INSTANCE_SIZE = MAX_MEMORY_64_INSTANCE_BYTE_SIZE / MEMORY_PAGE_SIZE;
-
-    private Sizes() {
+public class WasmMemoryFactory {
+    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean unsafeMemory) {
+        if (!unsafeMemory) {
+            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+        } else {
+            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
+                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            } else {
+                return new ByteBufferWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            }
+        }
     }
 }

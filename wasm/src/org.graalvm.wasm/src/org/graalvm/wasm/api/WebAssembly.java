@@ -63,7 +63,6 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -73,8 +72,6 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.ExportedWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.memory.ByteArrayWasmMemory;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -84,6 +81,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import org.graalvm.wasm.memory.WasmMemoryFactory;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -665,11 +663,8 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds implementation limit");
         }
         final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
-        if (WasmContext.get(null).environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-            return new UnsafeWasmMemory(initial, maximum, maxAllowedSize, false);
-        } else {
-            return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize, false);
-        }
+        final WasmContext context = WasmContext.get(null);
+        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {

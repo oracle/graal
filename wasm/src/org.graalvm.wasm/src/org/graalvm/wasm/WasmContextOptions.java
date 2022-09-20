@@ -51,6 +51,8 @@ public class WasmContextOptions {
     @CompilationFinal private boolean keepDataSections;
     @CompilationFinal private boolean multiValue;
     @CompilationFinal private boolean bulkMemoryAndRefTypes;
+    @CompilationFinal private boolean memory64;
+    @CompilationFinal private boolean unsafeMemory;
 
     @CompilationFinal private boolean memoryOverheadMode;
     private final OptionValues optionValues;
@@ -70,6 +72,8 @@ public class WasmContextOptions {
         this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
         this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
+        this.memory64 = readBooleanOption(WasmOptions.Memory64);
+        this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
     }
 
@@ -97,6 +101,14 @@ public class WasmContextOptions {
         return bulkMemoryAndRefTypes;
     }
 
+    public boolean supportMemory64() {
+        return memory64;
+    }
+
+    public boolean useUnsafeMemory() {
+        return unsafeMemory;
+    }
+
     public boolean memoryOverheadMode() {
         return memoryOverheadMode;
     }
@@ -109,6 +121,8 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         hash = 53 * hash + (this.multiValue ? 1 : 0);
         hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
+        hash = 53 * hash + (this.memory64 ? 1 : 0);
+        hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         return hash;
     }
@@ -138,6 +152,12 @@ public class WasmContextOptions {
             return false;
         }
         if (this.bulkMemoryAndRefTypes != other.bulkMemoryAndRefTypes) {
+            return false;
+        }
+        if (this.memory64 != other.memory64) {
+            return false;
+        }
+        if (this.unsafeMemory != other.unsafeMemory) {
             return false;
         }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {

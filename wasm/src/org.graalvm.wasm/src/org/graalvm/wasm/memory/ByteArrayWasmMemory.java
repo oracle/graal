@@ -52,12 +52,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class ByteArrayWasmMemory extends WasmMemory {
+final class ByteArrayWasmMemory extends WasmMemory {
     private final WasmByteArrayBuffer byteArrayBuffer;
 
-    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean is64Bit) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, is64Bit);
-        if (declaredMaxSize * MEMORY_PAGE_SIZE > MAX_MEMORY_INSTANCE_SIZE) {
+    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64);
+        if (maxAllowedSize > MAX_MEMORY_INSTANCE_SIZE) {
             this.byteArrayBuffer = new WasmMultiByteArrayBuffer();
         } else {
             this.byteArrayBuffer = new WasmSingleByteArrayBuffer();
@@ -65,8 +65,8 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         this.byteArrayBuffer.allocate(initialSize * MEMORY_PAGE_SIZE);
     }
 
-    public ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean is64Bit) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, is64Bit);
+    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64);
     }
 
     @Override
@@ -381,7 +381,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public WasmMemory duplicate() {
-        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, is64Bit);
+        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64);
         byteArrayBuffer.copyTo(other.byteArrayBuffer);
         return other;
     }

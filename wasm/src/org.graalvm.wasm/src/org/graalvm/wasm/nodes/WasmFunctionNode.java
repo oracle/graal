@@ -357,15 +357,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private final int functionStartOffset;
     private final int functionEndOffset;
 
+    private final boolean memory64;
+    private final boolean unsafeMemory;
     @Children private Node[] callNodes;
 
     @CompilationFinal private Object osrMetadata;
 
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset) {
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, boolean memory64, boolean unsafeMemory) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.functionStartOffset = functionStartOffset;
         this.functionEndOffset = functionEndOffset;
+        this.memory64 = memory64;
+        this.unsafeMemory = unsafeMemory;
     }
 
     @SuppressWarnings("hiding")
@@ -1030,15 +1034,23 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
-                    // region Load LEB128 Unsigned32 -> memOffset
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int memOffset = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
+                    final long memOffset;
+                    if (memory64) {
+                        // region Load LEB128 Unsigned64 -> memOffset
+                        memOffset = unsignedLongConstant(data, offset);
+                        int offsetDelta = offsetDelta(data, offset);
+                        offset += offsetDelta;
 
+                    } else {
+                        // region Load LEB128 Unsigned32 -> memOffset
+                        long valueLength = unsignedIntConstantAndLength(data, offset);
+                        memOffset = value(valueLength);
+                        int offsetDelta = length(valueLength);
+                        offset += offsetDelta;
+                        // endregion
+                    }
                     final long address;
-                    if (memory.isIs64Bit()) {
+                    if (memory.hasIndexType64()) {
                         long baseAddress = popLong(frame, stackPointer - 1);
                         address = effectiveMemoryAddress(memOffset, baseAddress);
                     } else {
@@ -1066,12 +1078,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
-                    // region Load LEB128 Unsigned32 -> memOffset
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int memOffset = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
+                    final long memOffset;
+                    if (memory64) {
+                        // region Load LEB128 Unsigned64 -> memOffset
+                        memOffset = unsignedLongConstant(data, offset);
+                        int offsetDelta = offsetDelta(data, offset);
+                        offset += offsetDelta;
+                        // endregion
+                    } else {
+                        // region Load LEB128 Unsigned32 -> memOffset
+                        long valueLength = unsignedIntConstantAndLength(data, offset);
+                        memOffset = value(valueLength);
+                        int offsetDelta = length(valueLength);
+                        offset += offsetDelta;
+                        // endregion
+                    }
 
                     load(memory, frame, stackPointer - 1, opcode, memOffset);
                     break;
@@ -1089,12 +1110,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
-                    // region Load LEB128 Unsigned32 -> memOffset
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int memOffset = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
+                    final long memOffset;
+                    if (memory64) {
+                        // region Load LEB128 Unsigned64 -> memOffset
+                        memOffset = unsignedLongConstant(data, offset);
+                        int offsetDelta = offsetDelta(data, offset);
+                        offset += offsetDelta;
+                        // endregion
+                    } else {
+                        // region Load LEB128 Unsigned32 -> memOffset
+                        long valueLength = unsignedIntConstantAndLength(data, offset);
+                        memOffset = value(valueLength);
+                        int offsetDelta = length(valueLength);
+                        offset += offsetDelta;
+                        // endregion
+                    }
 
                     store(memory, frame, stackPointer, opcode, memOffset);
                     stackPointer -= 2;
@@ -1105,7 +1135,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Skip the 0x00 constant.
                     offset++;
                     long pageSize = memory.size();
-                    if (memory.isIs64Bit()) {
+                    if (memory.hasIndexType64()) {
                         pushLong(frame, stackPointer, pageSize);
                     } else {
                         pushInt(frame, stackPointer, (int) pageSize);
@@ -1119,7 +1149,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer--;
                     final long extraSize;
                     final long pageSize = memory.size();
-                    if (memory.isIs64Bit()) {
+                    if (memory.hasIndexType64()) {
                         extraSize = popLong(frame, stackPointer);
                         if (memory.grow(extraSize)) {
                             pushLong(frame, stackPointer, pageSize);
@@ -1617,7 +1647,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
+                            final long dst;
+                            if (memory.hasIndexType64()) {
+                                dst = popLong(frame, stackPointer - 3);
+                            } else {
+                                dst = popInt(frame, stackPointer - 3);
+                            }
                             memory_init(n, src, dst, dataIndex);
                             stackPointer -= 3;
                             break;
@@ -1636,9 +1671,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case MEMORY_COPY: {
                             // Consume the two ZERO_MEMORY constants.
                             offset += 2;
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
+                            final long n;
+                            final long src;
+                            final long dst;
+                            if (memory.hasIndexType64()) {
+                                n = popLong(frame, stackPointer - 1);
+                                src = popLong(frame, stackPointer - 2);
+                                dst = popLong(frame, stackPointer - 3);
+                            } else {
+                                n = popInt(frame, stackPointer - 1);
+                                src = popInt(frame, stackPointer - 2);
+                                dst = popInt(frame, stackPointer - 3);
+                            }
                             memory_copy(n, src, dst);
                             stackPointer -= 3;
                             break;
@@ -1647,9 +1691,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             // Consume the ZERO_MEMORY constant.
                             offset += 1;
 
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int val = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
+                            final long n;
+                            final int val;
+                            final long dst;
+                            if (memory.hasIndexType64()) {
+                                n = popLong(frame, stackPointer - 1);
+                                val = popInt(frame, stackPointer - 2);
+                                dst = popLong(frame, stackPointer - 3);
+                            } else {
+                                n = popInt(frame, stackPointer - 1);
+                                val = popInt(frame, stackPointer - 2);
+                                dst = popInt(frame, stackPointer - 3);
+                            }
                             memory_fill(n, val, dst);
                             stackPointer -= 3;
                             break;
@@ -1819,14 +1872,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * The static address offset (u32) is added to the dynamic address (u32) operand, yielding a
      * 33-bit effective address that is the zero-based index at which the memory is accessed.
      */
-    private static long effectiveMemoryAddress(int staticAddressOffset, int dynamicAddress) {
-        return Integer.toUnsignedLong(dynamicAddress) + Integer.toUnsignedLong(staticAddressOffset);
+    private static long effectiveMemoryAddress(long staticAddressOffset, int dynamicAddress) {
+        return Integer.toUnsignedLong(dynamicAddress) + staticAddressOffset;
     }
 
-    private static long effectiveMemoryAddress(int staticAddressOffset, long dynamicAddress) {
+    /**
+     * The static address offset (u64) is added to the dynamic address (u64) operand, yielding a
+     * 65-bit effective address that is the zero-based index at which the memory is accessed.
+     */
+    private long effectiveMemoryAddress(long staticAddressOffset, long dynamicAddress) {
         try {
-            return Math.addExact(staticAddressOffset, dynamicAddress);
+            return Math.addExact(dynamicAddress, staticAddressOffset);
         } catch (ArithmeticException e) {
+            enterErrorBranch();
             throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Memory address too large");
         }
     }
@@ -1972,9 +2030,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void load(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, int memOffset) {
+    private void load(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long memOffset) {
         final long address;
-        if (memory.isIs64Bit()) {
+        if (memory.hasIndexType64()) {
             final long baseAddress = popLong(frame, stackPointer);
             address = effectiveMemoryAddress(memOffset, baseAddress);
         } else {
@@ -2058,9 +2116,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void store(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, int memOffset) {
+    private void store(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long memOffset) {
         final long address;
-        if (memory.isIs64Bit()) {
+        if (memory.hasIndexType64()) {
             final long baseAddress = popLong(frame, stackPointer - 2);
             address = effectiveMemoryAddress(memOffset, baseAddress);
         } else {
@@ -3268,40 +3326,52 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_init(int length, int source, int destination, int dataIndex) {
+    private void memory_init(int length, int source, long destination, int dataIndex) {
         final WasmMemory memory = instance.memory();
-        final byte[] dataInstance = instance.dataInstance(dataIndex);
-        final int dataLength;
-        if (dataInstance == null) {
-            dataLength = 0;
+        if (unsafeMemory) {
+            final int dataLength = instance.dataInstanceSize(dataIndex);
+            if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
+                enterErrorBranch();
+                throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            }
+            if (length == 0) {
+                return;
+            }
+            memory.initialize(instance.dataInstanceAddress(dataIndex), source, destination, length);
         } else {
-            dataLength = dataInstance.length;
+            final byte[] dataInstance = instance.dataInstance(dataIndex);
+            final int dataLength;
+            if (dataInstance == null) {
+                dataLength = 0;
+            } else {
+                dataLength = dataInstance.length;
+            }
+            if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
+                enterErrorBranch();
+                throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            }
+            if (length == 0) {
+                return;
+            }
+            memory.initialize(dataInstance, source, destination, length);
         }
-        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-        }
-        if (length == 0) {
-            return;
-        }
-        memory.initialize(dataInstance, source, destination, length);
     }
 
     @TruffleBoundary
-    private void memory_fill(int length, int value, int offset) {
+    private void memory_fill(long length, int value, long offset) {
         final WasmMemory memory = instance.memory();
         if (checkOutOfBounds(offset, length, memory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
-        if (length == 0) {
+        if (length == 0L) {
             return;
         }
         memory.fill(offset, length, (byte) value);
     }
 
     @TruffleBoundary
-    private void memory_copy(int length, int source, int destination) {
+    private void memory_copy(long length, long source, long destination) {
         final WasmMemory memory = instance.memory();
         if (checkOutOfBounds(source, length, memory.byteSize()) || checkOutOfBounds(destination, length, memory.byteSize())) {
             enterErrorBranch();
@@ -3315,7 +3385,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     // Checkstyle: resume method name check
 
-    private static boolean checkOutOfBounds(int offset, int length, long size) {
+    private static boolean checkOutOfBounds(long offset, long length, long size) {
         return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
     }
 
@@ -3423,6 +3493,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static long signedLongConstant(byte[] data, int offset) {
         return BinaryStreamParser.peekSignedInt64(data, offset, false);
+    }
+
+    private static long unsignedLongConstant(byte[] data, int offset) {
+        return BinaryStreamParser.peekUnsignedInt64(data, offset, false);
     }
 
     private static int intOffsetDelta(byte[] data, int offset) {

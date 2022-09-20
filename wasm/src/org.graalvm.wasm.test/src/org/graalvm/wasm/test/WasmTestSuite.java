@@ -55,6 +55,7 @@ import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
+import org.graalvm.wasm.test.suites.memory.Memory64Suite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
 import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
@@ -80,6 +81,7 @@ import org.junit.runners.Suite;
                 LoopBlockSuite.class,
                 IfThenElseSuite.class,
                 MemorySuite.class,
+                Memory64Suite.class,
                 TableSuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,

@@ -203,9 +203,6 @@ public abstract class BinaryStreamParser {
             }
         }
 
-        if (shift != 70 && (b & 0x40) != 0) {
-            return result | (~0L << shift);
-        }
         return result;
     }
 

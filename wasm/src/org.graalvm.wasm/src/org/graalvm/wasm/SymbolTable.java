@@ -59,13 +59,12 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.memory.ByteArrayWasmMemory;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.memory.WasmMemoryFactory;
 
 /**
  * Contains the symbol information of a module.
@@ -186,12 +185,12 @@ public abstract class SymbolTable {
          */
         public final long maximumSize;
 
-        public final boolean is64bit;
+        public final boolean indexType64;
 
-        public MemoryInfo(long initialSize, long maximumSize, boolean is64bit) {
+        public MemoryInfo(long initialSize, long maximumSize, boolean indexType64) {
             this.initialSize = initialSize;
             this.maximumSize = maximumSize;
-            this.is64bit = is64bit;
+            this.indexType64 = indexType64;
         }
     }
 
@@ -927,21 +926,19 @@ public abstract class SymbolTable {
         return table.elemType;
     }
 
-    public void allocateMemory(long declaredMinSize, long declaredMaxSize, boolean is64Bit) {
+    public void allocateMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(declaredMinSize, declaredMaxSize, is64Bit);
+        memory = new MemoryInfo(declaredMinSize, declaredMaxSize, indexType64);
         module().addLinkAction((context, instance) -> {
-            final long maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit());
-            module().limits().checkMemoryInstanceSize(declaredMinSize);
+            final long maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit(indexType64));
+            module().limits().checkMemoryInstanceSize(declaredMinSize, indexType64);
             final WasmMemory wasmMemory;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty memory when in memory overhead mode.
-                wasmMemory = new ByteArrayWasmMemory(0, 0, 0, false);
-            } else if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-                wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, is64Bit);
+                wasmMemory = WasmMemoryFactory.createMemory(0, 0,0, false, context.getContextOptions().useUnsafeMemory())
             } else {
-                wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, is64Bit);
+                wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, context.getContextOptions().useUnsafeMemory());
             }
             final int memoryIndex = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
@@ -952,7 +949,7 @@ public abstract class SymbolTable {
     public void allocateExternalMemory(WasmMemory externalMemory) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo(externalMemory.declaredMinSize(), externalMemory.declaredMaxSize(), externalMemory.isIs64Bit());
+        memory = new MemoryInfo(externalMemory.declaredMinSize(), externalMemory.declaredMaxSize(), externalMemory.hasIndexType64());
         module().addLinkAction((context, instance) -> {
             final int memoryIndex = context.memories().registerExternal(externalMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
@@ -960,13 +957,13 @@ public abstract class SymbolTable {
         });
     }
 
-    public void importMemory(String moduleName, String memoryName, long initSize, long maxSize, boolean is64Bit) {
+    public void importMemory(String moduleName, String memoryName, long initSize, long maxSize, boolean typeIndex64) {
         checkNotParsed();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName, ImportIdentifier.MEMORY);
-        memory = new MemoryInfo(initSize, maxSize, is64Bit);
+        memory = new MemoryInfo(initSize, maxSize, typeIndex64);
         importSymbol(importedMemoryDescriptor);
-        module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, importedMemoryDescriptor, initSize, maxSize));
+        module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, importedMemoryDescriptor, initSize, maxSize, typeIndex64));
     }
 
     private void validateSingleMemory() {
@@ -978,8 +975,8 @@ public abstract class SymbolTable {
         return memory != null;
     }
 
-    boolean isMemory64Bit() {
-        return memory.is64bit;
+    boolean memoryHasIndexType64() {
+        return memory.indexType64;
     }
 
     public void exportMemory(String name) {

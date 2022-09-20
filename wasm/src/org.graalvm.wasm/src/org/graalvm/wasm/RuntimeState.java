@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.memory.NativeDataInstanceStore;
 import org.graalvm.wasm.memory.WasmMemory;
 
 /**
@@ -106,6 +107,9 @@ public class RuntimeState {
      */
     @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
 
+    private final NativeDataInstanceStore dataInstanceStore;
+
+    private final boolean unsafeMemory;
     @CompilationFinal private Linker.LinkState linkState;
 
     private void ensureGlobalsCapacity(int index) {
@@ -134,6 +138,13 @@ public class RuntimeState {
         this.linkState = Linker.LinkState.nonLinked;
         this.elemInstances = null;
         this.dataInstances = null;
+        if (context.getContextOptions().useUnsafeMemory()) {
+            this.dataInstanceStore = new NativeDataInstanceStore();
+            this.unsafeMemory = true;
+        } else {
+            this.dataInstanceStore = null;
+            this.unsafeMemory = false;
+        }
     }
 
     private void checkNotLinked() {
@@ -300,23 +311,42 @@ public class RuntimeState {
 
     void setDataInstance(int index, byte[] dataInstance) {
         assert dataInstance != null;
-        ensureDataInstanceCapacity(index);
-        dataInstances[index] = dataInstance;
+        if (unsafeMemory) {
+            dataInstanceStore.setInstance(index, dataInstance);
+        } else {
+            ensureDataInstanceCapacity(index);
+            dataInstances[index] = dataInstance;
+        }
     }
 
     public void dropDataInstance(int index) {
-        if (dataInstances == null) {
-            return;
+        if (unsafeMemory) {
+            dataInstanceStore.dropInstance(index);
+        } else {
+            if (dataInstances == null) {
+                return;
+            }
+            assert index < dataInstances.length;
+            dataInstances[index] = null;
         }
-        assert index < dataInstances.length;
-        dataInstances[index] = null;
     }
 
     public byte[] dataInstance(int index) {
+        assert !unsafeMemory;
         if (dataInstances == null) {
             return null;
         }
         assert index < dataInstances.length;
         return dataInstances[index];
+    }
+
+    public long dataInstanceAddress(int index) {
+        assert unsafeMemory;
+        return dataInstanceStore.instanceAddress(index);
+    }
+
+    public int dataInstanceSize(int index) {
+        assert unsafeMemory;
+        return dataInstanceStore.instanceSize(index);
     }
 }

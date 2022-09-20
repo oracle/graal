@@ -46,6 +46,7 @@ import static org.graalvm.wasm.Assert.assertIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
+import static org.graalvm.wasm.Assert.assertUnsignedLongLess;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.Assert.fail;
 import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
@@ -54,8 +55,8 @@ import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
-import static org.graalvm.wasm.WasmType.VOID_TYPE;
 import static org.graalvm.wasm.WasmType.NULL_TYPE;
+import static org.graalvm.wasm.WasmType.VOID_TYPE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARED_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
@@ -103,6 +104,7 @@ public class BinaryParser extends BinaryStreamParser {
     private final boolean multiValue;
 
     private final boolean bulkMemoryAndRefTypes;
+    private final boolean memory64;
 
     @CompilerDirectives.TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context) {
@@ -113,6 +115,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.longMultiResult = new long[2];
         this.multiValue = context.getContextOptions().supportMultiValue();
         this.bulkMemoryAndRefTypes = context.getContextOptions().supportBulkMemoryAndRefTypes();
+        this.memory64 = context.getContextOptions().supportMemory64();
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -799,15 +802,24 @@ public class BinaryParser extends BinaryStreamParser {
                     final int flag = read1();
                     assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
                     checkMemoryIndex(0);
-                    state.push(I32_TYPE);
+                    if (module.memoryHasIndexType64() && memory64) {
+                        state.push(I64_TYPE);
+                    } else {
+                        state.push(I32_TYPE);
+                    }
                     break;
                 }
                 case Instructions.MEMORY_GROW: {
                     final int flag = read1();
                     assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
                     checkMemoryIndex(0);
-                    state.popChecked(I32_TYPE);
-                    state.push(I32_TYPE);
+                    if (module.memoryHasIndexType64() && memory64) {
+                        state.popChecked(I64_TYPE);
+                        state.push(I64_TYPE);
+                    } else {
+                        state.popChecked(I32_TYPE);
+                        state.push(I32_TYPE);
+                    }
                     break;
                 }
                 default:
@@ -1103,7 +1115,11 @@ public class BinaryParser extends BinaryStreamParser {
                         module.checkDataSegmentIndex(dataIndex);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
+                        if (module.memoryHasIndexType64() && memory64) {
+                            state.popChecked(I64_TYPE);
+                        } else {
+                            state.popChecked(I32_TYPE);
+                        }
                         break;
                     }
                     case Instructions.DATA_DROP: {
@@ -1116,17 +1132,29 @@ public class BinaryParser extends BinaryStreamParser {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         readMemoryIndex();
                         readMemoryIndex();
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
+                        if (module.memoryHasIndexType64() && memory64) {
+                            state.popChecked(I64_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.popChecked(I64_TYPE);
+                        } else {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                        }
                         break;
                     }
                     case Instructions.MEMORY_FILL: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         readMemoryIndex();
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
-                        state.popChecked(I32_TYPE);
+                        if (module.memoryHasIndexType64() && memory64) {
+                            state.popChecked(I64_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                        } else {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                        }
                         break;
                     }
                     case Instructions.TABLE_INIT: {
@@ -1240,33 +1268,42 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void store(ParserState state, byte type, int n) {
-        assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
-
+        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+        final boolean idxType64 = module.memoryHasIndexType64();
         // We don't store the `align` literal, as our implementation does not make use
         // of it, but we need to store its byte length, so that we can skip it
         // during the execution.
         readAlignHint(n); // align hint
-        readUnsignedInt32(); // store offset
+        final long offset = readUnsignedInt64(); // 64-bit store offset
+        if (!idxType64) {
+            assertUnsignedLongLessOrEqual(offset, 0xffff_ffff, Failure.UNSPECIFIED_INVALID);
+        }
         state.popChecked(type); // value to store
-        if (module.symbolTable().isMemory64Bit()) {
-            state.popChecked(I64_TYPE);
+        if (module.memoryHasIndexType64() && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
         } else {
-            state.popChecked(I32_TYPE); // base address
+            state.popChecked(I32_TYPE); // 32-bit base address
         }
     }
 
     private void load(ParserState state, byte type, int n) {
-        assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
+        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+        final boolean idxType64 = module.memoryHasIndexType64();
 
         // We don't store the `align` literal, as our implementation does not make use
         // of it, but we need to store its byte length, so that we can skip it
         // during execution.
         readAlignHint(n); // align hint
-        readUnsignedInt32(); // load offset
-        if (module.symbolTable().isMemory64Bit()) {
-            state.popChecked(I64_TYPE);
+        final long offset = readUnsignedInt64(); // 64-bit load offset
+        if (idxType64) {
+            assertUnsignedLongLess(offset, MAX_MEMORY_64_DECLARED_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
         } else {
-            state.popChecked(I32_TYPE); // base address
+            assertUnsignedLongLess(offset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+        }
+        if (idxType64 && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
         }
         state.push(type); // loaded value
     }
@@ -1292,11 +1329,31 @@ public class BinaryParser extends BinaryStreamParser {
                 assertByteEqual(module.globalValueType(offsetGlobalIndex), I32_TYPE, Failure.TYPE_MISMATCH);
                 break;
             default:
-                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for table offset expression: 0x%02X", instruction);
+                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for offset expression: 0x%02X", instruction);
         }
         result[0] = offsetAddress;
         result[1] = offsetGlobalIndex;
         readEnd();
+    }
+
+    private void readLongOffsetExpression(long[] result) {
+        byte instruction = read1();
+        long offsetAddress = -1L;
+        int offsetGlobalIndex = -1;
+        switch (instruction) {
+            case Instructions.I64_CONST:
+                offsetAddress = readSignedInt64();
+                break;
+            case Instructions.GLOBAL_GET:
+                offsetGlobalIndex = readGlobalIndex();
+                assertIntEqual(module.globalMutability(offsetGlobalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                assertByteEqual(module.globalValueType(offsetGlobalIndex), I64_TYPE, Failure.TYPE_MISMATCH);
+                break;
+            default:
+                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for offset expression: 0x%02X", instruction);
+        }
+        result[0] = offsetAddress;
+        result[1] = offsetGlobalIndex;
     }
 
     private long[] readFunctionIndices() {
@@ -1622,8 +1679,8 @@ public class BinaryParser extends BinaryStreamParser {
         for (int dataSegmentIndex = 0; dataSegmentIndex != dataSegmentCount; ++dataSegmentIndex) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int mode;
-            int offsetAddress;
-            int offsetGlobalIndex;
+            long offsetAddress;
+            final int offsetGlobalIndex;
             if (bulkMemoryAndRefTypes) {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b01;
@@ -1632,9 +1689,15 @@ public class BinaryParser extends BinaryStreamParser {
                     readMemoryIndex();
                 }
                 if (mode == SegmentMode.ACTIVE) {
-                    readOffsetExpression(multiResult);
-                    offsetAddress = multiResult[0];
-                    offsetGlobalIndex = multiResult[1];
+                    if (module.memoryHasIndexType64()) {
+                        readLongOffsetExpression(longMultiResult);
+                        offsetAddress = longMultiResult[0];
+                        offsetGlobalIndex = (int) longMultiResult[1];
+                    } else {
+                        readOffsetExpression(multiResult);
+                        offsetAddress = multiResult[0];
+                        offsetGlobalIndex = multiResult[1];
+                    }
                 } else {
                     offsetAddress = 0;
                     offsetGlobalIndex = 0;
@@ -1642,9 +1705,15 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 mode = SegmentMode.ACTIVE;
                 readMemoryIndex();
-                readOffsetExpression(multiResult);
-                offsetAddress = multiResult[0];
-                offsetGlobalIndex = multiResult[1];
+                if (module.memoryHasIndexType64()) {
+                    readLongOffsetExpression(longMultiResult);
+                    offsetAddress = longMultiResult[0];
+                    offsetGlobalIndex = (int) longMultiResult[1];
+                } else {
+                    readOffsetExpression(multiResult);
+                    offsetAddress = multiResult[0];
+                    offsetGlobalIndex = multiResult[1];
+                }
             }
 
             final int byteLength = readLength();
@@ -1662,8 +1731,8 @@ public class BinaryParser extends BinaryStreamParser {
                     // directly.
                     final WasmMemory memory = linkedInstance.memory();
 
-                    Assert.assertUnsignedIntLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                    Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                    Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                    Assert.assertUnsignedLongLessOrEqual(offsetAddress + byteLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
 
                     for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                         final byte b = read1();
@@ -1676,7 +1745,7 @@ public class BinaryParser extends BinaryStreamParser {
                         byte b = read1();
                         dataSegment[writeOffset] = b;
                     }
-                    final int currentOffsetAddress = offsetAddress;
+                    final long currentOffsetAddress = offsetAddress;
                     final int currentOffsetGlobalIndex = offsetGlobalIndex;
                     module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, byteLength,
                                     dataSegment));
@@ -1807,9 +1876,9 @@ public class BinaryParser extends BinaryStreamParser {
             assertUnsignedLongLessOrEqual(out[1], MAX_MEMORY_64_DECLARED_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
             assertUnsignedLongLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         } else {
-            assertUnsignedLongLessOrEqual(out[0], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedLongLessOrEqual(out[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedLongLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
+            assertUnsignedIntLessOrEqual((int) out[0], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedIntLessOrEqual((int) out[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedIntLessOrEqual((int) out[0], (int) out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         }
         return is64Bit;
     }

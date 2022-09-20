@@ -57,9 +57,12 @@ import org.graalvm.wasm.collection.ByteArrayList;
 public abstract class AbstractBinarySuite {
     protected static final byte[] EMPTY_BYTES = {};
 
-    protected static void runRuntimeTest(byte[] binary, Consumer<Value> testCase) throws IOException {
+    protected static void runRuntimeTest(byte[] binary, Consumer<Context.Builder> options, Consumer<Value> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
+        if (options != null) {
+            options.accept(contextBuilder);
+        }
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binary), "main");
             Source source = sourceBuilder.build();
@@ -68,14 +71,25 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    protected static void runParserTest(byte[] binary, BiConsumer<Context, Source> testCase) throws IOException {
+    protected static void runRuntimeTest(byte[] binary, Consumer<Value> testCase) throws IOException {
+        runRuntimeTest(binary, null, testCase);
+    }
+
+    protected static void runParserTest(byte[] binary, Consumer<Context.Builder> options, BiConsumer<Context, Source> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
+        if (options != null) {
+            options.accept(contextBuilder);
+        }
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binary), "main");
             Source source = sourceBuilder.build();
             testCase.accept(context, source);
         }
+    }
+
+    protected static void runParserTest(byte[] binary, BiConsumer<Context, Source> testCase) throws IOException {
+        runParserTest(binary, null, testCase);
     }
 
     protected static BinaryBuilder newBuilder() {
