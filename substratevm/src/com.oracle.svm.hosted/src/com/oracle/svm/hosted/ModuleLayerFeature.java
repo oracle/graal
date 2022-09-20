@@ -573,19 +573,21 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
 
         public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
-            Module runtimeModule = getRuntimeModuleForHostedModule(loader, hostedModuleName, true);
-            if (runtimeModule != null) {
+            synchronized (runtimeModules) {
+                Module runtimeModule = getRuntimeModuleForHostedModule(loader, hostedModuleName, true);
+                if (runtimeModule != null) {
+                    return runtimeModule;
+                }
+
+                try {
+                    runtimeModule = moduleConstructor.newInstance(loader, runtimeModuleDescriptor);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+                    throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
+                }
+                runtimeModules.putIfAbsent(loader, new HashMap<>());
+                runtimeModules.get(loader).put(hostedModuleName, runtimeModule);
                 return runtimeModule;
             }
-
-            try {
-                runtimeModule = moduleConstructor.newInstance(loader, runtimeModuleDescriptor);
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
-                throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
-            }
-            runtimeModules.putIfAbsent(loader, new HashMap<>());
-            runtimeModules.get(loader).put(hostedModuleName, runtimeModule);
-            return runtimeModule;
         }
 
         /**
