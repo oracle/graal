@@ -53,6 +53,7 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 import java.util.List;
 
@@ -146,7 +147,7 @@ public class WasmInstantiator {
     }
 
     private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset());
+        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), ExtraDataUtil.extractTypeIndicator(entry.getResultTypes()));
         List<CallNode> childNodeList = entry.getCallNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;

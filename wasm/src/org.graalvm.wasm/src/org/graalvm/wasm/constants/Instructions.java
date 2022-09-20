@@ -274,6 +274,7 @@ public final class Instructions {
     // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
     // used in other ways in the future)
 
+    public static final int DROP_REF = 0x19;
     public static final int LOCAL_GET_REF = 0x1D;
     public static final int LOCAL_SET_REF = 0x1E;
     public static final int LOCAL_TEE_REF = 0x1F;

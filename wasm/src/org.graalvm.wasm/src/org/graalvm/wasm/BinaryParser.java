@@ -640,7 +640,11 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.DROP:
-                    state.pop();
+                case Instructions.DROP_REF:
+                    final byte type = state.pop();
+                    if (WasmType.isReferenceType(type)) {
+                        replaceInstruction(offset - 1, (byte) Instructions.DROP_REF);
+                    }
                     break;
                 case Instructions.SELECT: {
                     state.popChecked(I32_TYPE); // condition

@@ -307,14 +307,10 @@ public class ExtraDataUtil {
         return PROFILE_SIZE;
     }
 
-    public static int extractTypeIndicator(byte[] params, byte[] results) {
+    public static int extractTypeIndicator(byte[] types) {
         boolean primitive = false;
         boolean reference = false;
-        for (byte type : params) {
-            primitive = primitive | WasmType.isNumberType(type);
-            reference = reference | WasmType.isReferenceType(type);
-        }
-        for (byte type : results) {
+        for (byte type : types) {
             primitive = primitive | WasmType.isNumberType(type);
             reference = reference | WasmType.isReferenceType(type);
         }

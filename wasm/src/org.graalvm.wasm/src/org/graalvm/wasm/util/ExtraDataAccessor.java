@@ -77,35 +77,51 @@ public class ExtraDataAccessor {
     public static final int REFERENCE_TYPES = 1;
     public static final int ALL_TYPES = 3;
 
-    public static int compactFirstValueUnsigned(int value) {
-        return value >>> 16;
+    public static int firstValueUnsigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return extraData[offset] >>> 16;
+        } else {
+            return extraData[offset] & INDICATOR_REMOVAL_MASK;
+        }
     }
 
-    public static int extendedFirstValueUnsigned(int value) {
-        return value & INDICATOR_REMOVAL_MASK;
+    public static int firstValueSigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return extraData[offset] << 1 >> 17;
+        } else {
+            return extraData[offset] << 1 >> 1;
+        }
     }
 
-    public static int compactFirstValueSigned(int value) {
-        return value << 1 >> 17;
+    public static int secondValueSigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return extraData[offset] << 16 >> 16;
+        } else {
+            return extraData[offset + 1];
+        }
     }
 
-    public static int extendedFirstValueSigned(int value) {
-        return value << 1 >> 1;
+    public static int thirdValueUnsigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return extraData[offset + 1] >>> 30;
+        } else {
+            return extraData[offset + 2];
+        }
     }
 
-    public static int compactSecondValueSigned(int value) {
-        return value << 16 >> 16;
+    public static int fourthValueUnsigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return (extraData[offset + 1] & 0x3f80_0000) >>> 23;
+        } else {
+            return extraData[offset + 3];
+        }
     }
 
-    public static int compactThirdValueUnsigned(int value) {
-        return value >>> 30;
-    }
-
-    public static int compactFourthValueUnsigned(int value) {
-        return (value & 0x3F80_0000) >>> 23;
-    }
-
-    public static int compactFifthValueUnsigned(int value) {
-        return (value & 0x007f_0000) >>> 16;
+    public static int fifthValueUnsigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return (extraData[offset + 1] & 0x007f_0000) >>> 16;
+        } else {
+            return extraData[offset + 4];
+        }
     }
 }

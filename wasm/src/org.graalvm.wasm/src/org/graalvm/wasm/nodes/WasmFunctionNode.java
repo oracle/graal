@@ -50,6 +50,7 @@ import static org.graalvm.wasm.constants.Instructions.CALL;
 import static org.graalvm.wasm.constants.Instructions.CALL_INDIRECT;
 import static org.graalvm.wasm.constants.Instructions.DATA_DROP;
 import static org.graalvm.wasm.constants.Instructions.DROP;
+import static org.graalvm.wasm.constants.Instructions.DROP_REF;
 import static org.graalvm.wasm.constants.Instructions.ELEM_DROP;
 import static org.graalvm.wasm.constants.Instructions.ELSE;
 import static org.graalvm.wasm.constants.Instructions.END;
@@ -249,6 +250,7 @@ import static org.graalvm.wasm.constants.Instructions.TABLE_SIZE;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
+import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
@@ -280,6 +282,12 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.PRIMITIVE_TYPES;
 import static org.graalvm.wasm.util.ExtraDataAccessor.REFERENCE_TYPES;
+import static org.graalvm.wasm.util.ExtraDataAccessor.fifthValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
@@ -295,7 +303,6 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.util.ExtraDataAccessor;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -348,15 +355,20 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private final WasmCodeEntry codeEntry;
     private final int functionStartOffset;
     private final int functionEndOffset;
+
+    private final int resultTypeIndicator;
+    private final int[] offsetArray = new int[2];
+
     @Children private Node[] callNodes;
 
     @CompilationFinal private Object osrMetadata;
 
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset) {
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, int resultTypeIndicator) {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.functionStartOffset = functionStartOffset;
         this.functionEndOffset = functionEndOffset;
+        this.resultTypeIndicator = resultTypeIndicator;
     }
 
     @SuppressWarnings("hiding")
@@ -509,8 +521,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case IF: {
                     stackPointer--;
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_IF_PROFILE_OFFSET : EXTENDED_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
@@ -520,105 +531,51 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         extraOffset += compact ? COMPACT_IF_LENGTH : EXTENDED_IF_LENGTH;
                     } else {
                         // Jump to the else branch.
-                        final int offsetDelta;
-                        final int extraOffsetDelta;
-                        if (compact) {
-                            extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstExtraValue);
-                            offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
-                        } else {
-                            extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
-                            offsetDelta = extraData[extraOffset + 1];
-                        }
-                        offset += offsetDelta;
-                        extraOffset += extraOffsetDelta;
+                        offset += secondValueSigned(extraData, extraOffset, compact);
+                        extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     }
                     break;
                 }
                 case ELSE: {
                     // The then branch was executed at this point. Jump to end of the if statement.
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int offsetDelta;
-                    final int extraOffsetDelta;
-                    if (compact) {
-                        extraOffsetDelta = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
-                        offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
-                    } else {
-                        extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
-                        offsetDelta = extraData[extraOffset + 1];
-                    }
-                    offset += offsetDelta;
-                    extraOffset += extraOffsetDelta;
+                    offset += secondValueSigned(extraData, extraOffset, compact);
+                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     break;
                 }
                 case END:
                     break;
                 case BR: {
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
+                    final int targetResultTypeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
+                    final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
+                    final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    final int offsetDelta;
-                    final int extraOffsetDelta;
-                    final int typeIndicator;
-                    final int targetStackPointer;
-                    final int targetResultCount;
-                    final int secondExtraValue = extraData[extraOffset + 1];
-                    if (compact) {
-                        extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstExtraValue);
-                        offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
-                        typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondExtraValue);
-                        targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondExtraValue);
-                        targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondExtraValue);
-                    } else {
-                        extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
-                        offsetDelta = secondExtraValue;
-                        typeIndicator = extraData[extraOffset + 2];
-                        targetResultCount = extraData[extraOffset + 3];
-                        targetStackPointer = numLocals + extraData[extraOffset + 4];
-                    }
-
-                    unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
+                    unwindStack(frame, stackPointer, targetResultTypeIndicator, targetStackPointer, targetResultCount);
 
                     // Jump to the target block.
-                    offset += offsetDelta;
-                    extraOffset += extraOffsetDelta;
+                    offset += secondValueSigned(extraData, extraOffset, compact);
+                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     stackPointer = targetStackPointer + targetResultCount;
                     break;
                 }
                 case BR_IF: {
                     stackPointer--;
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
-                        final int offsetDelta;
-                        final int extraOffsetDelta;
-                        final int typeIndicator;
-                        final int targetStackPointer;
-                        final int targetResultCount;
-                        final int secondExtraValue = extraData[extraOffset + 1];
-                        if (compact) {
-                            extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstExtraValue);
-                            offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstExtraValue);
-                            typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondExtraValue);
-                            targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondExtraValue);
-                            targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondExtraValue);
-                        } else {
-                            extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstExtraValue);
-                            offsetDelta = secondExtraValue;
-                            typeIndicator = extraData[extraOffset + 2];
-                            targetResultCount = extraData[extraOffset + 3];
-                            targetStackPointer = numLocals + extraData[extraOffset + 4];
-                        }
+                        final int targetResultTypeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
+                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
+                        final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                        unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
+                        unwindStack(frame, stackPointer, targetResultTypeIndicator, targetStackPointer, targetResultCount);
 
                         // Jump to the target block.
-                        offset += offsetDelta;
-                        extraOffset += extraOffsetDelta;
+                        offset += secondValueSigned(extraData, extraOffset, compact);
+                        extraOffset += firstValueSigned(extraData, extraOffset, compact);
                         stackPointer = targetStackPointer + targetResultCount;
                     } else {
                         // Skip label index.
@@ -630,16 +587,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case BR_TABLE: {
                     stackPointer--;
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     int index = popInt(frame, stackPointer);
-                    final int size;
-                    if (compact) {
-                        size = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
-                    } else {
-                        size = ExtraDataAccessor.extendedFirstValueUnsigned(firstExtraValue);
-                    }
+                    final int size = firstValueUnsigned(extraData, extraOffset, compact);
                     if (index < 0 || index >= size) {
                         // If unsigned index is larger or equal to the table size use the
                         // default (last) index.
@@ -654,32 +605,15 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                         updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int offsetDelta;
-                        final int extraOffsetDelta;
-                        final int typeIndicator;
-                        final int targetStackPointer;
-                        final int targetResultCount;
-                        final int firstIndexExtraValue = extraData[indexOffset];
-                        final int secondIndexExtraValue = extraData[indexOffset + 1];
-                        if (compact) {
-                            extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstIndexExtraValue);
-                            offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstIndexExtraValue);
-                            typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondIndexExtraValue);
-                            targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondIndexExtraValue);
-                            targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondIndexExtraValue);
-                        } else {
-                            extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstIndexExtraValue);
-                            offsetDelta = secondIndexExtraValue;
-                            typeIndicator = extraData[indexOffset + 2];
-                            targetResultCount = extraData[indexOffset + 3];
-                            targetStackPointer = numLocals + extraData[indexOffset + 4];
-                        }
+                        final int targetResultTypeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
+                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
+                        final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                        unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
+                        unwindStack(frame, stackPointer, targetResultTypeIndicator, targetStackPointer, targetResultCount);
 
                         // Jump to the branch target.
-                        offset += offsetDelta;
-                        extraOffset += extraOffsetDelta;
+                        offset += secondValueSigned(extraData, indexOffset, compact);
+                        extraOffset += firstValueSigned(extraData, indexOffset, compact);
                         stackPointer = targetStackPointer + targetResultCount;
                         break;
                     } else {
@@ -691,32 +625,15 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
-                                final int offsetDelta;
-                                final int extraOffsetDelta;
-                                final int typeIndicator;
-                                final int targetStackPointer;
-                                final int targetResultCount;
-                                final int firstIndexExtraValue = extraData[indexOffset];
-                                final int secondIndexExtraValue = extraData[indexOffset + 1];
-                                if (compact) {
-                                    extraOffsetDelta = ExtraDataAccessor.compactFirstValueSigned(firstIndexExtraValue);
-                                    offsetDelta = ExtraDataAccessor.compactSecondValueSigned(firstIndexExtraValue);
-                                    typeIndicator = ExtraDataAccessor.compactThirdValueUnsigned(secondIndexExtraValue);
-                                    targetResultCount = ExtraDataAccessor.compactFourthValueUnsigned(secondIndexExtraValue);
-                                    targetStackPointer = numLocals + ExtraDataAccessor.compactFifthValueUnsigned(secondIndexExtraValue);
-                                } else {
-                                    extraOffsetDelta = ExtraDataAccessor.extendedFirstValueSigned(firstIndexExtraValue);
-                                    offsetDelta = secondIndexExtraValue;
-                                    typeIndicator = extraData[indexOffset + 2];
-                                    targetResultCount = extraData[indexOffset + 3];
-                                    targetStackPointer = numLocals + extraData[indexOffset + 4];
-                                }
+                                final int targetResultTypeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
+                                final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
+                                final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                                unwindStack(frame, stackPointer, typeIndicator, targetStackPointer, targetResultCount);
+                                unwindStack(frame, stackPointer, targetResultTypeIndicator, targetStackPointer, targetResultCount);
 
                                 // Jump to the branch target.
-                                offset += offsetDelta;
-                                extraOffset += extraOffsetDelta;
+                                offset += secondValueSigned(extraData, indexOffset, compact);
+                                extraOffset += firstValueSigned(extraData, indexOffset, compact);
                                 stackPointer = targetStackPointer + targetResultCount;
                                 continue loop;
                             }
@@ -732,7 +649,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     if (backEdgeCounter.count > 0) {
                         LoopNode.reportLoopCount(this, backEdgeCounter.count);
                     }
-                    unwindStack(frame, stackPointer, ALL_TYPES, numLocals, codeEntry.resultCount());
+                    unwindStack(frame, stackPointer, resultTypeIndicator, numLocals, codeEntry.resultCount());
                     return RETURN_VALUE;
                 }
                 case CALL: {
@@ -749,14 +666,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), paramCount, stackPointer);
                     stackPointer -= args.length;
 
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
-                    final int callNodeIndex;
-                    if (compact) {
-                        callNodeIndex = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
-                    } else {
-                        callNodeIndex = ExtraDataAccessor.extendedFirstValueUnsigned(firstExtraValue);
-                    }
+                    final boolean compact = extraData[extraOffset] >= 0;
+                    final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
                     extraOffset += CALL_LENGTH;
 
                     Object result = executeDirectCall(callNodeIndex, function, args);
@@ -860,8 +771,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Validate that the function type matches the expected type.
                     final boolean functionFromCurrentContext = functionInstanceContext == context;
 
-                    final int firstExtraValue = extraData[extraOffset];
-                    final boolean compact = firstExtraValue >= 0;
+                    final boolean compact = extraData[extraOffset] >= 0;
                     final int profileOffset = extraOffset + (compact ? COMPACT_CALL_INDIRECT_PROFILE_OFFSET : EXTENDED_CALL_INDIRECT_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, functionFromCurrentContext)) {
                         // We can do a quick equivalence-class check.
@@ -897,12 +807,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         prev = null;
                     }
 
-                    final int callNodeIndex;
-                    if (compact) {
-                        callNodeIndex = ExtraDataAccessor.compactFirstValueUnsigned(firstExtraValue);
-                    } else {
-                        callNodeIndex = ExtraDataAccessor.extendedFirstValueUnsigned(firstExtraValue);
-                    }
+                    final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
                     extraOffset += compact ? COMPACT_CALL_INDIRECT_LENGTH : EXTENDED_CALL_INDIRECT_LENGTH;
 
                     final Object result;
@@ -961,9 +866,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case DROP: {
                     stackPointer--;
-                    drop(frame, stackPointer);
+                    dropPrimitive(frame, stackPointer);
                     break;
                 }
+                case DROP_REF:
+                    stackPointer--;
+                    dropReference(frame, stackPointer);
+                    break;
                 case SELECT: {
                     if (popBoolean(frame, stackPointer - 1)) {
                         dropPrimitive(frame, stackPointer - 2);
@@ -1667,186 +1576,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     f64_reinterpret_i64(frame, stackPointer);
                     break;
                 case MISC:
-                    long miscOpcodeAndLength = BinaryStreamParser.peekUnsignedInt32AndLength(data, offset);
-                    int miscOpcode = value(miscOpcodeAndLength);
-                    offset += length(miscOpcodeAndLength);
-                    CompilerAsserts.partialEvaluationConstant(miscOpcode);
-                    switch (miscOpcode) {
-                        case I32_TRUNC_SAT_F32_S:
-                            i32_trunc_sat_f32_s(frame, stackPointer);
-                            break;
-                        case I32_TRUNC_SAT_F32_U:
-                            i32_trunc_sat_f32_u(frame, stackPointer);
-                            break;
-                        case I32_TRUNC_SAT_F64_S:
-                            i32_trunc_sat_f64_s(frame, stackPointer);
-                            break;
-                        case I32_TRUNC_SAT_F64_U:
-                            i32_trunc_sat_f64_u(frame, stackPointer);
-                            break;
-                        case I64_TRUNC_SAT_F32_S:
-                            i64_trunc_sat_f32_s(frame, stackPointer);
-                            break;
-                        case I64_TRUNC_SAT_F32_U:
-                            i64_trunc_sat_f32_u(frame, stackPointer);
-                            break;
-                        case I64_TRUNC_SAT_F64_S:
-                            i64_trunc_sat_f64_s(frame, stackPointer);
-                            break;
-                        case I64_TRUNC_SAT_F64_U:
-                            i64_trunc_sat_f64_u(frame, stackPointer);
-                            break;
-                        case TABLE_INIT: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int elementIndex = value(valueAndLength);
-                            // endregion
-
-                            // region Load LEB128 Unsigned32 -> tableIndex
-                            valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int tableIndex = value(valueAndLength);
-                            // endregion
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-
-                            table_init(context, n, src, dst, tableIndex, elementIndex);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case TABLE_COPY: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int destinationTableIndex = value(valueAndLength);
-                            // endregion
-
-                            // region Load LEB128 Unsigned32 -> tableIndex
-                            valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int sourceTableIndex = value(valueAndLength);
-                            // endregion
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-
-                            table_copy(context, n, src, dst, sourceTableIndex, destinationTableIndex);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case ELEM_DROP: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int elementIndex = value(valueAndLength);
-                            // endregion
-
-                            instance.dropElemInstance(elementIndex);
-                            break;
-                        }
-                        case TABLE_SIZE: {
-                            // region Load LEB128 Unsigned32 -> tableIndex
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int tableIndex = value(valueAndLength);
-                            // endregion
-                            table_size(context, frame, stackPointer, tableIndex);
-                            stackPointer++;
-                            break;
-                        }
-                        case TABLE_GROW: {
-                            // region Load LEB128 Unsigned32 -> tableIndex
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int tableIndex = value(valueAndLength);
-                            // endregion
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final Object val = popReference(frame, stackPointer - 2);
-
-                            final int res = table_grow(context, n, val, tableIndex);
-                            pushInt(frame, stackPointer - 2, res);
-                            stackPointer--;
-                            break;
-                        }
-                        case TABLE_FILL: {
-                            // region Load LEB128 Unsigned32 -> tableIndex
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int tableIndex = value(valueAndLength);
-                            // endregion
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final Object val = popReference(frame, stackPointer - 2);
-                            final int i = popInt(frame, stackPointer - 3);
-                            table_fill(context, n, val, i, tableIndex);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case MEMORY_INIT: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int dataIndex = value(valueAndLength);
-                            // endregion
-
-                            // Consume the ZERO_MEMORY constant.
-                            offset += 1;
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_init(n, src, dst, dataIndex);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case MEMORY_FILL: {
-                            // Consume the ZERO_MEMORY constant.
-                            offset += 1;
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int val = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_fill(n, val, dst);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case MEMORY_COPY:
-                            // Consume the two ZERO_MEMORY constants.
-                            offset += 2;
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_copy(n, src, dst);
-                            stackPointer -= 3;
-                            break;
-                        case DATA_DROP: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int dataIndex = value(valueAndLength);
-                            // endregion
-
-                            instance.dropDataInstance(dataIndex);
-                            break;
-                        }
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
+                    offsetArray[0] = offset;
+                    offsetArray[1] = stackPointer;
+                    executeMiscInstructions(context, frame, data, offsetArray);
+                    offset = offsetArray[0];
+                    stackPointer = offsetArray[1];
                     break;
                 case I32_EXTEND8_S:
                     i32_extend8_s(frame, stackPointer);
@@ -1894,6 +1628,193 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             }
         }
         return RETURN_VALUE;
+    }
+
+    private void executeMiscInstructions(WasmContext context, VirtualFrame frame, byte[] data, int[] offsets) {
+        int offset = offsets[0];
+        int stackPointer = offsets[1];
+        long miscOpcodeAndLength = BinaryStreamParser.peekUnsignedInt32AndLength(data, offset);
+        int miscOpcode = value(miscOpcodeAndLength);
+        offset += length(miscOpcodeAndLength);
+        CompilerAsserts.partialEvaluationConstant(miscOpcode);
+        switch (miscOpcode) {
+            case I32_TRUNC_SAT_F32_S:
+                i32_trunc_sat_f32_s(frame, stackPointer);
+                break;
+            case I32_TRUNC_SAT_F32_U:
+                i32_trunc_sat_f32_u(frame, stackPointer);
+                break;
+            case I32_TRUNC_SAT_F64_S:
+                i32_trunc_sat_f64_s(frame, stackPointer);
+                break;
+            case I32_TRUNC_SAT_F64_U:
+                i32_trunc_sat_f64_u(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F32_S:
+                i64_trunc_sat_f32_s(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F32_U:
+                i64_trunc_sat_f32_u(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F64_S:
+                i64_trunc_sat_f64_s(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F64_U:
+                i64_trunc_sat_f64_u(frame, stackPointer);
+                break;
+            case TABLE_INIT: {
+                // region Load LEB128 Unsigned32 -> value
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int elementIndex = value(valueAndLength);
+                // endregion
+
+                // region Load LEB128 Unsigned32 -> tableIndex
+                valueAndLength = unsignedIntConstantAndLength(data, offset);
+                offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int tableIndex = value(valueAndLength);
+                // endregion
+
+                final int n = popInt(frame, stackPointer - 1);
+                final int src = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+
+                table_init(context, n, src, dst, tableIndex, elementIndex);
+                stackPointer -= 3;
+                break;
+            }
+            case TABLE_COPY: {
+                // region Load LEB128 Unsigned32 -> value
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int destinationTableIndex = value(valueAndLength);
+                // endregion
+
+                // region Load LEB128 Unsigned32 -> tableIndex
+                valueAndLength = unsignedIntConstantAndLength(data, offset);
+                offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int sourceTableIndex = value(valueAndLength);
+                // endregion
+
+                final int n = popInt(frame, stackPointer - 1);
+                final int src = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+
+                table_copy(context, n, src, dst, sourceTableIndex, destinationTableIndex);
+                stackPointer -= 3;
+                break;
+            }
+            case ELEM_DROP: {
+                // region Load LEB128 Unsigned32 -> value
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int elementIndex = value(valueAndLength);
+                // endregion
+
+                instance.dropElemInstance(elementIndex);
+                break;
+            }
+            case TABLE_SIZE: {
+                // region Load LEB128 Unsigned32 -> tableIndex
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int tableIndex = value(valueAndLength);
+                // endregion
+                table_size(context, frame, stackPointer, tableIndex);
+                stackPointer++;
+                break;
+            }
+            case TABLE_GROW: {
+                // region Load LEB128 Unsigned32 -> tableIndex
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int tableIndex = value(valueAndLength);
+                // endregion
+
+                final int n = popInt(frame, stackPointer - 1);
+                final Object val = popReference(frame, stackPointer - 2);
+
+                final int res = table_grow(context, n, val, tableIndex);
+                pushInt(frame, stackPointer - 2, res);
+                stackPointer--;
+                break;
+            }
+            case TABLE_FILL: {
+                // region Load LEB128 Unsigned32 -> tableIndex
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int tableIndex = value(valueAndLength);
+                // endregion
+
+                final int n = popInt(frame, stackPointer - 1);
+                final Object val = popReference(frame, stackPointer - 2);
+                final int i = popInt(frame, stackPointer - 3);
+                table_fill(context, n, val, i, tableIndex);
+                stackPointer -= 3;
+                break;
+            }
+            case MEMORY_INIT: {
+                // region Load LEB128 Unsigned32 -> value
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int dataIndex = value(valueAndLength);
+                // endregion
+
+                // Consume the ZERO_MEMORY constant.
+                offset += 1;
+
+                final int n = popInt(frame, stackPointer - 1);
+                final int src = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+                memory_init(n, src, dst, dataIndex);
+                stackPointer -= 3;
+                break;
+            }
+            case MEMORY_FILL: {
+                // Consume the ZERO_MEMORY constant.
+                offset += 1;
+
+                final int n = popInt(frame, stackPointer - 1);
+                final int val = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+                memory_fill(n, val, dst);
+                stackPointer -= 3;
+                break;
+            }
+            case MEMORY_COPY:
+                // Consume the two ZERO_MEMORY constants.
+                offset += 2;
+                final int n = popInt(frame, stackPointer - 1);
+                final int src = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+                memory_copy(n, src, dst);
+                stackPointer -= 3;
+                break;
+            case DATA_DROP: {
+                // region Load LEB128 Unsigned32 -> value
+                long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                int offsetDelta = length(valueAndLength);
+                offset += offsetDelta;
+                final int dataIndex = value(valueAndLength);
+                // endregion
+
+                instance.dropDataInstance(dataIndex);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        offsets[0] = offset;
+        offsets[1] = stackPointer;
     }
 
     @TruffleBoundary
@@ -3345,37 +3266,27 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param targetResultCount The result value count of the target block.
      */
     @ExplodeLoop
-    private static void unwindStack(VirtualFrame frame, int stackPointer, int typeIndicator, int targetStackPointer, int targetResultCount) {
-        CompilerAsserts.partialEvaluationConstant(typeIndicator);
+    private static void unwindStack(VirtualFrame frame, int stackPointer, int resultTypeIndicator, int targetStackPointer, int targetResultCount) {
+        CompilerAsserts.partialEvaluationConstant(resultTypeIndicator);
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
         final int sourceStackPointer = stackPointer - targetResultCount;
         CompilerAsserts.partialEvaluationConstant(sourceStackPointer);
-        for (int i = 0; i < targetResultCount; i++) {
-            switch (typeIndicator) {
-                case PRIMITIVE_TYPES:
-                    WasmFrame.copyPrimitive(frame, sourceStackPointer + i, targetStackPointer + i);
-                    break;
-                case REFERENCE_TYPES:
-                    WasmFrame.copyReference(frame, sourceStackPointer + i, targetStackPointer + i);
-                    break;
-                case ALL_TYPES:
-                    WasmFrame.copy(frame, sourceStackPointer + i, targetStackPointer + i);
-                    break;
+        if (resultTypeIndicator == PRIMITIVE_TYPES) {
+            for (int i = 0; i < targetResultCount; i++) {
+                WasmFrame.copyPrimitive(frame, sourceStackPointer + i, targetStackPointer + i);
+            }
+        } else if (resultTypeIndicator == REFERENCE_TYPES) {
+            for (int i = 0; i < targetResultCount; i++) {
+                WasmFrame.copyReference(frame, sourceStackPointer + i, targetStackPointer + i);
+            }
+        } else if (resultTypeIndicator == ALL_TYPES) {
+            for (int i = 0; i < targetResultCount; i++) {
+                WasmFrame.copy(frame, sourceStackPointer + i, targetStackPointer + i);
             }
         }
         for (int i = targetStackPointer + targetResultCount; i < stackPointer; i++) {
-            switch (typeIndicator) {
-                case PRIMITIVE_TYPES:
-                    WasmFrame.dropPrimitive(frame, i);
-                    break;
-                case REFERENCE_TYPES:
-                    WasmFrame.dropReference(frame, i);
-                    break;
-                case ALL_TYPES:
-                    WasmFrame.drop(frame, i);
-                    break;
-            }
+            WasmFrame.drop(frame, i);
         }
     }
 

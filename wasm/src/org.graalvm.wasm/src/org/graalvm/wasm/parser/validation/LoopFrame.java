@@ -76,7 +76,7 @@ class LoopFrame extends ControlFrame {
     void exit(ExtraDataList extraData, int offset) {
         for (BranchTargetWithStackChange branchTarget : branchTargets()) {
             branchTarget.setTargetInfo(byteCodeTarget, extraDataTarget, extraDataTargetIndex);
-            branchTarget.setStackInfo(typeIndicator(), labelTypeLength(), initialStackSize());
+            branchTarget.setStackInfo(labelTypeIndicator(), labelTypeLength(), initialStackSize());
         }
     }
 }

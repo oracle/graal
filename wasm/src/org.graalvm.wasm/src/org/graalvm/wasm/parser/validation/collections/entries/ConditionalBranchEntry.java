@@ -53,7 +53,7 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * <li>compactFormatIndicator (1-bit)
  * <li>extraDataDisplacement (signed 15-bit)
  * <li>byteCodeDisplacement (signed 16-bit)
- * <li>typeIndicator (unsigned 2-bit)
+ * <li>resultTypeIndicator (unsigned 2-bit)
  * <li>resultCount (unsigned 7-bit)
  * <li>stackSize (unsigned 7-bit)
  * <li>profileCounter (unsigned 16-bit)
@@ -65,9 +65,10 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * <li>extendedFormatIndicator (1-bit)
  * <li>extraDataDisplacement (signed 31-bit)
  * <li>byteCodeDisplacement (signed 32-bit)
- * <li>typeIndicator (signed 32-bit)
+ * <li>resultTypeIndicator (signed 32-bit)
  * <li>resultCount (signed 32-bit)
  * <li>stackSize (signed 32-bit)
+ * <li>profileCounter (unsigned 16-bit)
  * <li>unused (16-bit)
  * </ul>
  */
