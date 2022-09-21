@@ -801,7 +801,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
 
-        if _has_jlink_copy_plugin() and _jlink_copyfiles:
+        if is_graalvm and add_jdk_base and _has_jlink_copy_plugin() and _jlink_copyfiles:
             _add(layout, '<jdk_base>/conf/jlink.copyfiles', 'string:{}'.format('\n'.join(sorted(_jlink_copyfiles))))
 
         if has_graal_compiler:
