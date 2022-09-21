@@ -559,7 +559,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure we can also run on C2
     with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=True) as t:
-        if t: _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + benchVmArgs)
+        if t:
+            # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
+            c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
+            _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
 
     # run Scala DaCapo benchmarks #
     ###############################

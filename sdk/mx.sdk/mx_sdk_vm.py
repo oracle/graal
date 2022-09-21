@@ -46,6 +46,7 @@ import mx
 import mx_javamodules
 import mx_subst
 import os
+import re
 import shutil
 import tempfile
 import textwrap
@@ -546,17 +547,20 @@ def _probe_jvmci_info(jdk, attribute_name):
         mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
         enableJVMCI = False
         enableJVMCIProduct = False
-        supportsJVMCIThreadsPerNativeLibraryRuntime = False
+        jvmciThreadsPerNativeLibraryRuntime = None
         for line in out.lines:
             if 'EnableJVMCI' in line and 'true' in line:
                 enableJVMCI = True
             if 'EnableJVMCIProduct' in line:
                 enableJVMCIProduct = True
             if 'JVMCIThreadsPerNativeLibraryRuntime' in line:
-                supportsJVMCIThreadsPerNativeLibraryRuntime = True
+                m = re.search(r'JVMCIThreadsPerNativeLibraryRuntime *= *(\d+)', line)
+                if not m:
+                    mx.abort(f'Could not extract value of JVMCIThreadsPerNativeLibraryRuntime from "{line}"')
+                jvmciThreadsPerNativeLibraryRuntime = int(m.group(1))
         setattr(jdk, '.enables_jvmci_by_default', enableJVMCI)
         setattr(jdk, '.supports_enablejvmciproduct', enableJVMCIProduct)
-        setattr(jdk, '.supports_JVMCIThreadsPerNativeLibraryRuntime', supportsJVMCIThreadsPerNativeLibraryRuntime)
+        setattr(jdk, '.jvmciThreadsPerNativeLibraryRuntime', jvmciThreadsPerNativeLibraryRuntime)
     return getattr(jdk, attribute_name)
 
 def jdk_enables_jvmci_by_default(jdk):
@@ -572,11 +576,13 @@ def jdk_supports_enablejvmciproduct(jdk):
     """
     return _probe_jvmci_info(jdk, '.supports_enablejvmciproduct')
 
-def jdk_supports_JVMCIThreadsPerNativeLibraryRuntime(jdk):
+def get_JVMCIThreadsPerNativeLibraryRuntime(jdk):
     """
-    Determines if the jdk supports flag -XX:JVMCIThreadsPerNativeLibraryRuntime.
+    Gets the value of the flag -XX:JVMCIThreadsPerNativeLibraryRuntime.
+
+    Returns None if this flag is not supported in `jdk` otherwise returns the default value as an int
     """
-    return _probe_jvmci_info(jdk, '.supports_JVMCIThreadsPerNativeLibraryRuntime')
+    return _probe_jvmci_info(jdk, '.jvmciThreadsPerNativeLibraryRuntime')
 
 def jdk_has_new_jlink_options(jdk):
     """
@@ -757,7 +763,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
             if 'jdk.internal.vm.compiler' in non_synthetic_modules:
-                if jdk_supports_JVMCIThreadsPerNativeLibraryRuntime(jdk):
+                threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
+                if threads is not None and threads != 1:
                     vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:JVMCIThreadsPerNativeLibraryRuntime=1', '-XX:-UnlockExperimentalVMOptions'])
                 else:
                     vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UnlockExperimentalVMOptions'])
