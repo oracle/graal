@@ -190,7 +190,12 @@ JNIEXPORT jboolean JNICALL
 JVM_IsUseContainerSupport(void);
 
 JNIEXPORT void * JNICALL
-JVM_LoadLibrary(const char *name);
+
+JVM_LoadZipLibrary();
+
+JNIEXPORT void * JNICALL
+JVM_LoadLibrary(const char *name /*, jboolean throwException*/);
+
 
 JNIEXPORT void JNICALL
 JVM_UnloadLibrary(void * handle);
