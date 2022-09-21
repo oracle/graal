@@ -428,7 +428,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class) //
-    public Target_jdk_jfr_internal_event_EventConfiguration getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
+    public Object getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
         return SubstrateJVM.get().getConfiguration(eventClass);
     }
 

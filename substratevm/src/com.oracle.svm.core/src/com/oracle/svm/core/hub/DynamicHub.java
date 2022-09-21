@@ -80,7 +80,6 @@ import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_event_EventConfiguration;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
@@ -1512,11 +1511,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return filtered.toArray(new Method[0]);
     }
 
-    public void setJrfEventConfiguration(Target_jdk_jfr_internal_event_EventConfiguration configuration) {
+    public void setJrfEventConfiguration(Object configuration) {
         companion.setJfrEventConfiguration(configuration);
     }
 
-    public Target_jdk_jfr_internal_event_EventConfiguration getJfrEventConfiguration() {
+    public Object getJfrEventConfiguration() {
         return companion.getJfrEventConfiguration();
     }
 

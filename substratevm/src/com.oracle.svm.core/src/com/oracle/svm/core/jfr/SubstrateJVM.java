@@ -532,12 +532,12 @@ public class SubstrateJVM {
         return true;
     }
 
-    public boolean setConfiguration(Class<? extends Event> eventClass, Target_jdk_jfr_internal_event_EventConfiguration configuration) {
+    public boolean setConfiguration(Class<? extends Event> eventClass, Object configuration) {
         DynamicHub.fromClass(eventClass).setJrfEventConfiguration(configuration);
         return true;
     }
 
-    public Target_jdk_jfr_internal_event_EventConfiguration getConfiguration(Class<? extends Event> eventClass) {
+    public Object getConfiguration(Class<? extends Event> eventClass) {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
