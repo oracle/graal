@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ProcessProperties;
 
+import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -437,6 +438,12 @@ public final class Target_jdk_jfr_internal_JVM {
     public boolean isInstrumented(Class<? extends jdk.internal.event.Event> eventClass) {
         // This should check for blessed commit methods in the event class [GR-41200]
         return true;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    public boolean isContainerized() {
+        return Containers.isContainerized();
     }
 
     @Substitute
