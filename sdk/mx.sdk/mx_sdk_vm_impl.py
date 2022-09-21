@@ -50,6 +50,7 @@ import inspect
 import json
 import os
 from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
+import pipes
 import pprint
 import re
 import shlex
@@ -329,6 +330,8 @@ _src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
 
 """:type: dict[str, (str, str)]"""
 _parent_info_cache = {}
+
+_jlink_copy_plugin = None
 
 def _graalvm_maven_attributes(tag='graalvm'):
     """
@@ -798,7 +801,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
 
-        if _jlink_copyfiles:
+        if _has_jlink_copy_plugin() and _jlink_copyfiles:
             _add(layout, '<jdk_base>/conf/jlink.copyfiles', 'string:{}'.format('\n'.join(sorted(_jlink_copyfiles))))
 
         if has_graal_compiler:
@@ -3758,6 +3761,18 @@ def _base_jdk_info():
         mx.abort("Unexpected base JDK info: '{}'. Expected format: 'NAME:VERSION'.".format(base_jdk_info))
     else:
         return base_jdk_info.split(':')
+
+
+def _has_jlink_copy_plugin():
+    global _jlink_copy_plugin
+    if _jlink_copy_plugin is None:
+        out = mx.LinesOutputCapture()
+        args = [_src_jdk.exe_path('jlink'), '--list-plugins']
+        exit_status = mx.run(args, out=out, nonZeroIsFatal=False)
+        if exit_status:
+            raise mx.abort('Failed to run \"{}\". Output:\n{}'.format(' '.join([pipes.quote(str(arg)) for arg in args]), '\n'.join(out.lines)))
+        _jlink_copy_plugin = any('--copy-files' in line for line in out.lines)
+    return _jlink_copy_plugin
 
 
 def mx_post_parse_cmd_line(args):
