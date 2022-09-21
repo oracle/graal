@@ -797,12 +797,20 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final ResolvedJavaMethod peRootForInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
     protected final boolean needsExplicitException;
+    private final boolean forceLink;
 
+    /**
+     * Creates a new PEGraphDecoder.
+     *
+     * @param forceLink if {@code true} and the graph contains an invoke of a method from a class
+     *            that has not yet been linked, linking is performed.
+     */
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
-                    ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache, boolean needsExplicitException) {
+                    ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache, boolean needsExplicitException,
+                    boolean forceLink) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
@@ -814,6 +822,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.peRootForInlining = peRootForInlining;
         this.sourceLanguagePositionProvider = sourceLanguagePositionProvider;
         this.needsExplicitException = needsExplicitException;
+        this.forceLink = forceLink;
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -954,6 +963,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
             }
             callTarget = trySimplifyCallTarget(methodScope, invokeData, (MethodCallTargetNode) callTarget);
+            ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+            if (forceLink && targetMethod.hasBytecodes() && targetMethod.getCode() == null && !targetMethod.getDeclaringClass().isLinked()) {
+                targetMethod.getDeclaringClass().link();
+            }
             LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget);
             if (inlineLoopScope != null) {
                 return inlineLoopScope;
