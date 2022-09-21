@@ -75,6 +75,8 @@ public class TestOperationsParserTest {
     @Test
     public void testAdd() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginAddOperation();
             b.emitLoadArgument(0);
@@ -82,7 +84,7 @@ public class TestOperationsParserTest {
             b.endAddOperation();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(42L, root.call(20L, 22L));
@@ -93,6 +95,7 @@ public class TestOperationsParserTest {
     @Test
     public void testMax() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
             b.beginIfThenElse();
 
             b.beginLessThanOperation();
@@ -110,7 +113,7 @@ public class TestOperationsParserTest {
 
             b.endIfThenElse();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(42L, root.call(42L, 13L));
@@ -122,6 +125,7 @@ public class TestOperationsParserTest {
     @Test
     public void testIfThen() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
             b.beginIfThen();
 
             b.beginLessThanOperation();
@@ -139,7 +143,7 @@ public class TestOperationsParserTest {
             b.emitLoadArgument(0);
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(0L, root.call(-2L));
@@ -157,6 +161,7 @@ public class TestOperationsParserTest {
         // return j;
 
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
             OperationLocal locI = b.createLocal();
             OperationLocal locJ = b.createLocal();
 
@@ -196,7 +201,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(45L, root.call(10L));
@@ -205,6 +210,8 @@ public class TestOperationsParserTest {
     @Test
     public void testTryCatch() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             OperationLocal local = b.createLocal();
             b.beginTryCatch(local);
 
@@ -228,8 +235,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(0L);
             b.endReturn();
 
-
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(1L, root.call(-1L));
@@ -239,6 +245,7 @@ public class TestOperationsParserTest {
     @Test
     public void testVariableBoxingElim() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             OperationLocal local0 = b.createLocal();
             OperationLocal local1 = b.createLocal();
@@ -285,7 +292,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(4950L, root.call());
@@ -315,6 +322,7 @@ public class TestOperationsParserTest {
         // expected 1, 2
 
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -332,7 +340,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 2L);
@@ -345,6 +353,7 @@ public class TestOperationsParserTest {
         // expected: 1, 3
 
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -371,7 +380,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(true, root, 1L, 3L);
@@ -380,6 +389,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryReturn() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -404,7 +414,7 @@ public class TestOperationsParserTest {
             b.endAppenderOperation();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 2L, 1L);
@@ -413,6 +423,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryBranchOut() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { 1;goto lbl;2;} finally { 3;} 4;lbl: 5;
             // expected: 1, 3, 5
@@ -457,7 +468,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 3L, 5L);
@@ -466,6 +477,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryCancel() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { 1;return;} finally { 2;goto lbl;} 3;lbl: 4;
             // expected: 1, 2, 4
@@ -511,7 +523,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 2L, 4L);
@@ -520,6 +532,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryInnerCf() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { 1;return;2 } finally { 3;goto lbl;4;lbl: 5;}
             // expected: 1, 3, 5
@@ -566,7 +579,7 @@ public class TestOperationsParserTest {
             b.endFinallyTry();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 3L, 5L);
@@ -575,6 +588,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryNestedTry() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { try { 1;return;2;} finally { 3;} } finally { 4;}
             // expected: 1, 3, 4
@@ -614,7 +628,7 @@ public class TestOperationsParserTest {
             b.endFinallyTry();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 3L, 4L);
@@ -623,6 +637,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryNestedFinally() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { 1;return;2;} finally { try { 3;return;4;} finally { 5;} }
             // expected: 1, 3, 5
@@ -671,7 +686,7 @@ public class TestOperationsParserTest {
             b.endFinallyTry();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 3L, 5L);
@@ -680,6 +695,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryNestedTryThrow() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { try { 1;throw;2;} finally { 3;} } finally { 4;}
             // expected: 1, 3, 4
@@ -717,7 +733,7 @@ public class TestOperationsParserTest {
             b.endFinallyTry();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(true, root, 1L, 3L, 4L);
@@ -726,6 +742,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryNestedFinallyThrow() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             // try { 1;throw;2;} finally { try { 3;throw;4;} finally { 5;} }
             // expected: 1, 3, 5
@@ -770,7 +787,7 @@ public class TestOperationsParserTest {
             b.endFinallyTry();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(true, root, 1L, 3L, 5L);
@@ -783,6 +800,8 @@ public class TestOperationsParserTest {
         // expected: 1, 3
 
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginFinallyTryNoExcept();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -807,7 +826,7 @@ public class TestOperationsParserTest {
             b.endFinallyTryNoExcept();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(false, root, 1L, 3L);
@@ -820,6 +839,8 @@ public class TestOperationsParserTest {
         // expected: 1
 
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginFinallyTryNoExcept();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -842,7 +863,7 @@ public class TestOperationsParserTest {
             b.endFinallyTryNoExcept();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         testOrdering(true, root, 1L);
@@ -853,9 +874,11 @@ public class TestOperationsParserTest {
         final String value = "test data";
 
         OperationRootNode node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.setTestData(value);
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(value, node.getMetadata(TestOperations.TestData));
@@ -867,10 +890,12 @@ public class TestOperationsParserTest {
         final String value = "test data";
 
         OperationRootNode node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.setTestData("some old value");
             b.setTestData(value);
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(value, node.getMetadata(TestOperations.TestData));
@@ -880,8 +905,9 @@ public class TestOperationsParserTest {
     @Test
     public void testMetadataDefaultValue() {
         OperationRootNode node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(TestOperations.TestData.getDefaultValue(), node.getMetadata(TestOperations.TestData));
@@ -890,7 +916,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testTeeLocal() {
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse(b -> { b.beginRoot(LANGUAGE);
 
             OperationLocal local = b.createLocal();
 
@@ -903,7 +929,7 @@ public class TestOperationsParserTest {
             b.endReturn();
 
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         Assert.assertEquals(1L, root.call());
@@ -911,7 +937,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testYield() {
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse(b -> { b.beginRoot(LANGUAGE);
             b.beginYield();
             b.emitConstObject(1L);
             b.endYield();
@@ -924,7 +950,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(3L);
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         ContinuationResult r1 = (ContinuationResult) root.call();

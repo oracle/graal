@@ -84,13 +84,15 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsPrimToPrim() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginLongOperator();
             b.emitIntProducer();
             b.endLongOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -101,13 +103,15 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsRefToPrim() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginLongOperator();
             b.emitRefBProducer();
             b.endLongOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -118,13 +122,15 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsPrimToRef() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginStringOperator();
             b.emitBooleanProducer();
             b.endStringOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -135,13 +141,15 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsRefToRef() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginStringOperator();
             b.emitRefAProducer();
             b.endStringOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -152,6 +160,8 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsChangePrim() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginLongOperator();
             b.beginObjectProducer();
@@ -160,7 +170,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -181,6 +191,8 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsChangeRef() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginStringOperator();
             b.beginObjectProducer();
@@ -189,7 +201,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -210,6 +222,8 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsChangeSpecPrim() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginLongOperator();
             b.beginSpecializedObjectProducer();
@@ -218,7 +232,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -239,6 +253,8 @@ public class BoxingOperationsTest {
     @Test
     public void testCastsChangeSpecRef() {
         RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginReturn();
             b.beginStringOperator();
             b.beginSpecializedObjectProducer();
@@ -247,7 +263,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -268,6 +284,8 @@ public class BoxingOperationsTest {
     @Test
     public void testLBEMultipleLoads() {
         OperationRootNode node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
             OperationLocal local = b.createLocal();
 
             b.beginStoreLocal(local);
@@ -282,7 +300,7 @@ public class BoxingOperationsTest {
             b.emitLoadLocal(local);
             b.endReturn();
 
-            b.publish(LANGUAGE);
+            b.endRoot();
         });
 
         RootCallTarget root = ((RootNode) node).getCallTarget();

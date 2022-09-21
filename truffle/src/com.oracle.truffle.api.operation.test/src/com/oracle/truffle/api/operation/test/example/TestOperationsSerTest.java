@@ -77,6 +77,8 @@ public class TestOperationsSerTest {
     private static byte[] createByteArray() {
 
         OperationNodes nodes = TestOperationsGen.create(OperationConfig.DEFAULT, b -> {
+            b.beginRoot(null);
+
             b.beginReturn();
             b.beginAddOperation();
             b.emitConstObject(1L);
@@ -84,7 +86,7 @@ public class TestOperationsSerTest {
             b.endAddOperation();
             b.endReturn();
 
-            b.publish(null);
+            b.endRoot();
         });
 
         boolean[] haveConsts = new boolean[2];

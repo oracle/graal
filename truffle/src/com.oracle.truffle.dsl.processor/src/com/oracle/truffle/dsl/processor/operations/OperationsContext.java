@@ -118,6 +118,7 @@ public class OperationsContext {
 
     private void createBuiltinOperations() {
         add(new Operation.Block(this, operationId++));
+        add(new Operation.Root(this, operationId++));
         add(new Operation.IfThen(this, operationId++));
         add(new Operation.IfThenElse(this, operationId++, false));
         add(new Operation.IfThenElse(this, operationId++, true));

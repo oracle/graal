@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -910,6 +911,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "stackSourceBci = new int[1024]"));
         typBuilderImpl.add(createBuilderImplDoBeforeEmitInstruction());
 
+        CodeTypeElement typBuilderState = typBuilderImpl.add(createBuilderState(typBuilderImpl, "bc", "bci", "curStack", "maxStack", "numLocals", "numLabels", "yieldCount", "yieldLocations",
+                        "constPool", "operationData", "labels", "labelFills", "numChildNodes", "numConditionProfiles", "exceptionHandlers", "currentFinallyTry", "stackSourceBci"));
+        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, typBuilderState.asType(), "parentData"));
+
         typBuilderImpl.add(createDoLeaveFinallyTry(opDataImpl));
         typBuilderImpl.add(createBuilderImplDoEmitLabel(typLabelData));
         typBuilderImpl.addAll(createBuilderImplCalculateLeaves(opDataImpl, typLabelData));
@@ -991,6 +996,35 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         return typBuilderImpl;
+    }
+
+    private CodeTypeElement createBuilderState(CodeTypeElement typBuilder, String... fields) {
+        CodeTypeElement typ = new CodeTypeElement(MOD_FINAL, ElementKind.CLASS, null, "BuilderState");
+        typ.add(new CodeVariableElement(typ.asType(), "parentData"));
+
+        ArrayList<String> foundFields = new ArrayList<>();
+
+        for (String s : fields) {
+            for (VariableElement field : ElementFilter.fieldsIn(typBuilder.getEnclosedElements())) {
+                String fn = field.getSimpleName().toString();
+                if (fn.equals(s) || fn.startsWith(s + " ")) {
+                    typ.add(CodeVariableElement.clone(field));
+                    foundFields.add(s);
+                    break;
+                }
+            }
+        }
+
+        foundFields.add("parentData");
+
+        CodeExecutableElement ctor = typ.add(new CodeExecutableElement(null, "BuilderState"));
+        ctor.addParameter(new CodeVariableElement(typBuilder.asType(), "p"));
+        CodeTreeBuilder b = ctor.createBuilder();
+        for (String s : foundFields) {
+            b.statement(String.format("this.%s = p.%s", s, s));
+        }
+
+        return typ;
     }
 
     private CodeExecutableElement createBuilderImplDeserializeParser(CodeTypeElement typBuilder) {
@@ -1078,7 +1112,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 int i = 0;
                 for (TypeMirror argType : op.getBuilderArgumentTypes()) {
                     // ARGUMENT DESERIALIZATION
-                    if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
+                    if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
+                        b.declaration(types.TruffleLanguage, "arg" + i, "language");
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
                         b.statement("OperationLocal arg" + i + " = locals.get(buffer." + DATA_READ_METHOD_PREFIX + "Short())");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
                         b.statement("OperationLocal[] arg" + i + " = new OperationLocal[buffer." + DATA_READ_METHOD_PREFIX + "Short()]");
@@ -1758,7 +1794,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeExecutableElement createEmitOperation(CodeTypeElement typBuilder, BuilderVariables vars, Operation op) {
-        CodeExecutableElement metEmit = new CodeExecutableElement(MOD_PUBLIC_FINAL, context.getType(void.class), "emit" + op.name);
+        CodeVariableElement resVariable = op.getResultVariable();
+        CodeExecutableElement metEmit = new CodeExecutableElement(MOD_PUBLIC_FINAL, resVariable == null ? context.getType(void.class) : resVariable.asType(), "emit" + op.name);
 
         createBeginArguments(op, metEmit);
 
@@ -1818,6 +1855,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.end();
         }
 
+        if (resVariable != null) {
+            b.startReturn().variable(resVariable).end();
+        }
+
         return metEmit;
     }
 
@@ -1837,7 +1878,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeExecutableElement createEndOperation(CodeTypeElement typBuilder, BuilderVariables vars, Operation op) {
-        CodeExecutableElement metEnd = new CodeExecutableElement(MOD_PUBLIC_FINAL, context.getType(void.class), "end" + op.name);
+        CodeVariableElement resultVar = op.getResultVariable();
+        CodeExecutableElement metEnd = new CodeExecutableElement(MOD_PUBLIC_FINAL, resultVar == null ? context.getType(void.class) : resultVar.getType(), "end" + op.name);
         GeneratorUtils.addSuppressWarnings(context, metEnd, "unused");
 
         // if (operationData.id != ID) throw;
@@ -1853,7 +1895,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             serializationWrapException(b, () -> {
                 b.startStatement().string("serBuffer." + DATA_WRITE_METHOD_PREFIX + "Short((short) ((").variable(op.idConstantField).string(" << 1) | 1))").end();
             });
-            b.returnStatement();
+            if (op.isRoot()) {
+                b.startReturn().string("publish(null)").end();
+            } else {
+                b.returnStatement();
+            }
             b.end();
         }
 
@@ -1899,7 +1945,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startAssign(vars.operationData).variable(vars.operationData).string(".parent").end();
         }
 
-        if (op.isRealOperation()) {
+        if (op.isRealOperation() && !op.isRoot()) {
             b.statement("doAfterChild()");
         }
 
@@ -1908,6 +1954,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         vars.numChildren = null;
+
+        if (resultVar != null) {
+            b.startReturn().variable(resultVar).end();
+        }
 
         return metEnd;
     }
@@ -1938,7 +1988,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("indent++");
         }
 
-        if (op.isRealOperation()) {
+        if (op.isRealOperation() && !op.isRoot()) {
             b.statement("doBeforeChild()");
         }
 
@@ -1977,7 +2027,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 int i = 0;
                 for (TypeMirror argType : op.getBuilderArgumentTypes()) {
                     // ARGUMENT SERIALIZATION
-                    if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
+                    if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
+                        // nothing
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
                         after.add("serBuffer." + DATA_WRITE_METHOD_PREFIX + "Short((short) ((OperationLocalImpl) arg" + i + ").id)");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
                         after.add("serBuffer." + DATA_WRITE_METHOD_PREFIX + "Short((short) arg" + i + ".length)");
@@ -2043,7 +2095,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeExecutableElement createBuilderImplPublish(CodeTypeElement typOperationNodeImpl) {
-        CodeExecutableElement mPublish = new CodeExecutableElement(MOD_PUBLIC, m.getTemplateType().asType(), "publish");
+        CodeExecutableElement mPublish = new CodeExecutableElement(MOD_PRIVATE, m.getTemplateType().asType(), "publish");
 
         CodeVariableElement parLanguage = new CodeVariableElement(types.TruffleLanguage, "language");
         mPublish.addParameter(parLanguage);
@@ -2117,7 +2169,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.end();
 
         b.statement("buildIndex++");
-        b.statement("reset()");
+        b.statement("reset(language)");
 
         b.statement("return result");
 
@@ -2507,8 +2559,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         b.statement("this.sourceBuilder = withSource ? new SourceInfoBuilder() : null");
 
-        b.statement("reset()");
-
         return ctor;
     }
 
@@ -2530,6 +2580,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     private CodeExecutableElement createBuilderImplReset() {
         CodeExecutableElement mReset = new CodeExecutableElement(MOD_PRIVATE, context.getType(void.class), "reset");
+        mReset.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
 
         CodeTreeBuilder b = mReset.createBuilder();
 
@@ -2538,7 +2589,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("maxStack = 0");
         b.statement("numLocals = 0");
         b.statement("constPool.clear()");
-        b.statement("operationData = new BuilderOperationData(null, OP_BLOCK, 0, 0, false, 0)");
+        b.statement("operationData = new BuilderOperationData(null, OP_ROOT, 0, 0, false, language)");
         b.statement("labelFills.clear()");
         b.statement("numChildNodes = 0");
         b.statement("numConditionProfiles = 0");

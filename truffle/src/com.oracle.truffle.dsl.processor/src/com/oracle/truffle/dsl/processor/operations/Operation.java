@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitInstruction;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitLabel;
 
+import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.type.TypeKind;
@@ -158,6 +159,14 @@ public abstract class Operation {
 
     public boolean isRealOperation() {
         return true;
+    }
+
+    public boolean isRoot() {
+        return false;
+    }
+
+    public CodeVariableElement getResultVariable() {
+        return null;
     }
 
     public abstract CodeTree createPushCountCode(BuilderVariables vars);
@@ -307,6 +316,78 @@ public abstract class Operation {
         @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
             return List.of();
+        }
+    }
+
+    public static class Root extends Block {
+        protected Root(OperationsContext context, int id) {
+            super(context, "Root", id);
+        }
+
+        @Override
+        public boolean needsOperationData() {
+            return false;
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(ProcessorContext.getInstance().getTypes().TruffleLanguage);
+        }
+
+        @Override
+        public CodeVariableElement getResultVariable() {
+            return new CodeVariableElement(context.getData().getTemplateType().asType(), "endCodeResult");
+        }
+
+        @Override
+        public boolean isRoot() {
+            return true;
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.tree(super.createBeginCode(vars));
+
+            b.statement("this.parentData = new BuilderState(this)");
+            b.statement("this.bc = new short[65535]");
+            b.statement("this.constPool = new ArrayList<>()");
+            b.statement("this.labels = new ArrayList<>()");
+            b.statement("this.labelFills = new ArrayList<>()");
+            b.statement("this.exceptionHandlers = new ArrayList<>()");
+            b.statement("this.stackSourceBci = new int[1024]");
+            b.statement("reset(arg0)");
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.tree(super.createBeginCode(vars));
+
+            b.declaration(context.getData().getTemplateType().asType(), "endCodeResult", (CodeTree) null);
+
+            b.statement("endCodeResult = publish((TruffleLanguage<?>) operationData.arguments[0])");
+
+            b.statement("this.bc = parentData.bc");
+            b.statement("this.bci = parentData.bci");
+            b.statement("this.curStack = parentData.curStack");
+            b.statement("this.maxStack = parentData.maxStack");
+            b.statement("this.numLocals = parentData.numLocals");
+            b.statement("this.numLabels = parentData.numLabels");
+            b.statement("this.constPool = parentData.constPool");
+            b.statement("this.operationData = parentData.operationData");
+            b.statement("this.labels = parentData.labels");
+            b.statement("this.labelFills = parentData.labelFills");
+            b.statement("this.numChildNodes = parentData.numChildNodes");
+            b.statement("this.numConditionProfiles = parentData.numConditionProfiles");
+            b.statement("this.exceptionHandlers = parentData.exceptionHandlers");
+            b.statement("this.currentFinallyTry = parentData.currentFinallyTry");
+            b.statement("this.stackSourceBci = parentData.stackSourceBci");
+
+            b.statement("this.parentData = parentData.parentData");
+
+            return b.build();
         }
     }
 

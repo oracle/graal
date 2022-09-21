@@ -150,6 +150,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     @Override
     public Void visitFunction(FunctionContext ctx) {
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
+        b.beginRoot(language);
 
         b.setMethodName(name);
 
@@ -183,7 +184,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.endTag();
         b.endSource();
 
-        OperationRootNode node = b.publish(language);
+        OperationRootNode node = b.endRoot();
 
         if (DO_LOG_NODE_CREATION) {
             try {
