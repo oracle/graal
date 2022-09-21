@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredImageSingleton
-public class CompilationInfoSupport {
+public class SubstrateCompilationDirectives {
 
     /**
      * Stores the value kinds present at a deoptimization point's (deoptimization source)
@@ -135,8 +135,8 @@ public class CompilationInfoSupport {
     private final Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> deoptEntries = new ConcurrentHashMap<>();
     private final Set<AnalysisMethod> deoptInliningExcludes = ConcurrentHashMap.newKeySet();
 
-    public static CompilationInfoSupport singleton() {
-        return ImageSingletons.lookup(CompilationInfoSupport.class);
+    public static SubstrateCompilationDirectives singleton() {
+        return ImageSingletons.lookup(SubstrateCompilationDirectives.class);
     }
 
     public void registerForcedCompilation(ResolvedJavaMethod method) {

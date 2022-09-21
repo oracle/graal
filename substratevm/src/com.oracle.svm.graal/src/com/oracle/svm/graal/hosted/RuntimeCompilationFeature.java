@@ -124,8 +124,8 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -145,13 +145,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
 
 /**
- * The main handler for running Graal in the Substrate VM at run time. This feature (and features it
- * depends on like {@link FieldsOffsetsFeature}) encodes Graal graphs for runtime compilation,
- * ensures that all required {@link SubstrateType}, {@link SubstrateMethod}, {@link SubstrateField}
- * objects are created by {@link GraalObjectReplacer} and added to the image. Data that is prepared
- * during image generation and used at run time is stored in {@link GraalSupport}.
+ * The main handler for running the Graal compiler in the Substrate VM at run time. This feature
+ * (and features it depends on like {@link FieldsOffsetsFeature}) encodes Graal graphs for runtime
+ * compilation, ensures that all required {@link SubstrateType}, {@link SubstrateMethod},
+ * {@link SubstrateField} objects are created by {@link GraalGraphObjectReplacer} and added to the
+ * image. Data that is prepared during image generation and used at run time is stored in
+ * {@link GraalSupport}.
  */
-public final class GraalFeature implements Feature {
+public final class RuntimeCompilationFeature implements Feature {
 
     public static class Options {
         @Option(help = "Print call tree of methods available for runtime compilation")//
@@ -167,7 +168,7 @@ public final class GraalFeature implements Feature {
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(GraalFeature.class);
+            return ImageSingletons.contains(RuntimeCompilationFeature.class);
         }
     }
 
@@ -179,7 +180,7 @@ public final class GraalFeature implements Feature {
     public static final class IsEnabledAndNotLibgraal implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(GraalFeature.class) && !SubstrateUtil.isBuildingLibgraal();
+            return ImageSingletons.contains(RuntimeCompilationFeature.class) && !SubstrateUtil.isBuildingLibgraal();
         }
     }
 
@@ -270,7 +271,7 @@ public final class GraalFeature implements Feature {
         protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             boolean result = super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
             if (result) {
-                CompilationInfoSupport.singleton().registerAsDeoptInlininingExclude(targetMethod);
+                SubstrateCompilationDirectives.singleton().registerAsDeoptInlininingExclude(targetMethod);
             }
             return result;
         }
@@ -280,7 +281,7 @@ public final class GraalFeature implements Feature {
         }
     }
 
-    private GraalObjectReplacer objectReplacer;
+    private GraalGraphObjectReplacer objectReplacer;
     private HostedProviders hostedProviders;
     private GraphEncoder graphEncoder;
     private SharedRuntimeConfigurationBuilder runtimeConfigBuilder;
@@ -304,7 +305,7 @@ public final class GraalFeature implements Feature {
         return hostedProviders;
     }
 
-    public GraalObjectReplacer getObjectReplacer() {
+    public GraalGraphObjectReplacer getObjectReplacer() {
         return objectReplacer;
     }
 
@@ -319,14 +320,14 @@ public final class GraalFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess c) {
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
-        if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
-            ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
+        if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
+            ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
 
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
         AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
-        GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class).getProviderObjectReplacements(aMetaAccess);
-        objectReplacer = new GraalObjectReplacer(config.getUniverse(), aMetaAccess, providerReplacements);
+        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess);
+        objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), aMetaAccess, substrateProviders);
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
@@ -364,7 +365,7 @@ public final class GraalFeature implements Feature {
         Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
-        runtimeConfigBuilder = ImageSingletons.lookup(RuntimeGraalSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
+        runtimeConfigBuilder = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
                         config.getMetaAccess(),
                         originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider()).build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
@@ -401,7 +402,7 @@ public final class GraalFeature implements Feature {
 
         /* Initialize configuration with reasonable default values. */
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
-        includeCalleePredicate = GraalFeature::defaultIncludeCallee;
+        includeCalleePredicate = RuntimeCompilationFeature::defaultIncludeCallee;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
         methods = new LinkedHashMap<>();
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
@@ -448,7 +449,7 @@ public final class GraalFeature implements Feature {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        CompilationInfoSupport.singleton().registerFrameInformationRequired(aMethod);
+        SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod);
 
         return sMethod;
     }
@@ -630,7 +631,7 @@ public final class GraalFeature implements Feature {
                      * call target does not reach the compile queue by default, e.g. if it is
                      * inlined at image generation but not at runtime compilation.
                      */
-                    CompilationInfoSupport.singleton().registerForcedCompilation(implementationMethod);
+                    SubstrateCompilationDirectives.singleton().registerForcedCompilation(implementationMethod);
                 }
             }
         }
@@ -779,7 +780,7 @@ public final class GraalFeature implements Feature {
              */
             for (FrameState inlineState = frameState; inlineState != null; inlineState = inlineState.outerFrameState()) {
                 if (inlineState.bci >= 0) {
-                    CompilationInfoSupport.singleton().registerDeoptEntry(inlineState);
+                    SubstrateCompilationDirectives.singleton().registerDeoptEntry(inlineState);
                 }
             }
         }
@@ -804,7 +805,7 @@ public final class GraalFeature implements Feature {
                  */
                 FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
                 assert stateDuring.duringCall() && !stateDuring.rethrowException();
-                CompilationInfoSupport.singleton().registerDeoptEntry(stateDuring);
+                SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring);
             }
         }
     }
@@ -891,9 +892,9 @@ public final class GraalFeature implements Feature {
 class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
 
     private final HostedUniverse hUniverse;
-    private final GraalObjectReplacer objectReplacer;
+    private final GraalGraphObjectReplacer objectReplacer;
 
-    RuntimeStrengthenStampsPhase(HostedUniverse hUniverse, GraalObjectReplacer objectReplacer) {
+    RuntimeStrengthenStampsPhase(HostedUniverse hUniverse, GraalGraphObjectReplacer objectReplacer) {
         this.hUniverse = hUniverse;
         this.objectReplacer = objectReplacer;
     }

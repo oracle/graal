@@ -47,7 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -71,25 +70,25 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.GraalObjectReplacer;
-import com.oracle.svm.graal.hosted.GraalProviderObjectReplacements;
-import com.oracle.svm.graal.hosted.RuntimeGraalSetup;
-import com.oracle.svm.graal.hosted.SubstrateRuntimeGraalSetup;
+import com.oracle.svm.graal.hosted.GraalGraphObjectReplacer;
+import com.oracle.svm.graal.hosted.SubstrateGraalCompilerSetup;
+import com.oracle.svm.graal.hosted.SubstrateProviders;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -173,7 +172,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
-    private GraalObjectReplacer graalObjectReplacer;
+    private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
@@ -312,15 +311,15 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
 
         ImageSingletons.add(NodeClassSupport.class, new NodeClassSupport());
-        if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
-            ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
+        if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
+            ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
 
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
         metaAccess = config.getMetaAccess();
-        GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class)
-                        .getProviderObjectReplacements(metaAccess);
-        graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
+        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
+                        .getSubstrateProviders(metaAccess);
+        graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), metaAccess, substrateProviders);
 
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
@@ -387,7 +386,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
             AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
             if (type.isInstantiated()) {
-                graalObjectReplacer.createType(type);
+                graalGraphObjectReplacer.createType(type);
             }
         }
 
@@ -407,8 +406,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl config = (FeatureImpl.AfterCompilationAccessImpl) access;
 
-        graalObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders().getConstantFieldProvider());
-        graalObjectReplacer.registerImmutableObjects(access);
+        graalGraphObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders().getConstantFieldProvider());
+        graalGraphObjectReplacer.registerImmutableObjects(access);
     }
 
     @SuppressWarnings("deprecation")

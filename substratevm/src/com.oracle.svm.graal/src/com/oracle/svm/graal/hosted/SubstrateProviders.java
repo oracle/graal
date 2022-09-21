@@ -38,20 +38,20 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * The set of provider objects that are installed via {@link GraalObjectReplacer}.
+ * The set of provider objects that are installed via {@link GraalGraphObjectReplacer}.
  */
-public class GraalProviderObjectReplacements {
+public class SubstrateProviders {
     private final SubstrateMetaAccess metaAccess;
     private final ConstantFieldProvider constantFieldProvider;
     private final ConstantReflectionProvider constantReflection;
 
-    GraalProviderObjectReplacements(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess) {
+    SubstrateProviders(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
         this.constantFieldProvider = new SubstrateConstantFieldProvider(aMetaAccess);
         this.constantReflection = new SubstrateConstantReflectionProvider(this.metaAccess);
     }
 
-    protected GraalProviderObjectReplacements(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection) {
+    protected SubstrateProviders(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection) {
         this.metaAccess = metaAccess;
         this.constantFieldProvider = constantFieldProvider;
         this.constantReflection = constantReflection;
