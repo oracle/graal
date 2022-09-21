@@ -184,7 +184,8 @@ public abstract class NativeImage extends AbstractImage {
         debugInfoSize = 0;
         String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
         for (Element e : objectFile.getElements()) {
-            if (e.getName().contains(debugIdentifier)) {
+            String name = e.getName();
+            if (name.contains(debugIdentifier) && !name.startsWith(".rela")) {
                 debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
             }
         }
