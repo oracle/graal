@@ -2902,7 +2902,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         // we need to run finalization at least twice in case a finalization run has
         // initialized new contexts
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        PolyglotThreadLocalActions.TL_HANDSHAKE.setChangeAllowActions(safepoint, true);
+        boolean prevChangeAllowActions = PolyglotThreadLocalActions.TL_HANDSHAKE.setChangeAllowActions(safepoint, true);
         try {
             boolean finalizationPerformed;
             do {
@@ -2925,7 +2925,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 }
             } while (finalizationPerformed);
         } finally {
-            PolyglotThreadLocalActions.TL_HANDSHAKE.setChangeAllowActions(safepoint, false);
+            PolyglotThreadLocalActions.TL_HANDSHAKE.setChangeAllowActions(safepoint, prevChangeAllowActions);
         }
     }
 
