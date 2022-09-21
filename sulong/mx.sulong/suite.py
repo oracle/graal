@@ -867,11 +867,10 @@ suite = {
       "max_jobs" : "8",
       "vpath" : True,
       "ninja_targets" : [
-        "<staticlib:oldnames>",
+        "oldnames",
       ],
-      "ninja_install_targets" : ["install"],
       "results" : [
-        "bin/<staticlib:oldnames>",
+        "<staticlib:oldnames>",
       ],
       "buildDependencies" : [
         "WINDOWS_SUPPORT",
@@ -1208,7 +1207,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "variants" : ["executable-O0", "toolchain-plain"],
+      "variants" : ["toolchain-plain"],
       "cmakeConfig" : {
         "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
         "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
@@ -1709,7 +1708,7 @@ suite = {
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/lib/*",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-                "dependency:com.oracle.truffle.llvm.libraries.oldnames/bin/<staticlib:oldnames>",
+                "dependency:com.oracle.truffle.llvm.libraries.oldnames/<staticlib:oldnames>",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],
             },

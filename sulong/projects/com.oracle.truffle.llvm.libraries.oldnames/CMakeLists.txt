@@ -33,5 +33,5 @@ project(com.oracle.truffle.llvm.libraries.oldnames)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
 
-add_library(oldnames STATIC src/oldnames.c)
-install(TARGETS oldnames DESTINATION bin)
+add_custom_command(OUTPUT oldnames.lib COMMAND ${CMAKE_C_COMPILER} -o oldnames.lib -c ${CMAKE_CURRENT_SOURCE_DIR}/src/oldnames.c DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/oldnames.c)
+add_custom_target(oldnames DEPENDS oldnames.lib)
