@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -40,33 +38,17 @@ import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions.SulongCanCatchWindowsNode;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions.SulongEHCopyWindowsNode;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException.LLVMUserExceptionWindows;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNodeFactory.CatchPadEntryNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNodeFactory.CopyExceptionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNodeFactory.LLVMCatchSwitchImplNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 @GenerateWrapper
 public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
@@ -169,71 +151,6 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
         }
     }
 
-    public abstract static class CopyExceptionNode extends LLVMNode {
-        private final PointerType exceptionType;
-
-        protected CopyExceptionNode(PointerType exceptionType) {
-            this.exceptionType = exceptionType;
-        }
-
-        public abstract void execute(LLVMPointer thrownObject, boolean isReference, Object exceptionSlot);
-
-        @TruffleBoundary
-        protected long getSize() {
-            Type pointeeType = exceptionType.getPointeeType();
-            try {
-                return pointeeType.getSize(getDataLayout());
-            } catch (TypeOverflowException e) {
-                throw new LLVMParserException(this, "Error determining pointee type size.");
-            }
-        }
-
-        protected PrimitiveKind getPrimitiveKind() {
-            Type pointeeType = exceptionType.getPointeeType();
-            return pointeeType instanceof PrimitiveType ? ((PrimitiveType) pointeeType).getPrimitiveKind() : null;
-        }
-
-        protected boolean isPointer() {
-            Type pointeeType = exceptionType.getPointeeType();
-            return pointeeType instanceof PointerType;
-        }
-
-        @Specialization(guards = {"getSize() == 1", "!isReference"})
-        protected void doByte(LLVMPointer thrownObject, @SuppressWarnings("unused") boolean isReference, Object exceptionSlot,
-                        @Cached LLVMI8LoadNode loadNode, @Cached LLVMI8StoreNode storeNode) {
-            storeNode.executeWithTarget(exceptionSlot, loadNode.executeWithTargetGeneric(thrownObject));
-        }
-
-        @Specialization(guards = {"getSize() == 2", "!isReference"})
-        protected void doShort(LLVMPointer thrownObject, @SuppressWarnings("unused") boolean isReference, Object exceptionSlot,
-                        @Cached LLVMI16LoadNode loadNode, @Cached LLVMI16StoreNode storeNode) {
-            storeNode.executeWithTarget(exceptionSlot, loadNode.executeWithTargetGeneric(thrownObject));
-        }
-
-        @Specialization(guards = {"getSize() == 4", "!isReference"})
-        protected void doInt(LLVMPointer thrownObject, @SuppressWarnings("unused") boolean isReference, Object exceptionSlot,
-                        @Cached LLVMI32LoadNode loadNode, @Cached LLVMI32StoreNode storeNode) {
-            storeNode.executeWithTarget(exceptionSlot, loadNode.executeWithTargetGeneric(thrownObject));
-        }
-
-        @Specialization(guards = {"getSize() == 8", "!isReference"})
-        protected void doLong(LLVMPointer thrownObject, @SuppressWarnings("unused") boolean isReference, LLVMPointer exceptionSlot,
-                        @Cached LLVMI64LoadNode loadNode, @Cached LLVMI64StoreNode storeNode) {
-            Object value = loadNode.executeWithTargetGeneric(thrownObject);
-            storeNode.executeWithTarget(exceptionSlot, value);
-        }
-
-        @Specialization(guards = {"getSize() > 8 || isReference"})
-        protected void doPointer(LLVMPointer thrownObject, @SuppressWarnings("unused") boolean isReference, Object exceptionSlot,
-                        @Cached LLVMPointerStoreNode storeNode) {
-            storeNode.executeWithTarget(exceptionSlot, thrownObject);
-        }
-
-        public static CopyExceptionNode create(PointerType exceptionType) {
-            return CopyExceptionNodeGen.create(exceptionType);
-        }
-    }
-
     @GenerateWrapper
     @NodeChild(value = "stack", type = LLVMExpressionNode.class)
     @NodeChild(value = "thrownObject", type = LLVMExpressionNode.class)
@@ -281,10 +198,6 @@ public abstract class LLVMCatchSwitchNode extends LLVMControlFlowNode {
                 ehCopy = insert(new SulongEHCopyWindowsNode(getContext()));
             }
             return ehCopy;
-        }
-
-        protected CopyExceptionNode createExceptionNode() {
-            return CopyExceptionNode.create(exceptionType);
         }
 
         public boolean isConstant() {
