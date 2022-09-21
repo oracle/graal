@@ -71,6 +71,11 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     }
 
     @Override
+    public boolean mustApply(GraphState graphState) {
+        return graphState.requiresFutureStage(StageFlag.FINAL_CANONICALIZATION);
+    }
+
+    @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
         return NotApplicable.combineConstraints(
                         super.canApply(graphState),
@@ -81,5 +86,6 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
         graphState.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
+        graphState.removeRequirementToStage(StageFlag.FINAL_CANONICALIZATION);
     }
 }

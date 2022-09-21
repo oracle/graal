@@ -54,6 +54,7 @@ public class MinimalFuzzedCompilationPlan extends AbstractCompilationPlan {
                     long randomSeed) {
         super(minimalHighTier, minimalMidTier, minimalLowTier, graphState, mandatoryStages);
         this.randomSeed = randomSeed;
+        verifyCompilationPlan(graphState);
     }
 
     /**
