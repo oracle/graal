@@ -538,7 +538,7 @@ public class NativeImageResourcePath implements Path {
             } else {
                 r = toAbsolutePath().getResolvedPath();
             }
-            if (r[0] == '/') {
+            if (r[0] == '/' && r.length > 1) {
                 r = Arrays.copyOfRange(r, 1, r.length);
             }
             resolved = r;
