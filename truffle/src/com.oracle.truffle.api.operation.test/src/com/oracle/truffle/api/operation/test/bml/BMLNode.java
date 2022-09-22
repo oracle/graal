@@ -9,6 +9,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -206,9 +207,12 @@ class WhileNode extends BMLNode {
     @Override
     public Object execute(VirtualFrame frame) {
         try {
+            int count = 0;
             while (condition.executeBool(frame)) {
                 body.execute(frame);
+                count++;
             }
+            LoopNode.reportLoopCount(this, count);
             return VOID;
         } catch (UnexpectedResultException e) {
             throw CompilerDirectives.shouldNotReachHere();

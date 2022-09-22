@@ -54,37 +54,15 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
-
-    @CompilationFinal(dimensions = 1) private short[] bc;
-
-    static final short OP_JUMP = 1;
-    static final short OP_CONST = 2;
-    static final short OP_ADD = 3;
-    static final short OP_JUMP_FALSE = 4;
-    static final short OP_LESS = 5;
-    static final short OP_RETURN = 6;
-    static final short OP_ST_LOC = 7;
-    static final short OP_LD_LOC = 8;
-    static final short OP_MOD = 9;
-
+public class ManualBytecodeNode extends BaseBytecodeNode {
     protected ManualBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
-        super(language, frameDescriptor);
-        this.bc = bc;
+        super(language, frameDescriptor, bc);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return executeAt(frame, 0, 0);
-    }
-
-    private static class Counter {
-        int count;
-    }
-
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
-    private Object executeAt(VirtualFrame frame, int startBci, int startSp) {
+    protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
         int bci = startBci;
         int sp = startSp;
@@ -100,16 +78,9 @@ public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
                     int nextBci = localBc[bci + 1];
                     CompilerAsserts.partialEvaluationConstant(nextBci);
                     if (nextBci <= bci) {
-                        if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
-                            TruffleSafepoint.poll(this);
-                            LoopNode.reportLoopCount(this, 256);
-                            loopCounter.count = 0;
-                        }
-                        if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                            Object osrResult = BytecodeOSRNode.tryOSR(this, (sp << 16) | nextBci, null, null, frame);
-                            if (osrResult != null) {
-                                return osrResult;
-                            }
+                        Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
+                        if (result != null) {
+                            return result;
                         }
                     }
                     bci = nextBci;
@@ -185,8 +156,57 @@ public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
         }
     }
 
+}
+
+abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
+
+    protected BaseBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+        super(language, frameDescriptor);
+        this.bc = bc;
+    }
+
+    @CompilationFinal(dimensions = 1) protected short[] bc;
+
+    static final short OP_JUMP = 1;
+    static final short OP_CONST = 2;
+    static final short OP_ADD = 3;
+    static final short OP_JUMP_FALSE = 4;
+    static final short OP_LESS = 5;
+    static final short OP_RETURN = 6;
+    static final short OP_ST_LOC = 7;
+    static final short OP_LD_LOC = 8;
+    static final short OP_MOD = 9;
+
+    protected static class Counter {
+        int count;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return executeAt(frame, 0, 0);
+    }
+
+    protected abstract Object executeAt(VirtualFrame osrFrame, int startBci, int startSp);
+
+    protected final Object backwardsJumpCheck(VirtualFrame frame, int sp, Counter loopCounter, int nextBci) {
+        if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+            TruffleSafepoint.poll(this);
+            LoopNode.reportLoopCount(this, 256);
+            loopCounter.count = 0;
+        }
+
+        if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
+            Object osrResult = BytecodeOSRNode.tryOSR(this, (sp << 16) | nextBci, null, null, frame);
+            if (osrResult != null) {
+                return osrResult;
+            }
+        }
+
+        return null;
+    }
+
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
-        return executeAt(osrFrame, target >> 16, target & 0xffff);
+        return executeAt(osrFrame, target & 0xffff, target >> 16);
     }
 
     @CompilationFinal private Object osrMetadata;
@@ -200,36 +220,21 @@ public class ManualBytecodeNode extends RootNode implements BytecodeOSRNode {
     }
 }
 
-class ManualBytecodeNodeNBE extends RootNode {
-
-    @CompilationFinal(dimensions = 1) private short[] bc;
-
-    static final short OP_JUMP = 1;
-    static final short OP_CONST = 2;
-    static final short OP_ADD = 3;
-    static final short OP_JUMP_FALSE = 4;
-    static final short OP_LESS = 5;
-    static final short OP_RETURN = 6;
-    static final short OP_ST_LOC = 7;
-    static final short OP_LD_LOC = 8;
-    static final short OP_MOD = 9;
+class ManualBytecodeNodeNBE extends BaseBytecodeNode {
 
     protected ManualBytecodeNodeNBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
-        super(language, frameDescriptor);
-        this.bc = bc;
+        super(language, frameDescriptor, bc);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return executeAt(frame, 0, 0);
-    }
-
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
-    private Object executeAt(VirtualFrame frame, int startBci, int startSp) {
+    protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
         int bci = startBci;
         int sp = startSp;
+
+        Counter counter = new Counter();
 
         loop: while (true) {
             short opcode = localBc[bci];
@@ -239,6 +244,12 @@ class ManualBytecodeNodeNBE extends RootNode {
                 case OP_JUMP: {
                     int nextBci = localBc[bci + 1];
                     CompilerAsserts.partialEvaluationConstant(nextBci);
+                    if (nextBci <= bci) {
+                        Object result = backwardsJumpCheck(frame, sp, counter, nextBci);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
                     bci = nextBci;
                     continue loop;
                 }
