@@ -30,15 +30,18 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.core.meta.MethodPointer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -122,7 +125,6 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
@@ -1295,12 +1297,18 @@ public class CompileQueue {
         // Hook for subclasses
     }
 
+    protected Set<Integer> getDynamicallyResolvedCalls(@SuppressWarnings("unused") CompilationResult result) {
+        return Collections.emptySet();
+    }
+
     protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
+        Set<Integer> dynamicallyResolvedCalls = getDynamicallyResolvedCalls(result);
+
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint instanceof Call) {
                 Call call = (Call) infopoint;
                 HostedMethod callTarget = (HostedMethod) call.target;
-                if (call.direct) {
+                if (call.direct || dynamicallyResolvedCalls.contains(call.pcOffset)) {
                     ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
                     for (HostedMethod impl : callTarget.getImplementations()) {

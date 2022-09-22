@@ -523,7 +523,7 @@ public abstract class NativeImage extends AbstractImage {
         return deduplicated.size() != heap.getObjectCount();
     }
 
-    private void markRelocationSitesFromBuffer(RelocatableBuffer buffer, ProgbitsSectionImpl sectionImpl) {
+    public void markRelocationSitesFromBuffer(RelocatableBuffer buffer, ProgbitsSectionImpl sectionImpl) {
         for (Map.Entry<Integer, RelocatableBuffer.Info> entry : buffer.getSortedRelocations()) {
             final int offset = entry.getKey();
             final RelocatableBuffer.Info info = entry.getValue();
@@ -578,7 +578,7 @@ public abstract class NativeImage extends AbstractImage {
         // A reference to a method. Mark the relocation site using the symbol name.
         Architecture arch = ConfigurationValues.getTarget().arch;
         assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
-        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), localSymbolNameForMethod(target), 0L);
+        MethodPointerRelocationProvider.singleton().markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, methodPointer.isAbsolute());
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {

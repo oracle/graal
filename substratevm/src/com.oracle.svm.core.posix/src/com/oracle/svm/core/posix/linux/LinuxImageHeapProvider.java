@@ -54,6 +54,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
@@ -142,13 +143,22 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return fallbackCopyingProvider.initialize(reservedAddressSpace, reservedSize, basePointer, endPointer);
         }
 
+        boolean isDynamicMethodAddressResolutionEnabled = DynamicMethodAddressResolutionHeapSupport.isEnabled();
+
+        if (isDynamicMethodAddressResolutionEnabled) {
+            int res = DynamicMethodAddressResolutionHeapSupport.get().initialize();
+            if (res != CEntryPointErrors.NO_ERROR) {
+                return res;
+            }
+        }
+
         // If we are the first isolate and can use the existing image heap, do it.
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
         Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-        if (firstIsolate && reservedAddressSpace.isNull() && PointerUtils.isAMultiple(imageHeapBegin, alignment) && imageHeapOffsetInAddressSpace == 0) {
+        if (firstIsolate && reservedAddressSpace.isNull() && PointerUtils.isAMultiple(imageHeapBegin, alignment) && imageHeapOffsetInAddressSpace == 0 && !isDynamicMethodAddressResolutionEnabled) {
             // Mark the whole image heap as read only.
             if (VirtualMemoryProvider.get().protect(imageHeapBegin, imageHeapSizeInFile, Access.READ) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
@@ -176,20 +186,38 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
+        UnsignedWord dynamicMethodResolutionRequiredBytes = WordFactory.zero();
+        if (isDynamicMethodAddressResolutionEnabled) {
+            dynamicMethodResolutionRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+        }
+
         // Reserve an address space for the image heap if necessary.
         UnsignedWord imageHeapAddressSpaceSize = getImageHeapAddressSpaceSize();
+        UnsignedWord totalRequiredAddressSpaceSize = imageHeapAddressSpaceSize.add(dynamicMethodResolutionRequiredBytes);
+
         Pointer heapBase;
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
-            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(imageHeapAddressSpaceSize, alignment, false);
+            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalRequiredAddressSpaceSize, alignment, false);
             if (allocatedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
         } else {
-            if (reservedSize.belowThan(imageHeapAddressSpaceSize)) {
+            if (reservedSize.belowThan(totalRequiredAddressSpaceSize)) {
                 return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
             }
             heapBase = reservedAddressSpace;
+        }
+
+        if (isDynamicMethodAddressResolutionEnabled) {
+            WordPointer newHeapStart = StackValue.get(WordPointer.class);
+            int error = DynamicMethodAddressResolutionHeapSupport.get().install(heapBase, dynamicMethodResolutionRequiredBytes, newHeapStart);
+            if (error != CEntryPointErrors.NO_ERROR) {
+                freeImageHeap(allocatedMemory);
+                return error;
+            }
+
+            heapBase = newHeapStart.read();
         }
 
         // Create memory mappings from the image file.
@@ -343,7 +371,11 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                     return CEntryPointErrors.MAP_HEAP_FAILED;
                 }
             } else {
-                if (VirtualMemoryProvider.get().free(heapBase, getImageHeapAddressSpaceSize()) != 0) {
+                UnsignedWord totalAddressSpaceSize = getImageHeapAddressSpaceSize();
+                if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
+                    totalAddressSpaceSize = totalAddressSpaceSize.add(DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes());
+                }
+                if (VirtualMemoryProvider.get().free(heapBase, totalAddressSpaceSize) != 0) {
                     return CEntryPointErrors.MAP_HEAP_FAILED;
                 }
             }
