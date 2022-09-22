@@ -28,11 +28,13 @@ import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -50,7 +52,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 /**
  * The core class for deciding whether a class should be initialized during image building or class
@@ -61,8 +62,8 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     private static final Field dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
 
     private final EarlyClassInitializerAnalysis earlyClassInitializerAnalysis;
-    private final Set<Class<?>> provenSafeEarly = Collections.synchronizedSet(new HashSet<>());
-    private Set<Class<?>> provenSafeLate = Collections.synchronizedSet(new HashSet<>());
+    private final Set<Class<?>> provenSafeEarly = ConcurrentHashMap.newKeySet();
+    private Set<Class<?>> provenSafeLate = ConcurrentHashMap.newKeySet();
 
     ProvenSafeClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         super(metaAccess, loader);
@@ -263,7 +264,6 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
                                     .append("\n");
                 }
             });
-
 
             String traceClassInitArguments = illegalyInitialized.stream().filter(c -> !isClassInitializationTracked(c)).map(Class::getName).collect(Collectors.joining(","));
             if (!"".equals(traceClassInitArguments)) {

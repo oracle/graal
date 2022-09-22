@@ -61,7 +61,7 @@ public class ClassInitializationTracking {
     /**
      * This method is called from the native-image diagnostics agent to report class initialization.
      */
-    @SuppressWarnings({"unused", "ConstantConditions"})
+    @SuppressWarnings({"unused"})
     public static void reportClassInitialized(Class<?> clazz, StackTraceElement[] stackTrace) {
         initializedClasses.put(clazz, relevantStackTrace(stackTrace));
     }
@@ -75,7 +75,7 @@ public class ClassInitializationTracking {
     }
 
     /**
-     * If the stack trace contains class initializaiton takes the stack up to the last
+     * If the stack trace contains class initializaiton, returns the stack frames up to the last
      * initialization. Otherwise returns the whole stack trace. The method never returns the stack
      * from the instrumented part.
      *

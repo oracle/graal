@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.core.util.VMError;
-import jdk.vm.ci.meta.MetaUtil;
 
 public class TracingAdvisor {
 
