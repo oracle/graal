@@ -3768,7 +3768,7 @@ def _has_jlink_copy_plugin():
     if _jlink_copy_plugin is None:
         out = mx.LinesOutputCapture()
         args = [_src_jdk.exe_path('jlink'), '--list-plugins']
-        exit_status = mx.run(args, out=out, nonZeroIsFatal=False)
+        exit_status = mx.run(args, out=out, err=out, nonZeroIsFatal=False)
         if exit_status:
             raise mx.abort('Failed to run \"{}\". Output:\n{}'.format(' '.join([pipes.quote(str(arg)) for arg in args]), '\n'.join(out.lines)))
         _jlink_copy_plugin = any('--copy-files' in line for line in out.lines)
