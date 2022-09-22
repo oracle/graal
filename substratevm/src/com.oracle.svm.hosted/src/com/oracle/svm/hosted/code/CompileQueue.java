@@ -377,8 +377,8 @@ public class CompileQueue {
                  * Points-to Analysis, therefore the annotations would have to be added to a lot
                  * more methods if these checks are supposed to pass, see GR-39002
                  */
-                UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
-                RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+                checkUninterruptibleAnnotations();
+                checkRestrictHeapAnnotations(debug);
             }
 
             /*
@@ -416,18 +416,42 @@ public class CompileQueue {
         }
     }
 
+    protected void checkUninterruptibleAnnotations() {
+        UninterruptibleAnnotationChecker.checkBeforeCompilation(universe.getMethods());
+    }
+
+    protected void checkRestrictHeapAnnotations(DebugContext debug) {
+        RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+    }
+
     private boolean suitesNotCreated() {
         return regularSuites == null && deoptTargetLIRSuites == null && regularLIRSuites == null && deoptTargetSuites == null;
     }
 
     private void createSuites() {
-        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        regularSuites = createRegularSuites();
         modifyRegularSuites(regularSuites);
-        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
-        DeoptimizationUtils.removeDeoptTargetOptimizations(deoptTargetSuites);
-        regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
-        deoptTargetLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
-        DeoptimizationUtils.removeDeoptTargetOptimizations(deoptTargetLIRSuites);
+        deoptTargetSuites = createDeoptTargetSuites();
+        removeDeoptTargetOptimizations(deoptTargetSuites);
+        regularLIRSuites = createLIRSuites();
+        deoptTargetLIRSuites = createDeoptTargetLIRSuites();
+        removeDeoptTargetOptimizations(deoptTargetLIRSuites);
+    }
+
+    protected Suites createRegularSuites() {
+        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+    }
+
+    protected Suites createDeoptTargetSuites() {
+        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+    }
+
+    protected LIRSuites createLIRSuites() {
+        return NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
+    }
+
+    protected LIRSuites createDeoptTargetLIRSuites() {
+        return NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
     }
 
     protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
@@ -751,6 +775,10 @@ public class CompileQueue {
         return null;
     }
 
+    protected CompileTask createCompileTask(HostedMethod method, CompileReason reason) {
+        return new CompileTask(method, reason);
+    }
+
     protected void compileAll() throws InterruptedException {
         executor.init();
         scheduleEntryPoints();
@@ -1022,7 +1050,7 @@ public class CompileQueue {
             return;
         }
 
-        CompileTask task = new CompileTask(method, reason);
+        CompileTask task = createCompileTask(method, reason);
         CompileTask oldTask = compilations.putIfAbsent(method, task);
         if (oldTask != null) {
             return;
@@ -1155,6 +1183,14 @@ public class CompileQueue {
             }
         }
         ensureCompiledForMethodPointerConstants(method, reason, result);
+    }
+
+    protected void removeDeoptTargetOptimizations(Suites suites) {
+        DeoptimizationUtils.removeDeoptTargetOptimizations(suites);
+    }
+
+    protected void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
+        DeoptimizationUtils.removeDeoptTargetOptimizations(lirSuites);
     }
 
     protected final void ensureCompiledForMethodPointerConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
