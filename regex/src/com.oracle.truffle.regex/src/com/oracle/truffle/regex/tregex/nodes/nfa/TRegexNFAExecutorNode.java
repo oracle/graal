@@ -41,6 +41,8 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
+import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
@@ -149,7 +151,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
-            if (inputHasNext(locals)) {
+            if (injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
                 findNextStates(locals);
                 // If locals.successorsEmpty() is true, then all of our paths have either been
                 // finished, discarded due to priority or failed to match. If we managed to finish
@@ -159,7 +161,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 // the very start of the string (i.e. searching is false). Such a search would
                 // only have walked through the rest of the string without considering any other
                 // paths.
-                if (locals.successorsEmpty() && (!searching || locals.hasResult())) {
+                if (injectBranchProbability(EXIT_PROBABILITY, locals.successorsEmpty() && (!searching || locals.hasResult()))) {
                     return locals.getResult();
                 }
             } else {
@@ -173,11 +175,11 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private void findNextStates(TRegexNFAExecutorLocals locals) {
         int c = inputReadAndDecode(locals);
-        while (locals.hasNext()) {
+        while (injectBranchProbability(CONTINUE_PROBABILITY, locals.hasNext())) {
             expandState(locals, locals.next(), c, false);
             // If we have found a path to a final state, then we will trim all paths with lower
             // priority (i.e. the rest of the elements in curStates).
-            if (locals.isResultPushed()) {
+            if (injectBranchProbability(EXIT_PROBABILITY, locals.isResultPushed())) {
                 return;
             }
         }
@@ -187,7 +189,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // The loopback priority has to be lower than the priority of any path completed so far.
         // Therefore, we only follow the loopback if no path has been completed so far
         // (i.e. !locals.hasResult()).
-        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
+        if (injectBranchProbability(CONTINUE_PROBABILITY, searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex())) {
             expandState(locals, nfa.getInitialLoopBackTransition().getTarget().getId(), c, true);
         }
     }
@@ -219,16 +221,16 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private void findNextStatesAtEnd(TRegexNFAExecutorLocals locals) {
-        while (locals.hasNext()) {
+        while (injectBranchProbability(CONTINUE_PROBABILITY, locals.hasNext())) {
             expandStateAtEnd(locals, nfa.getState(locals.next()), false);
-            if (locals.isResultPushed()) {
+            if (injectBranchProbability(EXIT_PROBABILITY, locals.isResultPushed())) {
                 return;
             }
         }
         // We only expand the loopBack state if index > fromIndex. Expanding the loopBack state
         // when index == fromIndex is: a) redundant and b) breaks MustAdvance where the actual
         // loopBack state is only accessible after consuming at least one character.
-        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
+        if (injectBranchProbability(CONTINUE_PROBABILITY, searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex())) {
             expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
         }
     }
