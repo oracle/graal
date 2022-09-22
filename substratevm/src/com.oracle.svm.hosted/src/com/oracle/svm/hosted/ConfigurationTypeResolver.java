@@ -37,14 +37,22 @@ public final class ConfigurationTypeResolver {
         this.classLoader = classLoader;
     }
 
+    public Class<?> resolveConditionType(String typeName) {
+        return resolveType(typeName, false);
+    }
+
     public Class<?> resolveType(String typeName) {
+        return resolveType(typeName, true);
+    }
+
+    private Class<?> resolveType(String typeName, boolean warn) {
         String name = typeName;
         if (name.indexOf('[') != -1) {
             /* accept "int[][]", "java.lang.String[]" */
             name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
         }
         TypeResult<Class<?>> typeResult = classLoader.findClass(name);
-        if (!typeResult.isPresent()) {
+        if (warn && !typeResult.isPresent()) {
             System.err.println("Warning: Could not resolve " + name + " for " + configurationType + ".");
         }
         return typeResult.get();

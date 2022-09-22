@@ -65,7 +65,7 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
     }
 
     private Class<?>[] checkIfInterfacesAreValid(ConditionalElement<List<String>> proxies) {
-        if (typeResolver.resolveType(proxies.getCondition().getTypeName()) == null) {
+        if (typeResolver.resolveConditionType(proxies.getCondition().getTypeName()) == null) {
             return null;
         }
         List<String> interfaceNames = proxies.getElement();
