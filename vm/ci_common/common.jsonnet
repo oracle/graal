@@ -261,14 +261,6 @@ local devkits = common_json.devkits;
     targets+: ['post-merge', 'deploy'],
   },
 
-  deploy_vm_linux_amd64: self.vm_linux_amd64 + {
-    targets+: ['post-merge', 'deploy'],
-  },
-
-  deploy_vm_linux_aarch64: self.vm_linux_aarch64 + {
-    targets+: ['post-merge', 'deploy'],
-  },
-
   deploy_vm_darwin_amd64: self.vm_darwin_amd64 + {
     targets+: ['post-merge', 'deploy'],
   },
