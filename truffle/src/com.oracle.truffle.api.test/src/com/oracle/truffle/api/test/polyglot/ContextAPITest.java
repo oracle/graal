@@ -612,6 +612,12 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
         service.shutdown();
         assertTrue("Executor threads did not finish in time.", service.awaitTermination(10, TimeUnit.SECONDS));
+        for (Reference<Thread> threadRef : threads) {
+            Thread t = threadRef.get();
+            if (t != null) {
+                t.join(10000);
+            }
+        }
         Reference<ExecutorService> ref = new WeakReference<>(service);
         service = null;
         GCUtils.assertGc("Nobody holds on the executor anymore", ref);
