@@ -109,7 +109,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private static final String OPERATION_BUILDER_IMPL_NAME = "Builder";
     private static final String BYTECODE_BASE_NAME = "BytecodeLoopBase";
 
-    private static final int SER_CODE_PUBLISH = -1;
     private static final int SER_CODE_CREATE_LABEL = -2;
     private static final int SER_CODE_CREATE_LOCAL = -3;
     private static final int SER_CODE_CREATE_OBJECT = -4;
@@ -1057,13 +1056,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startWhile().string("true").end().startBlock();
             b.startSwitch().string("buffer." + DATA_READ_METHOD_PREFIX + "Short()").end().startBlock();
 
-            b.startCase().string("" + SER_CODE_PUBLISH).end().startBlock();
-            b.statement("builtNodes.add(builder.publish(language))");
-            b.statement("locals.clear()");
-            b.statement("labels.clear()");
-            b.statement("break");
-            b.end();
-
             b.startCase().string("" + SER_CODE_CREATE_LABEL).end().startBlock();
             b.statement("labels.add(builder.createLabel())");
             b.statement("break");
@@ -1153,8 +1145,19 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 if (op.children != 0) {
                     b.startCase().string("(").variable(op.idConstantField).string(" << 1) | 1").end().startBlock();
-                    b.statement("builder.end" + op.name + "()");
+
+                    b.startStatement();
+                    if (op.isRoot()) {
+                        b.startCall("builtNodes.add");
+                    }
+                    b.string("builder.end" + op.name + "()");
+                    if (op.isRoot()) {
+                        b.end();
+                    }
+                    b.end();
+
                     b.statement("break");
+
                     b.end();
                 }
 
@@ -2104,13 +2107,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
             b.startIf().string("isSerializing").end().startBlock();
-            serializationWrapException(b, () -> {
-                b.statement("serBuffer." + DATA_WRITE_METHOD_PREFIX + "Short((short) " + SER_CODE_PUBLISH + ")");
-                b.declaration(m.getTemplateType().getSimpleName().toString(), "result", "new OperationSerNodeImpl(null, FrameDescriptor.newBuilder(), buildIndex++)");
-                b.statement("numLocals = 0");
-                b.statement("numLabels = 0");
-                b.statement("return result");
-            });
+            b.declaration(m.getTemplateType().getSimpleName().toString(), "result", "new OperationSerNodeImpl(null, FrameDescriptor.newBuilder(), buildIndex++)");
+            b.statement("numLocals = 0");
+            b.statement("numLabels = 0");
+            b.statement("return result");
             b.end();
         }
 

@@ -331,6 +331,8 @@ public class BenmarkSimple extends BaseBenchmark {
     }
 
     private static void createSimpleLoop(BenchmarkLanguage lang, Builder b, int mode) {
+        b.beginRoot(lang);
+
         OperationLocal iLoc = b.createLocal();
         OperationLocal sumLoc = b.createLocal();
         OperationLocal jLoc = b.createLocal();
@@ -433,7 +435,7 @@ public class BenmarkSimple extends BaseBenchmark {
         b.emitLoadLocal(sumLoc);
         b.endReturn();
 
-        b.publish(lang);
+        b.endRoot();
     }
 
     @Setup(Level.Trial)

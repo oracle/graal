@@ -349,6 +349,7 @@ public abstract class Operation {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.tree(super.createBeginCode(vars));
 
+            // todo: there is no need to store the state at top level
             b.statement("this.parentData = new BuilderState(this)");
             b.statement("this.bc = new short[65535]");
             b.statement("this.constPool = new ArrayList<>()");

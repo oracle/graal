@@ -54,6 +54,7 @@ import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
+import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.OperationParser;
 
@@ -64,12 +65,18 @@ public class TestOperationsParserTest {
 
     private static RootCallTarget parse(OperationParser<TestOperationsGen.Builder> builder) {
         OperationRootNode operationsNode = parseNode(builder);
-        System.out.println(operationsNode.dump());
         return ((RootNode) operationsNode).getCallTarget();
     }
 
     private static OperationRootNode parseNode(OperationParser<TestOperationsGen.Builder> builder) {
-        return TestOperationsGen.create(OperationConfig.DEFAULT, builder).getNodes().get(0);
+        OperationNodes nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
+
+        for (OperationRootNode node : nodes.getNodes()) {
+            System.out.println("-------------------------------------");
+            System.out.println(node.dump());
+        }
+
+        return nodes.getNodes().get(0);
     }
 
     @Test
@@ -937,7 +944,9 @@ public class TestOperationsParserTest {
 
     @Test
     public void testYield() {
-        RootCallTarget root = parse(b -> { b.beginRoot(LANGUAGE);
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
             b.beginYield();
             b.emitConstObject(1L);
             b.endYield();
@@ -960,5 +969,35 @@ public class TestOperationsParserTest {
         Assert.assertEquals(2L, r2.getResult());
 
         Assert.assertEquals(3L, r2.continueWith(null));
+    }
+
+    @Test
+    public void testNestedFunctions() {
+        RootCallTarget root = parse(b -> {
+            // this simulates following in python:
+            // return (lambda: 1)()
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+
+            b.beginInvoke();
+
+                b.beginRoot(LANGUAGE);
+
+                b.beginReturn();
+                b.emitConstObject(1L);
+                b.endReturn();
+
+                TestOperations innerRoot = b.endRoot();
+
+            b.emitConstObject(innerRoot);
+            b.endInvoke();
+
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        Assert.assertEquals(1L, root.call());
     }
 }

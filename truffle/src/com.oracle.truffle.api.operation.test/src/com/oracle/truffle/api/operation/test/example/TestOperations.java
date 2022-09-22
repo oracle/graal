@@ -176,6 +176,14 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
             return cachedI;
         }
     }
+
+    @Operation
+    public static final class Invoke {
+        @Specialization
+        public static Object doInvoke(TestOperations root, @Variadic Object[] args) {
+            return root.getCallTarget().call(args);
+        }
+    }
 }
 
 class TestLanguage extends TruffleLanguage<Object> {
