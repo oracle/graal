@@ -47,16 +47,13 @@ public class ClinitGenerationVisitor extends ClassVisitor {
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
         NativeImageDiagnosticsAgent agent = JvmtiAgentBase.singleton();
-
-        if (!agent.advisor.shouldTraceClassInitialization(name.replace("/", "."))) {
-            shouldInstrument = false;
-        }
+        shouldInstrument = agent.advisor.shouldTraceClassInitialization(name.replace("/", "."));
     }
 
     @Override
     public void visitEnd() {
         if (!this.hasClinit) {
-            MethodVisitor mv = super.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", (String) null, (String[]) null);
+            MethodVisitor mv = super.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
             mv.visitInsn(Opcodes.RETURN);
             mv.visitEnd();
         }

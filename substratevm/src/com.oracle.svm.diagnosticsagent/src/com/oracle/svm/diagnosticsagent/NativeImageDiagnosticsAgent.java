@@ -362,38 +362,44 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         CTypeConversion.asByteBuffer(classData, classDataLen).get(clazzData);
 
         NativeImageDiagnosticsAgent agent = singleton();
-        ClinitInstrumentationResult result = agent.maybeInstrumentClassWithClinit(javaName, clazzData);
+        byte[] result = agent.maybeInstrumentClassWithClinit(javaName, clazzData);
 
-        if (result == ClinitInstrumentationResult.NO_INSTRUMENTATION_NEEDED) {
+        if (result == null) {
             return;
         }
 
-        int newClassDataLength = result.newClassData.length;
+        int newClassDataLength = result.length;
         Support.check(jvmti.getFunctions().Allocate().invoke(jvmti, newClassDataLength, newClassData));
-        CTypeConversion.asByteBuffer(newClassData.read(), newClassDataLength).put(result.newClassData);
+        CTypeConversion.asByteBuffer(newClassData.read(), newClassDataLength).put(result);
         newClassDataLen.write(newClassDataLength);
     }
 
     static final int ASM6 = 6 << 16;
     static final int ASM8 = 8 << 16;
-    static final int ASM_TARGET_VERSION = JavaVersionUtil.JAVA_SPEC == 1 ? ASM6 : ASM8;
+    static final int ASM_TARGET_VERSION = JavaVersionUtil.JAVA_SPEC == 11 ? ASM6 : ASM8;
 
-    private ClinitInstrumentationResult maybeInstrumentClassWithClinit(String clazzName, byte[] clazzData) {
+    private byte[] maybeInstrumentClassWithClinit(String clazzName, byte[] clazzData) {
         if (clazzName != null && !advisor.shouldTraceClassInitialization(clazzName.replace('/', '.'))) {
-            return ClinitInstrumentationResult.NO_INSTRUMENTATION_NEEDED;
+            return null;
         }
 
-        ClassReader reader = new ClassReader(clazzData);
-        ClassWriter writer = new ClassWriter(reader, 0);
-        ClinitGenerationVisitor visitor = new ClinitGenerationVisitor(ASM_TARGET_VERSION, writer);
-        reader.accept(visitor, 0);
+        try {
+            ClassReader reader = new ClassReader(clazzData);
+            ClassWriter writer = new ClassWriter(reader, 0);
+            ClinitGenerationVisitor visitor = new ClinitGenerationVisitor(ASM_TARGET_VERSION, writer);
+            reader.accept(visitor, 0);
 
-        if (!visitor.didGeneration()) {
-            return ClinitInstrumentationResult.NO_INSTRUMENTATION_NEEDED;
+            if (!visitor.didGeneration()) {
+                return null;
+            }
+
+            return writer.toByteArray();
+        } catch (Throwable e) {
+            String targetClazzName = clazzName != null ? clazzName : "<unknown class>";
+            System.err.println("[native-image-diagnostics-agent] Failed to instrument class " + targetClazzName + ": ");
+            e.printStackTrace(System.err);
+            return null;
         }
-
-        byte[] newClazzData = writer.toByteArray();
-        return new ClinitInstrumentationResult(newClazzData);
     }
 
     @CEntryPoint
@@ -429,16 +435,6 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         @Override
         public void afterRegistration(AfterRegistrationAccess access) {
             JvmtiAgentBase.registerAgent(new NativeImageDiagnosticsAgent());
-        }
-    }
-
-    private static class ClinitInstrumentationResult {
-        static final ClinitInstrumentationResult NO_INSTRUMENTATION_NEEDED = new ClinitInstrumentationResult(null);
-
-        final byte[] newClassData;
-
-        ClinitInstrumentationResult(byte[] newClassData) {
-            this.newClassData = newClassData;
         }
     }
 }

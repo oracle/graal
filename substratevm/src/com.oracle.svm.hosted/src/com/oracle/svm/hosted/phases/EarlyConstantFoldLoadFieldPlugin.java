@@ -51,6 +51,8 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
     private final Map<ResolvedJavaType, ResolvedJavaType> primitiveTypes;
 
+    private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
+
     public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
 
@@ -64,7 +66,7 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
     @Override
     public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        if (field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
+        if (field.isSynthetic() && field.getName().startsWith(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
             /*
              * Intercept assertion status: the value of the field during image generation does not
              * matter at all (because it is the hosted assertion status), we instead return the
