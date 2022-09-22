@@ -2,6 +2,12 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 22.3.0
+* (GR-39852) Native Image API: Added FieldValueTransformer API
+* (GR-35358) Added `Context.Builder.allowInnerContextOptions(boolean)` which allows the context to spawn inner contexts and modify and override language options. The default value for this privilege is set depending `Context.Builder.allowAllPrivilages(boolean)` is set or not. Do not enable this privilege in security sensitive scenarios.
+* (GR-40198) Introduce public API for programmatic JNI / Resource / Proxy / Serialization registration from Feature classes during the image build.
+* (GR-38909) Added Native Image com.oracle.svm.core.annotate annotation classes (@Alias, @TargetClass, @Substitute, ...).
+
 ## Version 22.2.0
 * (GR-38925) Added `Value.hasMetaParents() and Value.getMetaParents()` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
 * (GR-38351) Added [FileSystem#allowLanguageHomeAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#allowLanguageHomeAccess-org.graalvm.polyglot.io.FileSystem-) returning a `FileSystem` that forwards access to files in the language home to the default file system.

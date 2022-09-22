@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.code;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;

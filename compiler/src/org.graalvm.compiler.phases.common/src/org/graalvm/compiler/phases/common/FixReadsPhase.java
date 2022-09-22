@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -44,6 +46,8 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -53,7 +57,6 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -84,6 +87,8 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
+import java.util.ListIterator;
+
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
  */
@@ -108,7 +113,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
         @Override
-        protected void processNode(Node node) {
+        protected void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter) {
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 for (MemoryPhiNode memoryPhi : mergeNode.memoryPhis().snapshot()) {
@@ -596,6 +601,14 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FIXED_READS, graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),
+                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtSideEffects(), Optional.of(new NotApplicable("This phase must run after FSA."))));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         assert graph.verify();
@@ -605,12 +618,17 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         for (Block block : schedule.getCFG().getBlocks()) {
             fixReadsClosure.processNodes(block, schedule);
         }
-        graph.setAfterStage(StageFlag.FIXED_READS);
+
         assert graph.verify();
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
             schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
-
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.FIXED_READS);
     }
 
     protected ControlFlowGraph.RecursiveVisitor<?> createVisitor(StructuredGraph graph, ScheduleResult schedule, CoreProviders context) {

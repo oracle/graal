@@ -30,6 +30,7 @@ import java.util.Arrays;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -39,15 +40,12 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
@@ -127,28 +125,18 @@ class ThreadGroupIdAccessor {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadIdRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadIdRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         Thread thread = (Thread) receiver;
         return JavaThreadsFeature.threadId(thread);
     }
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadStatusRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         Thread thread = (Thread) receiver;
         if (thread.getState() == Thread.State.TERMINATED) {
             return ThreadStatus.TERMINATED;
@@ -162,19 +150,13 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
             return ThreadStatus.NEW;
         }
     }
-
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadHolderRecomputation implements RecomputeFieldValue.CustomFieldValueTransformer {
+class ThreadHolderRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
-        assert JavaVersionUtil.JAVA_SPEC >= 19 : "ThreadHolder only exist on JDK 19+";
+    public Object transform(Object receiver, Object originalValue) {
+        assert JavaVersionUtil.JAVA_SPEC >= 19 : "ThreadHolder only exists on JDK 19+";
         int threadStatus = ReflectionUtil.readField(ReflectionUtil.lookupClass(false, "java.lang.Thread$FieldHolder"), "threadStatus", receiver);
         if (threadStatus == ThreadStatus.TERMINATED) {
             return ThreadStatus.TERMINATED;
@@ -191,14 +173,9 @@ class ThreadHolderRecomputation implements RecomputeFieldValue.CustomFieldValueT
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadGroupNUnstartedThreadsRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         ThreadGroup group = (ThreadGroup) receiver;
         int result = 0;
         for (Thread thread : JavaThreadsFeature.singleton().reachableThreads.keySet()) {
@@ -212,14 +189,9 @@ class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.C
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadGroupNThreadsRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         ThreadGroup group = (ThreadGroup) receiver;
 
         if (group == PlatformThreads.singleton().mainGroup) {
@@ -233,14 +205,9 @@ class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFiel
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadGroupThreadsRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         ThreadGroup group = (ThreadGroup) receiver;
 
         if (group == PlatformThreads.singleton().mainGroup) {
@@ -254,28 +221,18 @@ class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomField
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadGroupNGroupsRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         ThreadGroup group = (ThreadGroup) receiver;
         return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).ngroups;
     }
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+class ThreadGroupGroupsRecomputation implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         ThreadGroup group = (ThreadGroup) receiver;
         return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).groups;
     }

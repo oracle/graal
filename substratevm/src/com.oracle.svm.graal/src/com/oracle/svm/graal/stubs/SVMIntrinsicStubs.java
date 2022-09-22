@@ -27,12 +27,15 @@ package com.oracle.svm.graal.stubs;
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "substrate", sources = {
@@ -45,6 +48,9 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 VectorizedMismatchNode.class,
                 AMD64ArrayRegionEqualsWithMaskNode.class,
                 AMD64CalcStringAttributesNode.class,
+                AESNode.class,
+                CounterModeAESNode.class,
+                GHASHProcessBlocksNode.class,
 })
 public final class SVMIntrinsicStubs {
 }

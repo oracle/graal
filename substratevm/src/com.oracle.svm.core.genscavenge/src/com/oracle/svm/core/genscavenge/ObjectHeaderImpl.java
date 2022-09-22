@@ -40,8 +40,8 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -109,15 +109,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         } else {
             return ObjectAccess.readWord(o, getHubOffset());
         }
-    }
-
-    public static UnsignedWord readHeaderFromObjectCarefully(Object o) {
-        VMError.guarantee(o != null, "ObjectHeader.readHeaderFromObjectCarefully:  o: null");
-        UnsignedWord header = readHeaderFromObject(o);
-        VMError.guarantee(header.notEqual(WordFactory.zero()), "ObjectHeader.readHeaderFromObjectCarefully:  header: 0");
-        VMError.guarantee(!isProducedHeapChunkZapped(header), "ObjectHeader.readHeaderFromObjectCarefully:  header: producedZapValue");
-        VMError.guarantee(!isConsumedHeapChunkZapped(header), "ObjectHeader.readHeaderFromObjectCarefully:  header: consumedZapValue");
-        return header;
     }
 
     @Override

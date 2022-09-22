@@ -28,8 +28,8 @@ import java.lang.reflect.InvocationTargetException;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
 

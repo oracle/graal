@@ -29,7 +29,6 @@ import java.io.IOException;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -41,10 +40,11 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -160,7 +160,7 @@ public class PosixUtils {
     }
 
     public static int waitForProcessExit(int ppid) {
-        CIntPointer statusptr = StackValue.get(CIntPointer.class);
+        CIntPointer statusptr = UnsafeStackValue.get(CIntPointer.class);
         while (Wait.waitpid(ppid, statusptr, 0) < 0) {
             int errno = LibC.errno();
             if (errno == Errno.ECHILD()) {
@@ -256,10 +256,10 @@ public class PosixUtils {
      * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
      */
     public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
-        Signal.sigaction old = StackValue.get(Signal.sigaction.class);
+        Signal.sigaction old = UnsafeStackValue.get(Signal.sigaction.class);
 
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
-        Signal.sigaction act = StackValue.get(structSigActionSize);
+        Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
 
         act.sa_flags(Signal.SA_RESTART());

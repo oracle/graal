@@ -35,8 +35,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.Specialize;
+import com.oracle.svm.core.deopt.DeoptTest;
+import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -110,15 +110,16 @@ public class CompilationInfo {
     }
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return isDeoptTarget() && (deoptOrigin.compilationInfo.canDeoptForTesting || CompilationInfoSupport.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
+        return isDeoptTarget() && (deoptOrigin.compilationInfo.canDeoptForTesting || SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
     }
 
     /**
      * Returns whether this bci was registered as a potential deoptimization entrypoint via
-     * {@link CompilationInfoSupport#registerDeoptEntry}.
+     * {@link SubstrateCompilationDirectives#registerDeoptEntry}.
      */
     public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return isDeoptTarget() && CompilationInfoSupport.singleton().isDeoptTarget(method) && CompilationInfoSupport.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+        return isDeoptTarget() && SubstrateCompilationDirectives.singleton().isDeoptTarget(method) &&
+                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
     }
 
     public boolean canDeoptForTesting() {

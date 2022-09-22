@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 
 /**
  * In the JDK implementation of method handles, each bound method handle is an instance of a
@@ -138,7 +139,7 @@ final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
 
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_BoundMethodHandle_SpeciesData {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = RecomputeFieldValue.NewEmptyArrayTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
     private Target_java_lang_invoke_BoundMethodHandle_SpeciesData[] extensions;
 }
 

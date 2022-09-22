@@ -84,8 +84,8 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.code.CompilationInfo;
-import com.oracle.svm.hosted.code.CompilationInfoSupport;
-import com.oracle.svm.hosted.code.CompilationInfoSupport.DeoptSourceFrameInfo;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -191,7 +191,7 @@ public abstract class NativeImageCodeCache {
                 }
             }
         }
-        dataSection.close(HostedOptionValues.singleton());
+        dataSection.close(HostedOptionValues.singleton(), 1);
     }
 
     public void addConstantsToHeap() {
@@ -390,7 +390,7 @@ public abstract class NativeImageCodeCache {
 
     private void verifyDeoptEntries(CodeInfo codeInfo) {
         boolean hasError = false;
-        List<Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>>> deoptEntries = new ArrayList<>(CompilationInfoSupport.singleton().getDeoptEntries().entrySet());
+        List<Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>>> deoptEntries = new ArrayList<>(SubstrateCompilationDirectives.singleton().getDeoptEntries().entrySet());
         deoptEntries.sort((e1, e2) -> e1.getKey().format("%H.%n(%p)").compareTo(e2.getKey().format("%H.%n(%p)")));
 
         for (Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> entry : deoptEntries) {
@@ -411,6 +411,11 @@ public abstract class NativeImageCodeCache {
     private static boolean verifyDeoptEntry(CodeInfo codeInfo, HostedMethod method, Entry<Long, DeoptSourceFrameInfo> sourceFrameInfo) {
         int deoptOffsetInImage = method.getDeoptOffsetInImage();
         long encodedBci = sourceFrameInfo.getKey();
+
+        if (sourceFrameInfo.getValue() == DeoptSourceFrameInfo.INVALID_DEOPT_SOURCE_FRAME) {
+            return error(method, encodedBci, "Incompatible source frames; multiple frames with different sizes of locals, locks, and/or stack values exist");
+        }
+
         if (deoptOffsetInImage <= 0) {
             return error(method, encodedBci, "entry point method not compiled");
         }
@@ -609,7 +614,7 @@ public abstract class NativeImageCodeCache {
             }
 
             for (BytecodeFrame frame = topFrame; frame != null; frame = frame.caller()) {
-                if (CompilationInfoSupport.singleton().isFrameInformationRequired(frame.getMethod())) {
+                if (SubstrateCompilationDirectives.singleton().isFrameInformationRequired(frame.getMethod())) {
                     /*
                      * Somewhere in the inlining hierarchy is a method for which frame information
                      * was explicitly requested. For simplicity, we output frame information for all

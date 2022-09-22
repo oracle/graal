@@ -71,7 +71,7 @@ public class CompilationTask {
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
-    private final HotSpotGraalCompiler compiler;
+    protected final HotSpotGraalCompiler compiler;
     private final HotSpotCompilationIdentifier compilationId;
 
     private HotSpotInstalledCode installedCode;
@@ -86,10 +86,10 @@ public class CompilationTask {
 
     private final boolean shouldRetainLocalVariables;
 
-    final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
+    protected class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
         CompilationResult result;
 
-        HotSpotCompilationWrapper() {
+        protected HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
         }
 
@@ -337,8 +337,12 @@ public class CompilationTask {
         }
     }
 
-    @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
+        return runCompilation(debug, new HotSpotCompilationWrapper());
+    }
+
+    @SuppressWarnings("try")
+    protected HotSpotCompilationRequestResult runCompilation(DebugContext debug, HotSpotCompilationWrapper compilation) {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         int entryBCI = getEntryBCI();
@@ -359,7 +363,6 @@ public class CompilationTask {
             }
         }
 
-        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper();
         try (DebugCloseable a = CompilationTime.start(debug)) {
             return compilation.run(debug);
         } finally {

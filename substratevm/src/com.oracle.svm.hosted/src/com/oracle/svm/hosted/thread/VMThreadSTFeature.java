@@ -42,10 +42,9 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSTSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Collects all VM thread local variables during native image generation and assigns them their
  * offset in the Object[] and byte[] array that hold the values.
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class VMThreadSTFeature implements InternalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();

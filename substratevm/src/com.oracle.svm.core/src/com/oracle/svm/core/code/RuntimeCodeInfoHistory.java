@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.thread.Safepoint;

@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import com.oracle.svm.util.DirectAnnotationAccess;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SharedMethod;
 

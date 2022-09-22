@@ -40,9 +40,9 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -86,14 +86,16 @@ public final class Resources {
     }
 
     private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        Resources support = singleton();
-        Pair<String, String> key = Pair.create(moduleName, resourceName);
-        ResourceStorageEntry entry = support.resources.get(key);
-        if (entry == null) {
-            entry = new ResourceStorageEntry(isDirectory, fromJar);
-            support.resources.put(key, entry);
+        var resources = singleton().resources;
+        synchronized (resources) {
+            Pair<String, String> key = Pair.create(moduleName, resourceName);
+            ResourceStorageEntry entry = resources.get(key);
+            if (entry == null) {
+                entry = new ResourceStorageEntry(isDirectory, fromJar);
+                resources.put(key, entry);
+            }
+            entry.getData().add(data);
         }
-        entry.getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -109,6 +111,11 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String moduleName, String resourceName, InputStream is) {
         registerResource(moduleName, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
+        addEntry(moduleName, resourceName, false, resourceContent, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -222,6 +229,19 @@ public final class Resources {
         }
 
         ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
+        if (moduleName == null && entry == null) {
+            /*
+             * If no moduleName is specified and entry was not found as classpath-resource we have
+             * to search for the resource in all modules in the image.
+             */
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                entry = Resources.get(module.getName(), resourceName);
+                if (entry != null) {
+                    break;
+                }
+            }
+        }
+
         if (entry == null) {
             return null;
         }
@@ -268,8 +288,8 @@ public final class Resources {
     }
 }
 
-@AutomaticFeature
-final class ResourcesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Resources.class, new Resources());

@@ -297,8 +297,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                                     "which means another agent instance is already writing to this directory. " +
                                     "Only one agent instance can safely write to a specific target directory at the same time. " +
                                     "Unless file '" + ConfigurationFile.LOCK_FILE_NAME + "' is a leftover from an earlier process that terminated abruptly, it is unsafe to delete it. " +
-                                    "For running multiple processes with agents at the same time to create a single configuration, read Agent.md " +
-                                    "or https://www.graalvm.org/reference-manual/native-image/Agent/ on how to use the native-image-configure tool.");
+                                    "For running multiple processes with agents at the same time to create a single configuration, read AutomaticMetadataCollection.md " +
+                                    "or https://www.graalvm.org/dev/reference-manual/native-image/metadata/AutomaticMetadataCollection/ on how to use the native-image-configure tool.");
                 }
                 if (experimentalOmitClasspathConfig) {
                     ignoreConfigFromClasspath(jvmti, omittedConfigs);
@@ -417,7 +417,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private static <T> T usage(T result, String message) {
         inform(message);
         inform("Example usage: -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/");
-        inform("For details, please read Agent.md or https://www.graalvm.org/reference-manual/native-image/Agent/");
+        inform("For details, please read AutomaticMetadataCollection.md or https://www.graalvm.org/dev/reference-manual/native-image/metadata/AutomaticMetadataCollection/");
         return result;
     }
 
@@ -627,8 +627,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                             "file or directory '" + e.getMessage() + "' has been modified by another process. " +
                                             "All output files remain in the temporary directory '" + configOutputDirPath.resolve("..").relativize(tempDirectory) + "'. " +
                                             "Ensure that only one agent instance and no other processes are writing to the output directory '" + configOutputDirPath + "' at the same time. " +
-                                            "For running multiple processes with agents at the same time to create a single configuration, read Agent.md " +
-                                            "or https://www.graalvm.org/reference-manual/native-image/Agent/ on how to use the native-image-configure tool.");
+                                            "For running multiple processes with agents at the same time to create a single configuration, read AutomaticMetadataCollection.md " +
+                                            "or https://www.graalvm.org/dev/reference-manual/native-image/metadata/AutomaticMetadataCollection/ on how to use the native-image-configure tool.");
         }
     }
 

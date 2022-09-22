@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
@@ -40,5 +43,14 @@ public class MidTierLoweringPhase extends LoweringPhase {
 
     public MidTierLoweringPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER, StageFlag.MID_TIER_LOWERING);
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.GUARD_LOWERING, graphState));
     }
 }

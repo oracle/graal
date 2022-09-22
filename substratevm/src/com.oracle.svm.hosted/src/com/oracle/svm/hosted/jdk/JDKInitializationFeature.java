@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.jdk;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-public class JDKInitializationFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class JDKInitializationFeature implements InternalFeature {
     private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
 
     @Override
@@ -55,6 +55,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("java.text", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
+        rci.rerunInitialization("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
         rci.initializeAtBuildTime("javax.annotation.processing", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.lang.model", JDK_CLASS_REASON);
@@ -172,9 +173,6 @@ public class JDKInitializationFeature implements Feature {
 
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             rci.rerunInitialization("sun.nio.ch.Poller", "Contains an InnocuousThread.");
-        }
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Not yet supported");
         }
     }
 }

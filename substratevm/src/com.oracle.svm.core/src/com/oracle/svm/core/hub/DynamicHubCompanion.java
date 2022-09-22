@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_event_EventConfiguration;
 import com.oracle.svm.core.util.VMError;
 
 import sun.reflect.annotation.AnnotationType;
@@ -58,6 +59,7 @@ public final class DynamicHubCompanion {
     private Target_java_lang_Class_AnnotationData annotationData;
     private Constructor<?> cachedConstructor;
     private Class<?> newInstanceCallerCache;
+    private Target_jdk_jfr_internal_event_EventConfiguration jfrEventConfiguration;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
@@ -131,5 +133,13 @@ public final class DynamicHubCompanion {
 
     void setNewInstanceCallerCache(Class<?> constructor) {
         newInstanceCallerCache = constructor;
+    }
+
+    public void setJfrEventConfiguration(Target_jdk_jfr_internal_event_EventConfiguration configuration) {
+        jfrEventConfiguration = configuration;
+    }
+
+    public Target_jdk_jfr_internal_event_EventConfiguration getJfrEventConfiguration() {
+        return jfrEventConfiguration;
     }
 }

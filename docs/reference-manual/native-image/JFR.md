@@ -17,9 +17,9 @@ To record JFR events when running a native executable, JFR support and JFR recor
 
 To build a native executable with the JFR events support, you first need to include JFR at build time, then enable the system, start a recording, and configure logging at native executable run time.
 
-To build a native executable with JFR, use the `-H:+AllowVMInspection` flag:
+To build a native executable with JFR, use the `--enable-monitoring=jfr` flag:
 ```shell
-native-image -H:+AllowVMInspection JavaApplication
+native-image --enable-monitoring=jfr JavaApplication
 ```
 To enable the system, start a recording, and configure logging at run time, the following options are supported:
 

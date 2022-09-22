@@ -28,6 +28,7 @@ import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Semaphore;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -49,6 +50,8 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     private DebuggerConnection connection;
     private Collection<Thread> activeThreads = new ArrayList<>();
     private PrintStream err;
+    private volatile HandshakeController hsController = null;
+    private final Semaphore resetting = new Semaphore(1);
 
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
@@ -61,9 +64,17 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     public void reset(boolean prepareForReconnect) {
+        if (!resetting.tryAcquire()) {
+            return;
+        }
         // stop all running jdwp threads in an orderly fashion
         for (Thread activeThread : activeThreads) {
             activeThread.interrupt();
+        }
+        // close the server socket used to listen for transport dt_socket
+        HandshakeController hsc = hsController;
+        if (hsc != null) {
+            hsc.close();
         }
         // close the connection to the debugger
         if (connection != null) {
@@ -98,7 +109,12 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         if (prepareForReconnect) {
             // replace the controller instance
             controller.reInitialize();
+            resetting.release();
         }
+    }
+
+    public boolean isResetting() {
+        return resetting.availablePermits() == 0;
     }
 
     public void printStackTrace(Throwable e) {
@@ -156,7 +172,13 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     void doConnect(boolean suspend, boolean server) throws IOException {
-        SocketConnection socketConnection = HandshakeController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
+        SocketConnection socketConnection;
+
+        hsController = new HandshakeController();
+        socketConnection = hsController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
+        hsController.close();
+        hsController = null;
+
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         controller.getEventListener().setConnection(socketConnection);
@@ -180,8 +202,10 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         } catch (ConnectException ex) {
             handleConnectException(ex, true);
         } catch (IOException e) {
-            printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
-            printStackTrace(e);
+            if (!isResetting()) {
+                printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
+                printStackTrace(e);
+            }
         }
     }
 

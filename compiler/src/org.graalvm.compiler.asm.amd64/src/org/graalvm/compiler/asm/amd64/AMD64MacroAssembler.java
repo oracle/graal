@@ -600,6 +600,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         applyMIOpAndJcc(AMD64MIOp.TEST, DWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
     }
 
+    public final void testqAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyMIOpAndJcc(AMD64MIOp.TEST, QWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
+    }
+
     public final void testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
         applyMIOpAndJcc(AMD64MIOp.TEST, size, src, imm32, cc, branchTarget, isShortJmp, false, applyBeforeFusedPair);
     }
@@ -612,8 +616,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         applyRMOpAndJcc(AMD64RMOp.TEST, DWORD, src1, src2, cc, branchTarget, isShortJmp);
     }
 
-    public final int testqAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return applyRMOpAndJcc(AMD64RMOp.TEST, QWORD, src1, src2, cc, branchTarget, isShortJmp);
+    public final void testqAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyRMOpAndJcc(AMD64RMOp.TEST, QWORD, src1, src2, cc, branchTarget, isShortJmp);
     }
 
     public final void testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
@@ -727,6 +731,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final void incqAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         applyMOpAndJcc(INC, QWORD, dst, cc, branchTarget, isShortJmp);
+    }
+
+    public final void declAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyMOpAndJcc(DEC, DWORD, dst, cc, branchTarget, isShortJmp);
     }
 
     public final void decqAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {

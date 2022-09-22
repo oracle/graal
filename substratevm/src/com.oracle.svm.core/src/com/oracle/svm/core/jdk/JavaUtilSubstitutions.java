@@ -136,17 +136,6 @@ final class Target_java_util_HashMap {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Set<?> entrySet;
 
-    @Substitute
-    private static Class<?> comparableClassFor(Object x) {
-        if (x instanceof Comparable) {
-            /*
-             * We cannot do all the generic interface checks that the original implementation is
-             * doing, because we do not have the necessary metadata at run time.
-             */
-            return x.getClass();
-        }
-        return null;
-    }
 }
 
 @TargetClass(java.util.concurrent.ConcurrentHashMap.class)
@@ -159,17 +148,6 @@ final class Target_java_util_concurrent_ConcurrentHashMap {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Target_java_util_concurrent_ConcurrentHashMap_EntrySetView entrySet;
 
-    @Substitute
-    private static Class<?> comparableClassFor(Object x) {
-        if (x instanceof Comparable) {
-            /*
-             * We cannot do all the generic interface checks that the original implementation is
-             * doing, because we do not have the necessary metadata at run time.
-             */
-            return x.getClass();
-        }
-        return null;
-    }
 }
 
 @TargetClass(value = java.util.concurrent.ConcurrentHashMap.class, innerClass = "KeySetView")

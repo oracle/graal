@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.loop.phases;
 
 import java.util.EnumSet;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -40,6 +41,8 @@ import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -50,7 +53,6 @@ import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -134,31 +136,38 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     private static final int MAX_ITERATIONS = 3;
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        super.canApply(graphState),
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.GUARD_MOVEMENT, graphState),
+                        NotApplicable.notApplicableIf(!graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards must be allowed."))));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
-        try {
-            if (!graph.getGuardsStage().allowsFloatingGuards()) {
-                return;
-            }
-            EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
-            for (int i = 0; i < MAX_ITERATIONS; i++) {
-                boolean iterate = false;
-                try (NodeEventScope news = graph.trackNodeEvents(change)) {
-                    if (graph.getDebug().isCountEnabled()) {
-                        DebugContext.counter("SpeculativeGuardMovement_Iteration" + i).increment(graph.getDebug());
-                    }
-                    LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-                    loops.detectCountedLoops();
-                    iterate = performSpeculativeGuardMovement(context, graph, loops);
+        EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
+        for (int i = 0; i < MAX_ITERATIONS; i++) {
+            boolean iterate = false;
+            try (NodeEventScope news = graph.trackNodeEvents(change)) {
+                if (graph.getDebug().isCountEnabled()) {
+                    DebugContext.counter("SpeculativeGuardMovement_Iteration" + i).increment(graph.getDebug());
                 }
-                if (change.getNodes().isEmpty() || !iterate) {
-                    break;
-                }
-                change.getNodes().clear();
+                LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
+                loops.detectCountedLoops();
+                iterate = performSpeculativeGuardMovement(context, graph, loops);
             }
-        } finally {
-            graph.setAfterStage(StageFlag.GUARD_MOVEMENT);
+            if (change.getNodes().isEmpty() || !iterate) {
+                break;
+            }
+            change.getNodes().clear();
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.GUARD_MOVEMENT);
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
@@ -174,7 +183,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess, boolean ignoreFrequency) {
-        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess, ignoreFrequency);
+        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess,
+                        ignoreFrequency);
         spec.run();
         return spec.iterate;
     }

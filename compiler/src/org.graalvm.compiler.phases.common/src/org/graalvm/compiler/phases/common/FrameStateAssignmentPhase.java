@@ -25,6 +25,7 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
@@ -34,12 +35,14 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.FrameStateVerification;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
@@ -122,14 +125,26 @@ public class FrameStateAssignmentPhase extends Phase {
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FSA, graphState),
+                        NotApplicable.notApplicableIf(graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards should not be allowed."))),
+                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This phase must run before FSA."))));
+    }
+
+    @Override
     protected void run(StructuredGraph graph) {
-        assert !graph.getGuardsStage().allowsFloatingGuards() && !hasFloatingDeopts(graph);
-        if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
-            ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
-            graph.setGuardsStage(GuardsStage.AFTER_FSA);
-            graph.weakenFrameStateVerification(FrameStateVerification.NONE);
-            graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
-        }
+        assert !hasFloatingDeopts(graph);
+        ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
+        graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterFSA();
+        graphState.weakenFrameStateVerification(FrameStateVerification.NONE);
+        graphState.addFutureStageRequirement(StageFlag.CANONICALIZATION); // See GR-38666.
     }
 
     private static boolean hasFloatingDeopts(StructuredGraph graph) {

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
+
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -39,12 +41,12 @@ public abstract class IsArraySnippets implements Snippets {
 
     @Snippet
     Object objectIsArraySnippet(@Snippet.NonNullParameter Object object, Object trueValue, Object falseValue) {
-        return classIsArray(object.getClass()) ? trueValue : falseValue;
+        return unknownProbability(classIsArray(object.getClass())) ? trueValue : falseValue;
     }
 
     @Snippet
     Object classIsArraySnippet(@Snippet.NonNullParameter Class<?> clazz, Object trueValue, Object falseValue) {
-        return classIsArray(clazz) ? trueValue : falseValue;
+        return unknownProbability(classIsArray(clazz)) ? trueValue : falseValue;
     }
 
     protected abstract boolean classIsArray(Class<?> clazz);

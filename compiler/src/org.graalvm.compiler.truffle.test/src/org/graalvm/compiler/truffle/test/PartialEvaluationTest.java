@@ -140,7 +140,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
                                 newTask());
                 removeFrameStates(actualGraph);
-                assertEquals(expectedGraph, actualGraph, false, checkConstants);
+                assertEquals(expectedGraph, actualGraph, false, checkConstants, true);
                 return actualTarget;
             } catch (BailoutException e) {
                 if (e.isPermanent()) {

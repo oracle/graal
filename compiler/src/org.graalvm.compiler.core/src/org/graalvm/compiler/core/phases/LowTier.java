@@ -31,6 +31,8 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.PlaceholderPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
@@ -40,7 +42,6 @@ import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeExtendsPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
-import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -73,7 +74,12 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(canonicalizerWithoutGVN);
 
-        appendPhase(new UseTrappingNullChecksPhase());
+        /*
+         * This placeholder should be replaced by an instance of {@link AddressLoweringPhase}
+         * specific to the target architecture for this compilation. This should be done by the
+         * backend or the target specific suites provider.
+         */
+        appendPhase(new PlaceholderPhase<LowTierContext>(AddressLoweringPhase.class));
 
         appendPhase(FinalCanonicalizerPhase.createFromCanonicalizer(canonicalizerWithoutGVN));
 

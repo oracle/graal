@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.sampler;
 
 import java.lang.management.ManagementFactory;
@@ -46,12 +45,13 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -64,23 +64,23 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
-class SubstrateSigprofHandlerFeature implements Feature {
+class SubstrateSigprofHandlerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.AllowVMInspection.getValue() && SubstrateSigprofHandler.isProfilingSupported() && ImageInfo.isExecutable();
+        return VMInspectionOptions.hasJFRSupport() && SubstrateSigprofHandler.isProfilingSupported() && ImageInfo.isExecutable();
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ThreadListenerFeature.class, JfrFeature.class, ManagementFeature.class);
+        return Arrays.asList(ThreadListenerSupportFeature.class, JfrFeature.class, ManagementFeature.class);
     }
 
     @Override
@@ -126,7 +126,7 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  * instruction pointers, prepare everything necessary for stack walk, do a stack walk and write IPs
  * into buffer.
  * </p>
- * 
+ *
  * <p>
  * The signal handler is as a <b>producer</b>. On the other side of relation is
  * {@link com.oracle.svm.core.jfr.JfrRecorderThread} that is <b>consumer</b>. The
@@ -151,7 +151,7 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  * In some rare cases, the profiling is impossible e.g. no available buffers in the pool, unknown IP
  * during stack walk, the thread holds the pool's lock when the signal arrives, etc.
  * </p>
- * 
+ *
  * @see SamplerSpinLock
  * @see SamplerBufferStack
  */

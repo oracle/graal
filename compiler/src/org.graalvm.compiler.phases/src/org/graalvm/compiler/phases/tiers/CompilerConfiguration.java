@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 
+import jdk.vm.ci.code.Architecture;
+
 public interface CompilerConfiguration {
 
     PhaseSuite<HighTierContext> createHighTier(OptionValues options);
 
     PhaseSuite<MidTierContext> createMidTier(OptionValues options);
 
-    PhaseSuite<LowTierContext> createLowTier(OptionValues options);
+    PhaseSuite<LowTierContext> createLowTier(OptionValues options, Architecture arch);
 
     LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage(OptionValues options);
 

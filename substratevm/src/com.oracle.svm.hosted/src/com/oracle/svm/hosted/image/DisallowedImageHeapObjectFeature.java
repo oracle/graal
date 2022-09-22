@@ -41,11 +41,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -54,8 +55,8 @@ import com.oracle.svm.util.ImageGeneratorThreadMarker;
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
  */
-@AutomaticFeature
-public class DisallowedImageHeapObjectFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class DisallowedImageHeapObjectFeature implements InternalFeature {
 
     private ClassInitializationSupport classInitialization;
 

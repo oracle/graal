@@ -25,14 +25,13 @@
 package org.graalvm.libgraal.jni.processor;
 
 import static org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor.topDeclaringType;
-import static org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor.createSourceFile;
 
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.Set;
+
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -44,6 +43,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
+
 import org.graalvm.compiler.processor.AbstractProcessor;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
@@ -54,11 +54,6 @@ import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
  */
 @SupportedAnnotationTypes("org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver")
 public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProcessor {
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {

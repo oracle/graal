@@ -46,11 +46,9 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
     @Input protected ValueNode rememberedSet;
     @Input protected ValueNode unaligned;
     @Input protected ValueNode fillContents;
-    @Input protected ValueNode fillStartOffset;
     @Input protected ValueNode emitMemoryBarrier;
 
-    public FormatArrayNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned, ValueNode fillContents, ValueNode fillStartOffset,
-                    ValueNode emitMemoryBarrier) {
+    public FormatArrayNode(ValueNode memory, ValueNode hub, ValueNode length, ValueNode rememberedSet, ValueNode unaligned, ValueNode fillContents, ValueNode emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
@@ -58,7 +56,6 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
         this.rememberedSet = rememberedSet;
         this.unaligned = unaligned;
         this.fillContents = fillContents;
-        this.fillStartOffset = fillStartOffset;
         this.emitMemoryBarrier = emitMemoryBarrier;
     }
 
@@ -86,15 +83,10 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
         return fillContents;
     }
 
-    public ValueNode getFillStartOffset() {
-        return fillStartOffset;
-    }
-
     public ValueNode getEmitMemoryBarrier() {
         return emitMemoryBarrier;
     }
 
     @NodeIntrinsic
-    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents, int fillStartOffset,
-                    boolean emitMemoryBarrier);
+    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents, boolean emitMemoryBarrier);
 }

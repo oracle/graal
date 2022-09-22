@@ -34,7 +34,7 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOpera
 import com.oracle.svm.util.DirectAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.util.VMError;
 

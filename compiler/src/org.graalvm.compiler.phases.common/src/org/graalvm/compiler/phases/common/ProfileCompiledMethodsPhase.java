@@ -27,6 +27,7 @@ package org.graalvm.compiler.phases.common;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.graph.Node;
@@ -38,6 +39,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -100,6 +102,11 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static final boolean WITH_SECTION_HEADER = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_SECTION_HEADER", "false"));
     private static final boolean WITH_INVOKE_FREE_SECTIONS = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_FREE_SECTIONS", "false"));
     private static final boolean WITH_INVOKES = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_INVOKES", "true"));
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     @Override
     protected void run(StructuredGraph graph) {

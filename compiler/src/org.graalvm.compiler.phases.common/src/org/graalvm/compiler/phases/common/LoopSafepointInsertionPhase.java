@@ -26,7 +26,11 @@ package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GenLoopSafepoints;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.SafepointNode;
@@ -47,6 +51,13 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
     }
 
     @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.SAFEPOINTS_INSERTION, graphState),
+                        NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
         if (GenLoopSafepoints.getValue(graph.getOptions())) {
@@ -61,5 +72,11 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
                 }
             }
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.SAFEPOINTS_INSERTION);
     }
 }

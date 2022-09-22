@@ -65,6 +65,7 @@ public final class ModelModule {
     private String targetDataLayout = defaultLayout;
     private DebugInfoFunctionProcessor functionProcessor = null;
     private final ArrayList<LLVMSourceFileReference> sourceFiles = new ArrayList<>();
+    private int totalSize;
 
     public ModelModule() {
     }
@@ -169,5 +170,13 @@ public final class ModelModule {
             }
         }
         return null;
+    }
+
+    public void setTotalSize(int index) {
+        totalSize = index;
+    }
+
+    public int getTotalSize() {
+        return totalSize;
     }
 }

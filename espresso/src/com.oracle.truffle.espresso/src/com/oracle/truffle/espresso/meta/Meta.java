@@ -395,7 +395,7 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS);
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
-        if (context.EnableManagement) {
+        if (context.getEspressoEnv().EnableManagement) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);

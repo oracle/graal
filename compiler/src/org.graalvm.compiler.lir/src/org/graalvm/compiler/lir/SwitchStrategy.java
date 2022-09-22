@@ -95,11 +95,11 @@ public abstract class SwitchStrategy {
     public abstract static class BaseSwitchClosure implements SwitchClosure {
 
         private final CompilationResultBuilder crb;
-        private final Assembler masm;
+        private final Assembler<?> masm;
         private final LabelRef[] keyTargets;
         private final LabelRef defaultTarget;
 
-        public BaseSwitchClosure(CompilationResultBuilder crb, Assembler masm, LabelRef[] keyTargets, LabelRef defaultTarget) {
+        public BaseSwitchClosure(CompilationResultBuilder crb, Assembler<?> masm, LabelRef[] keyTargets, LabelRef defaultTarget) {
             this.crb = crb;
             this.masm = masm;
             this.keyTargets = keyTargets;

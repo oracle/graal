@@ -58,6 +58,17 @@ public final class Types {
         return type;
     }
 
+    public Symbol<Type> getOrCreate(String name) {
+        return getOrCreate(ByteSequence.create(name));
+    }
+
+    public Symbol<Type> getOrCreate(ByteSequence name) {
+        if (!Validation.validTypeDescriptor(name, true)) {
+            return null;
+        }
+        return symbols.symbolify(name);
+    }
+
     public static String internalFromClassName(String className) {
         if (className.startsWith("[") || className.endsWith(";")) {
             return className.replace('.', '/');

@@ -29,12 +29,12 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -44,9 +44,6 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
@@ -62,14 +59,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final GraalHotSpotVMConfig config;
     private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
-    private Map<String, Integer> missingIntrinsicMetrics;
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
-        // @formatter:on
-    }
+    private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
     /**
      * Predicates that determine which types may be intrinsified.
@@ -144,27 +134,32 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         if (Options.WarnMissingIntrinsic.getValue(options)) {
             String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(), targetMethod.getSignature().toMethodDescriptor());
             if (unimplementedIntrinsics.isMissing(method)) {
-                int currentCount;
-                synchronized (unimplementedIntrinsics) {
+                synchronized (this) {
                     if (missingIntrinsicMetrics == null) {
-                        missingIntrinsicMetrics = new HashMap<>();
+                        missingIntrinsicMetrics = EconomicMap.create();
                         try {
                             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                                 if (missingIntrinsicMetrics.size() > 0) {
                                     TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
-                                    missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
-                                        TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
-                                    });
+                                    List<Pair<String, Integer>> data = new ArrayList<>();
+                                    final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();
+                                    while (cursor.advance()) {
+                                        data.add(Pair.create(cursor.getKey(), cursor.getValue()));
+                                    }
+                                    data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder())).forEach(
+                                                    pair -> TTY.println("        - %d occurrences during parsing: %s", pair.getRight(), pair.getLeft()));
                                 }
                             }));
                         } catch (IllegalStateException e) {
                             // shutdown in progress, no need to register the hook
                         }
                     }
-                    currentCount = missingIntrinsicMetrics.compute(method, (key, cnt) -> cnt == null ? 1 : Math.addExact(cnt, 1));
-                }
-                if (currentCount == 1) {
-                    TTY.println("[Warning] Missing intrinsic %s found during parsing.", method);
+                    if (missingIntrinsicMetrics.containsKey(method)) {
+                        missingIntrinsicMetrics.put(method, missingIntrinsicMetrics.get(method) + 1);
+                    } else {
+                        TTY.println("[Warning] Missing intrinsic %s found during parsing.", method);
+                        missingIntrinsicMetrics.put(method, 1);
+                    }
                 }
             }
         }

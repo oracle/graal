@@ -83,6 +83,12 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
      */
     private static final Method setSpeculationLog;
 
+    /**
+     * Reflective reference to {@code InstalledCode.invalidate(boolean deoptimize)} so that this
+     * code can be compiled against older JVMCI API.
+     */
+    private static final Method invalidateInstalledCode;
+
     static {
         Method method = null;
         try {
@@ -90,6 +96,12 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
         } catch (NoSuchMethodException e) {
         }
         setSpeculationLog = method;
+        method = null;
+        try {
+            method = InstalledCode.class.getDeclaredMethod("invalidate", boolean.class);
+        } catch (NoSuchMethodException e) {
+        }
+        invalidateInstalledCode = method;
     }
 
     /**
@@ -101,11 +113,15 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
         if (oldCode == code) {
             return;
         }
-        /*
-         * [GR-31220] This is where we want to make the old code not-entrant but not invalidate.
-         *
-         * oldCode.makeNotEntrant()
-         */
+        if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
+            try {
+                invalidateInstalledCode.invoke(oldCode, false);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
 
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
         // and so allowing it to be installed here would invalidate the truth of

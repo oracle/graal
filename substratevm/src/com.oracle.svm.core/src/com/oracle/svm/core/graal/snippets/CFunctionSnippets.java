@@ -50,11 +50,11 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
@@ -102,7 +102,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
         /* Push a JavaFrameAnchor to the thread-local linked list. */
-        JavaFrameAnchor anchor = (JavaFrameAnchor) StackValueNode.stackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
+        JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
         JavaFrameAnchors.pushFrameAnchor(anchor);
 
         /*
@@ -137,7 +137,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
     }
 
-    private CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
@@ -241,15 +241,15 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             cur = ((FixedWithNextNode) cur).next();
         }
     }
+}
 
-    @AutomaticFeature
-    static class CFunctionSnippetsFeature implements InternalFeature {
+@AutomaticallyRegisteredFeature
+class CFunctionSnippetsFeature implements InternalFeature {
 
-        @Override
-        @SuppressWarnings("unused")
-        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
-                        Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-            new CFunctionSnippets(options, providers, lowerings);
-        }
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new CFunctionSnippets(options, providers, lowerings);
     }
 }

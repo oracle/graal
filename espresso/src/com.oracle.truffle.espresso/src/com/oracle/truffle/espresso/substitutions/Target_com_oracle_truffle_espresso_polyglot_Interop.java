@@ -51,6 +51,8 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
+import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -76,7 +78,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return (StaticObject) value;
             }
             // Wrap foreign object as ForeignException.
-            return StaticObject.createForeignException(context.getMeta(), value, valueInterop);
+            return StaticObject.createForeignException(context, value, valueInterop);
         }
 
         static String toHostString(Object value, InteropLibrary valueInterop) {
@@ -93,10 +95,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             return receiver.isForeignObject() ? receiver.rawForeignObject(language) : receiver;
         }
 
-        static StaticObject wrapForeignException(Throwable throwable, Meta meta) {
+        static StaticObject wrapForeignException(Throwable throwable, EspressoContext context) {
             assert InteropLibrary.getUncached().isException(throwable);
             assert throwable instanceof AbstractTruffleException;
-            return StaticObject.createForeignException(meta, throwable, InteropLibrary.getUncached());
+            return StaticObject.createForeignException(context, throwable, InteropLibrary.getUncached());
         }
 
         @TruffleBoundary
@@ -1950,13 +1952,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object[].class) StaticObject arguments,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ToEspressoNode toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
-            String hostMember = InteropUtils.toHostString(member, memberInterop);
+            String hostMember = getMeta().toHostString(member);
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrap(getLanguage(), receiver), hostMember, hostArguments);
@@ -1964,6 +1967,21 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                exceptionProfile.enter();
+                try {
+                    Object metaObject = exceptionInterop.getMetaObject(ex);
+                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
+                    if (converter == null) {
+                        // no conversion, so throw the original exception
+                        throw ex;
+                    }
+                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(getContext(), ex, exceptionInterop));
+                    throw EspressoException.wrap(converted, getMeta());
+                } catch (UnsupportedMessageException e) {
+                    // throw the original exception then
+                }
+                throw ex;
             }
         }
     }
@@ -2164,7 +2182,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object[].class) StaticObject arguments,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached ToHostArguments toHostArguments,
                         @Cached BranchProfile exceptionProfile) {
             try {
@@ -2174,6 +2194,21 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                exceptionProfile.enter();
+                try {
+                    Object metaObject = exceptionInterop.getMetaObject(ex);
+                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
+                    if (converter == null) {
+                        // no conversion, so throw the original exception
+                        throw ex;
+                    }
+                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(getContext(), ex, exceptionInterop));
+                    throw EspressoException.wrap(converted, getMeta());
+                } catch (UnsupportedMessageException e) {
+                    // throw the original exception then
+                }
+                throw ex;
             }
         }
     }

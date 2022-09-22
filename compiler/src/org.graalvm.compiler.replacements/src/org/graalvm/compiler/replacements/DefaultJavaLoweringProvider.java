@@ -62,6 +62,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -338,6 +339,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             divRemFixed = graph.add(new SignedDivNode(dividend, divisor, divRem.getGuard()));
         } else if (divRem instanceof SignedFloatingIntegerRemNode) {
             divRemFixed = graph.add(new SignedRemNode(dividend, divisor, divRem.getGuard()));
+        } else {
+            throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem);
         }
         divRemFixed.setCanDeopt(false);
         divRem.replaceAtUsagesAndDelete(divRemFixed);
@@ -668,7 +671,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         final LogicNode isNull = graph.addOrUniqueWithInputs(IsNullNode.create(value));
         final EndNode trueEnd = graph.add(new EndNode());
         final EndNode falseEnd = graph.add(new EndNode());
-        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, BranchProbabilityData.unknown()));
+        // We do not know the probability of this object being null. Assuming null is uncommon and
+        // can be wrong for exact type checks and cause performance degradations.
+        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, BranchProbabilityData.injected(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY)));
         final MergeNode merge = graph.add(new MergeNode());
         merge.addForwardEnd(trueEnd);
         merge.addForwardEnd(falseEnd);
@@ -893,7 +898,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
-        if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
             List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
 
             ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];

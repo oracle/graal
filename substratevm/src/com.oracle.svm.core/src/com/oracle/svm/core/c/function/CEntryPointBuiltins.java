@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 

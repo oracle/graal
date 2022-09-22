@@ -32,7 +32,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;

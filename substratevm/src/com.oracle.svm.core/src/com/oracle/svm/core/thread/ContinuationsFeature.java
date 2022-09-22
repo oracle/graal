@@ -24,47 +24,46 @@
  */
 package com.oracle.svm.core.thread;
 
-import java.util.concurrent.ForkJoinPool;
+import java.lang.reflect.Field;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-@Platforms(Platform.HOSTED_ONLY.class)
-public class ContinuationsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ContinuationsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (Continuation.isSupported()) {
-            VirtualThreads impl;
-            if (LoomSupport.isEnabled()) {
-                impl = new LoomVirtualThreads();
-            } else {
-                /*
-                 * GR-37518: ForkJoinPool on 11 syncs on a String which doesn't have its own monitor
-                 * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
-                 * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
-                 */
-                UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 17, "Continuations (%s) are currently supported only on JDK 17 and later.",
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
-
-                impl = new SubstrateVirtualThreads();
+        if (!Continuation.isSupported()) {
+            if (JavaVersionUtil.JAVA_SPEC >= 19) {
+                // Can still get initialized and fail the image build despite substitution, so defer
+                RuntimeClassInitialization.initializeAtRunTime("jdk.internal.vm.Continuation");
             }
-            ImageSingletons.add(VirtualThreads.class, impl);
+            return;
+        }
+
+        if (LoomSupport.isEnabled()) {
+            VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 19);
+            ImageSingletons.add(VirtualThreads.class, new LoomVirtualThreads());
+        } else if (JavaVersionUtil.JAVA_SPEC == 17) {
+            ImageSingletons.add(VirtualThreads.class, new SubstrateVirtualThreads());
         } else {
-            UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), "%s cannot be enabled without option %s.",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"),
+            /*
+             * GR-37518: on 11, ForkJoinPool syncs on a String which doesn't have its own monitor
+             * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
+             * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
+             */
+            throw UserError.abort("Continuations are currently supported only on JDK 17 with option %s, or on JDK 19 with preview features enabled (--enable-preview).",
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
@@ -76,22 +75,29 @@ public class ContinuationsFeature implements Feature {
                 ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
             }
 
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            access.registerAsAccessed(ipField);
+
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
-
-            if (LoomSupport.isEnabled()) {
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
-            }
         } else {
             access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
         }
     }
 
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (Continuation.isSupported()) {
+            Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
+            long offset = access.objectFieldOffset(ipField);
+            ContinuationSupport.singleton().setIPOffset(offset);
+        }
+    }
+
     static void abortIfUnsupported() {
         if (!Continuation.isSupported()) {
-            throw UserError.abort("Continuation support is used, but not enabled. Use options %s or %s.",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"),
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+"));
+            throw UserError.abort("Continuation support is used, but not available. Use JDK 17 with option %s, or JDK 19 with preview features enabled.",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }
 }

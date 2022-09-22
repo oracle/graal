@@ -35,17 +35,18 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -282,8 +283,8 @@ final class CodeInfoTableCounters {
     final Counter invalidateInstalledCodeCount = new Counter(counters, "invalidateInstalledCode", "");
 }
 
-@AutomaticFeature
-class CodeInfoFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class CodeInfoFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(CounterFeature.class);

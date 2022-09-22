@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.nodes.LoopBeginNode;
@@ -31,6 +32,8 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.util.GraphOrder;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -70,5 +73,46 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
         Assert.assertEquals(2, graph.getNodes().filter(loopPhis).count());
 
         test("loopSnippet");
+    }
+
+    public static int loopSnippet01() {
+        int i = 0;
+        int emptyPhi1 = 100;
+        int emptyPhi2 = 32750;
+        while (true) {
+            if (i >= 10000) {
+                break;
+            }
+            emptyPhi1 = (byte) (emptyPhi1 + 1);
+            emptyPhi2 = (short) (emptyPhi2 + 1);
+            if (foo(1) != 1) {
+                GraalDirectives.sideEffect(emptyPhi1);
+                GraalDirectives.sideEffect(emptyPhi2);
+            }
+            i++;
+        }
+        return i;
+    }
+
+    public static int foo(int i) {
+        return i;
+    }
+
+    @Test
+    public void test01() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("loopSnippet01"), AllowAssumptions.NO);
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        g.clearAllStateAfterForTestingOnly();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        /*
+         * Now the only values holding the emptyPhis alive is a chain of indirect usages, i.e., a
+         * cycle. The only part of the codebase that could cleanup this cycle is a proper latest
+         * schedule that will not visit the phi and its usages and consider them dead and will
+         * delete them. We have to run a canon before that detects these patterns, else verification
+         * of the schedule would fail.
+         */
+        GraphOrder.assertSchedulableGraph(g);
     }
 }

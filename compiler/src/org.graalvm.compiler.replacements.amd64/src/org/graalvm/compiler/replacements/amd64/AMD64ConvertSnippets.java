@@ -25,12 +25,13 @@
 package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -61,10 +62,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static int f2i(float input, int result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
-            if (Float.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0f) {
+            } else if (unknownProbability(input > 0.0f)) {
                 // input is > 0 -> return max int
                 return Integer.MAX_VALUE;
             }
@@ -86,10 +87,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static long f2l(float input, long result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
-            if (Float.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0f) {
+            } else if (unknownProbability(input > 0.0f)) {
                 // input is > 0 -> return max int
                 return Long.MAX_VALUE;
             }
@@ -111,10 +112,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static int d2i(double input, int result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
-            if (Double.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0d) {
+            } else if (unknownProbability(input > 0.0d)) {
                 // input is positive -> return maxInt
                 return Integer.MAX_VALUE;
             }
@@ -136,10 +137,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static long d2l(double input, long result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
-            if (Double.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0d) {
+            } else if (unknownProbability(input > 0.0d)) {
                 // input is positive -> return maxInt
                 return Long.MAX_VALUE;
             }

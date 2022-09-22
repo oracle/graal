@@ -26,8 +26,8 @@ package com.oracle.svm.hosted.config;
 
 import org.graalvm.compiler.core.common.NumUtil;
 
-import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -61,7 +61,7 @@ public class HybridLayout<T> {
     }
 
     private final ObjectLayout layout;
-    private final HostedType arrayType;
+    private final HostedType arrayComponentType;
     private final HostedField arrayField;
     private final HostedField typeIDSlotsField;
     private final int arrayBaseOffset;
@@ -73,18 +73,18 @@ public class HybridLayout<T> {
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout, MetaAccessProvider metaAccess) {
         this.layout = layout;
         HybridLayoutSupport.HybridInfo hybridInfo = HybridLayoutSupport.singleton().inspectHybrid(hybridClass, metaAccess);
-        this.arrayType = hybridInfo.arrayType;
+        this.arrayComponentType = hybridInfo.arrayComponentType;
         this.arrayField = hybridInfo.arrayField;
         this.typeIDSlotsField = hybridInfo.typeIDSlotsField;
         this.arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), layout.sizeInBytes(getArrayElementStorageKind()));
     }
 
-    public HostedType getArrayType() {
-        return arrayType;
+    public HostedType getArrayComponentType() {
+        return arrayComponentType;
     }
 
     public JavaKind getArrayElementStorageKind() {
-        return arrayType.getComponentType().getStorageKind();
+        return arrayComponentType.getStorageKind();
     }
 
     public int getArrayBaseOffset() {
@@ -92,7 +92,7 @@ public class HybridLayout<T> {
     }
 
     public long getArrayElementOffset(int index) {
-        return getArrayBaseOffset() + index * layout.sizeInBytes(getArrayElementStorageKind());
+        return getArrayBaseOffset() + ((long) index) * layout.sizeInBytes(getArrayElementStorageKind());
     }
 
     public long getTotalSize(int length) {

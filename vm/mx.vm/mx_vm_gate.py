@@ -273,7 +273,7 @@ def gate_body(args, tasks):
             if libgraal_location is None:
                 mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
             else:
-                extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
+                extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location), '-XX:JVMCIThreadsPerNativeLibraryRuntime=1']
                 if args.extra_vm_argument:
                     extra_vm_arguments += args.extra_vm_argument
 

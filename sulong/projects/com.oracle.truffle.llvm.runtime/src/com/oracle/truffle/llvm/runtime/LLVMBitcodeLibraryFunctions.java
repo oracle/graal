@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,4 +65,16 @@ public final class LLVMBitcodeLibraryFunctions {
             return (int) execute(stack, unwindHeader, catchType.copy());
         }
     }
+
+    public static final class SulongCanCatchWindowsNode extends LibraryFunctionNode {
+
+        public SulongCanCatchWindowsNode(LLVMContext context) {
+            super(context, "sulong_eh_canCatch_windows");
+        }
+
+        public boolean canCatch(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer catchType, LLVMPointer imageBase) {
+            return (boolean) execute(stack, thrownObject, throwInfo, catchType.copy(), imageBase);
+        }
+    }
+
 }

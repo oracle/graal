@@ -25,12 +25,15 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
+import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "hotspot", sources = {
@@ -41,6 +44,9 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 ArrayRegionCompareToNode.class,
                 ArrayCopyWithConversionsNode.class,
                 VectorizedMismatchNode.class,
+                AESNode.class,
+                CounterModeAESNode.class,
+                GHASHProcessBlocksNode.class,
 })
 public final class IntrinsicStubs {
 }

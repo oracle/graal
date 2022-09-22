@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationWrapper;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -224,7 +225,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     @Override
     public String toString() {
-        return "AnnotatedMethod<definition/implementation " + original.toString() + ", extra annotations " + Arrays.toString(getAnnotations()) + ">";
+        return "AnnotatedMethod<definition/implementation " + original.toString() + ", extra annotations " + Arrays.toString(GuardedAnnotationAccess.getAnnotationTypes(annotated)) + ">";
     }
 
     @Override

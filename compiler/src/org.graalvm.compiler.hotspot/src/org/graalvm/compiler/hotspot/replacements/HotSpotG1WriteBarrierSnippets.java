@@ -200,7 +200,8 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
             this.lowerer = new HotspotG1WriteBarrierLowerer(config, factory);
 
             HotSpotG1WriteBarrierSnippets receiver = new HotSpotG1WriteBarrierSnippets(providers.getRegisters());
-            g1PreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PreWriteBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION, SATB_QUEUE_INDEX_LOCATION,
+            g1PreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PreWriteBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION,
+                            SATB_QUEUE_INDEX_LOCATION,
                             SATB_QUEUE_BUFFER_LOCATION);
             g1ReferentReadBarrier = snippet(G1WriteBarrierSnippets.class, "g1ReferentReadBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION,
                             SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);

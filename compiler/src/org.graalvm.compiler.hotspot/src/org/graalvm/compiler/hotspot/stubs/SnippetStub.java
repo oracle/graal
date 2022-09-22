@@ -33,10 +33,10 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -98,7 +98,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
                 }
             }
 
-            graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
+            graph.getGraphState().setGuardsStage(GuardsStage.FLOATING_GUARDS);
             CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
             canonicalizer.apply(graph, providers);
             new HighTierLoweringPhase(canonicalizer).apply(graph, providers);

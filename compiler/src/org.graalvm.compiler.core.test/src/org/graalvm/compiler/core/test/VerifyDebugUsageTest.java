@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.VerifyPhase.VerificationError;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -56,8 +55,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class VerifyDebugUsageTest {
 
-    private static class InvalidLogUsagePhase extends Phase {
-
+    private static class InvalidLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -68,8 +66,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidLogAndIndentUsagePhase extends Phase {
-
+    private static class InvalidLogAndIndentUsagePhase extends TestPhase {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
@@ -83,8 +80,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidDumpUsagePhase extends Phase {
-
+    private static class InvalidDumpUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -92,8 +88,7 @@ public class VerifyDebugUsageTest {
         }
     }
 
-    private static class InvalidDumpLevelPhase extends Phase {
-
+    private static class InvalidDumpLevelPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -101,8 +96,7 @@ public class VerifyDebugUsageTest {
         }
     }
 
-    private static class NonConstantDumpLevelPhase extends Phase {
-
+    private static class NonConstantDumpLevelPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -114,8 +108,7 @@ public class VerifyDebugUsageTest {
         }
     }
 
-    private static class InvalidVerifyUsagePhase extends Phase {
-
+    private static class InvalidVerifyUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -124,8 +117,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatLogUsagePhase extends Phase {
-
+    private static class InvalidConcatLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -136,8 +128,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatLogAndIndentUsagePhase extends Phase {
-
+    private static class InvalidConcatLogAndIndentUsagePhase extends TestPhase {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
@@ -151,8 +142,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatDumpUsagePhase extends Phase {
-
+    private static class InvalidConcatDumpUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -161,8 +151,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatVerifyUsagePhase extends Phase {
-
+    private static class InvalidConcatVerifyUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -171,8 +160,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class ValidLogUsagePhase extends Phase {
-
+    private static class ValidLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -183,8 +171,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class ValidLogAndIndentUsagePhase extends Phase {
-
+    private static class ValidLogAndIndentUsagePhase extends TestPhase {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
@@ -198,8 +185,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class ValidDumpUsagePhase extends Phase {
-
+    private static class ValidDumpUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -208,8 +194,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class ValidVerifyUsagePhase extends Phase {
-
+    private static class ValidVerifyUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -218,14 +203,14 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidGraalErrorGuaranteePhase extends Phase {
+    private static class InvalidGraalErrorGuaranteePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             GraalError.guarantee(graph.getNodes().count() > 0, "Graph must contain nodes %s %s %s", graph, graph, graph.toString());
         }
     }
 
-    private static class ValidGraalErrorGuaranteePhase extends Phase {
+    private static class ValidGraalErrorGuaranteePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             GraalError.guarantee(graph.getNodes().count() > 0, "Graph must contain nodes %s", graph);
@@ -234,14 +219,14 @@ public class VerifyDebugUsageTest {
 
     public static Object sideEffect;
 
-    private static class InvalidGraalErrorCtorPhase extends Phase {
+    private static class InvalidGraalErrorCtorPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             sideEffect = new GraalError("No Error %s", graph.toString());
         }
     }
 
-    private static class ValidGraalErrorCtorPhase extends Phase {
+    private static class ValidGraalErrorCtorPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             sideEffect = new GraalError("Error %s", graph);

@@ -27,10 +27,8 @@ package com.oracle.svm.core.posix;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -38,8 +36,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
@@ -50,8 +50,8 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
 
-@AutomaticFeature
-class PosixNativeLibraryFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixNativeLibrarySupport.initialize();
@@ -76,7 +76,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     @Override
     public boolean initializeBuiltinLibraries() {
         if (Isolates.isCurrentFirst()) { // raise process fd limit to hard max if possible
-            Resource.rlimit rlp = StackValue.get(Resource.rlimit.class);
+            Resource.rlimit rlp = UnsafeStackValue.get(Resource.rlimit.class);
             if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
                 UnsignedWord newValue = rlp.rlim_max();
                 if (Platform.includedIn(Platform.DARWIN.class)) {

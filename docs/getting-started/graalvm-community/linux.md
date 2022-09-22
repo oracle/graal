@@ -19,7 +19,7 @@ Follow these steps to install GraalVM Community Edition on the Linux operating s
 tar -xzf graalvm-ce-java<version>-linux-<architecture>-<version>.tar.gz
 ```
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
-  - Point the `PATH` environment variable to the GraalVM Enterprise `bin` directory:
+  - Point the `PATH` environment variable to the GraalVM `bin` directory:
   ```shell
   export PATH=/path/to/<graalvm>/bin:$PATH
   ```
@@ -51,8 +51,6 @@ Language runtimes:
 * [Ruby](../../reference-manual/ruby/README.md)
 * [R](/../../reference-manual/r/README.md)
 * [Wasm](../../reference-manual/wasm/README.md)
-​
-These runtimes are not part of the GraalVM Community base distribution and must be installed separately.
 
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
 Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.

@@ -207,6 +207,7 @@ function(add_sulong_test TEST)
       # files such as .bc files override the suffix
       set_target_properties(${TARGET} PROPERTIES SUFFIX ${SUFFIX})
     endif()
+    set_target_properties(${TARGET} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
     set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${OUTPUT})
     set_target_properties(${TARGET} PROPERTIES Fortran_MODULE_DIRECTORY ${OUTPUT_DIR}/${OUTPUT}.mod)
     set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})

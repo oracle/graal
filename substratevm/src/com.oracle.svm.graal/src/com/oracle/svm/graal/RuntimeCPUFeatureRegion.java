@@ -49,18 +49,20 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.graal.aarch64.AArch64CPUFeatureRegionOp;
 import com.oracle.svm.graal.amd64.AMD64CPUFeatureRegionOp;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 class RuntimeCPUFeatureRegionFeature implements InternalFeature {
 
     @Override
@@ -157,6 +159,9 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
             if (arch instanceof AMD64) {
                 LIRGenerator generator = (LIRGenerator) tool.getLIRGeneratorTool();
                 generator.append(new AMD64CPUFeatureRegionOp.AMD64CPUFeatureRegionEnterOp(checkedCast(features, AMD64.CPUFeature.class)));
+            } else if (arch instanceof AArch64) {
+                LIRGenerator generator = (LIRGenerator) tool.getLIRGeneratorTool();
+                generator.append(new AArch64CPUFeatureRegionOp.AArch64CPUFeatureRegionEnterOp(checkedCast(features, AArch64.CPUFeature.class)));
             } else {
                 throw GraalError.shouldNotReachHere("unsupported architecture " + arch);
             }
@@ -183,6 +188,9 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
             if (arch instanceof AMD64) {
                 LIRGenerator generator = (LIRGenerator) tool.getLIRGeneratorTool();
                 generator.append(new AMD64CPUFeatureRegionOp.AMD64CPUFeatureRegionLeaveOp());
+            } else if (arch instanceof AArch64) {
+                LIRGenerator generator = (LIRGenerator) tool.getLIRGeneratorTool();
+                generator.append(new AArch64CPUFeatureRegionOp.AArch64CPUFeatureRegionLeaveOp());
             } else {
                 throw GraalError.shouldNotReachHere("unsupported architecture " + arch);
             }

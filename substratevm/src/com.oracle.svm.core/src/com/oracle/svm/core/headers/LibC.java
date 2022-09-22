@@ -32,7 +32,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 public class LibC {
     public static final int EXIT_CODE_ABORT = 99;

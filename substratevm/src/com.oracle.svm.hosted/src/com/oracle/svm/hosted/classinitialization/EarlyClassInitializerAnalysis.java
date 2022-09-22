@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,9 +39,9 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -176,7 +176,7 @@ final class EarlyClassInitializerAnalysis {
                         .method(clinit)
                         .recordInlinedMethods(false)
                         .build();
-        graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        graph.getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, graphBuilderConfig, context.getOptimisticOptimizations());
 
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(new AbortOnDisallowedNode())) {

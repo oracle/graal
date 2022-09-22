@@ -62,7 +62,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -214,8 +213,8 @@ public class ProcessBuilderTest {
             try {
                 interop.execute(closeContextCallBack);
                 Assert.fail("Expected host exception.");
-            } catch (AbstractTruffleException hostException) {
-                Assert.assertTrue(interop.asString(interop.getExceptionMessage(hostException)).startsWith("The context has an alive sub-process"));
+            } catch (IllegalStateException illegalState) {
+                Assert.assertTrue(illegalState.getMessage().startsWith("The context has an alive sub-process"));
             } finally {
                 p.destroyForcibly();
             }

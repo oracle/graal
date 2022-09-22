@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.Pointer;
 
 /** Operations on virtual threads. */
 public interface VirtualThreads {
@@ -70,4 +71,14 @@ public interface VirtualThreads {
     void unpinCurrent();
 
     Executor getScheduler(Thread thread);
+
+    void blockedOn(Target_sun_nio_ch_Interruptible b);
+
+    /**
+     * Virtual thread support must be able to support virtual thread stack frames from its carrier
+     * thread, therefore this method is also responsible for taking platform thread stack traces.
+     */
+    StackTraceElement[] getVirtualOrPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP);
+
+    StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP);
 }

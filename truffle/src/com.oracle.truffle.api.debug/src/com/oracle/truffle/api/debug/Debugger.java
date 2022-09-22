@@ -455,7 +455,7 @@ public final class Debugger {
 class DebuggerSnippets {
 
     public void disableStepping() {
-        Engine engine = null;
+        Engine engine = Engine.create();
         // BEGIN: DebuggerSnippets#disableStepping
         Debugger debugger = Debugger.find(engine);
         debugger.disableStepping();

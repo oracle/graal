@@ -24,18 +24,6 @@
  */
 package org.graalvm.nativebridge.processor;
 
-import org.graalvm.compiler.processor.AbstractProcessor;
-import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
-import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
-import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -48,6 +36,19 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
+import javax.tools.JavaFileObject;
+
+import org.graalvm.compiler.processor.AbstractProcessor;
+import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
+import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
+
 @SupportedAnnotationTypes({
                 HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION,
                 NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION,
@@ -56,11 +57,6 @@ import java.util.stream.Collectors;
 public final class NativeBridgeProcessor extends AbstractProcessor {
 
     public NativeBridgeProcessor() {
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
     }
 
     @Override

@@ -1186,6 +1186,17 @@ public class ELFObjectFile extends ObjectFile {
         newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
         newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
         /*
+         * Add symbols for the base of all DWARF sections whose content may need to be referenced
+         * using a section global offset. These need to be written using a base relative reloc so
+         * that they get updated if the section is merged with DWARF content from other ELF objects
+         * during image linking.
+         */
+        createDefinedSymbol(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl.getElement(), 0, 0, false, false);
+        createDefinedSymbol(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl.getElement(), 0, 0, false, false);
+        createDefinedSymbol(elfLineSectionImpl.getSectionName(), elfLineSectionImpl.getElement(), 0, 0, false, false);
+        createDefinedSymbol(elfStrSectionImpl.getSectionName(), elfStrSectionImpl.getElement(), 0, 0, false, false);
+        createDefinedSymbol(elfLocSectionImpl.getSectionName(), elfLocSectionImpl.getElement(), 0, 0, false, false);
+        /*
          * The byte[] for each implementation's content are created and written under
          * getOrDecideContent. Doing that ensures that all dependent sections are filled in and then
          * sized according to the declared dependencies. However, if we leave it at that then

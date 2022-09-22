@@ -9,15 +9,23 @@ permalink: /reference-manual/native-image/guides/create-heap-dump/
 
 You can create a heap dump of a running executable to monitor its execution. Just like any other Java heap dump, it can be opened with the [VisualVM](../../../tools/visualvm.md) tool.
 
-To enable heap dump support, native executables must be built with the `-H:+AllowVMInspection` option. Heap dumps can then be created in three different ways:
+To enable heap dump support, native executables must be built with the `--enable-monitoring=heapdump` option. Heap dumps can then be created in three different ways:
 
-1. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
-2. Create heap dumps sending `USR1` (other supported signals are `QUIT/BREAK` for stack dumps and `USR2` to dump runtime compilation information).
-3. Create a heap dumps programmatically through the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API.
+1. Create heap dumps with VisualVM.
+2. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
+3. Create heap dumps sending a `SIGUSR1` signal at run time.
+4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API.
 
 All three approaches are described below.
 
 >Note: Creating heap dumps is not available on the Microsoft Windows platform.
+
+## Create Heap Dumps with VisualVM
+
+A convenient way to create heap dumps is to use [VisualVM](../../../tools/visualvm.md).
+For this, you need to add `jvmstat` to the `--enable-monitoring` option (for example, `--enable-monitoring=heapdump,jvmstat`).
+This will allow VisualVM to pick up and list running Native Image processes.
+You can then request heap dumps in the same way you can request them when your application runs on the JVM (for example, right-click on the process, then select "Heap Dump").
 
 ## Dump the Initial Heap of a Native Executable
 
@@ -26,17 +34,17 @@ This can be useful to identify which objects the Native Image build process allo
 For a HelloWorld example, use the option as follows:
 
 ```shell
-$GRAALVM_HOME/bin/native-image HelloWorld -H:+AllowVMInspection
+$GRAALVM_HOME/bin/native-image HelloWorld --enable-monitoring=heapdump
 ./helloworld -XX:+DumpHeapAndExit
 Heap dump created at '/path/to/helloworld.hprof'.
 ```
 
-## Handle USR1 Signals
+## Create Heap Dumps with SIGUSR1 (Linux/macOS only)
 
 The following example is a simple multi-threaded Java application that runs for 60 seconds. 
-This provides you with enough time to send it a `USR1` signal. The application will handle the signal and create a heap dump in the application's working directory. The heap dump will contain the `Collection` of `Person`s referenced by the static variable `CROWD`.
+This provides you with enough time to send it a `SIGUSR1` signal. The application will handle the signal and create a heap dump in the application's working directory. The heap dump will contain the `Collection` of `Person`s referenced by the static variable `CROWD`.
 
-Follow these steps to build a native executable that will produce a heap dump when it receives a `USR1` signal.
+Follow these steps to build a native executable that will produce a heap dump when it receives a `SIGUSR1` signal.
 
 1.  Save the following code in a file named _SVMHeapDump.java_:
     ```java
@@ -122,11 +130,11 @@ Follow these steps to build a native executable that will produce a heap dump wh
     ```shell
     $JAVA_HOME/bin/javac SVMHeapDump.java
     ```
-    Build a native executable using the `-H:+AllowVMInspection` command-line option.
-    (This causes the resulting native executable to produce a heap dump when it receives a `USR1` signal.)
+    Build a native executable using the `--enable-monitoring=heapdump` command-line option.
+    (This causes the resulting native executable to produce a heap dump when it receives a `SIGUSR1` signal.)
 
     ```shell
-    $JAVA_HOME/bin/native-image SVMHeapDump -H:+AllowVMInspection
+    $JAVA_HOME/bin/native-image SVMHeapDump --enable-monitoring=heapdump
     ```
 
     (The `native-image` builder creates a native executable from the `SVMHeapDump.class`.

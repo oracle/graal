@@ -112,6 +112,9 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
      */
     @TruffleBoundary
     void doExit(int code) {
+        if (!getContext().isInitialized()) {
+            return;
+        }
         getContext().getLogger().fine(() -> {
             StaticObject currentThread = getContext().getCurrentThread();
             String guestName = getThreadAccess().getThreadName(currentThread);
@@ -254,11 +257,10 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
                     }
                     return str;
                 });
-                if (getContext().AllowHostExit) {
+                if (getContext().getEspressoEnv().AllowHostExit) {
                     // Needed until we can release rogue threads from Truffle (GR-28701).
                     getContext().getLogger().severe("Calling Host System.exit()...");
                     System.exit(getExitStatus());
-
                 }
             }
         }

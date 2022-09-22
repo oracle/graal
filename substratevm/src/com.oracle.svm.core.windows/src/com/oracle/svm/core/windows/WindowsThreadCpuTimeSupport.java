@@ -24,22 +24,19 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
+@AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override
@@ -76,15 +73,5 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             total.add(WordFactory.unsigned(kernel.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(kernel.dwLowDateTime())));
         }
         return total.multiply(100).rawValue();
-    }
-}
-
-@Platforms(Platform.WINDOWS.class)
-@AutomaticFeature
-class WindowsThreadCpuTimeFeature implements Feature {
-
-    @Override
-    public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(ThreadCpuTimeSupport.class, new WindowsThreadCpuTimeSupport());
     }
 }

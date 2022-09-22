@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 
 public interface AuxiliaryImageHeap {

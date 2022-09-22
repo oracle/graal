@@ -23,6 +23,21 @@
     suite_dir:: "vm",
     mx_env:: {
       libgraal:: "libgraal"
+    },
+
+    libgraal_predicate_conf:: {
+      suites:: [
+        "sdk",
+        "truffle",
+        "compiler",
+        "substratevm",
+        "vm"
+      ],
+
+      # Updating language imports should not run libgraal gates
+      extra_excludes:: [
+        "vm/mx.vm/suite.py"
+      ]
     }
   },
 

@@ -201,11 +201,11 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertEquals(1, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        parseTestLanguage(context, ParseLang.class, "42");
+        parseTestLanguage(context, ParseLang.class, "42", parseCalls, executeCalls);
         assertEquals(1, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        evalTestLanguage(context, ParseLang.class, "42");
+        evalTestLanguage(context, ParseLang.class, "42", parseCalls, executeCalls);
         assertEquals(1, parseCalls.get());
         assertEquals(1, executeCalls.get());
 
@@ -222,7 +222,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertEquals(4, parseCalls.get());
         assertEquals(2, executeCalls.get());
 
-        assertFails(() -> parseTestLanguage(context, ParseLang.class, "error-1"), PolyglotException.class,
+        assertFails(() -> parseTestLanguage(context, ParseLang.class, "error-1", parseCalls, executeCalls), PolyglotException.class,
                         (e) -> {
                             assertTrue(e.isSyntaxError());
                             assertEquals("error", e.getSourceLocation().getCharacters());
@@ -230,7 +230,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertEquals(5, parseCalls.get());
         assertEquals(2, executeCalls.get());
 
-        assertFails(() -> parseTestLanguage(context, ParseLang.class, "error-1"), PolyglotException.class,
+        assertFails(() -> parseTestLanguage(context, ParseLang.class, "error-1", parseCalls, executeCalls), PolyglotException.class,
                         (e) -> {
                             assertTrue(e.isSyntaxError());
                             assertEquals("error", e.getSourceLocation().getCharacters());

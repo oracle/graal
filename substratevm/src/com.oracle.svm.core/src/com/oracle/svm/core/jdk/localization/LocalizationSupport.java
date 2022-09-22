@@ -41,8 +41,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -97,7 +97,7 @@ public class LocalizationSupport {
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         if (bundle instanceof PropertyResourceBundle) {
             String withLocale = control.toBundleName(bundleName, locale);
-            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), withLocale.replace('.', '/') + "\\.properties");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), withLocale.replace('.', '/') + "\\.properties");
         } else {
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());

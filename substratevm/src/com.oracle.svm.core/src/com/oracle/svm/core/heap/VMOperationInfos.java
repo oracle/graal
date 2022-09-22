@@ -28,15 +28,15 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Objects;
 
-import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 
 /**
@@ -45,6 +45,7 @@ import com.oracle.svm.core.thread.VMOperation.SystemEffect;
  *
  * The VM operation names are user facing as they are for example used in JFR events.
  */
+@AutomaticallyRegisteredImageSingleton
 public final class VMOperationInfos {
     @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> hostedMap = new HashMap<>();
     @UnknownObjectField(types = String[].class) static String[] names = new String[0];
@@ -117,13 +118,8 @@ public final class VMOperationInfos {
     }
 }
 
-@AutomaticFeature
-class VMOperationNamesFeatures implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(VMOperationInfos.class, new VMOperationInfos());
-    }
-
+@AutomaticallyRegisteredFeature
+class VMOperationNamesFeatures implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         VMOperationInfos.cacheNames();

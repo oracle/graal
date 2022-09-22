@@ -108,7 +108,7 @@ class MultiLanguageShell implements Closeable {
         printHeader();
         for (;;) {
             try {
-                input += reader.readLine(prompt());
+                input += reader.readLine(prompt()) + "\n";
                 if (handleBuiltins() || eval()) {
                     reader.getHistory().add(input);
                     input = "";

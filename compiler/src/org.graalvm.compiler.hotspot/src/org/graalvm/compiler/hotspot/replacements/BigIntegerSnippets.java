@@ -44,7 +44,7 @@ public class BigIntegerSnippets implements Snippets {
         public final SnippetTemplate.SnippetInfo implMultiplyToLen = snippet(BigIntegerSnippets.class, "implMultiplyToLen");
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static int[] implMultiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
         int[] zResult = zIn;
         int zLen;

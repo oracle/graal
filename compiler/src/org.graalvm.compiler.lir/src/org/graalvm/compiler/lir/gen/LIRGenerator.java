@@ -649,4 +649,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
         return createZapArgumentSpace(zappedStack, zapValues);
     }
+
+    /**
+     * Returns the offset of the array length word in an array object's header.
+     */
+    public abstract int getArrayLengthOffset();
+
+    /**
+     * Returns the offset of the first array element.
+     */
+    public int getArrayBaseOffset(JavaKind elementKind) {
+        return getMetaAccess().getArrayBaseOffset(elementKind);
+    }
 }

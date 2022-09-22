@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.core.test;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.SingleRunSubphase;
@@ -43,8 +46,12 @@ public class SingleRunSubphaseTest extends GraalCompilerTest {
     }
 
     static class EmptyPhase extends SingleRunSubphase<CoreProviders> {
-
         int mutableCounter = 0;
+
+        @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
 
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {

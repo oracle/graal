@@ -135,7 +135,7 @@ public class GraphDecoder {
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
                 maxFixedNodeOrderId = reader.getUVInt();
-                graph.setGuardsStage((StructuredGraph.GuardsStage) readObject(this));
+                graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
                 int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
                     int[] nodeStartOffsets = new int[nodeCount];

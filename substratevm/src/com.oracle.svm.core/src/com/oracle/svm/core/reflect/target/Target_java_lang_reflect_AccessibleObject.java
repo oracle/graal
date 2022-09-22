@@ -36,9 +36,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 @TargetClass(value = AccessibleObject.class)
 public final class Target_java_lang_reflect_AccessibleObject {
     @Alias //
@@ -60,7 +57,7 @@ public final class Target_java_lang_reflect_AccessibleObject {
 
     static class TypeAnnotationsComputer extends ReflectionMetadataComputer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getTypeAnnotationsEncoding((AccessibleObject) receiver);
         }
     }

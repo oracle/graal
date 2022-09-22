@@ -101,7 +101,7 @@ public abstract class LocalLiveness {
     }
 
     protected LocalLiveness(BciBlockMapping mapping, boolean asyncLiveness) {
-        if (asyncLiveness && mapping.exceptionHandlers.length > 0) {
+        if (asyncLiveness && mapping.exceptionHandlers != null) {
             Pair<ArrayList<BciBlock>, ArrayList<ArrayList<Integer>>> info = generateAsyncLivenessInfo(mapping);
             this.blocks = info.getLeft().toArray(new BciBlock[0]);
             this.asyncSuccessors = info.getRight();

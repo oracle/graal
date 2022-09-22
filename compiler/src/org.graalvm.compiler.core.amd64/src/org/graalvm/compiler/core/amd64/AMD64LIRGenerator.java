@@ -68,6 +68,8 @@ import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.amd64.AMD64AESDecryptOp;
+import org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayCompareToOp;
@@ -98,7 +100,9 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
+import org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
+import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -747,6 +751,36 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
         return result;
+    }
+
+    @Override
+    public void emitAESEncrypt(Value from, Value to, Value key) {
+        append(new AMD64AESEncryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public void emitAESDecrypt(Value from, Value to, Value key) {
+        append(new AMD64AESDecryptOp(this, asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public Variable emitCTRAESCrypt(Value inAddr, Value outAddr, Value kAddr, Value counterAddr, Value len, Value encryptedCounterAddr, Value usedPtr) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AMD64CounterModeAESCryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(counterAddr),
+                        asAllocatable(len),
+                        asAllocatable(encryptedCounterAddr),
+                        asAllocatable(usedPtr),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
+        append(new AMD64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
     }
 
     @SuppressWarnings("unchecked")

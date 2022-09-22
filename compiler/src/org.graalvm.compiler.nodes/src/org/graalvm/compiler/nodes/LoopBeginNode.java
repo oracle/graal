@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -456,10 +455,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     @SuppressWarnings("try")
-    public void removeExits() {
+    public void removeExits(boolean forKillCFG) {
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             try (DebugCloseable position = graph().withNodeSourcePosition(loopexit)) {
-                loopexit.removeExit();
+                loopexit.removeExit(forKillCFG);
             }
         }
     }
@@ -563,6 +562,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     @Override
     protected boolean verifyState() {
-        return !this.graph().getFrameStateVerification().implies(FrameStateVerificationFeature.LOOP_BEGINS) || super.verifyState();
+        return !this.graph().getGraphState().getFrameStateVerification().implies(GraphState.FrameStateVerificationFeature.LOOP_BEGINS) || super.verifyState();
     }
 }

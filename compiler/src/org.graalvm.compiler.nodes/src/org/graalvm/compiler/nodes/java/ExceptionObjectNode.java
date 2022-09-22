@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,10 +38,10 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
@@ -127,7 +127,7 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     }
 
     private static ValueNode getExceptionValueFromState(StateSplit exceptionObjectNode) {
-        if (exceptionObjectNode.asNode().graph().getFrameStateVerification() == FrameStateVerification.NONE) {
+        if (exceptionObjectNode.asNode().graph().getGraphState().getFrameStateVerification() == GraphState.FrameStateVerification.NONE) {
             return null;
         }
         GraalError.guarantee(exceptionObjectNode.stateAfter() != null, "an exception handler needs a frame state");
@@ -138,8 +138,8 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
 
     @Override
     public boolean verify() {
-        assertTrue(graph().getFrameStateVerification() == FrameStateVerification.NONE || stateAfter() != null, "an exception handler needs a frame state");
-        assertTrue(graph().getFrameStateVerification() == FrameStateVerification.NONE ||
+        assertTrue(graph().getGraphState().getFrameStateVerification() == GraphState.FrameStateVerification.NONE || stateAfter() != null, "an exception handler needs a frame state");
+        assertTrue(graph().getGraphState().getFrameStateVerification() == GraphState.FrameStateVerification.NONE ||
                         stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
                         "an exception handler's frame state must have only the exception on the stack");
         return super.verify();

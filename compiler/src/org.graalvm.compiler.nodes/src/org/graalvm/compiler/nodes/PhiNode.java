@@ -29,8 +29,10 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -38,6 +40,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
  * {@code PhiNode}s represent the merging of edges at a control flow merges (
@@ -235,8 +238,52 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
             }
         }
 
+        if (this.hasExactlyOneUsage() && this.graph() != null) {
+            tryOptimizeDeadPhiCycles: {
+                /*
+                 * Determine if this phi is only held alive by (indirect) self references.
+                 */
+
+                NodeFlood nf = this.graph().createNodeFlood();
+                nf.add(this);
+                int steps = 0;
+                for (Node flooded : nf) {
+                    if (steps++ >= DEAD_PHI_CYCLE_STEPS) {
+                        // too much effort, abort
+                        break tryOptimizeDeadPhiCycles;
+                    }
+                    if (!flooded.hasExactlyOneUsage()) {
+                        // node is used outside the cycle
+                        break tryOptimizeDeadPhiCycles;
+                    }
+                    for (Node usage : flooded.usages()) {
+                        if (!GraphUtil.isFloatingNode(usage)) {
+                            // Fixed node usage: can never have a dead cycle
+                            break tryOptimizeDeadPhiCycles;
+                        }
+                        if (usage instanceof VirtualState || usage instanceof ProxyNode) {
+                            // usages that still require the (potential) dead cycle to be alive
+                            break tryOptimizeDeadPhiCycles;
+                        }
+                        if (!nf.isMarked(usage)) {
+                            nf.add(usage);
+                        }
+                    }
+                }
+                // we managed to find a dead cycle
+                this.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Found dead phi cycle %s", nf.getVisited());
+                return null;
+            }
+        }
+
         return singleValueOrThis();
     }
+
+    /**
+     * Number of loop iterations to perform in dead phi cycle detection before giving up for compile
+     * time reasons (the scheduler will consider the rest).
+     */
+    private static final int DEAD_PHI_CYCLE_STEPS = 16;
 
     public ValueNode firstValue() {
         return valueAt(0);

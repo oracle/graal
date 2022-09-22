@@ -38,10 +38,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -49,6 +48,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Checks that {@linkplain Uninterruptible} has been used consistently. */
+@AutomaticallyRegisteredImageSingleton
 public final class UninterruptibleAnnotationChecker {
 
     public static class Options {
@@ -261,13 +261,5 @@ public final class UninterruptibleAnnotationChecker {
         System.out.println("/* DOT */    " + caller.format("<%h.%n>") + callerColor);
         System.out.println("/* DOT */    " + callee.format("<%h.%n>") + calleeColor);
         System.out.println("/* DOT */    " + caller.format("<%h.%n>") + " -> " + callee.format("<%h.%n>") + calleeColor);
-    }
-}
-
-@AutomaticFeature
-final class UninterruptibleAnnotationCheckerFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(UninterruptibleAnnotationChecker.class, new UninterruptibleAnnotationChecker());
     }
 }

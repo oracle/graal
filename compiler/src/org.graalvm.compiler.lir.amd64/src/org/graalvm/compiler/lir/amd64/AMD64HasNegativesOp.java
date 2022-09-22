@@ -37,6 +37,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -183,14 +184,14 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
 
                 masm.bind(labelCompareWideVectors);
                 masm.vmovdqu(vec1, new AMD64Address(ary1, len, Stride.S1));
-                masm.vptest(vec1, vec2);
+                masm.vptest(vec1, vec2, AVXKind.AVXSize.YMM);
                 masm.jcc(ConditionFlag.NotZero, labelTrue);
                 masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCompareWideVectors, false);
 
                 masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, false);
 
                 masm.vmovdqu(vec1, new AMD64Address(ary1, result, Stride.S1, -32));
-                masm.vptest(vec1, vec2);
+                masm.vptest(vec1, vec2, AVXKind.AVXSize.YMM);
                 masm.jccb(ConditionFlag.NotZero, labelTrue);
                 masm.jmp(labelFalse);
 

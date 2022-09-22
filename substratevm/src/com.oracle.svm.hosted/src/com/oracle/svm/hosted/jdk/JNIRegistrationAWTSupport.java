@@ -26,14 +26,14 @@ package com.oracle.svm.hosted.jdk;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 
 @Platforms(Platform.WINDOWS.class)
-@AutomaticFeature
-public class JNIRegistrationAWTSupport implements Feature {
+@AutomaticallyRegisteredFeature
+public class JNIRegistrationAWTSupport implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();

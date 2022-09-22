@@ -27,7 +27,7 @@ package com.oracle.svm.core.jni.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 @CContext(JNIHeaderDirectives.class)
 public final class JNIVersion {

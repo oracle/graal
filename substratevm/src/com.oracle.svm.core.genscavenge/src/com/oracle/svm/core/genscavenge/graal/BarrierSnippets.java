@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -55,12 +54,14 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 
@@ -100,7 +101,14 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
              * aligned chunk, we also verify that it is not an array at all because most arrays are
              * small and therefore in an aligned chunk.
              */
-            if (ObjectHeaderImpl.isUnalignedHeader(objectHeader) || object == null || object.getClass().isArray()) {
+
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, ObjectHeaderImpl.isUnalignedHeader(objectHeader))) {
+                BreakpointNode.breakpoint();
+            }
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object == null)) {
+                BreakpointNode.breakpoint();
+            }
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object.getClass().isArray())) {
                 BreakpointNode.breakpoint();
             }
         }
@@ -188,8 +196,8 @@ class BarrierSnippetCounters {
     final Counter postWriteBarrierUnaligned = new Counter(counters, "postWriteBarrierUnaligned", "unaligned object path of post-write barriers");
 }
 
-@AutomaticFeature
-class BarrierSnippetCountersFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class BarrierSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.UseSerialGC.getValue() && SubstrateOptions.useRememberedSet();

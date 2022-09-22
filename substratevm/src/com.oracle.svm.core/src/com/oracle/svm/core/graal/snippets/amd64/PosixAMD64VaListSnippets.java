@@ -106,7 +106,7 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
         super(options, providers);
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static double vaArgDoubleSnippet(Pointer vaList) {
         int fpOffset = vaList.readInt(FP_OFFSET_LOCATION);
         if (fpOffset < MAX_FP_OFFSET) {
@@ -128,7 +128,7 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
         return (float) vaArgDoubleSnippet(vaList);
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static long vaArgLongSnippet(Pointer vaList) {
         int gpOffset = vaList.readInt(GP_OFFSET_LOCATION);
         if (gpOffset < MAX_GP_OFFSET) {

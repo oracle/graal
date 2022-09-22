@@ -62,6 +62,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.printer.NoDeadCodeVerifyHandler;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
@@ -76,16 +77,14 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
-import com.oracle.svm.graal.hosted.GraalFeature;
+import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@TargetClass(value = org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 final class Target_org_graalvm_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Alias//
@@ -99,7 +98,7 @@ final class Target_org_graalvm_compiler_nodes_graphbuilderconf_InvocationPlugins
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused"})
 final class Target_org_graalvm_compiler_phases_common_inlining_info_elem_InlineableGraph {
 
@@ -113,7 +112,7 @@ final class Target_org_graalvm_compiler_phases_common_inlining_info_elem_Inlinea
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.common.inlining.walker.ComputeInliningRelevance.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.phases.common.inlining.walker.ComputeInliningRelevance.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_org_graalvm_compiler_phases_common_inlining_walker_ComputeInliningRelevance {
 
@@ -131,20 +130,15 @@ final class Target_org_graalvm_compiler_phases_common_inlining_walker_ComputeInl
     }
 }
 
-@TargetClass(value = DebugContext.class, innerClass = "Invariants", onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = DebugContext.class, innerClass = "Invariants", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugContext_Invariants {
 }
 
-@TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
-    static class ClearImmutableCache implements RecomputeFieldValue.CustomFieldValueComputer {
+    static class ClearImmutableCache implements FieldValueTransformer {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             for (Class<?> c : DebugContext.class.getDeclaredClasses()) {
                 // Checkstyle: allow Class.getSimpleName
                 if (c.getSimpleName().equals("Immutable")) {
@@ -169,16 +163,11 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
     private static Target_org_graalvm_compiler_debug_DebugContext_Immutable[] CACHE;
 }
 
-@TargetClass(value = DebugHandlersFactory.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = DebugHandlersFactory.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
-    static class CachedFactories implements RecomputeFieldValue.CustomFieldValueComputer {
+    static class CachedFactories implements FieldValueTransformer {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             return GraalSupport.get().debugHandlersFactories;
         }
     }
@@ -191,7 +180,7 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     private static Iterable<DebugHandlersFactory> LOADER;
 }
 
-@TargetClass(value = TimeSource.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = TimeSource.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_TimeSource {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = FromAlias)//
@@ -199,14 +188,14 @@ final class Target_org_graalvm_compiler_debug_TimeSource {
     // Checkstyle: resume
 }
 
-@TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 final class Target_org_graalvm_compiler_debug_TTY {
 
     @Alias @RecomputeFieldValue(kind = FromAlias)//
     private static PrintStream out = Log.logStream();
 }
 
-@TargetClass(className = "org.graalvm.compiler.serviceprovider.IsolateUtil", onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.serviceprovider.IsolateUtil", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
@@ -224,7 +213,7 @@ final class Target_org_graalvm_compiler_serviceprovider_IsolateUtil {
  * The following substitutions replace methods where reflection is used in the Graal code.
  */
 
-@TargetClass(value = org.graalvm.compiler.debug.KeyRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.debug.KeyRegistry.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_KeyRegistry {
 
     @Alias @RecomputeFieldValue(kind = FromAlias)//
@@ -234,7 +223,7 @@ final class Target_org_graalvm_compiler_debug_KeyRegistry {
     private static List<MetricKey> keys = new ArrayList<>();
 }
 
-@TargetClass(value = org.graalvm.compiler.core.match.MatchRuleRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.core.match.MatchRuleRegistry.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_core_match_MatchRuleRegistry {
 
     @Substitute
@@ -248,7 +237,7 @@ final class Target_org_graalvm_compiler_core_match_MatchRuleRegistry {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_org_graalvm_compiler_replacements_nodes_BinaryMathIntrinsicNode {
 
@@ -264,7 +253,7 @@ final class Target_org_graalvm_compiler_replacements_nodes_BinaryMathIntrinsicNo
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_org_graalvm_compiler_replacements_nodes_UnaryMathIntrinsicNode {
 
@@ -274,7 +263,7 @@ final class Target_org_graalvm_compiler_replacements_nodes_UnaryMathIntrinsicNod
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.BasePhase.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.phases.BasePhase.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_phases_BasePhase {
 
     @Substitute
@@ -287,7 +276,7 @@ final class Target_org_graalvm_compiler_phases_BasePhase {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.lir.phases.LIRPhase.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.lir.phases.LIRPhase.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
 
     @Substitute
@@ -300,7 +289,7 @@ final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.graph.NodeClass.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.graph.NodeClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_graph_NodeClass {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.InputsIterationMaskRecomputation.class)//
@@ -330,7 +319,7 @@ final class Target_org_graalvm_compiler_graph_NodeClass {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.lir.LIRInstructionClass.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.lir.LIRInstructionClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_lir_LIRInstructionClass {
 
     @Substitute
@@ -345,7 +334,7 @@ final class Target_org_graalvm_compiler_lir_LIRInstructionClass {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.lir.CompositeValueClass.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.lir.CompositeValueClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_lir_CompositeValueClass {
 
     @Substitute
@@ -367,7 +356,7 @@ final class Target_org_graalvm_compiler_printer_NoDeadCodeVerifyHandler {
     private static Map<String, Boolean> discovered;
 }
 
-@TargetClass(value = org.graalvm.compiler.nodes.NamedLocationIdentity.class, innerClass = "DB", onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.nodes.NamedLocationIdentity.class, innerClass = "DB", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_nodes_NamedLocationIdentity_DB {
     @Alias//
     @RecomputeFieldValue(kind = FromAlias, declClass = EconomicMap.class)//
@@ -380,7 +369,7 @@ final class Target_org_graalvm_compiler_nodes_NamedLocationIdentity_DB {
  * created just once during the image build and accessed via {@link ConfigurationValues} and
  * {@link ImageSingletons} from many locations.
  */
-@TargetClass(value = TargetDescription.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = TargetDescription.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_code_TargetDescription {
     @Alias @InjectAccessors(value = InlineObjectsAccessor.class) //
     boolean inlineObjects;

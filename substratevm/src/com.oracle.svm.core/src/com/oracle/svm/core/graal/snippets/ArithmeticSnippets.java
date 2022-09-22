@@ -25,6 +25,8 @@
 package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Map;
 
@@ -68,8 +70,12 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
-            return Integer.MIN_VALUE;
+        if (needsBoundsCheck) {
+            if (probability(SLOW_PATH_PROBABILITY, x == Integer.MIN_VALUE)) {
+                if (probability(SLOW_PATH_PROBABILITY, y == -1)) {
+                    return Integer.MIN_VALUE;
+                }
+            }
         }
         return safeDiv(x, y);
     }
@@ -79,9 +85,14 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
-            return Long.MIN_VALUE;
+        if (needsBoundsCheck) {
+            if (probability(SLOW_PATH_PROBABILITY, x == Long.MIN_VALUE)) {
+                if (probability(SLOW_PATH_PROBABILITY, y == -1)) {
+                    return Long.MIN_VALUE;
+                }
+            }
         }
+
         return safeDiv(x, y);
     }
 
@@ -90,9 +101,14 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
-            return 0;
+        if (needsBoundsCheck) {
+            if (probability(SLOW_PATH_PROBABILITY, x == Integer.MIN_VALUE)) {
+                if (probability(SLOW_PATH_PROBABILITY, y == -1)) {
+                    return 0;
+                }
+            }
         }
+
         return safeRem(x, y);
     }
 
@@ -101,9 +117,14 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
-            return 0;
+        if (needsBoundsCheck) {
+            if (probability(SLOW_PATH_PROBABILITY, x == Long.MIN_VALUE)) {
+                if (probability(SLOW_PATH_PROBABILITY, y == -1)) {
+                    return 0;
+                }
+            }
         }
+
         return safeRem(x, y);
     }
 
@@ -140,14 +161,14 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     }
 
     private static void zeroCheck(int val) {
-        if (val == 0) {
+        if (probability(SLOW_PATH_PROBABILITY, val == 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.ArithmeticException);
             throw UnreachableNode.unreachable();
         }
     }
 
     private static void zeroCheck(long val) {
-        if (val == 0) {
+        if (probability(SLOW_PATH_PROBABILITY, val == 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.ArithmeticException);
             throw UnreachableNode.unreachable();
         }

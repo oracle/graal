@@ -251,7 +251,7 @@ public abstract class GraalCompilerState {
     }
 
     protected Suites createSuites(OptionValues opts) {
-        return backend.getSuites().getDefaultSuites(opts).copy();
+        return backend.getSuites().getDefaultSuites(opts, backend.getTarget().arch).copy();
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {

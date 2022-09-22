@@ -27,7 +27,7 @@ package com.oracle.svm.core.snippets;
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;

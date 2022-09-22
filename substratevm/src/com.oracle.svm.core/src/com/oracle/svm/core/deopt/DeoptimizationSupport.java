@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class DeoptimizationSupport {
 

@@ -65,6 +65,7 @@ Tools/Utilities:
 * [LLVM toolchain](../../reference-manual/llvm/Compiling.md#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
 
 Language runtimes:
+
 * [Java on Truffle](../../reference-manual/java-on-truffle/README.md)
 * [JavaScript](../../reference-manual/js/README.md)
 * [Node.js](../../reference-manual/js/NodeJS.md)

@@ -191,6 +191,10 @@ public final class VM extends NativeEnv {
     private @Pointer TruffleObject mokapotEnvPtr;
     private @Pointer TruffleObject javaLibrary;
 
+    private final Object zipLoadLock = new Object() {
+    };
+    private volatile @Pointer TruffleObject zipLibrary;
+
     private static String stringify(List<Path> paths) {
         StringJoiner joiner = new StringJoiner(File.pathSeparator);
         for (Path p : paths) {
@@ -231,7 +235,7 @@ public final class VM extends NativeEnv {
         }
     }
 
-    private @Pointer TruffleObject loadJavaLibrary(List<Path> bootLibraryPath) {
+    private @Pointer TruffleObject loadJavaLibraryImpl(List<Path> bootLibraryPath) {
         // Comment from HotSpot:
         // Try to load verify dll first. In 1.3 java dll depends on it and is not
         // always able to find it when the loading executable is outside the JDK.
@@ -239,26 +243,6 @@ public final class VM extends NativeEnv {
 
         /* verifyLibrary = */ getNativeAccess().loadLibrary(bootLibraryPath, "verify", false);
         return getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
-    }
-
-    private void initializeJavaLibrary(TruffleObject libJava) {
-        // HotSpot calls libjava's JNI_OnLoad only on 8.
-        if (getJavaVersion().java8OrEarlier()) {
-            /*
-             * The JNI_OnLoad handling is normally done by method load in
-             * java.lang.ClassLoader$NativeLibrary, but the VM loads the base library explicitly so
-             * we have to check for JNI_OnLoad as well.
-             */
-            EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
-            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
-            if (jniOnLoad != null) {
-                try {
-                    getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
-                } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-                    throw EspressoError.shouldNotReachHere(e);
-                }
-            }
-        }
     }
 
     private JavaVersion findJavaVersion(TruffleObject libJava) {
@@ -289,12 +273,30 @@ public final class VM extends NativeEnv {
         }
     }
 
-    public void loadAndInitializeJavaLibrary(List<Path> searchPaths) {
+    public JavaVersion loadJavaLibrary(List<Path> searchPaths) {
         assert javaLibrary == null : "java library already initialized";
-        this.javaLibrary = loadJavaLibrary(searchPaths);
-        JavaVersion javaVersion = findJavaVersion(this.javaLibrary);
-        getLanguage().tryInitializeJavaVersion(javaVersion);
-        initializeJavaLibrary(this.javaLibrary);
+        this.javaLibrary = loadJavaLibraryImpl(searchPaths);
+        return findJavaVersion(this.javaLibrary);
+    }
+
+    public void initializeJavaLibrary() {
+        // HotSpot calls libjava's JNI_OnLoad only on 8.
+        if (getJavaVersion().java8OrEarlier()) {
+            /*
+             * The JNI_OnLoad handling is normally done by method load in
+             * java.lang.ClassLoader$NativeLibrary, but the VM loads the base library explicitly so
+             * we have to check for JNI_OnLoad as well.
+             */
+            EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
+            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(this.javaLibrary, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
+            if (jniOnLoad != null) {
+                try {
+                    getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
+                } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+        }
     }
 
     private VM(JniEnv jniEnv) {
@@ -322,7 +324,7 @@ public final class VM extends NativeEnv {
             disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
-            if (jniEnv.getContext().EnableManagement) {
+            if (jniEnv.getContext().getEspressoEnv().EnableManagement) {
                 management = new Management(getContext(), mokapotLibrary);
             } else {
                 management = null;
@@ -453,7 +455,7 @@ public final class VM extends NativeEnv {
         }
         try {
             if (management != null) {
-                assert getContext().EnableManagement;
+                assert getContext().getEspressoEnv().EnableManagement;
                 management.dispose();
             }
             if (jvmti != null) {
@@ -818,7 +820,7 @@ public final class VM extends NativeEnv {
         StaticObject currentThread = context.getCurrentThread();
         State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
-            if (context.EnableManagement) {
+            if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
                 Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
@@ -844,7 +846,7 @@ public final class VM extends NativeEnv {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         } finally {
-            if (context.EnableManagement) {
+            if (context.getEspressoEnv().EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
             }
         }
@@ -2187,6 +2189,22 @@ public final class VM extends NativeEnv {
         }
     }
 
+    @VmImpl
+    @TruffleBoundary
+    public @Pointer TruffleObject JVM_LoadZipLibrary() {
+        if (zipLibrary != null) {
+            return zipLibrary;
+        }
+        synchronized (zipLoadLock) {
+            TruffleObject tmpZipLib = getNativeAccess().loadLibrary(getContext().getVmProperties().bootLibraryPath(), "zip", false);
+            if (tmpZipLib == null || getUncached().isNull(tmpZipLib)) {
+                getLogger().severe("Unable to load zip library.");
+            }
+            zipLibrary = tmpZipLib;
+            return zipLibrary;
+        }
+    }
+
     // endregion Library support
 
     // region JNI version
@@ -3208,7 +3226,7 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
         EspressoContext context = getContext();
-        if (!context.EnableManagement) {
+        if (!context.getEspressoEnv().EnableManagement) {
             getLogger().severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
                             "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
             return RawPointer.nullInstance();

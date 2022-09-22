@@ -15,18 +15,14 @@ local jdks = common_json.jdks;
 
   vm_java_11_llvm:: self.vm_java_11 + graal_common['labsjdk-ce-11-llvm'],
   vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
-
-  vm_java_19_llvm:: self.vm_java_19 + {
-    downloads+: {
-      LLVM_JAVA_HOME: jdks['labsjdk-ce-19-llvm'],
-    },
-  },
+  vm_java_19_llvm:: self.vm_java_19 + graal_common['labsjdk-ce-19-llvm'],
 
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',
   libgraal_env: 'libgraal',
   custom_vm_linux: {},
   custom_vm_darwin: {},
+  custom_vm_windows: {},
   vm_profiles:: [],
   collect_profiles():: [],
 
@@ -34,9 +30,9 @@ local jdks = common_json.jdks;
 
   check_structure: {},
 
-  check_graalvm_base_build(os, arch, java_version): [],
+  check_graalvm_base_build(path, os, arch, java_version): [],
 
-  check_graalvm_complete_build: [],
+  check_graalvm_complete_build(mx_command_base, os, arch, java_version): [],
 
   vm_setup:: {
     short_name:: 'ce',
@@ -78,20 +74,28 @@ local jdks = common_json.jdks;
     requireArtifacts: [
       {name: 'post-merge-deploy-vm-java11-linux-amd64'},
       {name: 'post-merge-deploy-vm-java17-linux-amd64'},
+      {name: 'post-merge-deploy-vm-java19-linux-amd64'},
       {name: 'daily-deploy-vm-java11-linux-aarch64'},
       {name: 'daily-deploy-vm-java17-linux-aarch64'},
+      {name: 'daily-deploy-vm-java19-linux-aarch64'},
       {name: 'daily-deploy-vm-base-java11-darwin-amd64'},
       {name: 'daily-deploy-vm-installable-java11-darwin-amd64'},
       {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
+      {name: 'daily-deploy-vm-installable-java19-darwin-amd64'},
+      {name: 'daily-deploy-vm-base-java19-darwin-amd64'},
       {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
       {name: 'daily-deploy-vm-base-java11-darwin-aarch64'},
       {name: 'daily-deploy-vm-installable-java11-darwin-aarch64'},
       {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
       {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'},
+      {name: 'daily-deploy-vm-base-java19-darwin-aarch64'},
+      {name: 'daily-deploy-vm-installable-java19-darwin-aarch64'},
       {name: 'daily-deploy-vm-base-java11-windows-amd64'},
       {name: 'daily-deploy-vm-installable-java11-windows-amd64'},
       {name: 'daily-deploy-vm-base-java17-windows-amd64'},
       {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
+      {name: 'daily-deploy-vm-base-java19-windows-amd64'},
+      {name: 'daily-deploy-vm-installable-java19-windows-amd64'},
       {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
       {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
       {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
@@ -111,6 +115,7 @@ local jdks = common_json.jdks;
   diskspace_required: {
     java11_linux_mad64: "30GB",
     java17_linux_mad64: "30GB",
+    java19_linux_mad64: "30GB",
   },
 
   local builds = [
@@ -121,7 +126,7 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-unittest-linux-amd64',
     },
-    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows + {
+    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
@@ -211,14 +216,14 @@ local jdks = common_json.jdks;
      ],
      name: 'daily-deploy-vm-maven-darwin-aarch64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_11_17_only_native + {
+    vm_common.svm_common_windows_amd64("11") + vm_common.gate_vm_windows_amd64 + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_11_17_only_native + {
+    vm_common.svm_common_windows_amd64("11") + vm_common.deploy_daily_vm_windows + self.maven_11_17_only_native + {
      run: [
        $.maven_11_17_only_native.build,
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
@@ -233,28 +238,36 @@ local jdks = common_json.jdks;
     # Linux/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java11_linux_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java19_linux_amd64),
 
     # Linux/AARCH64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java11_linux_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java19_linux_aarch64),
 
     # Darwin/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java11_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java19_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java19_darwin_amd64),
 
     # Darwin/AARCH64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_darwin_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java11_darwin_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_aarch64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java19_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java19_darwin_aarch64),
 
     # Windows/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java11_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java19_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java19_windows_amd64),
 
     #
     # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
@@ -268,4 +281,6 @@ local jdks = common_json.jdks;
   ],
 
   builds: [vm_common.verify_name(b1) for b1 in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [{'defined_in': std.thisFile} + b2  for b2 in builds]],
+
+  compiler_gate:: (import '../../compiler/ci_common/gate.jsonnet')
 }

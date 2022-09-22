@@ -40,9 +40,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 @TargetClass(value = Constructor.class)
 public final class Target_java_lang_reflect_Constructor {
 
@@ -75,14 +72,14 @@ public final class Target_java_lang_reflect_Constructor {
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 
     static class ParameterAnnotationsComputer extends ReflectionMetadataComputer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getParameterAnnotationsEncoding((Executable) receiver);
         }
     }

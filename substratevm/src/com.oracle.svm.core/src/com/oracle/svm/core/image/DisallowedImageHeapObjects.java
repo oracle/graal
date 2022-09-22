@@ -26,14 +26,15 @@ package com.oracle.svm.core.image;
 
 import java.io.FileDescriptor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.MappedByteBuffer;
 import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.concurrent.ThreadLocalRandom;
 
-import com.oracle.svm.core.thread.LoomSupport;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -48,12 +49,14 @@ public final class DisallowedImageHeapObjects {
     }
 
     private static final Class<?> CANCELLABLE_CLASS;
+    private static final Class<?> JDK_VIRTUAL_THREAD_CLASS;
+    private static final Class<?> CONTINUATION_CLASS;
+    private static final Method CONTINUATION_IS_STARTED_METHOD;
     static {
-        try {
-            CANCELLABLE_CLASS = Class.forName("sun.nio.fs.Cancellable");
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
+        CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
+        JDK_VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(true, "java.lang.VirtualThread");
+        CONTINUATION_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.vm.Continuation");
+        CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(false, CONTINUATION_CLASS, "isStarted");
     }
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {
@@ -64,24 +67,29 @@ public final class DisallowedImageHeapObjects {
                             obj, "Try avoiding to initialize the class that caused initialization of the object.");
         }
 
-        /* Started Threads can not be in the image heap. */
+        /* Started platform threads can not be in the image heap. */
         if (obj instanceof Thread) {
             final Thread asThread = (Thread) obj;
-            if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(asThread)) {
+            if (VirtualThreads.isSupported() && (VirtualThreads.singleton().isVirtual(asThread) || (JDK_VIRTUAL_THREAD_CLASS != null && JDK_VIRTUAL_THREAD_CLASS.isInstance(asThread)))) {
                 // allowed unless the thread is mounted, in which case it references its carrier
                 // thread and fails
             } else if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
                 throw reporter.raise("Detected a started Thread in the image heap. " +
                                 "Threads running in the image generator are no longer running at image runtime.",
-                                asThread, "Try avoiding to initialize the class that caused initialization of the Thread.");
+                                asThread, "Prevent threads from starting during image generation, or a started thread from being included in the image.");
             }
         }
-        if (obj instanceof Target_java_lang_Continuation) {
-            final Target_java_lang_Continuation asCont = (Target_java_lang_Continuation) obj;
-            if (LoomSupport.isStarted(asCont)) {
+        if (SubstrateUtil.HOSTED && CONTINUATION_CLASS != null && CONTINUATION_CLASS.isInstance(obj)) {
+            boolean isStarted;
+            try {
+                isStarted = (Boolean) CONTINUATION_IS_STARTED_METHOD.invoke(obj);
+            } catch (IllegalAccessException | InvocationTargetException ignored) {
+                isStarted = false;
+            }
+            if (isStarted) {
                 throw reporter.raise("Detected a started Continuation in the image heap. " +
-                                "Continuations running in the image generator are no longer running at image runtime.",
-                                asCont, "Try avoiding to initialize the class that caused initialization of the Continuation.");
+                                "Continuation state from the image generator cannot be used at image runtime.",
+                                obj, "Prevent continuations from starting during image generation, or started continuations from being included in the image.");
             }
         }
         /* FileDescriptors can not be in the image heap. */

@@ -34,5 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 public interface AnnotationExtracter {
     boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType);
 
+    Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element);
+
     <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
 }

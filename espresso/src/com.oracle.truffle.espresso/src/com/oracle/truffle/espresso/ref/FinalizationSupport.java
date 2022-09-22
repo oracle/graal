@@ -78,7 +78,7 @@ public final class FinalizationSupport {
 
     @TruffleBoundary
     public static EspressoReference createEspressoFinalReference(EspressoContext context, StaticObject self, StaticObject referent) {
-        assert context.UseHostFinalReference && canUseHostFinalReference();
+        assert context.getEspressoEnv().UseHostFinalReference && canUseHostFinalReference();
         try {
             return (EspressoReference) NEW_ESPRESSO_FINAL_REFERENCE.invoke(self, referent, context.getReferenceQueue());
         } catch (StackOverflowError | OutOfMemoryError e) {

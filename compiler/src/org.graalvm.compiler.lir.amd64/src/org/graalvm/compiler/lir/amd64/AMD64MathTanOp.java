@@ -131,10 +131,10 @@ import jdk.vm.ci.amd64.AMD64;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_tan.cpp",
-          lineStart = 0,
-          lineEnd   = 1059,
-          commit    = "e58c12e61828485bfffbc9d1b865302b93a94158",
-          sha1      = "1f1f3a6d2437b250c0d5b13e596d9ed5a14c869e")
+          lineStart = 34,
+          lineEnd   = 1020,
+          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
+          sha1      = "8a617c23d7eb9c1687a19b01d15b661cd636fe2e")
 // @formatter:on
 public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
 

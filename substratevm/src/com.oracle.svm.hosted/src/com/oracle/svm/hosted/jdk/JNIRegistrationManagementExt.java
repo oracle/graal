@@ -28,21 +28,21 @@ import java.lang.reflect.Method;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.management.LibManagementExtSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements InternalFeature {
     private NativeLibraries nativeLibraries;
 
     @Override

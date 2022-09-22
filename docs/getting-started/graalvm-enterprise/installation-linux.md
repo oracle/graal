@@ -57,7 +57,7 @@ Language runtimes:
 * [Ruby](../../reference-manual/ruby/README.md)
 * [R](/../../reference-manual/r/README.md)
 * [Wasm](../../reference-manual/wasm/README.md)
-​
+
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
 Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.
 

@@ -296,6 +296,14 @@ public interface Feature {
          * @since 21.0
          */
         void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz);
+
+        /**
+         * Registers a field value transformer for the provided field. See the JavaDoc of
+         * {@link FieldValueTransformer} for details.
+         * 
+         * @since 22.3
+         */
+        void registerFieldValueTransformer(Field field, FieldValueTransformer transformer);
     }
 
     /**

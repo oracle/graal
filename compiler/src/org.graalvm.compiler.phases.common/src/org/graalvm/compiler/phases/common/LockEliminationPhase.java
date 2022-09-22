@@ -24,9 +24,13 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -46,6 +50,12 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 
 public class LockEliminationPhase extends Phase {
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.notApplicableIf(graphState.isAfterStage(StageFlag.FLOATING_READS) && graphState.isBeforeStage(StageFlag.FIXED_READS),
+                        Optional.of(new NotApplicable("This phase must not be applied while reads are floating.")));
+    }
 
     @Override
     protected void run(StructuredGraph graph) {

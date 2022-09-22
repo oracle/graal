@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,8 @@ public final class TruffleTierConfiguration {
     private final LIRSuites lirSuites;
 
     public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, OptionValues options, KnownTruffleTypes knownTruffleTypes) {
-        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options), backend.getSuites().getDefaultLIRSuites(options), knownTruffleTypes);
+        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options, backend.getTarget().arch), backend.getSuites().getDefaultLIRSuites(options),
+                        knownTruffleTypes);
     }
 
     public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes) {

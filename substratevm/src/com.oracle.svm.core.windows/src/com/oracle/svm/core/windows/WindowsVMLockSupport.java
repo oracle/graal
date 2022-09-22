@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -34,17 +34,17 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -62,9 +62,9 @@ import jdk.vm.ci.meta.JavaKind;
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
  * implemented via Windows locking primitives.
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.WINDOWS.class)
-final class WindowsVMLockFeature implements Feature {
+final class WindowsVMLockFeature implements InternalFeature {
 
     private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override

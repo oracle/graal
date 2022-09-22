@@ -50,8 +50,8 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     public IntegerBelowNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, OP);
-        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
-        assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        assert x.stamp(NodeView.DEFAULT).isIntegerStamp();
+        assert y.stamp(NodeView.DEFAULT).isIntegerStamp();
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {

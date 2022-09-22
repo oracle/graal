@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
@@ -37,7 +40,7 @@ public abstract class PostRunCanonicalizationPhase<C extends CoreProviders> exte
     protected final CanonicalizerPhase canonicalizer;
 
     /**
-     * Primary constructor for incremental canonicalzation. Subclasses must provide a non-null
+     * Primary constructor for incremental canonicalization. Subclasses must provide a non-null
      * {@link CanonicalizerPhase}
      */
     public PostRunCanonicalizationPhase(CanonicalizerPhase canonicalizer) {
@@ -48,5 +51,16 @@ public abstract class PostRunCanonicalizationPhase<C extends CoreProviders> exte
     @Override
     protected ApplyScope applyScope(StructuredGraph graph, C context) {
         return new IncrementalCanonicalizerPhase.Apply(graph, context, canonicalizer);
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return this.canonicalizer.canApply(graphState);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        canonicalizer.updateGraphState(graphState);
     }
 }

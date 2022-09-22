@@ -32,13 +32,12 @@ import java.lang.ref.WeakReference;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer.TargetContent;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -420,7 +420,7 @@ public final class DeoptimizedFrame {
     public void takeException() {
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
         CodeInfo info = CodeInfoTable.getImageCodeInfo();
-        SimpleCodeInfoQueryResult codeInfoQueryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
+        SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), codeInfoQueryResult);
         long handler = codeInfoQueryResult.getExceptionOffset();
         VMError.guarantee(handler != 0, "no exception handler registered for deopt target");

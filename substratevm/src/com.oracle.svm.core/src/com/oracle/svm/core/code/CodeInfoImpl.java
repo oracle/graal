@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;

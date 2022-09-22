@@ -26,6 +26,7 @@ package com.oracle.svm.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -105,6 +106,15 @@ public final class GuardedAnnotationAccess {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return ImageSingletons.lookup(AnnotationExtracter.class).getAnnotationTypes(element);
+        } else {
+            return Arrays.stream(DirectAnnotationAccess.getAnnotations(element)).map(Annotation::annotationType).toArray(Class[]::new);
+        }
+    }
+
     public static <T extends Annotation> T getDeclaredAnnotation(AnnotatedElement element, Class<T> annotationType) {
         if (ImageInfo.inImageBuildtimeCode()) {
             return getDeclaredAnnotation(ImageSingletons.lookup(AnnotationExtracter.class), element, annotationType);
@@ -134,10 +144,9 @@ public final class GuardedAnnotationAccess {
             /*
              * Returning an empty array essentially means that the element doesn't declare any
              * annotations, but we know that it is not true since the reason the annotation parsing
-             * failed is because it at least one annotation referenced a missing class. However,
-             * this allows us to defend against crashing the image builder if the above JDK bug is
-             * encountered in user code or if the user code references types missing from the
-             * classpath.
+             * failed is because some annotation referenced a missing class. However, this allows us
+             * to defend against crashing the image builder if the above JDK bug is encountered in
+             * user code or if the user code references types missing from the classpath.
              */
             return new Annotation[0];
         }

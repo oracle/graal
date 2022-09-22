@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,17 @@ public abstract class UnaryMath extends JTTTest {
         ulpDelta = 2D;
         Object receiver = null;
         long testIteration = 0;
-        for (long l = Long.MIN_VALUE;; l += STEP) {
+
+        long step = STEP;
+        if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
+            /*
+             * When we fuzz the phase plan, testAgainstExpected recompiles the method every time.
+             * Use fewer iterations to compensate for the extra cost.
+             */
+            step *= 20;
+        }
+
+        for (long l = Long.MIN_VALUE;; l += step) {
             double d = Double.longBitsToDouble(l);
             Result expect = executeExpected(method, receiver, d);
             try {

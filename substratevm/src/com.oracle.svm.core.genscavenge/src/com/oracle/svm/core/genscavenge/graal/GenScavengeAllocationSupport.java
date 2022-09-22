@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
+import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.thread.Continuation;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
@@ -35,27 +38,39 @@ import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 
 public class GenScavengeAllocationSupport implements GCAllocationSupport {
-    private static final SnippetRuntime.SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
-    private static final SnippetRuntime.SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
-    private static final SnippetRuntime.SubstrateForeignCallDescriptor SLOW_NEW_POD_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewPodInstance", true);
-    private static final SnippetRuntime.SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SnippetRuntime.SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY, SLOW_NEW_POD_INSTANCE};
+    private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
+    private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
+    private static final SubstrateForeignCallDescriptor SLOW_NEW_STORED_CONTINUATION = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewStoredContinuation", true);
+    private static final SubstrateForeignCallDescriptor SLOW_NEW_POD_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewPodInstance", true);
+    private static final SubstrateForeignCallDescriptor[] UNCONDITIONAL_FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(FOREIGN_CALLS);
+        foreignCalls.register(UNCONDITIONAL_FOREIGN_CALLS);
+        if (Continuation.isSupported()) {
+            foreignCalls.register(SLOW_NEW_STORED_CONTINUATION);
+        }
+        if (Pod.RuntimeSupport.isPresent()) {
+            foreignCalls.register(SLOW_NEW_POD_INSTANCE);
+        }
     }
 
     @Override
-    public ForeignCallDescriptor getSlowNewInstanceStub() {
+    public ForeignCallDescriptor getNewInstanceStub() {
         return SLOW_NEW_INSTANCE;
     }
 
     @Override
-    public ForeignCallDescriptor getSlowNewArrayStub() {
+    public ForeignCallDescriptor getNewArrayStub() {
         return SLOW_NEW_ARRAY;
     }
 
     @Override
-    public ForeignCallDescriptor getSlowNewPodInstanceStub() {
+    public ForeignCallDescriptor getNewStoredContinuationStub() {
+        return SLOW_NEW_STORED_CONTINUATION;
+    }
+
+    @Override
+    public ForeignCallDescriptor getNewPodInstanceStub() {
         return SLOW_NEW_POD_INSTANCE;
     }
 

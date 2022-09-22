@@ -38,8 +38,10 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -155,7 +157,7 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
 
     @Override
     public boolean getAndClearInterrupt(Thread thread) {
-        return cast(thread).getAndClearInterrupt();
+        return cast(thread).getAndClearInterrupted();
     }
 
     @Override
@@ -216,5 +218,30 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     @Override
     public Executor getScheduler(Thread thread) {
         return cast(thread).getScheduler();
+    }
+
+    @Override
+    public void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        current().blockedOn(b);
+    }
+
+    @Override
+    public StackTraceElement[] getVirtualOrPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
+        if (!isVirtual(thread)) {
+            return PlatformThreads.getStackTrace(filterExceptions, thread, callerSP);
+        }
+        if (thread != Thread.currentThread()) {
+            return Target_java_lang_Thread.EMPTY_STACK_TRACE; // not implemented
+        }
+        Pointer endSP = current().getBaseSP();
+        if (endSP.isNull()) {
+            return null;
+        }
+        return StackTraceUtils.getStackTrace(false, callerSP, endSP);
+    }
+
+    @Override
+    public StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+        return PlatformThreads.getStackTraceAtSafepoint(thread, callerSP);
     }
 }

@@ -29,18 +29,18 @@ import java.util.EnumSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64LibCHelper;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.amd64.AMD64;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-public class AMD64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase implements Feature {
+public class AMD64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {

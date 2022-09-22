@@ -37,6 +37,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+
 import com.oracle.svm.core.util.VMError;
 
 public abstract class OptionOrigin {
@@ -245,6 +247,7 @@ final class JarOptionOrigin extends URIOptionOrigin {
         location = Path.of(specific.substring(sep + 2));
     }
 
+    @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "location()).getParent() is never null")
     @SuppressWarnings("try")
     @Override
     public List<String> getRedirectionValues(Path valuesFile) throws IOException {
@@ -266,6 +269,7 @@ final class JarOptionOrigin extends URIOptionOrigin {
 }
 
 final class DirectoryOptionOrigin extends URIOptionOrigin {
+    @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "originPath.getRoot() is never null")
     protected DirectoryOptionOrigin(Path originPath) {
         int pathPos = 0;
         int metaInfPos = -1;
@@ -281,6 +285,7 @@ final class DirectoryOptionOrigin extends URIOptionOrigin {
         location = originPath.subpath(metaInfPos, originPath.getNameCount());
     }
 
+    @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "location()).getParent() is never null")
     @Override
     public List<String> getRedirectionValues(Path valuesFile) throws IOException {
         var normalizedRedirPath = Path.of(container()).resolve(location()).getParent().resolve(valuesFile).normalize();

@@ -39,11 +39,9 @@ import static org.graalvm.word.WordFactory.signed;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -52,8 +50,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -62,23 +59,12 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.CopyingImageHeapProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-
-@AutomaticFeature
-class LinuxImageHeapProviderFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
-            ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
-        }
-    }
-}
 
 /**
  * An optimal image heap provider for Linux which creates isolate image heaps that retain the

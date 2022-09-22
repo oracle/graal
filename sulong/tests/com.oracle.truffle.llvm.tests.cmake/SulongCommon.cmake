@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,8 +29,6 @@
 #
 
 include_guard(GLOBAL)
-
-cmake_minimum_required(VERSION 3.15)
 
 # fail if the variables is not defined
 function(requireVariable varname)

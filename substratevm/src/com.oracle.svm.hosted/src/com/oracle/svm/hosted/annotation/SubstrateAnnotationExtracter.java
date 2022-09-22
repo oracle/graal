@@ -181,6 +181,12 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
         return false;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
+        return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).toArray(Class[]::new);
+    }
+
     public AnnotationValue[] getDeclaredAnnotationData(AnnotatedElement element) {
         return getAnnotationData(element, true);
     }

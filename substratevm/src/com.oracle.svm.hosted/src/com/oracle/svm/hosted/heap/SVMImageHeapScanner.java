@@ -33,6 +33,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.ImageHeap;
@@ -64,9 +65,9 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Field economicMapImplHashArrayField;
     private final ReflectionHostedSupport reflectionSupport;
 
-    public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
+    public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
-        super(imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver);
+        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver);
         this.loader = loader;
         economicMapImpl = getClass("org.graalvm.collections.EconomicMapImpl");
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");

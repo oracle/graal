@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,12 +75,15 @@ public class WasmOptions {
     public static final OptionKey<Boolean> UseUnsafeMemory = new OptionKey<>(false);
 
     // WASM Context Options
-    @Option(help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> SaturatingFloatToInt = new OptionKey<>(false);
+    @Option(help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> SaturatingFloatToInt = new OptionKey<>(true);
 
-    @Option(help = "Use sign-extension operators", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> SignExtensionOps = new OptionKey<>(false);
+    @Option(help = "Use sign-extension operators", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> SignExtensionOps = new OptionKey<>(true);
 
     @Option(help = "Prevents the removal of data sections from wasm binaries. This option should only be used for testing.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> KeepDataSections = new OptionKey<>(false);
+
+    @Option(help = "Enable multi-value support", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> MultiValue = new OptionKey<>(true);
 }

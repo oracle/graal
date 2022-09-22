@@ -383,6 +383,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
     }
 
+    private FrameDescriptor getParentFrameDescriptor() {
+        return GraalRuntimeAccessor.NODES.getParentFrameDescriptor(rootNode);
+    }
+
     /**
      * We intentionally do not synchronize here since as it's not worth the sync costs.
      */
@@ -604,7 +608,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
 
-    private static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
+    public static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
         return FixedPointMath.multiply(runtime().compilationThresholdScale(), callAndLoopThresholdInInterpreter);
     }
 
@@ -649,6 +653,55 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @TruffleBoundary
     private boolean lastTierCompile() {
         return compile(true);
+    }
+
+    private void propagateCallAndLoopCount() {
+        WeakReference<OptimizedDirectCallNode> currentSingleCallNode = this.singleCallNode;
+        // Since getParentFrameDescriptor is expensive we do these checks before that call
+        if (!engine.propagateCallAndLoopCount || currentSingleCallNode == MULTIPLE_CALLS || currentSingleCallNode == NO_CALL) {
+            return;
+        }
+        final FrameDescriptor parentFrameDescriptor = getParentFrameDescriptor();
+        if (parentFrameDescriptor == null) {
+            return;
+        }
+        int depth = 0;
+        do {
+            OptimizedDirectCallNode callerCallNode = currentSingleCallNode.get();
+            if (callerCallNode == null) {
+                return;
+            }
+            RootNode callerRootNode = callerCallNode.getRootNode();
+            if (callerRootNode == null) {
+                return;
+            }
+            OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+            // Recursive
+            if (this.isSameOrSplit(callerCallTarget)) {
+                return;
+            }
+            if (callerCallTarget.frameDescriptorEquals(parentFrameDescriptor)) {
+                callerCallNode.forceInlining();
+                callerCallTarget.callAndLoopCount += this.callAndLoopCount;
+                return;
+            }
+            currentSingleCallNode = callerCallTarget.singleCallNode;
+            depth++;
+        } while (depth < engine.propagateCallAndLoopCountMaxDepth &&
+                        currentSingleCallNode != NO_CALL &&
+                        currentSingleCallNode != MULTIPLE_CALLS);
+    }
+
+    private boolean frameDescriptorEquals(FrameDescriptor parentFrameDescriptor) {
+        assert parentFrameDescriptor != null;
+        if (parentFrameDescriptor.equals(rootNode.getFrameDescriptor())) {
+            return true;
+        }
+        if (isSplit()) {
+            RootNode sourceRootNode = sourceCallTarget.getRootNode();
+            return parentFrameDescriptor.equals(sourceRootNode.getFrameDescriptor());
+        }
+        return false;
     }
 
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
@@ -760,6 +813,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
+                    if (lastTier) {
+                        propagateCallAndLoopCount();
+                    }
                     if (!wasExecuted() && !engine.backgroundCompilation) {
                         prepareForAOTImpl();
                     }

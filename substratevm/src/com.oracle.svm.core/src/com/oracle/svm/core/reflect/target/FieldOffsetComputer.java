@@ -28,26 +28,17 @@ import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
-public class FieldOffsetComputer implements CustomFieldValueComputer {
+public class FieldOffsetComputer implements FieldValueTransformerWithAvailability {
 
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
     }
 
     @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset((Field) receiver);
-    }
-
-    @Override
-    public Class<?>[] types() {
-        return new Class<?>[]{int.class};
+    public Object transform(Object receiver, Object originalValue) {
+        return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset((Field) receiver, true);
     }
 }

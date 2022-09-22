@@ -27,7 +27,7 @@ package com.oracle.svm.core.posix;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 

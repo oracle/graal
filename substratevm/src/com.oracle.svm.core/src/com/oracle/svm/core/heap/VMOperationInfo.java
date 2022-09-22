@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 

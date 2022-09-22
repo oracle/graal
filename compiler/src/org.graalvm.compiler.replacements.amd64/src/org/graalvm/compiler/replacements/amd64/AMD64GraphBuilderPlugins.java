@@ -71,7 +71,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
@@ -534,8 +534,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     private static void registerArraysEqualsPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Arrays.class, replacements);
-        r.register(new StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin(JavaKind.Float, float[].class, float[].class));
-        r.register(new StandardGraphBuilderPlugins.ArrayEqualsInvocationPlugin(JavaKind.Double, double[].class, double[].class));
+        r.register(new ArrayEqualsInvocationPlugin(JavaKind.Float, float[].class, float[].class));
+        r.register(new ArrayEqualsInvocationPlugin(JavaKind.Double, double[].class, double[].class));
     }
 
     private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {

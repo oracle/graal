@@ -306,7 +306,8 @@ public class EncodedSnippets {
             // @formatter:on
             try (DebugContext.Scope scope = debug.scope("LibGraal.DecodeSnippet", result)) {
                 PEGraphDecoder graphDecoder = new SubstitutionGraphDecoder(providers, result, replacements, parameterPlugin, method, INLINE_AFTER_PARSING, encodedGraph, mustSucceed);
-                graphDecoder.decode(method, isSubstitution, encodedGraph.trackNodeSourcePosition());
+                assert result.isSubstitution();
+                graphDecoder.decode(method);
                 postDecode(debug, result, original);
                 assert result.verify();
                 return result;
@@ -356,9 +357,7 @@ public class EncodedSnippets {
 
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod,
-                        BytecodeProvider intrinsicBytecodeProvider,
-                        boolean isSubstitution,
-                        boolean trackNodeSourcePosition) {
+                        BytecodeProvider intrinsicBytecodeProvider) {
             if (lookupMethod.equals(method)) {
                 return encodedGraph;
             } else {

@@ -86,6 +86,8 @@ public class InvocationPlugins {
                 "You can append ':verbose' at the end of the filter value to print out disabled " +
                 "intrinsics as they are encountered during compilation (e.g., 'String.equals:verbose').", type = OptionType.Debug)
         public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
+        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -452,6 +454,7 @@ public class InvocationPlugins {
         private final String className;
         private final LateClassPlugins next;
 
+        @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "identity comparison against sentinel string value")
         LateClassPlugins(LateClassPlugins next, String className) {
             assert next == null || next.className != CLOSED_LATE_CLASS_PLUGIN : "Late registration of invocation plugins is closed";
             this.next = next;

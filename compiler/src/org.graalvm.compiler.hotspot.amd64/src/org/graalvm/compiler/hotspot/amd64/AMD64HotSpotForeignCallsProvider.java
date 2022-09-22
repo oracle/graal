@@ -107,6 +107,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCopyWithConversionsForeignCalls.STUBS);
         linkSnippetStubs(providers, options, AMD64HotspotIntrinsicStubsGen::new, AMD64ArrayEqualsWithMaskForeignCalls.STUBS);
         linkSnippetStubs(providers, options, AMD64HotspotIntrinsicStubsGen::new, AMD64CalcStringAttributesForeignCalls.STUBS);
+
         super.initialize(providers, options);
     }
 

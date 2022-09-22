@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ public final class TestOptions {
      * Gets the path of an mx test distribution. The
      * {@link TestEngineConfig#getDistributionSuffix()} is added to the provided
      * {@code distribution} name.
-     * 
+     *
      * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
      */
     public static String getTestDistribution(String distribution) {

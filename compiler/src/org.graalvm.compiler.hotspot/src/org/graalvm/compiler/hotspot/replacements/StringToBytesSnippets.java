@@ -28,6 +28,7 @@ import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACC
 import static org.graalvm.compiler.replacements.ReplacementsUtil.getArrayBaseOffset;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -59,7 +60,7 @@ public class StringToBytesSnippets implements Snippets {
     public static byte[] transform(@ConstantParameter Word cArray, @ConstantParameter int length, @ConstantParameter LocationIdentity locationIdentity) {
         int i = length;
         byte[] array = (byte[]) NewArrayNode.newUninitializedArray(byte.class, i);
-        while (i-- > 0) {
+        while (GraalDirectives.injectIterationCount(100, i-- > 0)) {
             // array[i] = cArray.readByte(i);
             RawStoreNode.storeByte(array, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + i, cArray.readByte(i, CSTRING_LOCATION), JavaKind.Byte,
                             locationIdentity);

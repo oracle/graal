@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import java.io.IOException;
+
+import org.graalvm.tools.insight.Insight;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -32,8 +36,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import java.io.IOException;
-import org.graalvm.tools.insight.Insight;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
@@ -155,6 +157,6 @@ final class AgentObject implements TruffleObject {
 
     @ExportMessage
     static boolean isMemberInvocable(AgentObject obj, String member) {
-        return false;
+        return "on".equals(member) || "off".equals(member);
     }
 }

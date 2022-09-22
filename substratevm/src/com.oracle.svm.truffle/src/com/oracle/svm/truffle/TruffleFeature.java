@@ -133,6 +133,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -143,8 +144,8 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.GraalFeature;
-import com.oracle.svm.graal.hosted.GraalFeature.CallTreeNode;
+import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
+import com.oracle.svm.graal.hosted.RuntimeCompilationFeature.CallTreeNode;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -156,6 +157,7 @@ import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -175,7 +177,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Feature that enables compilation of Truffle ASTs to machine code. This feature requires
  * {@link SubstrateTruffleRuntime} to be set as {@link TruffleRuntime}.
  */
-public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature {
+public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getURL() {
@@ -216,10 +218,10 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     }
 
     private final Set<ResolvedJavaMethod> blocklistMethods;
-    private final Set<GraalFeature.CallTreeNode> blocklistViolations;
+    private final Set<RuntimeCompilationFeature.CallTreeNode> blocklistViolations;
     private final Set<ResolvedJavaMethod> warnMethods;
-    private final Set<GraalFeature.CallTreeNode> warnViolations;
-    private final Set<GraalFeature.CallTreeNode> neverPartOfCompilationViolations;
+    private final Set<RuntimeCompilationFeature.CallTreeNode> warnViolations;
+    private final Set<RuntimeCompilationFeature.CallTreeNode> neverPartOfCompilationViolations;
     Set<AnalysisMethod> runtimeCompiledMethods;
 
     public TruffleFeature() {
@@ -251,7 +253,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(GraalFeature.class, TruffleBaseFeature.class);
+        return Arrays.asList(RuntimeCompilationFeature.class, TruffleBaseFeature.class);
     }
 
     @Override
@@ -311,9 +313,9 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
             if (neverPartOfCompilation.stateAfter().getMethod().getDeclaringClass().equals(targetMethod.getDeclaringClass())) {
                 /* Ignore internal use from another method in CompilerAsserts class. */
             } else {
-                GraalFeature.CallTreeNode callerNode = ((GraalFeature.RuntimeBytecodeParser) b).getCallTreeNode();
-                GraalFeature.CallTreeNode calleeNode = new GraalFeature.CallTreeNode(targetMethod, targetMethod, callerNode, callerNode.getLevel() + 1,
-                                GraalFeature.buildSourceReference(neverPartOfCompilation.stateAfter()));
+                RuntimeCompilationFeature.CallTreeNode callerNode = ((RuntimeCompilationFeature.RuntimeBytecodeParser) b).getCallTreeNode();
+                RuntimeCompilationFeature.CallTreeNode calleeNode = new RuntimeCompilationFeature.CallTreeNode(targetMethod, targetMethod, callerNode, callerNode.getLevel() + 1,
+                                RuntimeCompilationFeature.buildSourceReference(neverPartOfCompilation.stateAfter()));
                 neverPartOfCompilationViolations.add(calleeNode);
             }
         }
@@ -335,8 +337,8 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         // register thread local foreign poll as compiled otherwise the stub won't work
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
-        GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
-        SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
+        RuntimeCompilationFeature runtimeCompilationFeature = ImageSingletons.lookup(RuntimeCompilationFeature.class);
+        SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
@@ -349,7 +351,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
 
         if (Options.TruffleInlineDuringParsing.getValue()) {
             graphBuilderConfig.getPlugins().appendInlineInvokePlugin(
-                            new TruffleParsingInlineInvokePlugin(config.getHostVM(), graalFeature.getHostedProviders().getReplacements(),
+                            new TruffleParsingInlineInvokePlugin(config.getHostVM(), runtimeCompilationFeature.getHostedProviders().getReplacements(),
                                             graphBuilderConfig.getPlugins().getInvocationPlugins(),
                                             partialEvaluator, method -> includeCallee(method, null, null)));
         }
@@ -368,15 +370,15 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
                         peProviders.getReplacements(),
                         peProviders.getStampProvider(),
                         snippetReflection,
-                        graalFeature.getHostedProviders().getWordTypes(),
-                        graalFeature.getHostedProviders().getPlatformConfigurationProvider(),
-                        graalFeature.getHostedProviders().getMetaAccessExtensionProvider(),
-                        graalFeature.getHostedProviders().getLoopsDataProvider());
+                        runtimeCompilationFeature.getHostedProviders().getWordTypes(),
+                        runtimeCompilationFeature.getHostedProviders().getPlatformConfigurationProvider(),
+                        runtimeCompilationFeature.getHostedProviders().getMetaAccessExtensionProvider(),
+                        runtimeCompilationFeature.getHostedProviders().getLoopsDataProvider());
         newHostedProviders.setGraphBuilderPlugins(graphBuilderConfig.getPlugins());
 
-        graalFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::includeCallee, this::deoptimizeOnException);
+        runtimeCompilationFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::includeCallee, this::deoptimizeOnException);
         for (ResolvedJavaMethod method : partialEvaluator.getCompilationRootMethods()) {
-            graalFeature.prepareMethodForRuntimeCompilation(method, config);
+            runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
         }
 
         initializeMethodBlocklist(config.getMetaAccess(), access);
@@ -386,7 +388,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
          * information available, otherwise SubstrateStackIntrospection cannot visit them.
          */
         for (ResolvedJavaMethod method : truffleRuntime.getAnyFrameMethod()) {
-            graalFeature.requireFrameInformationForMethod(method);
+            runtimeCompilationFeature.requireFrameInformationForMethod(method);
             /*
              * To avoid corner case errors, we also force compilation of these methods. This only
              * affects builds where no Truffle language is included, because any real language makes
@@ -503,11 +505,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         }
     }
 
-    private boolean includeCallee(GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
+    private boolean includeCallee(RuntimeCompilationFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
         return includeCallee(calleeNode.getImplementationMethod(), calleeNode, implementationMethods);
     }
 
-    private boolean includeCallee(ResolvedJavaMethod implementationMethod, GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
+    private boolean includeCallee(ResolvedJavaMethod implementationMethod, RuntimeCompilationFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
         if (implementationMethod.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return false;
         } else if (!((SubstrateTruffleRuntime) Truffle.getRuntime()).isInlineable(implementationMethod)) {
@@ -515,7 +517,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {
             return false;
         } else if (calleeNode != null && implementationMethods.size() > 4 && isBlocklisted(calleeNode.getTargetMethod())) {
-            blocklistViolations.add(new GraalFeature.CallTreeNode(calleeNode.getTargetMethod(), calleeNode.getTargetMethod(), calleeNode.getParent(), calleeNode.getLevel(),
+            blocklistViolations.add(new RuntimeCompilationFeature.CallTreeNode(calleeNode.getTargetMethod(), calleeNode.getTargetMethod(), calleeNode.getParent(), calleeNode.getLevel(),
                             calleeNode.getSourceReference()));
             return false;
         } else if (isBlocklisted(implementationMethod)) {
@@ -695,18 +697,18 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
              * all methods in the warning list, just enough to trigger the warnings. Accessors are
              * generally allowed too.
              */
-            if (m.getAnnotations().length == 0 && !m.getName().startsWith("get") && !m.getName().startsWith("set")) {
+            if (GuardedAnnotationAccess.getAnnotationTypes(m).length == 0 && !m.getName().startsWith("get") && !m.getName().startsWith("set")) {
                 warnMethods.add(metaAccess.lookupJavaMethod(m));
             }
         }
         for (Executable m : clazz.getDeclaredConstructors()) {
-            if (m.getAnnotations().length == 0) {
+            if (GuardedAnnotationAccess.getAnnotationTypes(m).length == 0) {
                 warnMethods.add(metaAccess.lookupJavaMethod(m));
             }
         }
     }
 
-    private static int blocklistViolationComparator(GraalFeature.CallTreeNode n1, GraalFeature.CallTreeNode n2) {
+    private static int blocklistViolationComparator(RuntimeCompilationFeature.CallTreeNode n1, RuntimeCompilationFeature.CallTreeNode n2) {
         int result = n1.getTargetMethod().getQualifiedName().compareTo(n2.getTargetMethod().getQualifiedName());
         if (result == 0) {
             result = n1.getSourceReference().compareTo(n2.getSourceReference());
@@ -719,16 +721,16 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         FeatureImpl.BeforeCompilationAccessImpl access = (FeatureImpl.BeforeCompilationAccessImpl) config;
 
         boolean failBlockListViolations = Options.TruffleCheckBlockListMethods.getValue() || Options.TruffleCheckBlackListedMethods.getValue();
-        boolean printBlockListViolations = GraalFeature.Options.PrintRuntimeCompileMethods.getValue() || failBlockListViolations;
+        boolean printBlockListViolations = RuntimeCompilationFeature.Options.PrintRuntimeCompileMethods.getValue() || failBlockListViolations;
         if (printBlockListViolations && blocklistViolations.size() > 0) {
             System.out.println();
             System.out.println("=== Found " + blocklistViolations.size() + " compilation blocklist violations ===");
             System.out.println();
-            for (GraalFeature.CallTreeNode node : blocklistViolations) {
+            for (RuntimeCompilationFeature.CallTreeNode node : blocklistViolations) {
                 System.out.println("Blocklisted method");
                 System.out.println(node.getImplementationMethod().format("  %H.%n(%p)"));
                 System.out.println("called from");
-                for (GraalFeature.CallTreeNode cur = node; cur != null; cur = cur.getParent()) {
+                for (RuntimeCompilationFeature.CallTreeNode cur = node; cur != null; cur = cur.getParent()) {
                     System.out.println("  " + cur.getSourceReference());
                 }
             }
@@ -742,11 +744,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
              * It is enough to print one warning message with one stack trace. Take the shortest
              * stack trace.
              */
-            GraalFeature.CallTreeNode printNode = null;
+            RuntimeCompilationFeature.CallTreeNode printNode = null;
             int printLength = Integer.MAX_VALUE;
-            for (GraalFeature.CallTreeNode warnNode : warnViolations) {
+            for (RuntimeCompilationFeature.CallTreeNode warnNode : warnViolations) {
                 int warnLength = 0;
-                for (GraalFeature.CallTreeNode cur = warnNode; cur != null; cur = cur.getParent()) {
+                for (RuntimeCompilationFeature.CallTreeNode cur = warnNode; cur != null; cur = cur.getParent()) {
                     warnLength++;
                 }
                 if (warnLength < printLength) {
@@ -756,18 +758,18 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
             }
 
             System.out.println("Warning: suspicious method reachable for runtime compilation: " + printNode.getImplementationMethod().format("%H.%n(%p)"));
-            System.out.println("Check the complete tree of reachable methods using the option " + GraalFeature.Options.PrintRuntimeCompileMethods.getDescriptor().getFieldName());
+            System.out.println("Check the complete tree of reachable methods using the option " + RuntimeCompilationFeature.Options.PrintRuntimeCompileMethods.getDescriptor().getFieldName());
             System.out.println("Suspicious method is called from");
-            for (GraalFeature.CallTreeNode cur = printNode; cur != null; cur = cur.getParent()) {
+            for (RuntimeCompilationFeature.CallTreeNode cur = printNode; cur != null; cur = cur.getParent()) {
                 System.out.println("  " + cur.getSourceReference());
             }
         }
 
         if (neverPartOfCompilationViolations.size() > 0) {
             System.out.println("Error: CompilerAsserts.neverPartOfCompilation reachable for runtime compilation from " + neverPartOfCompilationViolations.size() + " places:");
-            for (GraalFeature.CallTreeNode neverPartOfCompilationNode : neverPartOfCompilationViolations) {
+            for (RuntimeCompilationFeature.CallTreeNode neverPartOfCompilationNode : neverPartOfCompilationViolations) {
                 System.out.println("called from");
-                for (GraalFeature.CallTreeNode cur = neverPartOfCompilationNode; cur != null; cur = cur.getParent()) {
+                for (RuntimeCompilationFeature.CallTreeNode cur = neverPartOfCompilationNode; cur != null; cur = cur.getParent()) {
                     System.out.println("  " + cur.getSourceReference());
                 }
             }
@@ -841,7 +843,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods()));
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods()));
 
-        for (CallTreeNode runtimeCompiledMethod : ImageSingletons.lookup(GraalFeature.class).getRuntimeCompiledMethods().values()) {
+        for (CallTreeNode runtimeCompiledMethod : ImageSingletons.lookup(RuntimeCompilationFeature.class).getRuntimeCompiledMethods().values()) {
 
             runtimeCompiledMethods.add(runtimeCompiledMethod.getImplementationMethod());
 
@@ -872,7 +874,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         HashSet<ResolvedJavaMethod> foundBoundaries = new HashSet<>();
         int callSiteCount = 0;
         int calleeCount = 0;
-        for (CallTreeNode node : ImageSingletons.lookup(GraalFeature.class).getRuntimeCompiledMethods().values()) {
+        for (CallTreeNode node : ImageSingletons.lookup(RuntimeCompilationFeature.class).getRuntimeCompiledMethods().values()) {
             StructuredGraph graph = node.getGraph();
             for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                 ResolvedJavaMethod targetMethod = callTarget.targetMethod();

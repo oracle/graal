@@ -291,10 +291,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return allSynchronizedTypeFlow.getState().types(this);
     }
 
-    public boolean executorIsStarted() {
-        return executor.isStarted();
-    }
-
     @Override
     public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial) {
         return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
@@ -502,11 +498,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 return operation;
             }
         });
-    }
-
-    @Override
-    public void postTask(final DebugContextRunnable task) {
-        executor.execute(task);
     }
 
     public void postTask(final Runnable task) {

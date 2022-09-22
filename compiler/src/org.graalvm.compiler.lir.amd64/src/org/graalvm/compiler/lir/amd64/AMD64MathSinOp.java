@@ -205,10 +205,10 @@ import jdk.vm.ci.amd64.AMD64;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_sin.cpp",
-          lineStart = 0,
-          lineEnd   = 848,
-          commit    = "e58c12e61828485bfffbc9d1b865302b93a94158",
-          sha1      = "4ac9bd6f8b98df9a93ab8ef7de250421605b323c")
+          lineStart = 35,
+          lineEnd   = 636,
+          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
+          sha1      = "35e247db6760c377bb6694dfe98559b8b2eaf8c0")
 // @formatter:on
 public final class AMD64MathSinOp extends AMD64MathIntrinsicUnaryOp {
 

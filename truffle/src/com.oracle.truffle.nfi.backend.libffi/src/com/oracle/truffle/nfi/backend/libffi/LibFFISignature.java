@@ -399,7 +399,7 @@ final class LibFFISignature {
 
         int fixedArgCount;
 
-        private static final ArrayFactory<LibFFIType> FACTORY = new ArrayFactory<LibFFIType>() {
+        private static final ArrayFactory<LibFFIType> FACTORY = new ArrayFactory<>() {
 
             @Override
             public LibFFIType[] create(int size) {
@@ -440,9 +440,13 @@ final class LibFFISignature {
         @ExportMessage
         static class AddArgument {
 
-            @Specialization(guards = {"builder.state == oldState", "promotedType.typeInfo == cachedTypeInfo"})
+            static boolean isSame(CachedTypeInfo v0, CachedTypeInfo v1) {
+                return v0 == v1;
+            }
+
+            @Specialization(guards = {"builder.state == oldState", "isSame(promotedType.typeInfo, cachedTypeInfo)"})
             static void doCached(SignatureBuilder builder, @SuppressWarnings("unused") LibFFIType argType,
-                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
+                            @SuppressWarnings("unused") @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
                             @Bind("builder.maybePromote(self, argType)") LibFFIType promotedType,
                             @Cached("builder.state") ArgsState oldState,
                             @Cached("promotedType.typeInfo") CachedTypeInfo cachedTypeInfo,

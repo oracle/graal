@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 
@@ -31,4 +35,10 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
  * Common superclass for phases that perform inlining.
  */
 public abstract class AbstractInliningPhase extends BasePhase<HighTierContext> {
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return NotApplicable.combineConstraints(
+                        NotApplicable.mustRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        NotApplicable.mustRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState));
+    }
 }

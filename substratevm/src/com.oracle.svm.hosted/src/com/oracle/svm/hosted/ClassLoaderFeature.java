@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
-@AutomaticFeature
-public class ClassLoaderFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ClassLoaderFeature implements InternalFeature {
 
     private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 

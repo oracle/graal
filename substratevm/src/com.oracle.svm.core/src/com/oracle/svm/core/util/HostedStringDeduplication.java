@@ -29,13 +29,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.StringInternSupport;
 
 /**
@@ -43,6 +42,7 @@ import com.oracle.svm.core.jdk.StringInternSupport;
  * {@link String#intern} has negative side effects on the image size because all interned strings
  * must be maintained in an array in the image heap, see {@link StringInternSupport}.
  */
+@AutomaticallyRegisteredImageSingleton
 @Platforms(Platform.HOSTED_ONLY.class)
 public class HostedStringDeduplication {
 
@@ -115,13 +115,5 @@ public class HostedStringDeduplication {
          * problem.
          */
         return new String(str).intern() == str;
-    }
-}
-
-@AutomaticFeature
-class HostedStringDeduplicationFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(HostedStringDeduplication.class, new HostedStringDeduplication());
     }
 }

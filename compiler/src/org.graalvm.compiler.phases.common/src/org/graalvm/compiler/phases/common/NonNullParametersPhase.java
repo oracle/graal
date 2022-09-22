@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -37,6 +40,11 @@ import org.graalvm.compiler.phases.Phase;
  * are non-null. This can be used for graphs where the caller null checks all arguments.
  */
 public class NonNullParametersPhase extends Phase {
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     @Override
     protected void run(StructuredGraph graph) {

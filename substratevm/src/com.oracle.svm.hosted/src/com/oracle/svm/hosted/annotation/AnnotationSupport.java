@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.annotation;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -60,20 +62,24 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.impl.ImageBuildtimeCodeAnnotationAccessSupport;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateAnnotationInvocationHandler;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -327,7 +333,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 kit.startIf(graph.unique(new IntegerEqualsNode(arrayLength, ConstantNode.forInt(0, graph))), BranchProbabilityNode.NOT_LIKELY_PROFILE);
                 kit.elsePart();
 
-                ResolvedJavaMethod cloneMethod = kit.findMethod(Object.class, "clone", false);
+                ResolvedJavaMethod cloneMethod = kit.findMethod(Object.class, "clone");
                 JavaType returnType = cloneMethod.getSignature().getReturnType(null);
                 StampPair returnStampPair = StampFactory.forDeclaredType(null, returnType, false);
 
@@ -448,7 +454,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                     attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute, otherAttribute);
                 } else {
                     /* Just call Object.equals(). Primitive values are already boxed. */
-                    ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", false);
+                    ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", Object.class);
                     ValueNode ourAttributeNonNull = kit.maybeCreateExplicitNullCheck(ourAttribute);
                     attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttributeNonNull, otherAttribute);
                 }
@@ -514,7 +520,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 } else {
                     /* Just call Object.hashCode(). Primitive values are already boxed. */
                     ourAttribute = kit.maybeCreateExplicitNullCheck(ourAttribute);
-                    ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode", false);
+                    ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode");
                     attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute);
                 }
 
@@ -652,8 +658,8 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
 }
 
-@AutomaticFeature
-class AnnotationSupportFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class AnnotationSupportFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -732,5 +738,30 @@ class AnnotationObjectReplacer implements Function<Object, Object> {
         Class<?>[] extendedInterfaces = Arrays.copyOf(interfaces, interfaces.length + 1);
         extendedInterfaces[extendedInterfaces.length - 1] = AnnotationSupport.constantAnnotationMarkerInterface;
         return Proxy.newProxyInstance(original.getClass().getClassLoader(), extendedInterfaces, new SubstrateAnnotationInvocationHandler(Proxy.getInvocationHandler(original)));
+    }
+}
+
+@AutomaticallyRegisteredImageSingleton(ImageBuildtimeCodeAnnotationAccessSupport.class)
+class ImageBuildtimeCodeAnnotationAccessSupportSingleton implements ImageBuildtimeCodeAnnotationAccessSupport {
+
+    @Override
+    public boolean isAnnotationPresent(AnnotatedElement element, Class<? extends Annotation> annotationClass) {
+        assert ImageInfo.inImageBuildtimeCode() : "This method should only be called from within image buildtime code";
+
+        return GuardedAnnotationAccess.isAnnotationPresent(element, annotationClass);
+    }
+
+    @Override
+    public Annotation getAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType) {
+        assert ImageInfo.inImageBuildtimeCode() : "This method should only be called from within image buildtime code";
+
+        return GuardedAnnotationAccess.getAnnotation(element, annotationType);
+    }
+
+    @Override
+    public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
+        assert ImageInfo.inImageBuildtimeCode() : "This method should only be called from within image buildtime code";
+
+        return GuardedAnnotationAccess.getAnnotationTypes(element);
     }
 }

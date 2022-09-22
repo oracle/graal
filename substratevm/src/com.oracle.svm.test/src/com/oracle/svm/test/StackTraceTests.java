@@ -27,10 +27,12 @@ package com.oracle.svm.test;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertSame;
 
-import com.oracle.svm.core.annotate.NeverInline;
+import org.graalvm.word.WordFactory;
+import org.junit.Test;
+
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.junit.Test;
 
 /**
  * Tests of {@link com.oracle.svm.core.jdk.StackTraceUtils}.
@@ -64,7 +66,7 @@ public class StackTraceTests {
                 assertSame(B.class, callerClass);
             }
             if (type == Type.GET_STACKTRACE) {
-                StackTraceElement[] stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
+                StackTraceElement[] stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), WordFactory.nullPointer());
                 assertTrue(stackTrace.length > 0);
                 assertSame(B.class.getName(), stackTrace[0].getClassName());
                 assertSame(A.class.getName(), stackTrace[1].getClassName());

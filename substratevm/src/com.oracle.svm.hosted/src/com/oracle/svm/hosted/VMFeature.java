@@ -29,23 +29,23 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
-@AutomaticFeature
-public class VMFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class VMFeature implements InternalFeature {
 
     private NativeLibraries nativeLibraries;
     private static final String STATIC_BINARY_MARKER_SYMBOL_NAME = "__svm_vm_is_static_binary";

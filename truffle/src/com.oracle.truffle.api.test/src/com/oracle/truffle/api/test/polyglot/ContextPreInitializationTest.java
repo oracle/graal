@@ -616,7 +616,7 @@ public class ContextPreInitializationTest {
             assertSame(firstLangCtx, langCtx);
 
             ctx.enter();
-            try (TruffleContext innerContext = langCtx.environment().newContextBuilder().build()) {
+            try (TruffleContext innerContext = langCtx.environment().newInnerContextBuilder().initializeCreatorContext(true).build()) {
                 contexts = new ArrayList<>(emittedContexts);
                 assertEquals(2, contexts.size());
                 langCtx = contexts.get(1);

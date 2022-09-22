@@ -31,7 +31,6 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -44,8 +43,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.llvm.util.LLVMDirectives;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
@@ -142,7 +142,7 @@ public class LLVMExceptionUnwind {
         return new ExceptionUnwind() {
             @Override
             protected void customUnwindException(Pointer callerSP) {
-                _Unwind_Exception exceptionStructure = StackValue.get(_Unwind_Exception.class);
+                _Unwind_Exception exceptionStructure = UnsafeStackValue.get(_Unwind_Exception.class);
                 exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
                 exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
                 raiseException(exceptionStructure);

@@ -31,6 +31,8 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -38,7 +40,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -47,6 +49,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
+@Platforms({Platform.AMD64.class, Platform.AARCH64.class})
 public class StubForeignCallsFeatureBase implements InternalFeature {
 
     static final class StubDescriptor {
@@ -54,16 +57,18 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private final ForeignCallDescriptor[] foreignCallDescriptors;
         private final boolean isReexecutable;
         private final EnumSet<?> minimumRequiredFeatures;
+        private final EnumSet<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
-        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures) {
-            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures);
+        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
         }
 
-        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures) {
+        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
             this.isReexecutable = isReexecutable;
             this.minimumRequiredFeatures = minimumRequiredFeatures;
+            this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs() {
@@ -75,8 +80,14 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || DeoptimizationSupport.enabled();
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(Stubs.getRuntimeCheckedCPUFeatures()) && DeoptimizationSupport.enabled();
+            boolean isJITCompilationEnabled = DeoptimizationSupport.enabled();
+            // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
+            // as well as a version with the preferred runtime checked features, even if both
+            // variants are not supported by the build time feature set. This way, intrinsics
+            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfils the
+            // minimum requirements and doesn't have the preferred AVX2 flag.
+            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || isJITCompilationEnabled && !minimumRequiredFeatures.equals(runtimeCheckedCPUFeatures);
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && isJITCompilationEnabled;
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {

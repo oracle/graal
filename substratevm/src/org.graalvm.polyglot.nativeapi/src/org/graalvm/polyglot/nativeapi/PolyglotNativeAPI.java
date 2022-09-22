@@ -106,7 +106,7 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CUnsigned;
@@ -1775,11 +1775,10 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_exception_get_stack_trace", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Gets the guest stack traces as a string.",
-                    "The returned string is valid until the next call to this function",
+                    "Gets the full stack trace as a UTF-8 encoded string.",
                     "",
                     " @param exception Handle to the exception object.",
-                    " @param buffer UTF-8 string representing the stack trace. Can be NULL.",
+                    " @param buffer Where to write the UTF-8 string representing the stack trace. Can be NULL.",
                     " @param buffer_size Size of the user-supplied buffer.",
                     " @param result If buffer is NULL, this will contain the buffer size required to put the trace string in, otherwise, it will contain the number of bytes written",
                     " @return poly_ok if everything went ok, otherwise an error occurred.",
@@ -1790,14 +1789,56 @@ public final class PolyglotNativeAPI {
         PolyglotException e = fetchHandle(exception);
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
-        Iterable<PolyglotException.StackFrame> traceElements = e.getPolyglotStackTrace();
 
+        e.getPolyglotStackTrace().forEach(trace -> pw.println(trace));
+
+        writeString(sw.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_exception_get_guest_stack_trace", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Gets the guest stack trace as a UTF-8 encoded string.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param buffer Where to write the UTF-8 string representing the stack trace. Can be NULL.",
+                    " @param buffer_size Size of the user-supplied buffer.",
+                    " @param result If buffer is NULL, this will contain the buffer size required to put the trace string in, otherwise, it will contain the number of bytes written",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    " @since 22.3",
+    })
+    public static PolyglotStatus poly_exception_get_guest_stack_trace(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CCharPointer buffer, UnsignedWord buffer_size,
+                    SizeTPointer result) {
+        resetErrorState();
+        PolyglotException e = fetchHandle(exception);
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+
+        Iterable<PolyglotException.StackFrame> traceElements = e.getPolyglotStackTrace();
         for (PolyglotException.StackFrame trace : traceElements) {
             if (trace.isGuestFrame()) {
-                pw.println(trace.toString());
+                pw.println(trace);
             }
         }
         writeString(sw.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_exception_get_message", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Gets the error message as a UTF-8 encoded string.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param buffer Where to write the UTF-8 string representing the error message. Can be NULL.",
+                    " @param buffer_size Size of the user-supplied buffer.",
+                    " @param result If buffer is NULL, this will contain the buffer size required to put the error message string in, otherwise, it will contain the number of bytes written",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    " @since 22.3",
+    })
+    public static PolyglotStatus poly_exception_get_message(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CCharPointer buffer, UnsignedWord buffer_size,
+                    SizeTPointer result) {
+        resetErrorState();
+        PolyglotException e = fetchHandle(exception);
+
+        writeString(e.getMessage(), buffer, buffer_size, result, UTF8_CHARSET);
         return poly_ok;
     }
 
@@ -1877,15 +1918,18 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_perf_data_get_address_of_int64_t(PolyglotIsolateThread thread, CCharPointer utf8Key, CInt64PointerPointer result) {
         resetErrorState();
         String key = CTypeConversion.utf8ToJavaString(utf8Key);
+        if (!ImageSingletons.lookup(PerfDataSupport.class).hasLong(key)) {
+            throw reportError("Key " + key + " is not a valid performance data entry key.", poly_generic_failure);
+        }
         CInt64Pointer ptr = (CInt64Pointer) ImageSingletons.lookup(PerfDataSupport.class).getLong(key);
         result.write(ptr);
         return poly_ok;
     }
 
     private static void writeString(String valueString, CCharPointer buffer, UnsignedWord length, SizeTPointer result, Charset charset) {
-        UnsignedWord stringLength = WordFactory.unsigned(valueString.getBytes(charset).length);
         if (buffer.isNull()) {
-            result.write(stringLength);
+            int stringLength = valueString.getBytes(charset).length;
+            result.write(WordFactory.unsigned(stringLength));
         } else {
             result.write(CTypeConversion.toCString(valueString, charset, buffer, length));
         }

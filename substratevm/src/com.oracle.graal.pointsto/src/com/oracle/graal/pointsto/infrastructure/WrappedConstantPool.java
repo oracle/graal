@@ -72,11 +72,19 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
      */
     private static final Method hsLoadReferencedType;
     private static final Method hsLookupReferencedType;
+
     /**
      * The method jdk.vm.ci.meta.ConstantPool#lookupBootstrapMethodInvocation(int cpi, int opcode)
      * was introduced in JVMCI 22.1.
      */
     private static final Method hsLookupBootstrapMethodInvocation;
+
+    /**
+     * {@code jdk.vm.ci.meta.ConstantPool.lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller)}
+     * was introduced in JVMCI 22.3.
+     */
+    private static final Method lookupMethodWithCaller;
+
     /**
      * The interface jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation was introduced in JVMCI
      * 22.1.
@@ -110,6 +118,8 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         } catch (ClassNotFoundException | ReflectionUtilError ex) {
         }
         hsLookupBootstrapMethodInvocation = lookupBootstrapMethodInvocation;
+
+        lookupMethodWithCaller = ReflectionUtil.lookupMethod(true, ConstantPool.class, "lookupMethod", int.class, int.class, ResolvedJavaMethod.class);
 
         Method getMethod = null;
         Method isInvokeDynamic = null;
@@ -168,6 +178,31 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode) {
         return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode));
+    }
+
+    @Override
+    public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
+        if (lookupMethodWithCaller == null) {
+            /* Resort to version without caller. */
+            return lookupMethod(cpi, opcode);
+        }
+        try {
+            /* Unwrap the caller method. */
+            ResolvedJavaMethod substCaller = universe.resolveSubstitution(((WrappedJavaMethod) caller).getWrapped());
+            /*
+             * Delegate to the lookup with caller method of the wrapped constant pool (via
+             * reflection).
+             */
+            return universe.lookupAllowUnresolved((JavaMethod) lookupMethodWithCaller.invoke(wrapped, cpi, opcode, substCaller));
+        } catch (Throwable ex) {
+            Throwable cause = ex;
+            if (ex instanceof InvocationTargetException && ex.getCause() != null) {
+                cause = ex.getCause();
+            } else if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
+                cause = ex.getCause();
+            }
+            throw new UnresolvedElementException("Error loading a referenced type: " + cause.toString(), cause);
+        }
     }
 
     /**

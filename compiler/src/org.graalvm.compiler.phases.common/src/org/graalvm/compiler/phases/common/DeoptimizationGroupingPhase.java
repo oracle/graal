@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.phases.common;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -53,6 +55,11 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
  * {@link FrameState} and merges them together.
  */
 public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     @Override
     @SuppressWarnings("try")

@@ -37,6 +37,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ArrayScan;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
@@ -53,6 +54,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -75,6 +77,7 @@ public abstract class ImageHeapScanner {
 
     private static final JavaConstant[] emptyConstantArray = new JavaConstant[0];
 
+    protected final BigBang bb;
     protected final ImageHeap imageHeap;
     protected final AnalysisMetaAccess metaAccess;
     protected final AnalysisUniverse universe;
@@ -90,8 +93,9 @@ public abstract class ImageHeapScanner {
     /** Marker object installed when encountering scanning issues like illegal objects. */
     private static final ImageHeapObject NULL_IMAGE_HEAP_OBJECT = new ImageHeapInstance(JavaConstant.NULL_POINTER, 0);
 
-    public ImageHeapScanner(ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
+    public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
+        this.bb = bb;
         imageHeap = heap;
         metaAccess = aMetaAccess;
         universe = aMetaAccess.getUniverse();
@@ -467,51 +471,72 @@ public abstract class ImageHeapScanner {
         return false;
     }
 
-    public Object rescanRoot(Field reflectionField) {
+    /**
+     * When a re-scanning is triggered while the analysis is running in parallel, it is necessary to
+     * do the re-scanning in a separate executor task to avoid deadlocks. For example,
+     * lookupJavaField might need to wait for the reachability handler to be finished that actually
+     * triggered the re-scanning.
+     *
+     * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
+     * schedule new tasks, because that would be treated as "the analysis has not finsihed yet". So
+     * in that case we execute the task directly.
+     */
+    private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
+        if (bb.executorIsStarted()) {
+            bb.postTask(task);
+        } else {
+            task.run(null);
+        }
+    }
+
+    public void rescanRoot(Field reflectionField) {
         if (skipScanning()) {
-            return null;
+            return;
         }
-        AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
-        if (type.isReachable()) {
-            AnalysisField field = metaAccess.lookupJavaField(reflectionField);
-            JavaConstant fieldValue = readHostedFieldValue(field, null).get();
-            TypeData typeData = field.getDeclaringClass().getOrComputeData();
-            AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, OtherReason.RESCAN, null);
-            if (field.isRead() || field.isFolded()) {
-                Object root = asObject(fieldTask.ensureDone());
-                rescanCollectionElements(root);
-                return root;
+
+        maybeRunInExecutor(unused -> {
+            AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
+            if (type.isReachable()) {
+                AnalysisField field = metaAccess.lookupJavaField(reflectionField);
+                JavaConstant fieldValue = readHostedFieldValue(field, null).get();
+                TypeData typeData = field.getDeclaringClass().getOrComputeData();
+                AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, OtherReason.RESCAN, null);
+                if (field.isRead() || field.isFolded()) {
+                    Object root = asObject(fieldTask.ensureDone());
+                    rescanCollectionElements(root);
+                }
             }
-        }
-        return null;
+        });
     }
 
     public void rescanField(Object receiver, Field reflectionField) {
         if (skipScanning()) {
             return;
         }
-        AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
-        if (type.isReachable()) {
-            AnalysisField field = metaAccess.lookupJavaField(reflectionField);
-            assert !field.isStatic();
-            JavaConstant receiverConstant = asConstant(receiver);
-            Optional<JavaConstant> replaced = maybeReplace(receiverConstant, OtherReason.RESCAN);
-            if (replaced.isPresent()) {
-                if (replaced.get().isNull()) {
-                    /* There was some problem during replacement, bailout. */
-                    return;
+        maybeRunInExecutor(unused -> {
+            AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
+            if (type.isReachable()) {
+                AnalysisField field = metaAccess.lookupJavaField(reflectionField);
+                assert !field.isStatic();
+                JavaConstant receiverConstant = asConstant(receiver);
+                Optional<JavaConstant> replaced = maybeReplace(receiverConstant, OtherReason.RESCAN);
+                if (replaced.isPresent()) {
+                    if (replaced.get().isNull()) {
+                        /* There was some problem during replacement, bailout. */
+                        return;
+                    }
+                    receiverConstant = replaced.get();
                 }
-                receiverConstant = replaced.get();
-            }
-            JavaConstant fieldValue = readHostedFieldValue(field, universe.toHosted(receiverConstant)).get();
-            if (fieldValue != null) {
-                ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant);
-                AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, OtherReason.RESCAN, null);
-                if (field.isRead() || field.isFolded()) {
-                    rescanCollectionElements(asObject(fieldTask.ensureDone()));
+                JavaConstant fieldValue = readHostedFieldValue(field, universe.toHosted(receiverConstant)).get();
+                if (fieldValue != null) {
+                    ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant);
+                    AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, OtherReason.RESCAN, null);
+                    if (field.isRead() || field.isFolded()) {
+                        rescanCollectionElements(asObject(fieldTask.ensureDone()));
+                    }
                 }
             }
-        }
+        });
     }
 
     protected AnalysisFuture<JavaConstant> patchStaticField(TypeData typeData, AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
@@ -540,7 +565,6 @@ public abstract class ImageHeapScanner {
      */
     public void rescanObject(Object object) {
         rescanObject(object, OtherReason.RESCAN);
-        rescanCollectionElements(object);
     }
 
     /**
@@ -553,7 +577,11 @@ public abstract class ImageHeapScanner {
         if (object == null) {
             return;
         }
-        doScan(asConstant(object), reason);
+
+        maybeRunInExecutor(unused -> {
+            doScan(asConstant(object), reason);
+            rescanCollectionElements(object);
+        });
     }
 
     private void rescanCollectionElements(Object object) {

@@ -28,6 +28,7 @@ package org.graalvm.compiler.replacements;
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayIndexScale;
 import static org.graalvm.compiler.replacements.StringHelperIntrinsics.getByte;
@@ -83,7 +84,7 @@ public class StringUTF16Snippets implements Snippets {
         ReplacementsUtil.dynamicAssert(targetCount > 0, "StringUTF16.indexOfUnsafe invalid args: targetCount <= 0");
         ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
-        if (targetCount == 1) {
+        if (unknownProbability(targetCount == 1)) {
             return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, false, false, source, byteArrayCharOffset(0), sourceCount, fromIndex, getChar(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
@@ -115,7 +116,7 @@ public class StringUTF16Snippets implements Snippets {
         ReplacementsUtil.dynamicAssert(targetCount > 0, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount <= 0");
         ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
-        if (targetCount == 1) {
+        if (unknownProbability(targetCount == 1)) {
             return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, false, false, source, byteArrayCharOffset(0), sourceCount, fromIndex,
                             (char) Byte.toUnsignedInt(getByte(target, 0)));
         } else {

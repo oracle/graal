@@ -28,19 +28,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ReentrantBlockIteratorTest extends GraalCompilerTest {
 
@@ -207,7 +205,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
     private List<Block> getVisitedBlocksInOrder(String snippet) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         // after FSA to ensure HIR loop data structure does not contain loop exits
-        graph.setGuardsStage(GuardsStage.AFTER_FSA);
+        graph.getGraphState().setAfterFSA();
         ArrayList<Block> blocks = new ArrayList<>();
         class VoidState {
         }

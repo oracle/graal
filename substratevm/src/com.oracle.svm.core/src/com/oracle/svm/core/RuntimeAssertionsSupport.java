@@ -34,12 +34,11 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
@@ -77,6 +76,7 @@ class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeAssertionsSupport {
 
@@ -190,13 +190,5 @@ public final class RuntimeAssertionsSupport {
 
     public boolean desiredAssertionStatus(Class<?> clazz) {
         return desiredAssertionStatusImpl(clazz.getName(), clazz.getClassLoader());
-    }
-}
-
-@AutomaticFeature
-class RuntimeAssertionsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeAssertionsSupport.class, new RuntimeAssertionsSupport());
     }
 }

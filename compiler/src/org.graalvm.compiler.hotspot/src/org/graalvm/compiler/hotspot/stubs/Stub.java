@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMO
 import static org.graalvm.util.CollectionsUtil.allMatch;
 
 import java.util.ListIterator;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.collections.EconomicSet;
@@ -50,10 +51,14 @@ import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.profiling.MoveProfilingPhase;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
@@ -294,9 +299,33 @@ public abstract class Stub {
         assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
     }
 
+    private static class EmptyHighTier extends BasePhase<HighTierContext> {
+        @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph, HighTierContext context) {
+        }
+
+        @Override
+        public void updateGraphState(GraphState graphState) {
+            super.updateGraphState(graphState);
+            if (graphState.isBeforeStage(StageFlag.HIGH_TIER_LOWERING)) {
+                graphState.setAfterStage(StageFlag.HIGH_TIER_LOWERING);
+            }
+        }
+
+    }
+
     protected Suites createSuites() {
-        Suites defaultSuites = providers.getSuites().getDefaultSuites(options);
-        return new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
+        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
+
+        PhaseSuite<HighTierContext> emptyHighTier = new PhaseSuite<>();
+        emptyHighTier.appendPhase(new EmptyHighTier());
+
+        return new Suites(emptyHighTier, defaultSuites.getMidTier(), defaultSuites.getLowTier());
     }
 
     protected LIRSuites createLIRSuites() {

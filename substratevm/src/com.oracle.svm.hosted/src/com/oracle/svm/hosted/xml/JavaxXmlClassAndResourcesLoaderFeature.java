@@ -25,10 +25,6 @@
 
 package com.oracle.svm.hosted.xml;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.BuiltinSchemaGrammarClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMImplementationRegistryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMParserClasses;
@@ -38,8 +34,12 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaDVFactoryCl
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 
-@AutomaticFeature
-public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements Feature {
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+
+@AutomaticallyRegisteredFeature
+public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

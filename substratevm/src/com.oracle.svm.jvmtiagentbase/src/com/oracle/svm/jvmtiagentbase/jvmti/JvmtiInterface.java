@@ -49,6 +49,15 @@ public interface JvmtiInterface extends PointerBase {
     int JVMTI_VERSION_9 = 0x30090000;
     @SuppressWarnings("unused")//
     int JVMTI_VERSION_11 = 0x300B0000;
+    int JVMTI_VERSION_19 = 0x30130000;
+
+    @CField("GetVersionNumber")
+    GetVersionNumberFunctionPointer GetVersionNumber();
+
+    interface GetVersionNumberFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, CIntPointer versionPtr);
+    }
 
     @CField("GetJNIFunctionTable")
     GetJNIFunctionTableFunctionPointer GetJNIFunctionTable();
@@ -177,6 +186,14 @@ public interface JvmtiInterface extends PointerBase {
     interface GetLocalInstanceFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv env, JNIObjectHandle thread, int depth, PointerBase valuePtr);
+    }
+
+    @CField("GetCurrentThread")
+    GetCurrentThreadFunctionPointer GetCurrentThread();
+
+    interface GetCurrentThreadFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, PointerBase threadPtr);
     }
 
     @CField("GetClassLoader")

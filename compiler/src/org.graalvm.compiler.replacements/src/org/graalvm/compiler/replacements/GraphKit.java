@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -536,9 +537,9 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         return merge;
     }
 
-    static class InvokeWithExceptionStructure extends Structure {
+    protected static class WithExceptionStructure extends Structure {
         protected enum State {
-            INVOKE,
+            START,
             NO_EXCEPTION_EDGE,
             EXCEPTION_EDGE,
             FINISHED
@@ -568,19 +569,23 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     public InvokeWithExceptionNode startInvokeWithException(CallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
         ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, invokeBci);
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
+        return startWithException(invoke, exceptionObject, frameStateBuilder, invokeBci);
+    }
+
+    protected <T extends WithExceptionNode & StateSplit> T startWithException(T withException, ExceptionObjectNode exceptionObject, FrameStateBuilder frameStateBuilder, int bci) {
         AbstractBeginNode noExceptionEdge = graph.add(new BeginNode());
-        invoke.setNext(noExceptionEdge);
-        pushForStateSplit(frameStateBuilder, invokeBci, invoke);
+        withException.setNext(noExceptionEdge);
+        pushForStateSplit(frameStateBuilder, bci, withException);
         lastFixedNode = null;
 
-        InvokeWithExceptionStructure s = new InvokeWithExceptionStructure();
-        s.state = InvokeWithExceptionStructure.State.INVOKE;
+        WithExceptionStructure s = new WithExceptionStructure();
+        s.state = WithExceptionStructure.State.START;
         s.noExceptionEdge = noExceptionEdge;
         s.exceptionEdge = exceptionObject;
         s.exceptionObject = exceptionObject;
         pushStructure(s);
 
-        return invoke;
+        return withException;
     }
 
     protected ExceptionObjectNode createExceptionObjectNode(FrameStateBuilder frameStateBuilder, int exceptionEdgeBci) {
@@ -601,10 +606,10 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         }
     }
 
-    private InvokeWithExceptionStructure saveLastInvokeWithExceptionNode() {
-        InvokeWithExceptionStructure s = getTopStructure(InvokeWithExceptionStructure.class);
+    private WithExceptionStructure saveLastWithExceptionNode() {
+        WithExceptionStructure s = getTopStructure(WithExceptionStructure.class);
         switch (s.state) {
-            case INVOKE:
+            case START:
                 assert lastFixedNode == null;
                 break;
             case NO_EXCEPTION_EDGE:
@@ -622,34 +627,42 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     }
 
     public void noExceptionPart() {
-        InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
+        WithExceptionStructure s = saveLastWithExceptionNode();
         lastFixedNode = (FixedWithNextNode) s.noExceptionEdge;
-        s.state = InvokeWithExceptionStructure.State.NO_EXCEPTION_EDGE;
+        s.state = WithExceptionStructure.State.NO_EXCEPTION_EDGE;
     }
 
     public void exceptionPart() {
-        InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
+        WithExceptionStructure s = saveLastWithExceptionNode();
         lastFixedNode = (FixedWithNextNode) s.exceptionEdge;
-        s.state = InvokeWithExceptionStructure.State.EXCEPTION_EDGE;
+        s.state = WithExceptionStructure.State.EXCEPTION_EDGE;
     }
 
     public ExceptionObjectNode exceptionObject() {
-        InvokeWithExceptionStructure s = getTopStructure(InvokeWithExceptionStructure.class);
+        WithExceptionStructure s = getTopStructure(WithExceptionStructure.class);
         return s.exceptionObject;
     }
 
     /**
-     * Finishes a control flow started with {@link #startInvokeWithException}. If necessary, creates
-     * a merge of the non-exception and exception edges. The merge node is returned and the
+     * Finishes a control flow started with {@link #startInvokeWithException}. See
+     * {@link #endWithException()}.
+     */
+    public AbstractMergeNode endInvokeWithException() {
+        return endWithException();
+    }
+
+    /**
+     * Finishes a control flow started with {@link #startWithException}. If necessary, creates a
+     * merge of the non-exception and exception edges. The merge node is returned and the
      * non-exception edge is the first forward end of the merge, the exception edge is the second
      * forward end (relevant for phi nodes).
      */
-    public AbstractMergeNode endInvokeWithException() {
-        InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
+    public AbstractMergeNode endWithException() {
+        WithExceptionStructure s = saveLastWithExceptionNode();
         FixedWithNextNode noExceptionEdge = s.noExceptionEdge instanceof FixedWithNextNode ? (FixedWithNextNode) s.noExceptionEdge : null;
         FixedWithNextNode exceptionEdge = s.exceptionEdge instanceof FixedWithNextNode ? (FixedWithNextNode) s.exceptionEdge : null;
         AbstractMergeNode merge = mergeControlSplitBranches(noExceptionEdge, exceptionEdge);
-        s.state = InvokeWithExceptionStructure.State.FINISHED;
+        s.state = WithExceptionStructure.State.FINISHED;
         popStructure();
         return merge;
     }

@@ -379,8 +379,8 @@ class ToolchainConfig(object):
         self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
-        self.tool_map = {tool: [_cmd_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
-        self.path_map = {_cmd_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
+        self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
+        self.path_map = {_exe_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
         # register mx command
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
@@ -428,7 +428,11 @@ class ToolchainConfig(object):
 
     def get_toolchain_tool(self, tool):
         if tool in self._supported_tools():
-            return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
+            ret = os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
+            if mx.is_windows() and ret.endswith('.exe') and not os.path.exists(ret):
+                # this might be a bootstrap toolchain without native-image, so we have to replace .exe with .cmd
+                ret = ret[:-4] + '.cmd'
+            return ret
         elif tool in self.llvm_binutil_tools:
             return os.path.join(self.bootstrap_provider(), 'bin', _cmd_sub(tool.lower()))
         else:
@@ -446,6 +450,7 @@ class ToolchainConfig(object):
                 build_args=[
                     '--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers',
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
+                    '--gc=epsilon',
                 ],
                 is_main_launcher=False,
                 default_symlinks=False,
@@ -515,12 +520,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=[],
     truffle_jars=[],
     support_distributions=[],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:lli>',
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=['bin/<exe:lli>'],
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
             build_args=[],
+            build_args_enterprise=[
+                '-H:+AuxiliaryEngineCache',
+                '-H:ReservedAuxiliaryImageBytes=2145482548',
+            ] if not mx.is_windows() else [],
             language='llvm',
         ),
     ],

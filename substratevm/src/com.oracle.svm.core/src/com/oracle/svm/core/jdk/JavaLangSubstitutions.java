@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
@@ -58,23 +59,19 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -99,16 +96,21 @@ final class Target_java_lang_Object {
     }
 
     @Substitute
-    @TargetElement(name = "wait", onlyWith = JDK17OrEarlier.class)
+    @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
+        /*
+         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned.
+         * Also, we get interrupted on the virtual thread instead of the carrier thread, which
+         * clears the carrier thread's interrupt status too, so we don't have to intercept an
+         * InterruptedException from the carrier thread to clear the virtual thread interrupt.
+         */
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
-    @Substitute
-    @TargetElement(name = "wait0", onlyWith = JDK19OrLater.class)
-    private void waitSubstLoom(long timeoutMillis) throws InterruptedException {
-        MonitorSupport.singleton().wait(this, timeoutMillis);
-    }
+    @Delete
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private native void wait0(long timeoutMillis);
 
     @Substitute
     @TargetElement(name = "notify")
@@ -211,7 +213,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
+        stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
         return this;
     }
 
@@ -745,14 +747,9 @@ public final class JavaLangSubstitutions {
         }
     }
 
-    static class ClassValueInitializer implements CustomFieldValueComputer {
+    static class ClassValueInitializer implements FieldValueTransformer {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
             ClassValue<?> v = (ClassValue<?>) receiver;
             Map<Class<?>, Object> map = support.values.get(v);

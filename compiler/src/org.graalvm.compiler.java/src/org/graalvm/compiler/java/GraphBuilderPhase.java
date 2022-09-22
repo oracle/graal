@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.java;
 
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -48,6 +51,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     @Override
     public boolean checkContract() {
         return false;
+    }
+
+    @Override
+    public Optional<NotApplicable> canApply(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
     }
 
     @Override
@@ -77,6 +85,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         @Override
         public boolean checkContract() {
             return false;
+        }
+
+        @Override
+        public Optional<NotApplicable> canApply(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
         }
 
         @Override

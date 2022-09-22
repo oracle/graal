@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import static org.graalvm.word.LocationIdentity.any;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -72,6 +70,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
@@ -166,8 +165,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
          */
         Stamp methodStamp = SubstrateMethodPointerStamp.methodNonNull();
         AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-        ReadNode methodPointer = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
-        return methodPointer;
+        return graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), methodStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
     }
 
     @Override

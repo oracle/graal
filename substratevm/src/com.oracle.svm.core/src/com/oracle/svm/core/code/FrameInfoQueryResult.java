@@ -264,24 +264,24 @@ public class FrameInfoQueryResult {
     }
 
     /**
-     * Returns the number of locals variables. It can be larger than the length of
-     * {@link #getValueInfos()} because trailing illegal values are truncated there. It can be
-     * smaller than the length of {@link #getValueInfos()} when expression stack values and locked
-     * values are present.
+     * Returns the number of locals variables. See {@link #getValueInfos()} for description of array
+     * layout.
      */
     public int getNumLocals() {
         return numLocals;
     }
 
     /**
-     * Returns the number of locked values.
+     * Returns the number of locked values. See {@link #getValueInfos()} for description of array
+     * layout.
      */
     public int getNumLocks() {
         return numLocks;
     }
 
     /**
-     * Returns the number of stack values.
+     * Returns the number of stack values. See {@link #getValueInfos()} for description of array
+     * layout.
      */
     public int getNumStack() {
         return numStack;
@@ -295,7 +295,10 @@ public class FrameInfoQueryResult {
     }
 
     /**
-     * Returns the local variables and expression stack values.
+     * Returns array containing information about the local, stack, and lock values. The values are
+     * arranged in the order {locals, stack values, locks} and matches the order of
+     * {@code BytecodeFrame#values}. Trailing illegal values can be pruned, so the array size may
+     * not be equal to (numLocals + numStack + numLocks).
      */
     public ValueInfo[] getValueInfos() {
         return valueInfos;

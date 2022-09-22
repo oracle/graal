@@ -55,7 +55,7 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
         getContext().initialize(LANGUAGE);
         Env env = Language.REFERENCE.get(null);
 
-        TruffleContext context = env.newContextBuilder().build();
+        TruffleContext context = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         try {
             OptimizedCallTarget target = assertCompiling(new RootNode(null) {
                 @Override

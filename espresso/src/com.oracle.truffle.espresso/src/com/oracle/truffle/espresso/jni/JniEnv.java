@@ -1157,42 +1157,42 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public @JavaType(boolean[].class) StaticObject NewBooleanArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Boolean.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(byte[].class) StaticObject NewByteArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Byte.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Byte.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(char[].class) StaticObject NewCharArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Char.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Char.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(short[].class) StaticObject NewShortArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Short.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Short.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(int[].class) StaticObject NewIntArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Int.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Int.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(long[].class) StaticObject NewLongArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Long.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Long.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(float[].class) StaticObject NewFloatArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Float.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Float.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(double[].class) StaticObject NewDoubleArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Double.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Double.getBasicType(), len);
     }
 
     @JniImpl
@@ -1690,7 +1690,7 @@ public final class JniEnv extends NativeEnv {
     @TruffleBoundary
     public void FatalError(@Pointer TruffleObject msgPtr, @Inject SubstitutionProfiler profiler) {
         String msg = NativeUtils.interopPointerToString(msgPtr);
-        PrintWriter writer = new PrintWriter(getContext().getEnv().err(), true);
+        PrintWriter writer = new PrintWriter(getContext().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
         getContext().truffleExit(profiler, 1);

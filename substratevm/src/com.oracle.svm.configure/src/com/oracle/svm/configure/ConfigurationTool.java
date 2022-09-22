@@ -484,7 +484,7 @@ public class ConfigurationTool {
                             exportedInclusion = ConfigurationFilter.Inclusion.Include;
                             unexportedInclusion = ConfigurationFilter.Inclusion.Exclude;
                         }
-                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
+                        filter.setHierarchyFilterNode(ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce));
                     } else {
                         throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
                     }
@@ -501,12 +501,12 @@ public class ConfigurationTool {
 
                 case "--include-classes":
                     filterModified = true;
-                    addSingleRule(rootNode, current, value, ConfigurationFilter.Inclusion.Include);
+                    addSingleRule(filter.getHierarchyFilterNode(), current, value, ConfigurationFilter.Inclusion.Include);
                     break;
 
                 case "--exclude-classes":
                     filterModified = true;
-                    addSingleRule(rootNode, current, value, ConfigurationFilter.Inclusion.Exclude);
+                    addSingleRule(filter.getHierarchyFilterNode(), current, value, ConfigurationFilter.Inclusion.Exclude);
                     break;
 
                 default:
@@ -514,7 +514,7 @@ public class ConfigurationTool {
             }
         }
 
-        rootNode.removeRedundantNodes();
+        filter.getHierarchyFilterNode().removeRedundantNodes();
         if (outputPath != null) {
             try (FileOutputStream os = new FileOutputStream(outputPath.toFile())) {
                 printFilterToStream(filter, os);

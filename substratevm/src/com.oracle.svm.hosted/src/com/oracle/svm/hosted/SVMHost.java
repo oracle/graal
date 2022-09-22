@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -81,21 +82,22 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
-import com.oracle.svm.core.annotate.UnknownClass;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
+import com.oracle.svm.core.heap.UnknownClass;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
@@ -104,6 +106,7 @@ import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -405,8 +408,22 @@ public class SVMHost extends HostVM {
         try {
             return getDeclaringClass0.invoke(javaClass);
         } catch (InvocationTargetException e) {
-            if (e.getCause() instanceof LinkageError) {
-                return handleLinkageError(javaClass, getDeclaringClass0.getName(), (LinkageError) e.getCause());
+            Throwable cause = e.getCause();
+            if (cause instanceof LinkageError) {
+                if (cause instanceof IncompatibleClassChangeError) {
+                    /*
+                     * While `IncompatibleClassChangeError` is a `LinkageError`, it doesn't actually
+                     * mean that the class that is supposed to declare `javaClass` cannot be linked,
+                     * but rather that there is some sort of mismatch between that class and
+                     * `javaClass`, so we just rethrow the error at run time.
+                     *
+                     * For example, there have been cases where the Kotlin compiler generates
+                     * anonymous classes that do not agree with their declaring classes on the
+                     * `InnerClasses` attribute.
+                     */
+                    return cause;
+                }
+                return handleLinkageError(javaClass, getDeclaringClass0.getName(), (LinkageError) cause);
             }
             throw VMError.shouldNotReachHere(e);
         } catch (IllegalAccessException e) {
@@ -453,24 +470,25 @@ public class SVMHost extends HostVM {
         return automaticSubstitutions;
     }
 
-    private static HubType computeHubType(AnalysisType type) {
+    private static int computeHubType(AnalysisType type) {
         if (type.isArray()) {
             if (type.getComponentType().isPrimitive() || type.getComponentType().isWordType()) {
-                return HubType.TypeArray;
+                return HubType.PRIMITIVE_ARRAY;
             } else {
-                return HubType.ObjectArray;
+                return HubType.OBJECT_ARRAY;
             }
         } else if (type.isInstanceClass()) {
             if (Reference.class.isAssignableFrom(type.getJavaClass())) {
-                return HubType.InstanceReference;
+                return HubType.REFERENCE_INSTANCE;
             } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(type.getJavaClass())) {
-                return HubType.PodInstance;
+                return HubType.POD_INSTANCE;
+            } else if (Continuation.isSupported() && type.getJavaClass() == StoredContinuation.class) {
+                return HubType.STORED_CONTINUATION_INSTANCE;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
-            return HubType.Instance;
-        } else {
-            return HubType.Other;
+            return HubType.INSTANCE;
         }
+        return HubType.OTHER;
     }
 
     private static ReferenceType computeReferenceType(AnalysisType type) {
@@ -504,7 +522,7 @@ public class SVMHost extends HostVM {
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
-            graph.setGuardsStage(StructuredGraph.GuardsStage.FIXED_DEOPTS);
+            graph.getGraphState().setGuardsStage(GraphState.GuardsStage.FIXED_DEOPTS);
 
             if (parseOnce) {
                 new ImplicitAssertionsPhase().apply(graph, bb.getProviders());

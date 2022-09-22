@@ -1,12 +1,24 @@
-# Bootstrap tasks specific to the Graal CE
+# Bootstrap tasks specific to Graal CE
 {
   local c = import '../../common.jsonnet',
   local g = import '../ci_common/gate.jsonnet',
 
-  builds: [
-    {name: "gate-compiler-bootstrap-labsjdk-ee-11-linux-amd64"} +         g.bootstrap +           c.labsjdk11 + c.linux_amd64 + g.many_cores,
-    {name: "gate-compiler-bootstrap-labsjdk-ee-17-linux-amd64"} +         g.bootstrap +           c.labsjdk17 + c.linux_amd64 + g.many_cores + c.mach5_target,
-    {name: "gate-compiler-bootstrap-economy-labsjdk-ee-11-linux-amd64"} + g.bootstrap_economy +    c.labsjdk11 + c.linux_amd64 + g.many_cores,
-    {name: "gate-compiler-bootstrap-economy-labsjdk-ee-17-linux-amd64"} + g.bootstrap_economy +    c.labsjdk17 + c.linux_amd64 + g.many_cores + c.mach5_target,
-  ]
+  # See definition of `gates` local variable in ../ci_common/gate.jsonnet
+  local gates = {
+    "gate-compiler-bootstrap-labsjdk-11-linux-amd64": g.many_cores,
+    "gate-compiler-bootstrap-labsjdk-17-linux-amd64": g.many_cores + c.mach5_target,
+    "gate-compiler-bootstrap_economy-labsjdk-11-linux-amd64": g.many_cores,
+    "gate-compiler-bootstrap_economy-labsjdk-17-linux-amd64": g.many_cores + c.mach5_target,
+  },
+
+  # Builds run on only on linux-amd64-[jdk11|jdk17]
+  local linux_amd64_builds = [g.make_build(jdk, "linux-amd64", task, gates_manifest=gates).build
+    for jdk in ["11", "17"]
+    for task in ["bootstrap", "bootstrap_economy"]
+  ],
+
+  # Complete set of builds defined in this file
+  local all_builds = linux_amd64_builds,
+
+  builds: if g.check_manifest(gates, all_builds, std.thisFile, "gates").result then all_builds
 }

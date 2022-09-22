@@ -48,7 +48,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -66,17 +65,17 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -363,7 +362,9 @@ public class UniverseBuilder {
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
                     FunctionPointerHolder.class,
-                    SubstrateMethodAccessor.class, SubstrateConstructorAccessor.class,
+                    StoredContinuation.class,
+                    SubstrateMethodAccessor.class,
+                    SubstrateConstructorAccessor.class,
                     FillerObject.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
@@ -939,12 +940,7 @@ public class UniverseBuilder {
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
-            long referenceMapIndex;
-            if (referenceMap == SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP) {
-                referenceMapIndex = ReferenceMapIndex.STORED_CONTINUATION;
-            } else {
-                referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
-            }
+            long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(),
@@ -953,10 +949,6 @@ public class UniverseBuilder {
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
-        if (type.getJavaClass().equals(StoredContinuation.class)) {
-            return SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP;
-        }
-
         HostedField[] fields = type.getInstanceFields(true);
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
@@ -1000,8 +992,8 @@ public class UniverseBuilder {
     }
 }
 
-@AutomaticFeature
-final class InvalidVTableEntryFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class InvalidVTableEntryFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
