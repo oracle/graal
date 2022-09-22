@@ -1081,7 +1081,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method instanceof HostedMethod) {
                 return ((HostedMethod) method).isDeoptTarget();
             }
-            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+            return name().endsWith(HostedMethod.MULTI_METHOD_KEY_SEPARATOR);
         }
 
         @Override
