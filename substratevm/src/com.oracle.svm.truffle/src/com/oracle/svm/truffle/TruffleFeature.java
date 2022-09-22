@@ -253,7 +253,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeCompilationFeature.class, TruffleBaseFeature.class);
+        return List.of(RuntimeCompilationFeature.getRuntimeCompilationFeature(), TruffleBaseFeature.class);
     }
 
     @Override
@@ -337,7 +337,7 @@ public class TruffleFeature implements InternalFeature {
         // register thread local foreign poll as compiled otherwise the stub won't work
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
-        RuntimeCompilationFeature runtimeCompilationFeature = ImageSingletons.lookup(RuntimeCompilationFeature.class);
+        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
@@ -843,7 +843,7 @@ public class TruffleFeature implements InternalFeature {
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods()));
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods()));
 
-        for (CallTreeNode runtimeCompiledMethod : ImageSingletons.lookup(RuntimeCompilationFeature.class).getRuntimeCompiledMethods().values()) {
+        for (CallTreeNode runtimeCompiledMethod : RuntimeCompilationFeature.singleton().getRuntimeCompiledMethods().values()) {
 
             runtimeCompiledMethods.add(runtimeCompiledMethod.getImplementationMethod());
 
@@ -874,7 +874,7 @@ public class TruffleFeature implements InternalFeature {
         HashSet<ResolvedJavaMethod> foundBoundaries = new HashSet<>();
         int callSiteCount = 0;
         int calleeCount = 0;
-        for (CallTreeNode node : ImageSingletons.lookup(RuntimeCompilationFeature.class).getRuntimeCompiledMethods().values()) {
+        for (CallTreeNode node : RuntimeCompilationFeature.singleton().getRuntimeCompiledMethods().values()) {
             StructuredGraph graph = node.getGraph();
             for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                 ResolvedJavaMethod targetMethod = callTarget.targetMethod();
