@@ -48,7 +48,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -67,7 +67,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -86,7 +86,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -105,7 +105,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -124,7 +124,7 @@ suite = {
         "<others>" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -138,7 +138,7 @@ suite = {
         "<others>" : {
           "aarch64" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
           "<others>": {
             "optional": True,
@@ -152,7 +152,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
         },
         "windows" : {
@@ -168,10 +168,26 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
         },
         "windows" : {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
+    # This is a dummy library for disabling tests that won't compile because of missing GNU make.
+    "WINDOWS_SUPPORT" : {
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+          },
+        },
+        "<others>" : {
           "<others>": {
             "optional": True,
           }
@@ -843,6 +859,33 @@ suite = {
       },
       "license" : "BSD-new",
     },
+
+    "com.oracle.truffle.llvm.libraries.oldnames" : {
+      "subDir" : "projects",
+      "class" : "CMakeNinjaProject",
+      # NinjaBuildTask uses only 1 job otherwise
+      "max_jobs" : "8",
+      "vpath" : True,
+      "ninja_targets" : [
+        "oldnames",
+      ],
+      "results" : [
+        "<staticlib:oldnames>",
+      ],
+      "buildDependencies" : [
+        "WINDOWS_SUPPORT",
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
+      ],
+      "cmakeConfig" : {
+        "CMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+        "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
+        "CMAKE_AR" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:llvm-ar>",
+      },
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
@@ -1164,7 +1207,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "variants" : ["executable-O0", "toolchain-plain"],
+      "variants" : ["toolchain-plain"],
       "cmakeConfig" : {
         "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
         "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
@@ -1665,6 +1708,7 @@ suite = {
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/bin/*",
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/lib/*",
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+                "dependency:com.oracle.truffle.llvm.libraries.oldnames/<staticlib:oldnames>",
                 "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
               ],
             },
