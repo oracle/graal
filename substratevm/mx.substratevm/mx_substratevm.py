@@ -1192,6 +1192,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
         mx_sdk_vm.LibraryConfig(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
+            jlink_copyfiles=True,
             jar_distributions=libgraal_jar_distributions,
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
         ),
