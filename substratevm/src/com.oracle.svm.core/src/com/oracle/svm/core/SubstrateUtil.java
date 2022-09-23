@@ -275,84 +275,57 @@ public class SubstrateUtil {
     }
 
     /**
-     * Returns a short, reasonably descriptive, but still unique name for the provided method. The
-     * name includes a digest of the fully qualified method name, which ensures uniqueness.
+     * Convenience method that delegates to the corresponding method of the currently
+     * registered UniqueShortNameProvider image singleton.
+     * @param m a method whose unique short name is required
+     * @return a unique short name for the method
      */
     public static String uniqueShortName(ResolvedJavaMethod m) {
-        return uniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+        return UniqueShortNameProvider.provider().uniqueShortName(m);
     }
-
-    public static String uniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        StringBuilder sb = new StringBuilder(loaderNameAndId);
-        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
-        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
-            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
-        }
-        sb.append(')');
-        if (!isConstructor) {
-            sb.append(methodSignature.getReturnType(null).toClassName());
-        }
-
-        return stripPackage(declaringClass.toJavaName()) + "_" +
-                        (isConstructor ? "constructor" : methodName) + "_" +
-                        SubstrateUtil.digest(sb.toString());
-    }
-
-    public static String toolFriendlyMangle(ResolvedJavaMethod m) {
-        /*-
-         *
-        if (false) {
-            return elfMangle(m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
-        }
-         */
-        return bfdMangle(m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
-    }
-
-    public static String classLoaderNameAndId(ClassLoader loader) {
-        if (loader == null) {
-            return "";
-        }
-        try {
-            return (String) classLoaderNameAndId.get(loader);
-        } catch (IllegalAccessException e) {
-            throw VMError.shouldNotReachHere("Cannot reflectively access ClassLoader.nameAndId");
-        }
-    }
-
-    private static final Field classLoaderNameAndId = ReflectionUtil.lookupField(ClassLoader.class, "nameAndId");
 
     /**
-     * Returns a short, reasonably descriptive, but still unique name for the provided
-     * {@link Method}, {@link Constructor}, or {@link Field}. The name includes a digest of the
-     * fully qualified method name, which ensures uniqueness.
+     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
+     * image singleton.
+     * @param loaderName the unique loader id for some method's class loader
+     * @param declaringClass the method's declaring class
+     * @param methodName the method's name
+     * @param methodSignature the method's signature
+     * @param isConstructor true if the method is a constructor otherwise false
+     * @return a unique short name for the method
      */
-    public static String uniqueShortName(Member m) {
-        StringBuilder fullName = new StringBuilder();
-        fullName.append(m.getDeclaringClass().getName()).append(".");
-        if (m instanceof Constructor) {
-            fullName.append("<init>");
-        } else {
-            fullName.append(m.getName());
-        }
-        if (m instanceof Executable) {
-            fullName.append("(");
-            for (Class<?> c : ((Executable) m).getParameterTypes()) {
-                fullName.append(c.getName()).append(",");
-            }
-            fullName.append(')');
-            if (m instanceof Method) {
-                fullName.append(((Method) m).getReturnType().getName());
-            }
-        }
-
-        return stripPackage(m.getDeclaringClass().getTypeName()) + "_" +
-                        (m instanceof Constructor ? "constructor" : m.getName()) + "_" +
-                        SubstrateUtil.digest(fullName.toString());
+    public static String uniqueShortName(String loaderName, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        return UniqueShortNameProvider.provider().uniqueShortName(loaderName, declaringClass, methodName, methodSignature, isConstructor);
     }
 
-    private static String stripPackage(String qualifiedClassName) {
-        /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
-        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
+    /**
+     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
+     * image singleton.
+     * @param m a member whose unique short name is required
+     * @return a unique short name for the member
+     */
+    public static String uniqueShortName(Member m) {
+        return UniqueShortNameProvider.provider().uniqueShortName(m);
+    }
+
+    /**
+     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
+     * image singleton.
+     * @param m a method whose unique stub name is required
+     * @return a unique stub name for the method
+     */
+    public static String uniqueStubName(ResolvedJavaMethod m) {
+        return UniqueShortNameProvider.provider().uniqueStubName(m);
+    }
+
+    /**
+     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
+     * image singleton.
+     * @param loader a class loader whose identifier is required
+     * @return A unique identifier for the class loader
+     */
+    public static String classLoaderNameAndId(ClassLoader loader) {
+        return UniqueShortNameProvider.provider().classLoaderNameAndId(loader);
     }
 
     /**
@@ -428,390 +401,4 @@ public class SubstrateUtil {
         return dimension;
     }
 
-    /**
-     * mangle a method name in a format the Linux/ELF demangler will understand. This will allow
-     * some tools to translate mangled symbol names to recognisable Java names in the same format as
-     * derived from the DWARF info, i.e. fully qualified classname using '.' separator, method name
-     * separated using '::' and parameter/return types printed either using the Java primitive name
-     * or, for oops, as a pointer to a struct whose name is that of the Java type.
-     *
-     * Unfortunately, this encoding scheme does not help with tools that rely on the underlying
-     * binutils (bfd) demangle API, most critically including the disassembly tool. Since, the ELF
-     * demangling implementation always punts to the bfd implementation before resorting to its own
-     * scheme it is better to rely on a scheme that bfd can understand.
-     *
-     * @param declaringClass the class owning the method implementation
-     * @param methodName the simple name of the method
-     * @param methodSignature the signature of the method
-     * @param isConstructor true if this method is a constructor otherwise false
-     * @return a unique mangled name for the method
-     */
-    @SuppressWarnings("unused")
-    public static String elfMangle(ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        // elf library expects java symbols in bytecode internal format
-        StringBuilder sb = new StringBuilder(declaringClass.getName());
-        sb.append(methodName).append("(");
-        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
-            sb.append(methodSignature.getParameterType(i, null).getName());
-        }
-        sb.append(')');
-        if (!isConstructor) {
-            sb.append(methodSignature.getReturnType(null).getName());
-        }
-        return sb.toString();
-    }
-
-    /**
-     * mangle a method name in a format the binutils demangler will understand. This should allow
-     * all Linux tools to translate mangled symbol names to recognisable Java names in the same
-     * format as derived from the DWARF info, i.e. fully qualified classname using '.' separator,
-     * method name separated using '::' and parameter/return types printed either using the Java
-     * primitive name or, for oops, as a pointer to a struct whose name is that of the Java type.
-     *
-     * @param declaringClass the class owning the method implementation
-     * @param methodName the simple name of the method
-     * @param methodSignature the signature of the method
-     * @param isConstructor true if this method is a constructor otherwise false
-     * @return a unique mangled name for the method
-     */
-    public static String bfdMangle(ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        /*-
-         * The bfd library demangle API currnetly supports decoding of Java names if they are
-         * using a scheme similar to that used for C++. Unfortunately, none of the tools which
-         * reply on this API pass on the details that the mangeld name in question is for a
-         * Java method. However, it is still possible to pass a name to the demangler that the
-         * C++ demangle algorithm will correctly demangle to a Java name. The scheme used mirrors
-         * the one used to generate names for DWRAF. It assumes that the linker can tolerate '.',
-         * '[' and ']' characters in an ELF symbol name, which is not a problem on Linux.
-         *
-         * The BFD Demangle Encoding and Algorithm:
-         *
-         * The bfd Java encoding expects java symbols in variant of C++ format.
-         *
-         * A mangled name starts with "_Z"
-         *
-         * Base Symbols:
-         *
-         * Base symbols encode with a decimal length prefix followed by the relevant characters:
-         *
-         *   Foo -> 3Foo
-         *   org.my.Foo -> 10org.my.Foo
-         *
-         * n.b. The latter encoding is acceptable by the demangler -- characters in the encoded
-         * symbol text are opaque as far as it is concerned.
-         *
-         * Qualified Class Name Symbols:
-         *
-         * The standard Java encoding assumes that the package separator '.' will be elided from
-         * symbol text by encoding a package qualified class name as a (possibly recursive)
-         * namespace encoding:
-         *
-         *   org.my.Foo -> N3org2my3FooE
-         *
-         * The bfd Java demangle algorithm understands that the leading base symbols in this
-         * encoding are package elements and will successfully demangle this latter encoding to
-         * "org.my.Foo". However, the default C++ demangle algorithm will demangle it to
-         * "org::my::Foo" since it regards the leading base symbols as naming namespaces.
-         *
-         * In consequence, the Graal mangler chooses to encode Java package qualified class names
-         * in the format preceding the last one i.e. as a single base symbol with embedded '.'
-         * characters.
-         *
-         * Qualified Method Name Symbols:
-         *
-         * A method name is encoded by concatenating the class name and base method name
-         * as elements of a namespace encoding:
-         *
-         *   org.my.Foo.doAFoo -> N10org.my.Foo6doAFooE
-         *   org.my.Foo.doAFoo -> N3org2my3Foo6doAFooE
-         *
-         * Note again that although the Java demangle algorithm expects the second of the above
-         * two formats the Graal mangler employs the preceding format where the package and class
-         * name are presented as a single base name with embedded '.' characters.
-         *
-         * Qualified Method Name With Signature Symbols:
-         *
-         * A full encoding for a method name requires concatenating encodings for the return
-         * type and parameter types to the method name encoding.
-         *
-         * <rType> <method> '(' <paramType>+ ')' -> <methodencoding> 'J' (<rTypeencoding> <paramencoding>+ | 'v')
-         *
-         * Retyurn Types:
-         *
-         * The encoding for the return type is appended first. It is preceded with a 'J', to
-         * mark it as a return type rather than the first parameter type, and a 'P', to mark
-         * it as a pointer to the class type:
-         *
-         *   java.lang.String doAFoo(...) -> <methodencoding> JP16java.lang.String <paramencoding>+
-         *
-         * Note that a pointer type is employed for consistency with the DWARF type scheme.
-         * That scheme also models oops as pointers to a struct whose name is taken from the
-         * Java class.
-         *
-         * Void Signatures:
-         *
-         * If the method has no parameters then this is represented by encoding the single type
-         * void using the standard primitive encoding for that type:
-         *
-         *   void -> v
-         *
-         * The void encoding can also be used to encode the return type of a void method:
-         *
-         *   void doAFoobar(...) <methodencoding> Jv <paramencoding>+
-         *
-         * Parameter type encodings are simply appended in order. The demangle algorithm detects
-         * the parameter count by decoding each successive type encoding. Parameters have either
-         * primitive type, non-array object type or array type.
-         *
-         * Primitive Parameter Types
-         *
-         * Primitive parameter types (or return types) are encoded using a single letter as follows:
-         *
-         *   bool -> b
-         *   byte -> a
-         *   short -> s
-         *   char -> t
-         *   int -> i
-         *   long -> l
-         *   float -> f
-         *   double -> d
-         *
-         * Object parameter types (whcih included interfaces and enums) are encoded using the class
-         * name encoding described above preceded by  prefix 'P'.
-         *
-         * java.lang.String doAFoo(int, java.lang.String) ->  <methodencoding> JP16java.lang.StringiP16java.lang.String
-         *
-         * Note that no type is emitted for the implicit 'this' argument
-         *
-         * Array Parameter Types:
-         *
-         * Array parameter types are encoded as bare symbols with the relevant number of square bracket pairs
-         * for their dimension:
-         *
-         *   Foo[] -> 5Foo[]
-         *   java.lang.Object[][] -> 20java.lang.Object[][]
-         *
-         * Note that the Java bfd encoding expects arrays to be encoded as template type instances
-         * using a pseudo-template named JArray, with 'I' and 'E' appended as start and end delimiters
-         * for the embedded template argument lists:
-         *
-         * Foo[] ->  P6JArrayI3FooE
-         * Foo[][] ->  P6JArrayIP6JArrayI3FooEE
-         *
-         * The bfd Java demangler recognises this special pseudo template and translates it back into
-         * the expected Java form i.e. decode(JArray<XXX>) -> concatenate(decode(XXX), "[]"). However,
-         * the default bfd C++ demangler wil not perform this translation.
-         *
-         * Substitutions:
-         *
-         * Namespace prefix elements (i.e. the leading elements of an N...E encoding) are indexed and
-         * can be referenced using a shorthand index, saving space in the symbol encoding. In the
-         * standard Java encoding this means that common package and class name prefixes can be
-         * independently substituted (also template prefixes).
-         *
-         * For example, when encoding the first parameter type, the standard Java encoding of method
-         * startsWith of class java.lang.String can refer to the common prefixes java, lang and String
-         * established by the namespace encoding of the method name:
-         *
-         *   boolean startsWith(java.lang.String, int) -> _ZN4java4lang6String10startsWithEJbPN4java4lang6StringEi
-         *      -> _ZN4java4lang6String10startsWithEJbPN$_$0_$1_Ei
-         *
-         * The namespace prefixes 4java, 4lang and 6String establish successive bindings for the
-         * indexed substitution variables $_, $0_ and $1_.
-         *
-         * The Graal encoding makes much more limited use of namespace prefixes but it can still profit
-         * from them to produce more concise encodings:
-         *
-         *   boolean startsWith(java.lang.String, int) -> _ZN16java.lang.String10startsWithEJbP16java.lang.Stringi
-         *      -> _ZN16java.lang.String10startsWithEJbP$_i
-         *
-         * Indexed prefix references are encoded as "S_", "S0_", ... "S9_", "SA_", ... "SZ_", "S10_", ...
-         * i.e. after "$_" for index 0, successive encodings for index i embded the base 36 digits for
-         * (i - 1) between "S" and "_".
-         */
-        return new BFDMangler().mangle(declaringClass, methodName, methodSignature, isConstructor);
-    }
-
-    private static class BFDMangler {
-        final StringBuilder sb;
-        final List<String> prefixes;
-
-        BFDMangler() {
-            sb = new StringBuilder("_Z");
-            prefixes = new ArrayList<>();
-        }
-
-        public String mangle(ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-            String fqn = declaringClass.toJavaName();
-            if (isConstructor) {
-                assert methodName.equals("<init>");
-                int index = fqn.lastIndexOf('.');
-                String constructorName;
-                if (index >= 0) {
-                    constructorName = fqn.substring(index);
-                } else {
-                    constructorName = fqn;
-                }
-                mangleClassAndMethodName(fqn, constructorName);
-            } else {
-                mangleClassAndMethodName(fqn, methodName);
-            }
-            mangleReturnType(methodSignature);
-            mangleParams(methodSignature);
-            return sb.toString();
-        }
-
-        private void mangleSimpleName(String s) {
-            sb.append(s.length());
-            sb.append(s);
-        }
-
-        private void manglePrefix(String prefix) {
-            int index = prefixIdx(prefix);
-            if (index >= 0) {
-                writePrefix(index);
-            } else {
-                mangleSimpleName(prefix);
-                recordPrefix(prefix);
-            }
-        }
-
-        private void mangleClassAndMethodName(String name, String methodName) {
-            sb.append('N');
-            mangleClassName(name);
-            mangleMethodName(methodName);
-            sb.append('E');
-        }
-
-        private void mangleClassName(String name) {
-            /*
-             * This code generates the FQN of the class including '.' separators as a prefix meaning
-             * we only see the '::' separator between class FQN and method name
-             */
-            manglePrefix(name);
-        }
-
-        private void mangleMethodName(String name) {
-            mangleSimpleName(name);
-        }
-
-        private void mangleReturnType(Signature methodSignature) {
-            ResolvedJavaType type = (ResolvedJavaType) methodSignature.getReturnType(null);
-            sb.append('J');
-            mangleType(type);
-        }
-
-        private void mangleParams(Signature methodSignature) {
-            int count = methodSignature.getParameterCount(false);
-            for (int i = 0; i < count; i++) {
-                ResolvedJavaType type = (ResolvedJavaType) methodSignature.getParameterType(i, null);
-                mangleType(type);
-            }
-            if (count == 0) {
-                mangleTypeChar('V');
-            }
-        }
-
-        private void mangleType(ResolvedJavaType type) {
-            if (type.isPrimitive()) {
-                manglePrimitiveType(type);
-            } else if (type.isArray()) {
-                sb.append('P');
-                mangleArrayType(type);
-            } else {
-                sb.append('P');
-                mangleClassName(type.toJavaName());
-            }
-        }
-
-        private void mangleArrayType(ResolvedJavaType arrayType) {
-            /*
-             * This code mangles the array name as a symbol using the array base type and required
-             * number of '[]' pairs.
-             */
-            int count = 1;
-            ResolvedJavaType baseType = arrayType.getComponentType();
-            while (baseType.isArray()) {
-                count++;
-                baseType = baseType.getComponentType();
-            }
-            String name = baseType.toJavaName();
-            int len = name.length() + (count * 2);
-            sb.append(len);
-            sb.append(name);
-            for (int i = 0; i < count; i++) {
-                sb.append("[]");
-            }
-        }
-
-        private void manglePrimitiveType(ResolvedJavaType type) {
-            char c = type.getJavaKind().getTypeChar();
-            mangleTypeChar(c);
-        }
-
-        private void mangleTypeChar(char c) {
-            switch (c) {
-                case 'Z':
-                    sb.append('b');
-                    return;
-                case 'B':
-                    sb.append('a');
-                    return;
-                case 'S':
-                    sb.append('s');
-                    return;
-                case 'C':
-                    sb.append('t');
-                    return;
-                case 'I':
-                    sb.append('i');
-                    return;
-                case 'J':
-                    sb.append('l');
-                    return;
-                case 'F':
-                    sb.append('f');
-                    return;
-                case 'D':
-                    sb.append('d');
-                    return;
-                case 'V':
-                    sb.append('v');
-                    return;
-                default:
-                    // should never reach here
-                    assert false : "invalid kind for primitive type " + c;
-            }
-        }
-
-        private void writePrefix(int i) {
-            sb.append('S');
-            // i = 0 has no digits, i = 1 -> 0, ... i = 10 -> 9, i = 11 -> A, ... i = 36 -> Z, i =
-            // 37 -> 10, ...
-            // allow for at most up 2 base 36 digits
-            if (i > 36) {
-                sb.append(b36((i - 1) / 36));
-                sb.append(b36((i - 1) % 36));
-            } else if (i > 0) {
-                sb.append(b36(i - 1));
-            }
-            sb.append('_');
-        }
-
-        private static char b36(int i) {
-            if (i < 10) {
-                return (char) ('0' + i);
-            } else {
-                return (char) ('A' + (i - 10));
-            }
-        }
-
-        private void recordPrefix(String prefix) {
-            prefixes.add(prefix);
-        }
-
-        private int prefixIdx(String prefix) {
-            return prefixes.indexOf(prefix);
-        }
-    }
 }
