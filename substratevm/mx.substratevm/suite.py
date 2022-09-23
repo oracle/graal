@@ -267,6 +267,7 @@ suite = {
                 "java.desktop": [
                     "sun.java2d",
                     "sun.java2d.pipe",
+                    "com.sun.beans.finder",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
