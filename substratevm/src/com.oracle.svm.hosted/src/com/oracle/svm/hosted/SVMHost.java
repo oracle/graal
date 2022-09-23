@@ -82,15 +82,12 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.NeverInlineTrivial;
-import com.oracle.svm.core.heap.UnknownClass;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -98,6 +95,9 @@ import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
+import com.oracle.svm.core.heap.UnknownClass;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
@@ -408,8 +408,22 @@ public class SVMHost extends HostVM {
         try {
             return getDeclaringClass0.invoke(javaClass);
         } catch (InvocationTargetException e) {
-            if (e.getCause() instanceof LinkageError) {
-                return handleLinkageError(javaClass, getDeclaringClass0.getName(), (LinkageError) e.getCause());
+            Throwable cause = e.getCause();
+            if (cause instanceof LinkageError) {
+                if (cause instanceof IncompatibleClassChangeError) {
+                    /*
+                     * While `IncompatibleClassChangeError` is a `LinkageError`, it doesn't actually
+                     * mean that the class that is supposed to declare `javaClass` cannot be linked,
+                     * but rather that there is some sort of mismatch between that class and
+                     * `javaClass`, so we just rethrow the error at run time.
+                     *
+                     * For example, there have been cases where the Kotlin compiler generates
+                     * anonymous classes that do not agree with their declaring classes on the
+                     * `InnerClasses` attribute.
+                     */
+                    return cause;
+                }
+                return handleLinkageError(javaClass, getDeclaringClass0.getName(), (LinkageError) cause);
             }
             throw VMError.shouldNotReachHere(e);
         } catch (IllegalAccessException e) {
