@@ -26,13 +26,9 @@ package com.oracle.svm.core;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -275,8 +271,9 @@ public class SubstrateUtil {
     }
 
     /**
-     * Convenience method that delegates to the corresponding method of the currently
-     * registered UniqueShortNameProvider image singleton.
+     * Convenience method that delegates to the corresponding method of the currently registered
+     * UniqueShortNameProvider image singleton.
+     * 
      * @param m a method whose unique short name is required
      * @return a unique short name for the method
      */
@@ -287,6 +284,7 @@ public class SubstrateUtil {
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
+     * 
      * @param loaderName the unique loader id for some method's class loader
      * @param declaringClass the method's declaring class
      * @param methodName the method's name
@@ -301,6 +299,7 @@ public class SubstrateUtil {
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
+     * 
      * @param m a member whose unique short name is required
      * @return a unique short name for the member
      */
@@ -311,6 +310,7 @@ public class SubstrateUtil {
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
+     * 
      * @param m a method whose unique stub name is required
      * @return a unique stub name for the method
      */
@@ -321,6 +321,7 @@ public class SubstrateUtil {
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
+     * 
      * @param loader a class loader whose identifier is required
      * @return A unique identifier for the class loader
      */
