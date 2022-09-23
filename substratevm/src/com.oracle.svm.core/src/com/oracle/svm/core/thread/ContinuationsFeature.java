@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
@@ -66,6 +67,13 @@ public class ContinuationsFeature implements InternalFeature {
              * We intentionally do not advertise non-Loom continuation support on 17.
              */
             throw UserError.abort("Virtual threads are supported only on JDK 19 with preview features enabled (--enable-preview).");
+        }
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (Continuation.isSupported() && DeoptimizationSupport.enabled()) {
+            throw UserError.abort("Virtual threads are currently not supported together with Truffle JIT compilation.");
         }
     }
 
