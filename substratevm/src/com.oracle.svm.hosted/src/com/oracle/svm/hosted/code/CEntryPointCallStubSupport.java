@@ -111,7 +111,7 @@ public final class CEntryPointCallStubSupport {
                 assert !bb.getUniverse().sealed();
                 AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
                 CFunctionPointer nativeStubAddress = new MethodPointer(nativeStub);
-                String stubName = SubstrateUtil.uniqueShortName(method);
+                String stubName = SubstrateUtil.uniqueStubName(method);
                 ResolvedJavaType holderClass = bb.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
                 CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);
                 value = bb.getUniverse().lookup(stub);
