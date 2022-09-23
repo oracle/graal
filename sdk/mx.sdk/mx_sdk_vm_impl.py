@@ -584,7 +584,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 # TODO(GR-8329): add exclusions
                 _add(layout, self.jdk_base + '/', {
                     'source_type': 'dependency',
-                    'dependency': 'graalvm-jimage',
+                    'dependency': 'graalvm-stage1-jimage' if stage1 and _needs_stage1_jimage(self, get_final_graalvm_distribution()) else 'graalvm-jimage',
                     'path': '*',
                     'exclude': [
                         'lib/jvm.cfg'
@@ -1598,8 +1598,8 @@ class GraalVmJImage(mx.Project):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, **kw_args):
-        super(GraalVmJImage, self).__init__(suite=suite, name='graalvm-jimage', subDir=None, srcDirs=[], deps=jimage_jars,
+    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, **kw_args):
+        super(GraalVmJImage, self).__init__(suite=suite, name=name, subDir=None, srcDirs=[], deps=jimage_jars,
                                             workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
                                             **kw_args)
         self.jimage_ignore_jars = jimage_ignore_jars or []
@@ -2136,7 +2136,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         assert not graal_vm.jdk_base.endswith('/')
         boot_jars_directory = graal_vm.jdk_base + "/" + boot_jars_directory
     _cp = set()
-    jimage = mx.project('graalvm-jimage', fatalIfMissing=False)
+    jimage = mx.project('graalvm-stage1-jimage' if graal_vm.stage1 and _needs_stage1_jimage(graal_vm, get_final_graalvm_distribution()) else 'graalvm-jimage', fatalIfMissing=False)
     jimage_deps = jimage.deps if jimage else None
     mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
     cp_entries = mx.classpath_entries(dependencies)
@@ -2839,8 +2839,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_distribution: (mx.Distribution) -> None
     """
     with_debuginfo = []
-    register_distribution(get_final_graalvm_distribution())
-    with_debuginfo.append(get_final_graalvm_distribution())
+    _final_graalvm_distribution = get_final_graalvm_distribution()
+    register_distribution(_final_graalvm_distribution)
+    with_debuginfo.append(_final_graalvm_distribution)
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
@@ -2907,7 +2908,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 if mx.get_opts().verbose:
                     mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
             else:
-                standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), get_final_graalvm_distribution())
+                standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution)
                 register_distribution(standalone)
                 with_debuginfo.append(standalone)
 
@@ -2924,10 +2925,21 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     if register_project:
         if _src_jdk.javaCompliance >= '9':
+            if needs_stage1:
+                _stage1_graalvm_distribution = get_stage1_graalvm_distribution()
+                if _needs_stage1_jimage(_stage1_graalvm_distribution, _final_graalvm_distribution):
+                    register_project(GraalVmJImage(
+                        suite=_suite,
+                        name='graalvm-stage1-jimage',
+                        jimage_jars=sorted(_stage1_graalvm_distribution.jimage_jars),
+                        jimage_ignore_jars=sorted(_stage1_graalvm_distribution.jimage_ignore_jars),
+                        workingSets=None,
+                    ))
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=sorted(get_final_graalvm_distribution().jimage_jars),
-                jimage_ignore_jars=sorted(get_final_graalvm_distribution().jimage_ignore_jars),
+                name='graalvm-jimage',
+                jimage_jars=sorted(_final_graalvm_distribution.jimage_jars),
+                jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
                 workingSets=None,
             ))
 
@@ -2935,6 +2947,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
             for d in with_debuginfo:
                 register_distribution(DebuginfoDistribution(d))
+
+
+def _needs_stage1_jimage(stage1_dist, final_dist):
+    assert isinstance(stage1_dist.jimage_jars, set) and isinstance(final_dist.jimage_jars, set)
+    return stage1_dist.jimage_jars != final_dist.jimage_jars
 
 
 def has_svm_launcher(component, fatalIfMissing=False):
