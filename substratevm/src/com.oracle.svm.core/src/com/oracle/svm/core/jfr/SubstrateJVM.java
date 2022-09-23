@@ -78,6 +78,7 @@ public class SubstrateJVM {
     // in).
     private volatile boolean recording;
     private byte[] metadataDescriptor;
+    private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateJVM(List<Configuration> configurations) {
@@ -454,6 +455,19 @@ public class SubstrateJVM {
     /** See {@link JVM#setRepositoryLocation}. */
     public void setRepositoryLocation(@SuppressWarnings("unused") String dirText) {
         // Would only be used in case of an emergency dump, which is not supported at the moment.
+    }
+
+    /** See {@code JfrEmergencyDump::set_dump_path}. */
+    public void setDumpPath(String dumpPathText) {
+        dumpPath = dumpPathText;
+    }
+
+    /** See {@code JVM#getDumpPath()}. */
+    public String getDumpPath() {
+        if (dumpPath == null) {
+            dumpPath = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("user.home", null).toString();
+        }
+        return dumpPath;
     }
 
     /** See {@link JVM#abort}. */

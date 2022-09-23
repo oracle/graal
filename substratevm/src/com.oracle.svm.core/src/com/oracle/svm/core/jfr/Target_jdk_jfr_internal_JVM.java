@@ -342,6 +342,20 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setRepositoryLocation(dirText);
     }
 
+    /** See {@code JVM#setDumpPath(String)}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public void setDumpPath(String dumpPathText) {
+        SubstrateJVM.get().setDumpPath(dumpPathText);
+    }
+
+    /** See {@code JVM#getDumpPath()}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public String getDumpPath() {
+        return SubstrateJVM.get().getDumpPath();
+    }
+
     /** See {@link JVM#abort}. */
     @Substitute
     public void abort(String errorMsg) {
