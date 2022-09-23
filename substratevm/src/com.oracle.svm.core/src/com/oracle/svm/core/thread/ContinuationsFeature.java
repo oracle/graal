@@ -62,9 +62,10 @@ public class ContinuationsFeature implements InternalFeature {
              * GR-37518: on 11, ForkJoinPool syncs on a String which doesn't have its own monitor
              * field, and unparking a virtual thread in additionalMonitorsLock.unlock causes a
              * deadlock between carrier thread and virtual thread. 17 uses a ReentrantLock.
+             *
+             * We intentionally do not advertise non-Loom continuation support on 17.
              */
-            throw UserError.abort("Continuations are currently supported only on JDK 17 with option %s, or on JDK 19 with preview features enabled (--enable-preview).",
-                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
+            throw UserError.abort("Virtual threads are supported only on JDK 19 with preview features enabled (--enable-preview).");
         }
     }
 
@@ -82,6 +83,11 @@ public class ContinuationsFeature implements InternalFeature {
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
         } else {
             access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
+            if (JavaVersionUtil.JAVA_SPEC >= 19) {
+                access.registerReachabilityHandler(a -> abortIfUnsupported(),
+                                ReflectionUtil.lookupMethod(Thread.class, "ofVirtual"),
+                                ReflectionUtil.lookupMethod(Thread.class, "startVirtualThread", Runnable.class));
+            }
         }
     }
 
@@ -96,7 +102,7 @@ public class ContinuationsFeature implements InternalFeature {
 
     static void abortIfUnsupported() {
         if (!Continuation.isSupported()) {
-            throw UserError.abort("Continuation support is used, but not available. Use JDK 17 with option %s, or JDK 19 with preview features enabled.",
+            throw UserError.abort("Virtual threads are used in code, but are not currently available or active. Use JDK 19 with preview features enabled (--enable-preview).",
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
     }

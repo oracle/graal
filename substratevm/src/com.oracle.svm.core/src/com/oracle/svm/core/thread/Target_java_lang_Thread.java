@@ -50,6 +50,7 @@ import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -601,6 +602,20 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = LoomJDK.class)
     public static native Target_java_lang_Thread_Builder ofVirtual();
+
+    /** This method being reachable fails the image build, see {@link ContinuationsFeature}. */
+    @Substitute
+    @TargetElement(name = "ofVirtual", onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
+    public static Target_java_lang_Thread_Builder ofVirtualWithoutLoom() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    /** This method being reachable fails the image build, see {@link ContinuationsFeature}. */
+    @Substitute
+    @TargetElement(onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
+    static Thread startVirtualThread(Runnable task) {
+        throw VMError.shouldNotReachHere();
+    }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
