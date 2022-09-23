@@ -83,6 +83,12 @@ public final class PointsToOptionParser {
     public OptionValues parse(String[] args) {
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
+        /*
+         * The standalone pointsto analysis can be programmatically invoked multiple times. Each
+         * invocation should have its own options which are parsed independently, but all
+         * invocations can share with the same allAnalysisOptions.
+         */
+        analysisValues.clear();
         for (String arg : args) {
             boolean isAnalysisOption = false;
             isAnalysisOption |= parseOption(CommonOptionParser.HOSTED_OPTION_PREFIX, allAnalysisOptions, analysisValues, PLUS_MINUS, errors, arg, System.out);
