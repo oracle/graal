@@ -50,6 +50,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.UnsupportedCloneMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -166,7 +167,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @Override
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
+    @TargetElement(onlyWith = UnsupportedCloneMethod.class) //
     protected native Object clone() throws CloneNotSupportedException;
 
     @Substitute //

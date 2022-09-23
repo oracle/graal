@@ -40,6 +40,17 @@ public final class JavaVersionUtil {
     }
 
     /**
+     * This method uses {@code java.specification.version} and @code java.specification.vendor}
+     * properties to check if OracleJDK 8 is used.
+     */
+    public static boolean isOracleJDK8() {
+        String vmName = Services.getSavedProperties().get("java.vm.name");
+        String version = Services.getSavedProperties().get("java.specification.version");
+
+        return !vmName.contains("OpenJDK") && version.startsWith("1.8");
+    }
+
+    /**
      * The integer value corresponding to the value of the {@code java.specification.version} system
      * property after any leading {@code "1."} has been stripped.
      */
