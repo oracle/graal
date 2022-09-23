@@ -29,6 +29,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -92,6 +94,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
@@ -671,6 +674,17 @@ public abstract class NativeImageCodeCache {
         void addReachableExecutableMetadata(HostedMethod method);
 
         void encodeAllAndInstall();
+
+        Method getRoot = ReflectionUtil.lookupMethod(AccessibleObject.class, "getRoot");
+
+        static AccessibleObject getHolder(AccessibleObject accessibleObject) {
+            try {
+                AccessibleObject root = (AccessibleObject) getRoot.invoke(accessibleObject);
+                return root == null ? accessibleObject : root;
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
 
     }
 
