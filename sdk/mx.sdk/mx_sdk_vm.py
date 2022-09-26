@@ -98,7 +98,7 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, jlink_copyfiles=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -108,7 +108,6 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         :type is_polyglot: bool
         :param bool dir_jars: If true, all jars in the component directory are added to the classpath.
         :type home_finder: bool
-        :type jlink_copyfiles: bool
         :type build_time: int
         :type build_args_enterprise: list[str] | None
         """
@@ -120,7 +119,6 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
         self.home_finder = home_finder
-        self.jlink_copyfiles = jlink_copyfiles
         self.build_time = build_time
         self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
@@ -202,11 +200,11 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, jlink_copyfiles=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, **kwargs):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, jlink_copyfiles=jlink_copyfiles, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
 
 
