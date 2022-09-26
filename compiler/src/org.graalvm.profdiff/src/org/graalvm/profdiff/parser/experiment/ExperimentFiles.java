@@ -30,6 +30,7 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Optional;
 
+import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 
 /**
@@ -87,4 +88,9 @@ public interface ExperimentFiles {
      * @return the list of readers each reading an optimization log
      */
     List<NamedReader> getOptimizationLogs() throws IOException;
+
+    /**
+     * Gets whether the experiment was compiled just-in-time or ahead-of-time.
+     */
+    Experiment.CompilationKind getCompilationKind();
 }

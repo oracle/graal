@@ -41,6 +41,27 @@ import org.graalvm.profdiff.util.Writer;
  */
 public class Experiment {
     /**
+     * The kind of compilation of an experiment - JIT or AOT.
+     */
+    public enum CompilationKind {
+        /**
+         * Just-in-time compilation.
+         */
+        JIT,
+
+        /**
+         * Ahead-of-time compilation.
+         */
+        AOT
+    }
+
+    /**
+     * The kind of compilation of this experiment, i.e., whether it was compiled just-in-time or
+     * ahead-of-time.
+     */
+    private final CompilationKind compilationKind;
+
+    /**
      * The list of graal-compiled executed methods belonging to this experiment. The list is empty
      * initially and gets built incrementally via {@link #addCompilationUnit(CompilationUnit)}.
      */
@@ -90,14 +111,17 @@ public class Experiment {
      *
      * @param executionId the execution ID of the experiment
      * @param experimentId the ID of the experiment
+     * @param compilationKind the compilation kind of this experiment
      * @param totalPeriod the total period of all executed methods including non-graal executions
      * @param proftoolMethods the list of all methods collected by proftool
      */
     public Experiment(
                     String executionId,
                     ExperimentId experimentId,
+                    CompilationKind compilationKind,
                     long totalPeriod,
                     List<ProftoolMethod> proftoolMethods) {
+        this.compilationKind = compilationKind;
         this.compilationUnits = new ArrayList<>();
         this.executionId = executionId;
         this.experimentId = experimentId;
@@ -111,8 +135,10 @@ public class Experiment {
      * Constructs an experiment without execution profile.
      *
      * @param experimentId the ID of the experiment
+     * @param compilationKind the compilation kind of this experiment
      */
-    public Experiment(ExperimentId experimentId) {
+    public Experiment(ExperimentId experimentId, CompilationKind compilationKind) {
+        this.compilationKind = compilationKind;
         this.compilationUnits = new ArrayList<>();
         this.executionId = null;
         this.experimentId = experimentId;
@@ -219,7 +245,10 @@ public class Experiment {
         String graalHotExecutionPercent = String.format("%.2f", (double) countHotGraalPeriod() / totalPeriod * 100);
         writer.write("Experiment " + experimentId);
         if (executionId != null) {
-            writer.writeln(" with execution ID " + executionId);
+            writer.write(" with execution ID " + executionId);
+        }
+        if (compilationKind != null) {
+            writer.writeln(" (" + compilationKind + ")");
         } else {
             writer.writeln();
         }

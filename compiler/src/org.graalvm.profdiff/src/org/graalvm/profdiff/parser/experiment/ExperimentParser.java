@@ -101,10 +101,11 @@ public class ExperimentParser {
             experiment = new Experiment(
                             proftoolLog.executionId,
                             experimentFiles.getExperimentId(),
+                            experimentFiles.getCompilationKind(),
                             proftoolLog.totalPeriod,
                             proftoolLog.methods);
         } else {
-            experiment = new Experiment(experimentFiles.getExperimentId());
+            experiment = new Experiment(experimentFiles.getExperimentId(), experimentFiles.getCompilationKind());
         }
         for (CompilationUnitBuilder builder : methodByCompilationId.values()) {
             builder.setExperiment(experiment);
@@ -307,13 +308,14 @@ public class ExperimentParser {
      * stderr and exits.
      *
      * @param experimentId the ID of the parsed experiment
+     * @param compilationKind the compilation kind of this experiment
      * @param proftoolPath the file path to the JSON proftool output (mx profjson), can be
      *            {@code null} if the experiment does not have any associated proftool output
      * @param optimizationLogPath the path to the directory containing optimization logs
      * @return an experiment parsed from the provided files
      */
-    public static Experiment parseOrExit(ExperimentId experimentId, String proftoolPath, String optimizationLogPath) {
-        ExperimentFiles files = new ExperimentFilesImpl(experimentId, proftoolPath, optimizationLogPath);
+    public static Experiment parseOrExit(ExperimentId experimentId, Experiment.CompilationKind compilationKind, String proftoolPath, String optimizationLogPath) {
+        ExperimentFiles files = new ExperimentFilesImpl(experimentId, compilationKind, proftoolPath, optimizationLogPath);
         ExperimentParser parser = new ExperimentParser(files);
         try {
             return parser.parse();

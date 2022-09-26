@@ -40,7 +40,7 @@ public class HotCompilationUnitPolicyTest {
     @Test
     public void testHotMethodPolicy() {
         OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
-        Experiment experiment = new Experiment("1", ExperimentId.ONE, 100, List.of());
+        Experiment experiment = new Experiment("1", ExperimentId.ONE, Experiment.CompilationKind.JIT, 100, List.of());
         experiment.addCompilationUnit(new CompilationUnit("foo1", "foo", null, rootPhase, 5, experiment));
         experiment.addCompilationUnit(new CompilationUnit("foo2", "foo", null, rootPhase, 35, experiment));
         experiment.addCompilationUnit(new CompilationUnit("foo3", "foo", null, rootPhase, 30, experiment));

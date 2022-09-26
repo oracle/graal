@@ -71,6 +71,11 @@ public class ExperimentParserTest {
             return List.of(getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-1.json"),
                             getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-2.json"));
         }
+
+        @Override
+        public Experiment.CompilationKind getCompilationKind() {
+            return Experiment.CompilationKind.JIT;
+        }
     }
 
     @Test

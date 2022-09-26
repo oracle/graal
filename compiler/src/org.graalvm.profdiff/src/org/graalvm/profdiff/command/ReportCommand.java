@@ -81,7 +81,7 @@ public class ReportCommand implements Command {
     @Override
     public void invoke(Writer writer) {
         VerbosityLevel verbosity = writer.getVerbosityLevel();
-        Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, proftoolArgument.getValue(), optimizationLogArgument.getValue());
+        Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue());
         hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
         experiment.preprocessCompilationUnits(verbosity);
         experiment.writeExperimentSummary(writer);

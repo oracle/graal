@@ -40,7 +40,7 @@ public class MethodMatcherTest {
     @Test
     public void testGreedyMethodMatcher() {
         OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
-        Experiment experiment1 = new Experiment(ExperimentId.ONE);
+        Experiment experiment1 = new Experiment(ExperimentId.ONE, Experiment.CompilationKind.JIT);
         CompilationUnit foo1 = new CompilationUnit("foo1", "foo", null, rootPhase, 1, experiment1);
         CompilationUnit foo2 = new CompilationUnit("foo2", "foo", null, rootPhase, 2, experiment1);
         CompilationUnit foo3 = new CompilationUnit("foo3", "foo", null, rootPhase, 3, experiment1);
@@ -50,7 +50,7 @@ public class MethodMatcherTest {
         experiment1.addCompilationUnit(foo3);
         experiment1.addCompilationUnit(bar1);
 
-        Experiment experiment2 = new Experiment(ExperimentId.TWO);
+        Experiment experiment2 = new Experiment(ExperimentId.TWO, Experiment.CompilationKind.JIT);
         CompilationUnit foo4 = new CompilationUnit("foo4", "foo", null, rootPhase, 1, experiment2);
         CompilationUnit bar2 = new CompilationUnit("bar2", "bar", null, rootPhase, 2, experiment2);
         CompilationUnit baz1 = new CompilationUnit("baz1", "baz", null, rootPhase, 3, experiment2);

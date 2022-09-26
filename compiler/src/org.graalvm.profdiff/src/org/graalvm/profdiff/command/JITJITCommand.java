@@ -82,9 +82,9 @@ public class JITJITCommand implements Command {
 
     @Override
     public void invoke(Writer writer) {
-        Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, proftoolArgument1.getValue(), optimizationLogArgument1.getValue());
+        Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue());
         hotCompilationUnitPolicy.markHotCompilationUnits(jit1);
-        Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
+        Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
         hotCompilationUnitPolicy.markHotCompilationUnits(jit2);
         ExperimentDiffer differ = new ExperimentDiffer(writer);
         differ.diff(jit1, jit2);

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 
 /**
@@ -42,6 +43,12 @@ public class ExperimentFilesImpl implements ExperimentFiles {
      * The ID of this experiment.
      */
     private final ExperimentId experimentId;
+
+    /**
+     * The kind of compilation of this experiment, i.e., whether it was compiled just-in-time or
+     * ahead-of-time.
+     */
+    private final Experiment.CompilationKind compilationKind;
 
     /**
      * The path to the directory which contains the optimization logs of this experiment.
@@ -58,12 +65,14 @@ public class ExperimentFilesImpl implements ExperimentFiles {
      * optimization log.
      *
      * @param experimentId the ID of this experiment
+     * @param compilationKind the compilation kind of this experiment
      * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson), can be
      *            {@code null} if the experiment does not have any associated proftool output
      * @param optimizationLogPath the path to the directory containing optimization logs
      */
-    public ExperimentFilesImpl(ExperimentId experimentId, String proftoolOutputPath, String optimizationLogPath) {
+    public ExperimentFilesImpl(ExperimentId experimentId, Experiment.CompilationKind compilationKind, String proftoolOutputPath, String optimizationLogPath) {
         this.experimentId = experimentId;
+        this.compilationKind = compilationKind;
         this.optimizationLogPath = optimizationLogPath;
         this.proftoolOutputPath = proftoolOutputPath;
     }
@@ -101,6 +110,11 @@ public class ExperimentFilesImpl implements ExperimentFiles {
             readers.add(new NamedReader(file.getPath(), new FileReader(file)));
         }
         return readers;
+    }
+
+    @Override
+    public Experiment.CompilationKind getCompilationKind() {
+        return compilationKind;
     }
 
     @Override
