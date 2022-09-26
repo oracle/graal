@@ -863,15 +863,15 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     }
                 }
+                case DROP_REF:
+                    stackPointer--;
+                    dropReference(frame, stackPointer);
+                    break;
                 case DROP: {
                     stackPointer--;
                     dropPrimitive(frame, stackPointer);
                     break;
                 }
-                case DROP_REF:
-                    stackPointer--;
-                    dropReference(frame, stackPointer);
-                    break;
                 case SELECT: {
                     if (popBoolean(frame, stackPointer - 1)) {
                         dropPrimitive(frame, stackPointer - 2);
@@ -894,17 +894,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer -= 2;
                     break;
                 }
-                case LOCAL_GET: {
-                    // region Load LEB128 Unsigned32 -> index
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int index = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
-                    local_get(frame, stackPointer, index);
-                    stackPointer++;
-                    break;
-                }
                 case LOCAL_GET_REF: {
                     // region Load LEB128 Unsigned32 -> index
                     long valueLength = unsignedIntConstantAndLength(data, offset);
@@ -913,6 +902,38 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += offsetDelta;
                     // endregion
                     local_get_ref(frame, stackPointer, index);
+                    stackPointer++;
+                    break;
+                }
+                case LOCAL_SET_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    stackPointer--;
+                    local_set_ref(frame, stackPointer, index);
+                    break;
+                }
+                case LOCAL_TEE_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_tee_ref(frame, stackPointer - 1, index);
+                    break;
+                }
+                case LOCAL_GET: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_get(frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
@@ -927,17 +948,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     local_set(frame, stackPointer, index);
                     break;
                 }
-                case LOCAL_SET_REF: {
-                    // region Load LEB128 Unsigned32 -> index
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int index = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
-                    stackPointer--;
-                    local_set_ref(frame, stackPointer, index);
-                    break;
-                }
                 case LOCAL_TEE: {
                     // region Load LEB128 Unsigned32 -> index
                     long valueLength = unsignedIntConstantAndLength(data, offset);
@@ -946,16 +956,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += offsetDelta;
                     // endregion
                     local_tee(frame, stackPointer - 1, index);
-                    break;
-                }
-                case LOCAL_TEE_REF: {
-                    // region Load LEB128 Unsigned32 -> index
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int index = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
-                    local_tee_ref(frame, stackPointer - 1, index);
                     break;
                 }
                 case GLOBAL_GET: {
@@ -1604,6 +1604,56 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case I64_TRUNC_SAT_F64_U:
                             i64_trunc_sat_f64_u(frame, stackPointer);
                             break;
+                        case MEMORY_INIT: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int dataIndex = value(valueAndLength);
+                            // endregion
+
+                            // Consume the ZERO_MEMORY constant.
+                            offset += 1;
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_init(n, src, dst, dataIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case DATA_DROP: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int dataIndex = value(valueAndLength);
+                            // endregion
+
+                            instance.dropDataInstance(dataIndex);
+                            break;
+                        }
+                        case MEMORY_COPY: {
+                            // Consume the two ZERO_MEMORY constants.
+                            offset += 2;
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_copy(n, src, dst);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case MEMORY_FILL: {
+                            // Consume the ZERO_MEMORY constant.
+                            offset += 1;
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int val = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_fill(n, val, dst);
+                            stackPointer -= 3;
+                            break;
+                        }
                         case TABLE_INIT: {
                             // region Load LEB128 Unsigned32 -> value
                             long valueAndLength = unsignedIntConstantAndLength(data, offset);
@@ -1625,6 +1675,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                             table_init(context, n, src, dst, tableIndex, elementIndex);
                             stackPointer -= 3;
+                            break;
+                        }
+                        case ELEM_DROP: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int elementIndex = value(valueAndLength);
+                            // endregion
+
+                            instance.dropElemInstance(elementIndex);
                             break;
                         }
                         case TABLE_COPY: {
@@ -1650,28 +1711,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             stackPointer -= 3;
                             break;
                         }
-                        case ELEM_DROP: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int elementIndex = value(valueAndLength);
-                            // endregion
-
-                            instance.dropElemInstance(elementIndex);
-                            break;
-                        }
-                        case TABLE_SIZE: {
-                            // region Load LEB128 Unsigned32 -> tableIndex
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int tableIndex = value(valueAndLength);
-                            // endregion
-                            table_size(context, frame, stackPointer, tableIndex);
-                            stackPointer++;
-                            break;
-                        }
                         case TABLE_GROW: {
                             // region Load LEB128 Unsigned32 -> tableIndex
                             long valueAndLength = unsignedIntConstantAndLength(data, offset);
@@ -1688,6 +1727,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             stackPointer--;
                             break;
                         }
+                        case TABLE_SIZE: {
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int tableIndex = value(valueAndLength);
+                            // endregion
+                            table_size(context, frame, stackPointer, tableIndex);
+                            stackPointer++;
+                            break;
+                        }
                         case TABLE_FILL: {
                             // region Load LEB128 Unsigned32 -> tableIndex
                             long valueAndLength = unsignedIntConstantAndLength(data, offset);
@@ -1701,55 +1751,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int i = popInt(frame, stackPointer - 3);
                             table_fill(context, n, val, i, tableIndex);
                             stackPointer -= 3;
-                            break;
-                        }
-                        case MEMORY_INIT: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int dataIndex = value(valueAndLength);
-                            // endregion
-
-                            // Consume the ZERO_MEMORY constant.
-                            offset += 1;
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_init(n, src, dst, dataIndex);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case MEMORY_FILL: {
-                            // Consume the ZERO_MEMORY constant.
-                            offset += 1;
-
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int val = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_fill(n, val, dst);
-                            stackPointer -= 3;
-                            break;
-                        }
-                        case MEMORY_COPY:
-                            // Consume the two ZERO_MEMORY constants.
-                            offset += 2;
-                            final int n = popInt(frame, stackPointer - 1);
-                            final int src = popInt(frame, stackPointer - 2);
-                            final int dst = popInt(frame, stackPointer - 3);
-                            memory_copy(n, src, dst);
-                            stackPointer -= 3;
-                            break;
-                        case DATA_DROP: {
-                            // region Load LEB128 Unsigned32 -> value
-                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
-                            int offsetDelta = length(valueAndLength);
-                            offset += offsetDelta;
-                            final int dataIndex = value(valueAndLength);
-                            // endregion
-
-                            instance.dropDataInstance(dataIndex);
                             break;
                         }
                         default:
