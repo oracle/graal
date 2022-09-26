@@ -62,14 +62,21 @@ public class MatchedCompilationUnit {
     }
 
     /**
-     * Writes a string describing this pair of matched compilations.
+     * Writes a string describing this pair of matched compilations. Includes compilation ID and an
+     * execution summary if it is available.
      *
      * @param writer the destination writer
      */
     public void writeHeader(Writer writer) {
-        writer.writeln("Compilation " + compilationUnit1.getCompilationId() + " (" + compilationUnit1.createExecutionSummary() + ") in experiment " +
-                        compilationUnit1.getExperiment().getExperimentId() +
-                        " vs compilation " + compilationUnit2.getCompilationId() + " (" + compilationUnit2.createExecutionSummary() + ") in experiment " +
-                        compilationUnit2.getExperiment().getExperimentId());
+        writer.write("Compilation " + compilationUnit1.getCompilationId());
+        if (compilationUnit1.getExperiment().isProfileAvailable()) {
+            writer.write(" (" + compilationUnit1.createExecutionSummary() + ")");
+        }
+        writer.write(" in experiment " + compilationUnit1.getExperiment().getExperimentId() +
+                        " vs compilation " + compilationUnit2.getCompilationId());
+        if (compilationUnit2.getExperiment().isProfileAvailable()) {
+            writer.write(" (" + compilationUnit2.createExecutionSummary() + ")");
+        }
+        writer.writeln(" in experiment " + compilationUnit2.getExperiment().getExperimentId());
     }
 }
