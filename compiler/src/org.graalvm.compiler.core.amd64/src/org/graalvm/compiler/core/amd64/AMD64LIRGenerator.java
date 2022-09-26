@@ -290,18 +290,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
-        Variable result = newVariable(kind);
+    public Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
+        Variable result = newVariable(toRegisterKind(accessKind));
         AMD64AddressValue addressValue = asAddressValue(address);
-        append(new AMD64Move.AtomicReadAndAddOp((AMD64Kind) kind.getPlatformKind(), result, addressValue, asAllocatable(delta)));
+        append(new AMD64Move.AtomicReadAndAddOp((AMD64Kind) accessKind.getPlatformKind(), result, addressValue, asAllocatable(delta)));
         return result;
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(Value address, ValueKind<?> kind, Value newValue) {
-        Variable result = newVariable(kind);
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
+        Variable result = newVariable(toRegisterKind(accessKind));
         AMD64AddressValue addressValue = asAddressValue(address);
-        append(new AMD64Move.AtomicReadAndWriteOp((AMD64Kind) kind.getPlatformKind(), result, addressValue, asAllocatable(newValue)));
+        append(new AMD64Move.AtomicReadAndWriteOp((AMD64Kind) accessKind.getPlatformKind(), result, addressValue, asAllocatable(newValue)));
         return result;
     }
 

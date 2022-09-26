@@ -126,22 +126,22 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     /**
      * Emit an atomic read-and-add instruction.
      *
+     * @param accessKind the access kind for the value to be written
      * @param address address of the value to be read and written
-     * @param valueKind the access kind for the value to be written
      * @param delta the value to be added
      */
-    default Value emitAtomicReadAndAdd(Value address, ValueKind<?> valueKind, Value delta) {
+    default Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
         throw GraalError.unimplemented();
     }
 
     /**
      * Emit an atomic read-and-write instruction.
      *
+     * @param accessKind the access kind for the value to be written
      * @param address address of the value to be read and written
-     * @param valueKind the access kind for the value to be written
      * @param newValue the new value to be written
      */
-    default Value emitAtomicReadAndWrite(Value address, ValueKind<?> valueKind, Value newValue) {
+    default Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
         throw GraalError.unimplemented();
     }
 

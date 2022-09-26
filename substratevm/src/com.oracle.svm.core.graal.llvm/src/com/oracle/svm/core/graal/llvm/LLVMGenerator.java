@@ -712,13 +712,13 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(Value address, ValueKind<?> valueKind, Value newValue) {
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
         LLVMValueRef atomicRMW = builder.buildAtomicXchg(getVal(address), getVal(newValue));
         return new LLVMVariable(atomicRMW);
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> valueKind, Value delta) {
+    public Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
         LLVMValueRef atomicRMW = builder.buildAtomicAdd(getVal(address), getVal(delta));
         return new LLVMVariable(atomicRMW);
     }

@@ -528,8 +528,12 @@ public final class LIRKind extends ValueKind<LIRKind> {
             if (srcPlatformKind.equals(dstPlatformKind)) {
                 return true;
             }
-            // if the register category matches it should be fine, although the kind is different
-            return config.getRegisterCategory(srcPlatformKind).equals(config.getRegisterCategory(dstPlatformKind));
+            /*
+             * The register category should match and srcPlatformKind must be at least as large as
+             * dstPlatformKind. This size restriction is necessary since we don't preserve
+             * information about whether to perform a sign or zero extend.
+             */
+            return config.getRegisterCategory(srcPlatformKind).equals(config.getRegisterCategory(dstPlatformKind)) && srcPlatformKind.getSizeInBytes() >= dstPlatformKind.getSizeInBytes();
         }
         // reference information mismatch
         return false;
