@@ -1080,9 +1080,9 @@ public class CompileQueue {
             StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
-                            "Hosted compilations must have explicit exceptions [guard stage] " + graph + "=" + graph.getGraphState().getGuardsStage());
+                            "Hosted compilations must have explicit exceptions [guard stage] %s=%s", graph, graph.getGraphState().getGuardsStage());
             GraalError.guarantee(graph.isAfterStage(StageFlag.GUARD_LOWERING),
-                            "Hosted compilations must have explicit exceptions [guard lowering]" + graph + "=" + graph.getGraphState().getStageFlags() + "->" + graph.getGuardsStage());
+                            "Hosted compilations must have explicit exceptions [guard lowering] %s=%s -> %s", graph, graph.getGraphState().getStageFlags(), graph.getGuardsStage());
 
             if (method.compilationInfo.specializedArguments != null) {
                 // Do the specialization: replace the argument locals with the constant arguments.
