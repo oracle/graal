@@ -335,13 +335,13 @@ public abstract class ToEspressoNode extends EspressoNode {
             // first check if there's a specific type mapping available
             PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
             if (converter != null) {
-                initCheck.execute(klass);
                 StaticObject converted = (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
                 // make sure the converter function returns the correct type
-                if (StaticObject.isNull(converted) || typeCheckNode.executeTypeCheck(klass, converted.getKlass())) {
-                    return converted;
-                } else {
+                if (!typeCheckNode.executeTypeCheck(converted.getKlass(), klass)) {
                     throw new ClassCastException();
+                } else {
+                    initCheck.execute(klass);
+                    return converted;
                 }
             } else {
                 // check if there's an automatic interface mapping
