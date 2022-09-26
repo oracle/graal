@@ -76,12 +76,14 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -98,8 +100,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
+import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -423,8 +427,22 @@ public class SymbolicSnippetEncoder {
             }
             assert verifySnippetEncodeDecode(debug, method, original, originalMethodString, args, trackNodeSourcePosition, graph);
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");
-            assert graph.getAssumptions() == null : graph;
+            verifyGraph(graph);
             return graph;
+        }
+    }
+
+    private static void verifyGraph(StructuredGraph graph) {
+        GraalError.guarantee(graph.getAssumptions() == null, "Graph should not have assumptions: %s", graph);
+        for (Node node : graph.getNodes()) {
+            GraalError.guarantee(!(node instanceof CompressionNode), "Snippet graph should not contain CompressionNodes: %s, %s", graph, node);
+            if (node instanceof ReadNode) {
+                GraalError.guarantee(!(((ReadNode) node).stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp), "Snippet graph should not contain a lowered ReadNode with an object stamp: %s, %s",
+                                graph, node);
+            }
+            if (node instanceof ValueNode) {
+                GraalError.guarantee(!(((ValueNode) node).stamp(NodeView.DEFAULT) instanceof NarrowOopStamp), "Snippet graph should not contain narrow oop stamps: %s, %s", graph, node);
+            }
         }
     }
 
