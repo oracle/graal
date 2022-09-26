@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.jni.hosted;
 
-import java.lang.reflect.Constructor;
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Executable;
@@ -91,12 +90,12 @@ import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
+import com.oracle.svm.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -251,7 +250,7 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
             kit.thenPart();
             ValueNode createdObjectOrNull;
             if (invokeMethod.getDeclaringClass().isAbstract()) {
-                createdObjectOrNull = throwInstantiationException(metaAccess, kit, state);
+                createdObjectOrNull = throwInstantiationException(kit, state);
             } else {
                 createdObjectOrNull = support.createNewObjectCall(kit, invokeMethod, state, args);
             }
@@ -333,34 +332,11 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     }
 
     /**
-     * Builds the object allocation for a JNI {@code NewObject} call, returning a node that contains
-     * the created object or for {@code null} when an exception occurred (in which case the
-     * exception becomes a JNI pending exception).
-     */
-    private static ValueNode createNewObjectCall(UniverseMetaAccess metaAccess, JNIGraphKit kit, ResolvedJavaMethod constructor, FrameStateBuilder state, ValueNode... argsWithReceiver) {
-        assert constructor.isConstructor() : "Cannot create a NewObject call to the non-constructor method " + constructor;
-
-        ResolvedJavaMethod factoryMethod = FactoryMethodSupport.singleton().lookup(metaAccess, constructor, false);
-
-        int bci = kit.bci();
-        ValueNode[] argsWithoutReceiver = Arrays.copyOfRange(argsWithReceiver, 1, argsWithReceiver.length);
-        ValueNode createdObject = startInvokeWithRetainedException(kit, factoryMethod, InvokeKind.Static, state, bci, argsWithoutReceiver);
-        AbstractMergeNode merge = kit.endInvokeWithException();
-        merge.setStateAfter(state.create(bci, merge));
-
-        Stamp objectStamp = StampFactory.forDeclaredType(null, constructor.getDeclaringClass(), true).getTrustedStamp();
-        ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
-        return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdObject, exceptionValue}));
-    }
-
-    private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
-
-    /**
      * When trying to allocate an abstract class, allocate and throw exception instead. The
      * exception is installed as the JNI pending exception, and the null constant is returned.
      */
-    private static ValueNode throwInstantiationException(UniverseMetaAccess metaAccess, JNIGraphKit kit, FrameStateBuilder state) {
-        ResolvedJavaMethod throwMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR), true);
+    private static ValueNode throwInstantiationException(JNIGraphKit kit, FrameStateBuilder state) {
+        ResolvedJavaMethod throwMethod = kit.findMethod(JNIGeneratedMethodSupport.class, "throwInstantiationException", true);
         int bci = kit.bci();
         kit.startInvokeWithException(throwMethod, InvokeKind.Static, state, bci);
         kit.noExceptionPart();
