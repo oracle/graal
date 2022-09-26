@@ -65,7 +65,7 @@ public class InstrumentationLeaveInstruction extends Instruction {
 
         b.startAssign("Object result");
         b.startCall("probe", "onReturnExceptionalOrUnwind");
-        b.variable(vars.frame);
+        b.variable(vars.localFrame);
         b.string("null");
         b.string("false");
         b.end(2);
@@ -79,7 +79,7 @@ public class InstrumentationLeaveInstruction extends Instruction {
         b.startBlock();
 
         // HACK, refactor this push somehow
-        b.startStatement().startCall(vars.frame, "setObject").string("sp++").string("result").end(2);
+        b.startStatement().startCall(vars.stackFrame, "setObject").string("sp++").string("result").end(2);
         b.startAssign(vars.results[0]).variable(vars.inputs[2]).end();
 
         b.end().startElseBlock();

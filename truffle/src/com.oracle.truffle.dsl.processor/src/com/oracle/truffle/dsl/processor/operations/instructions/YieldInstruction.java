@@ -46,7 +46,11 @@ public class YieldInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().string("ContinuationLocationImpl cont = (ContinuationLocationImpl) $consts[").tree(createConstantIndex(vars, 0)).string("]").end();
-        b.statement("$frame.setObject($sp - 1, cont.createResult($frame, $frame.getObject($sp - 1)))");
+        b.statement("$stackFrame.copyTo($this._maxLocals, $localFrame, $this._maxLocals, ($sp - 1 - $this._maxLocals))");
+        b.statement("$stackFrame.setObject($sp - 1, cont.createResult($localFrame, $stackFrame.getObject($sp - 1)))");
+
+        // b.statement("System.err.printf(\" yielding: %s %s %d%n\", $stackFrame, $localFrame,
+        // $sp)");
 
         b.startReturn().string("(($sp - 1) << 16) | 0xffff").end();
 

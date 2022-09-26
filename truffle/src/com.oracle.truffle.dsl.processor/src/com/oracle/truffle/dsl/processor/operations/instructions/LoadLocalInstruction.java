@@ -77,40 +77,20 @@ public class LoadLocalInstruction extends Instruction {
 
     private static final boolean USE_SPEC_FRAME_COPY = true;
 
-    private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyObject" : "unsafeCopy");
-        b.variable(vars.frame);
-        b.string("localIdx");
-        b.variable(vars.sp);
-        b.end(2);
-    }
-
-    private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyPrimitive" : "unsafeCopy");
-        b.variable(vars.frame);
-        b.string("localIdx");
-        b.variable(vars.sp);
-        b.end(2);
-    }
-
-    private static void createSetSlotKind(ExecutionVariables vars, CodeTreeBuilder b, String tag) {
-        b.startStatement().startCall(vars.frame, "getFrameDescriptor().setSlotKind");
-        b.string("localIdx");
-        b.string(tag);
-        b.end(2);
-    }
-
-    private static void createReplaceObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "setObject");
-        b.string("localIdx");
-        b.startCall(vars.frame, "getValue").string("localIdx").end();
-        b.end(2);
-    }
-
-    private static void createCopyAsObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "setObject");
-        b.variable(vars.sp);
-        b.startCall("expectObject").variable(vars.frame).string("localIdx").end();
+    private void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
+        b.startStatement();
+        if (ctx.getData().enableYield) {
+            b.startCall(vars.localFrame, "copyTo");
+            b.string("localIdx");
+            b.variable(vars.stackFrame);
+            b.variable(vars.sp);
+            b.string("1");
+        } else {
+            b.startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyObject" : "unsafeCopy");
+            b.variable(vars.stackFrame);
+            b.string("localIdx");
+            b.variable(vars.sp);
+        }
         b.end(2);
     }
 

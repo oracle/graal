@@ -920,24 +920,29 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         indexedLocals[slot] = null;
     }
 
-    public void copyTo(Frame other, int offset, int length) {
-        FrameWithoutBoxing o = (FrameWithoutBoxing) other;
-        if (o.descriptor != descriptor || offset < 0 || offset + length >= getIndexedTags().length) {
+    @Override
+    public void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
+        FrameWithoutBoxing o = (FrameWithoutBoxing) dst;
+        if (o.descriptor != descriptor //
+                        || srcOffset < 0 //
+                        || srcOffset + length > getIndexedTags().length //
+                        || dstOffset < 0 //
+                        || dstOffset + length > o.getIndexedTags().length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw frameSlotTypeException();
         }
 
-        unsafeCopyTo(o, offset, length);
+        unsafeCopyTo(srcOffset, o, dstOffset, length);
     }
 
-    void unsafeCopyTo(FrameWithoutBoxing o, int offset, int length) {
+    void unsafeCopyTo(int srcOffset, FrameWithoutBoxing o, int dstOffset, int length) {
         if (length == 0) {
             return;
         }
 
-        System.arraycopy(getIndexedTags(), offset, o.getIndexedTags(), offset, length);
-        System.arraycopy(getIndexedLocals(), offset, o.getIndexedLocals(), offset, length);
-        System.arraycopy(getIndexedPrimitiveLocals(), offset, o.getIndexedPrimitiveLocals(), offset, length);
+        System.arraycopy(getIndexedTags(), srcOffset, o.getIndexedTags(), dstOffset, length);
+        System.arraycopy(getIndexedLocals(), srcOffset, o.getIndexedLocals(), dstOffset, length);
+        System.arraycopy(getIndexedPrimitiveLocals(), srcOffset, o.getIndexedPrimitiveLocals(), dstOffset, length);
 
         // int offsetTag = Unsafe.ARRAY_BYTE_BASE_OFFSET + offset * Unsafe.ARRAY_BYTE_INDEX_SCALE;
         // UNSAFE.copyMemory(getIndexedTags(), offsetTag, o.getIndexedTags(), offsetTag, length *

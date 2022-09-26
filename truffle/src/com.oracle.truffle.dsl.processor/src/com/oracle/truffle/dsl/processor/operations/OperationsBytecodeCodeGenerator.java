@@ -138,7 +138,7 @@ public class OperationsBytecodeCodeGenerator {
         CodeTreeBuilder b = mPrepareForAot.createBuilder();
 
         ExecutionVariables vars = new ExecutionVariables();
-        populateVariables(vars);
+        populateVariables(vars, m);
 
         b.declaration("int", vars.bci.getName(), "0");
 
@@ -168,7 +168,7 @@ public class OperationsBytecodeCodeGenerator {
 
         CodeTreeBuilder b = mDump.getBuilder();
         ExecutionVariables vars = new ExecutionVariables();
-        populateVariables(vars);
+        populateVariables(vars, m);
 
         CodeVariableElement varHandlers = new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers");
 
@@ -226,14 +226,15 @@ public class OperationsBytecodeCodeGenerator {
         return mDump;
     }
 
-    static void populateVariables(ExecutionVariables vars) {
+    static void populateVariables(ExecutionVariables vars, OperationsData m) {
         ProcessorContext context = ProcessorContext.getInstance();
         TruffleTypes types = context.getTypes();
 
         vars.bc = new CodeVariableElement(context.getType(short[].class), "$bc");
         vars.sp = new CodeVariableElement(context.getType(int.class), "$sp");
         vars.bci = new CodeVariableElement(context.getType(int.class), "$bci");
-        vars.frame = new CodeVariableElement(types.Frame, "$frame");
+        vars.stackFrame = new CodeVariableElement(types.Frame, m.enableYield ? "$stackFrame" : "$frame");
+        vars.localFrame = new CodeVariableElement(types.Frame, m.enableYield ? "$localFrame" : "$frame");
         vars.consts = new CodeVariableElement(context.getType(Object[].class), "$consts");
         vars.children = new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "$children");
     }
@@ -243,7 +244,7 @@ public class OperationsBytecodeCodeGenerator {
         createExplodeLoop(mContinueAt);
 
         ExecutionVariables vars = new ExecutionVariables();
-        populateVariables(vars);
+        populateVariables(vars, m);
 
         mContinueAt.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType("com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch")));
 
@@ -368,7 +369,7 @@ public class OperationsBytecodeCodeGenerator {
         b.startAssign(vars.sp).string("handler.startStack + maxLocals").end();
         // todo: check exception type (?)
 
-        b.startStatement().startCall(vars.frame, "setObject").string("handler.exceptionIndex").string("ex").end(2);
+        b.startStatement().startCall(vars.stackFrame, "setObject").string("handler.exceptionIndex").string("ex").end(2);
 
         b.statement("$bci = handler.handlerBci");
         b.statement("continue loop");
@@ -514,7 +515,12 @@ public class OperationsBytecodeCodeGenerator {
                 exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(short[].class), "$bc"));
                 exToCopy.getParameters().add(0, new CodeVariableElement(opNodeImpl.asType(), "$this"));
                 if (!isBoundary) {
-                    exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$frame"));
+                    if (m.enableYield) {
+                        exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$localFrame"));
+                        exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$stackFrame"));
+                    } else {
+                        exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$frame"));
+                    }
                 }
                 exToCopy.getModifiers().remove(Modifier.PUBLIC);
                 exToCopy.getModifiers().add(Modifier.PRIVATE);

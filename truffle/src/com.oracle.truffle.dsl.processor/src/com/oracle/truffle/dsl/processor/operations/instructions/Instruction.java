@@ -61,7 +61,8 @@ public abstract class Instruction {
     public static class ExecutionVariables {
         public CodeVariableElement bc;
         public CodeVariableElement bci;
-        public CodeVariableElement frame;
+        public CodeVariableElement localFrame;
+        public CodeVariableElement stackFrame;
         public CodeVariableElement sp;
         public CodeVariableElement consts;
         public CodeVariableElement children;

@@ -121,14 +121,14 @@ public class BranchInstruction extends Instruction {
                 b.startAssign("Object osrResult").startStaticCall(typeBytecodeOsrNode, "tryOSR");
                 b.string("$this");
                 b.string("($sp << 16) | targetBci");
+                b.variable(vars.localFrame);
                 b.string("null");
-                b.string("null");
-                b.variable(vars.frame);
+                b.variable(vars.stackFrame);
                 b.end(2);
 
                 b.startIf().string("osrResult != null").end().startBlock(); // {
                 // todo: check if this will overwrite a local in reused frames
-                b.statement("$frame.setObject(0, osrResult)");
+                b.startStatement().variable(vars.stackFrame).string(".setObject(0, osrResult)").end();
                 b.startReturn().string("0x0000ffff").end();
                 b.end(); // }
 

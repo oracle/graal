@@ -52,12 +52,14 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public class CustomInstruction extends Instruction {
 
+    protected final OperationsContext ctx;
     private final SingleOperationData data;
     protected ExecutableElement executeMethod;
     protected ExecutableElement uncachedExecuteMethod;
@@ -88,8 +90,9 @@ public class CustomInstruction extends Instruction {
         this.executeMethod = executeMethod;
     }
 
-    public CustomInstruction(String name, int id, SingleOperationData data) {
+    public CustomInstruction(OperationsContext ctx, String name, int id, SingleOperationData data) {
         super(name, id, data.getMainProperties().returnsValue ? 1 : 0);
+        this.ctx = ctx;
         this.data = data;
         initializePops();
     }
@@ -124,8 +127,9 @@ public class CustomInstruction extends Instruction {
         }
     }
 
-    protected CustomInstruction(String name, int id, SingleOperationData data, int pushCount) {
+    protected CustomInstruction(OperationsContext ctx, String name, int id, SingleOperationData data, int pushCount) {
         super(name, id, pushCount);
+        this.ctx = ctx;
         this.data = data;
     }
 
@@ -168,13 +172,13 @@ public class CustomInstruction extends Instruction {
                 String inputName = "input_" + inputIndex;
                 switch (kind) {
                     case STACK_VALUE:
-                        b.declaration("Object", inputName, "UFA.unsafeGetObject($frame, $sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
+                        b.declaration("Object", inputName, "UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VARIADIC:
                         b.declaration("Object[]", inputName, "new Object[numVariadics]");
                         b.startFor().string("int varIndex = 0; varIndex < numVariadics; varIndex++").end().startBlock();
-                        b.startStatement().string(inputName, "[varIndex] = UFA.unsafeGetObject($frame, $sp - numVariadics + varIndex)").end();
+                        b.startStatement().string(inputName, "[varIndex] = UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - numVariadics + varIndex)").end();
                         b.end();
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
@@ -192,7 +196,10 @@ public class CustomInstruction extends Instruction {
             }
 
             b.startStaticCall(method);
-            b.variable(vars.frame);
+            b.variable(vars.stackFrame);
+            if (ctx.getData().enableYield) {
+                b.variable(vars.localFrame);
+            }
             b.string("$this");
             b.variable(vars.bc);
             b.variable(vars.bci);
@@ -211,7 +218,7 @@ public class CustomInstruction extends Instruction {
 
             if (numPushedValues > 0) {
                 b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.string("$frame");
+                b.variable(vars.stackFrame);
                 b.string("$sp - 1");
                 b.string("result");
                 b.end(2);
@@ -220,7 +227,10 @@ public class CustomInstruction extends Instruction {
         } else {
             b.startStatement();
             b.startStaticCall(method);
-            b.variable(vars.frame);
+            b.variable(vars.stackFrame);
+            if (ctx.getData().enableYield) {
+                b.variable(vars.localFrame);
+            }
             b.string("$this");
             b.variable(vars.bc);
             b.variable(vars.bci);
@@ -230,7 +240,7 @@ public class CustomInstruction extends Instruction {
 
             if (uncached) {
                 for (int i = numPopStatic(); i > 0; i--) {
-                    b.string("UFA.unsafeGetObject($frame, $sp - " + i + ")");
+                    b.string("UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - " + i + ")");
                 }
 
                 addLocalRefs(b, vars);
@@ -317,6 +327,9 @@ public class CustomInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startStatement().startStaticCall(prepareAOTMethod);
         b.string("null");
+        if (ctx.getData().enableYield) {
+            b.string("null");
+        }
         b.string("$this");
         b.string("$bc");
         b.variable(vars.bci);

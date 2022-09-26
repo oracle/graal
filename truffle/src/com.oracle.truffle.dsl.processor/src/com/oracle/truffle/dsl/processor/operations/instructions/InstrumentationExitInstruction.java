@@ -72,7 +72,7 @@ public class InstrumentationExitInstruction extends Instruction {
 
         b.startStatement();
         b.startCall("probe", "onReturnValue");
-        b.variable(vars.frame);
+        b.variable(vars.localFrame);
         if (returnsValue) {
             b.variable(vars.inputs[1]);
         } else {

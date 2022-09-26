@@ -210,13 +210,13 @@ public class OperationsContext {
         }
 
         if (opData.isShortCircuit()) {
-            ShortCircuitInstruction instr = add(new ShortCircuitInstruction("sc." + opData.getName(), getNextInstructionId(), opData));
+            ShortCircuitInstruction instr = add(new ShortCircuitInstruction(this, "sc." + opData.getName(), getNextInstructionId(), opData));
             customInstructionNameMap.put(opData.getName(), instr);
             opDataNameMap.put(opData.getName(), opData);
             add(new ShortCircuitOperation(this, opData.getName(), getNextOperationId(), instr));
         } else {
 
-            CustomInstruction instr = new CustomInstruction("c." + opData.getName(), getNextInstructionId(), opData);
+            CustomInstruction instr = new CustomInstruction(this, "c." + opData.getName(), getNextInstructionId(), opData);
             add(instr);
             customInstructionNameMap.put(opData.getName(), instr);
             opDataNameMap.put(opData.getName(), opData);
@@ -243,7 +243,7 @@ public class OperationsContext {
 
             SingleOperationData opData = opDataNameMap.get(quicken.getOperation());
 
-            add(new QuickenedInstruction(cinstr, instructionId++, opData, List.of(quicken.specializations)));
+            add(new QuickenedInstruction(this, cinstr, instructionId++, opData, List.of(quicken.specializations)));
         }
     }
 }

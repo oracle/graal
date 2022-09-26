@@ -789,7 +789,7 @@ public interface Frame {
      * @param slot the slot of the local variable
      * @since 22.2
      */
-    default void copyTo(Frame other, int start, int length) {
+    default void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }

@@ -55,7 +55,7 @@ public class DiscardInstruction extends Instruction {
 
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
 
-        b.startStatement().startCall(vars.frame, "clear");
+        b.startStatement().startCall(vars.stackFrame, "clear");
         b.variable(vars.sp);
         b.end(2);
 

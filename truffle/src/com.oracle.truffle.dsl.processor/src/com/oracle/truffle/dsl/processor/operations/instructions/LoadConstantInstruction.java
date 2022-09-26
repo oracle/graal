@@ -72,7 +72,7 @@ public class LoadConstantInstruction extends Instruction {
                             context.getType(void.class),
                             "do_loadConstantObject");
 
-            metImpl.addParameter(vars.frame);
+            metImpl.addParameter(vars.stackFrame);
             metImpl.addParameter(vars.bc);
             metImpl.addParameter(vars.bci);
             metImpl.addParameter(vars.sp);
@@ -81,7 +81,7 @@ public class LoadConstantInstruction extends Instruction {
             CodeTreeBuilder b = metImpl.getBuilder();
 
             b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-            b.variable(vars.frame);
+            b.variable(vars.stackFrame);
             b.variable(vars.sp);
             b.tree(createGetArgument(vars));
             b.end(2);
@@ -91,7 +91,7 @@ public class LoadConstantInstruction extends Instruction {
 
         CodeTreeBuilder bOuter = CodeTreeBuilder.createBuilder();
         bOuter.startStatement().startCall("do_loadConstantObject");
-        bOuter.variable(vars.frame);
+        bOuter.variable(vars.stackFrame);
         bOuter.variable(vars.bc);
         bOuter.variable(vars.bci);
         bOuter.variable(vars.sp);

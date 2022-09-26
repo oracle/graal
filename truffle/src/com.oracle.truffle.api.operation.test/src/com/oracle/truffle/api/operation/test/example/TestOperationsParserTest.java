@@ -971,6 +971,97 @@ public class TestOperationsParserTest {
         Assert.assertEquals(3L, r2.continueWith(null));
     }
 
+
+    @Test
+    public void testYieldLocal() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            OperationLocal loc = b.createLocal();
+
+            // loc = 0
+            // yield loc
+            // loc = loc + 1
+            // yield loc
+            // loc = loc + 1
+            // return loc
+
+            b.beginStoreLocal(loc);
+            b.emitConstObject(0L);
+            b.endStoreLocal();
+
+            b.beginYield();
+            b.emitLoadLocal(loc);
+            b.endYield();
+
+            b.beginStoreLocal(loc);
+            b.beginAddOperation();
+            b.emitLoadLocal(loc);
+            b.emitConstObject(1L);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            b.beginYield();
+            b.emitLoadLocal(loc);
+            b.endYield();
+
+            b.beginStoreLocal(loc);
+            b.beginAddOperation();
+            b.emitLoadLocal(loc);
+            b.emitConstObject(1L);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(loc);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult r1 = (ContinuationResult) root.call();
+        Assert.assertEquals(0L, r1.getResult());
+
+        ContinuationResult r2 = (ContinuationResult) r1.continueWith(null);
+        Assert.assertEquals(1L, r2.getResult());
+
+        Assert.assertEquals(2L, r2.continueWith(null));
+    }
+    @Test
+    public void testYieldStack() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            OperationLocal loc = b.createLocal();
+
+            // return (yield 1) + (yield 2)
+            b.beginReturn();
+            b.beginAddOperation();
+
+            b.beginYield();
+            b.emitConstObject(1L);
+            b.endYield();
+
+            b.beginYield();
+            b.emitConstObject(2L);
+            b.endYield();
+
+            b.endAddOperation();
+            b.endReturn();
+
+
+            b.endRoot();
+        });
+
+        ContinuationResult r1 = (ContinuationResult) root.call();
+        Assert.assertEquals(1L, r1.getResult());
+
+        ContinuationResult r2 = (ContinuationResult) r1.continueWith(3L);
+        Assert.assertEquals(2L, r2.getResult());
+
+        Assert.assertEquals(7L, r2.continueWith(4L));
+    }
+
     @Test
     public void testNestedFunctions() {
         RootCallTarget root = parse(b -> {

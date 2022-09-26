@@ -74,42 +74,21 @@ public class StoreLocalInstruction extends Instruction {
 
     private static final boolean USE_SPEC_FRAME_COPY = true;
 
-    private static void createCopyPrimitive(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyPrimitive" : "unsafeCopy");
-        b.variable(vars.frame);
-        b.string("sourceSlot");
-        b.string("localIdx");
-        b.end(2);
-    }
+    private void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
+        b.startStatement();
 
-    private static void createCopyObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyObject" : "unsafeCopy");
-        b.variable(vars.frame);
-        b.string("sourceSlot");
-        b.string("localIdx");
-        b.end(2);
-    }
-
-    private static void createSetSlotKind(ExecutionVariables vars, CodeTreeBuilder b, String tag) {
-        b.startStatement().startCall(vars.frame, "getFrameDescriptor().setSlotKind");
-        b.string("localIdx");
-        b.string(tag);
-        b.end(2);
-    }
-
-    private void createSetChildBoxing(ExecutionVariables vars, CodeTreeBuilder b, String tag) {
-        b.startStatement().startCall("doSetResultBoxed");
-        b.variable(vars.bc);
-        b.variable(vars.bci);
-        b.startGroup().tree(createPopIndexedIndex(vars, 0, false)).end();
-        b.string(tag);
-        b.end(2);
-    }
-
-    private static void createCopyAsObject(ExecutionVariables vars, CodeTreeBuilder b) {
-        b.startStatement().startCall(vars.frame, "setObject");
-        b.string("localIdx");
-        b.startCall("expectObject").variable(vars.frame).string("sourceSlot").end();
+        if (context.getData().enableYield) {
+            b.startCall(vars.stackFrame, "copyTo");
+            b.string("sourceSlot");
+            b.variable(vars.localFrame);
+            b.string("localIdx");
+            b.string("1");
+        } else {
+            b.startCall("UFA", USE_SPEC_FRAME_COPY ? "unsafeCopyObject" : "unsafeCopy");
+            b.variable(vars.localFrame);
+            b.string("sourceSlot");
+            b.string("localIdx");
+        }
         b.end(2);
     }
 

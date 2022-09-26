@@ -61,7 +61,7 @@ public class LoadArgumentInstruction extends Instruction {
     private CodeTree createGetValue(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startCall(vars.frame, "getArguments").end();
+        b.startCall(vars.localFrame, "getArguments").end();
         b.string("[");
         b.tree(createArgumentIndex(vars, 0, false));
         b.string("]");
@@ -77,7 +77,7 @@ public class LoadArgumentInstruction extends Instruction {
 
         if (kind == FrameKind.OBJECT) {
             b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-            b.variable(vars.frame);
+            b.variable(vars.localFrame);
             b.variable(vars.sp);
             b.string("value");
             b.end(2);
@@ -85,7 +85,7 @@ public class LoadArgumentInstruction extends Instruction {
             b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
             // {
             b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-            b.variable(vars.frame);
+            b.variable(vars.localFrame);
             b.variable(vars.sp);
             b.string("(", kind.getTypeName(), ") value");
             b.end(2);
@@ -93,7 +93,7 @@ public class LoadArgumentInstruction extends Instruction {
             b.end().startElseBlock();
             // {
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.startStatement().startCall(vars.frame, "setObject");
+            b.startStatement().startCall(vars.localFrame, "setObject");
             b.variable(vars.sp);
             b.string("value");
             b.end(2);

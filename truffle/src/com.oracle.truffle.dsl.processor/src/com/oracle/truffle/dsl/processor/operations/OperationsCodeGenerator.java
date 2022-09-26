@@ -427,7 +427,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeExecutableElement mExecuteOSR = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "executeOSR");
         typOperationNodeImpl.add(mExecuteOSR);
-        mExecuteOSR.createBuilder().startReturn().startCall("executeAt").string("osrFrame, target").end(2);
+        if (m.enableYield) {
+            mExecuteOSR.createBuilder().startReturn().startCall("executeAt").string("osrFrame, (VirtualFrame) interpreterState, target").end(2);
+        } else {
+            mExecuteOSR.createBuilder().startReturn().startCall("executeAt").string("osrFrame, target").end(2);
+        }
 
         CodeExecutableElement mGetOSRMetadata = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "getOSRMetadata");
         typOperationNodeImpl.add(mGetOSRMetadata);
@@ -521,11 +525,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.tree(GeneratorUtils.createShouldNotReachHere("invalid continuation parent frame passed"));
         b.end();
 
-        b.declaration("int", "sp", "(target >> 16) & 0xffff");
-        b.statement("parentFrame.copyTo(frame, 0, sp - 1)");
+        b.declaration("int", "sp", "((target >> 16) & 0xffff) + root._maxLocals");
+        b.statement("parentFrame.copyTo(root._maxLocals, frame, root._maxLocals, sp - 1 - root._maxLocals)");
         b.statement("frame.setObject(sp - 1, inputValue)");
 
-        b.statement("return root.executeAt(frame, target)");
+        // b.statement("System.err.printf(\" continuing: %s %s %d%n\", frame, parentFrame, (target
+        // >> 16) + root._maxLocals)");
+
+        b.statement("return root.executeAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
 
         return cr;
     }
@@ -569,7 +576,15 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.declaration("Throwable", "throwable", "null");
         b.statement("executeProlog(frame)");
         b.startTryBlock();
-        b.startAssign("returnValue").startCall("executeAt").string("frame, _maxLocals << 16").end(2);
+
+        b.startAssign("returnValue").startCall("executeAt");
+        b.string("frame");
+        if (m.enableYield) {
+            b.string("frame");
+        }
+        b.string("_maxLocals << 16");
+        b.end(2);
+
         b.startReturn().string("returnValue").end();
         b.end().startCatchBlock(context.getType(Throwable.class), "th");
         b.statement("throw sneakyThrow(throwable = th)");
@@ -691,7 +706,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     private CodeExecutableElement createNodeImplExecuteAt() {
         CodeExecutableElement mExecuteAt = new CodeExecutableElement(MOD_PRIVATE, context.getType(Object.class), "executeAt");
-        mExecuteAt.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        if (m.enableYield) {
+            mExecuteAt.addParameter(new CodeVariableElement(types.VirtualFrame, "stackFrame"));
+            mExecuteAt.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+        } else {
+            mExecuteAt.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        }
         mExecuteAt.addParameter(new CodeVariableElement(context.getType(int.class), "storedLocation"));
 
         CodeTreeBuilder b = mExecuteAt.createBuilder();
@@ -700,7 +720,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         b.startAssign("result").startCall("switchImpl", "continueAt");
         b.string("this");
-        b.string("frame");
+        if (m.enableYield) {
+            b.string("stackFrame");
+            b.string("localFrame");
+        } else {
+            b.string("frame");
+        }
         b.string("_bc");
         b.string("result & 0xffff");
         b.string("(result >> 16) & 0xffff");
@@ -719,7 +744,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         b.end();
 
-        b.startReturn().string("frame.getObject((result >> 16) & 0xffff)").end();
+        b.startReturn();
+        b.string(m.enableYield ? "stackFrame" : "frame");
+        b.string(".getObject((result >> 16) & 0xffff)").end();
 
         return mExecuteAt;
     }
@@ -1661,7 +1688,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeExecutableElement loopMethod = new CodeExecutableElement(MOD_ABSTRACT, context.getType(int.class), "continueAt");
         loopMethod.addParameter(new CodeVariableElement(opNodeImpl.asType(), "$this"));
-        loopMethod.addParameter(new CodeVariableElement(types.VirtualFrame, "$frame"));
+        if (m.enableYield) {
+            loopMethod.addParameter(new CodeVariableElement(types.VirtualFrame, "$stackFrame"));
+            loopMethod.addParameter(new CodeVariableElement(types.VirtualFrame, "$localFrame"));
+        } else {
+            loopMethod.addParameter(new CodeVariableElement(types.VirtualFrame, "$frame"));
+        }
         loopMethod.addParameter(new CodeVariableElement(context.getType(short[].class), "$bc"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "$startBci"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));

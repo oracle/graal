@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 
 public class QuickenedInstruction extends CustomInstruction {
@@ -88,8 +89,8 @@ public class QuickenedInstruction extends CustomInstruction {
         return sb.toString();
     }
 
-    public QuickenedInstruction(CustomInstruction orig, int id, SingleOperationData data, List<String> activeSpecNames) {
-        super(makeName(orig, activeSpecNames), id, data);
+    public QuickenedInstruction(OperationsContext ctx, CustomInstruction orig, int id, SingleOperationData data, List<String> activeSpecNames) {
+        super(ctx, makeName(orig, activeSpecNames), id, data);
         this.orig = orig;
         this.activeSpecNames = activeSpecNames;
 

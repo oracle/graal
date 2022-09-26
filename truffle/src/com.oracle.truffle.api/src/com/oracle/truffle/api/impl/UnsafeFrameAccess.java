@@ -97,6 +97,8 @@ public abstract class UnsafeFrameAccess {
 
     public abstract void unsafeCopy(Frame frame, int srcSlot, int dstSlot);
 
+    public abstract void unsafeCopyTo(Frame srcFrame, int srcOffset, Frame dstFrame, int dstOffset, int length);
+
     public abstract void unsafeCopyObject(Frame frame, int srcSlot, int dstSlot);
 
     public abstract void unsafeCopyPrimitive(Frame frame, int srcSlot, int dstSlot);
@@ -219,6 +221,11 @@ public abstract class UnsafeFrameAccess {
         @Override
         public void unsafeCopy(Frame frame, int srcSlot, int dstSlot) {
             castFrame(frame).unsafeCopy(srcSlot, dstSlot);
+        }
+
+        @Override
+        public void unsafeCopyTo(Frame srcFrame, int srcOffset, Frame dstFrame, int dstOffset, int length) {
+            castFrame(srcFrame).unsafeCopyTo(srcOffset, castFrame(dstFrame), dstOffset, length);
         }
 
         @Override

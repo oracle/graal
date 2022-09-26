@@ -71,7 +71,7 @@ public class ConditionalBranchInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         // TODO: we should do (un)boxing elim here (but only if booleans are boxing elim'd)
-        b.declaration("boolean", "cond", "UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE");
+        b.declaration("boolean", "cond", "UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - 1) == Boolean.TRUE");
 
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
 

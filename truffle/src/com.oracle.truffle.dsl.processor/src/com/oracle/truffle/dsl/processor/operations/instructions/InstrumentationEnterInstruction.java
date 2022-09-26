@@ -64,7 +64,7 @@ public class InstrumentationEnterInstruction extends Instruction {
 
         b.startStatement();
         b.startCall("probe", "onEnter");
-        b.variable(vars.frame);
+        b.variable(vars.localFrame);
         b.end(2);
 
         b.end();

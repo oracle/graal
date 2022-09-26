@@ -112,12 +112,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     {
         context = ProcessorContext.getInstance();
         types = context.getTypes();
-        OperationsBytecodeCodeGenerator.populateVariables(dummyVariables);
     }
 
     OperationsBytecodeNodeGeneratorPlugs(OperationsData m, Set<String> innerTypeNames, Set<String> methodNames, boolean isVariadic, CustomInstruction cinstr, StaticConstants staticConstants,
                     boolean uncached) {
         this.m = m;
+        OperationsBytecodeCodeGenerator.populateVariables(dummyVariables, m);
         this.innerTypeNames = innerTypeNames;
         this.methodNames = methodNames;
         this.isVariadic = isVariadic;
@@ -203,7 +203,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public void addNodeCallParameters(CodeTreeBuilder builder, boolean isBoundary, boolean isRemoveThis) {
         if (!isBoundary) {
-            builder.string("$frame");
+            if (m.enableYield) {
+                builder.string("$stackFrame");
+                builder.string("$localFrame");
+            } else {
+                builder.string("$frame");
+            }
         }
 
         builder.string("$this");
@@ -436,7 +441,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
         CodeTree[] result = new CodeTree[values.size()];
         for (int i = 0; i < values.size(); i++) {
-            result[i] = CodeTreeBuilder.singleString("$frame.getValue($sp - " + (cinstr.numPopStatic() - i) + ")");
+            result[i] = CodeTreeBuilder.singleString((m.enableYield ? "$stackFrame" : "$frame") + ".getValue($sp - " + (cinstr.numPopStatic() - i) + ")");
         }
 
         return result;
@@ -444,7 +449,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void initializeFrameState(FrameState frameState, CodeTreeBuilder builder) {
-        frameState.set("frameValue", new LocalVariable(types.VirtualFrame, "$frame", null));
+        // todo: should we have the outer (local) frame as the "frame" ? probably
+        frameState.set("frameValue", new LocalVariable(types.VirtualFrame, m.enableYield ? "$localFrame" : "$frame", null));
         builder.declaration("int", CHILD_OFFSET_NAME, (CodeTree) null);
         builder.declaration("int", CONST_OFFSET_NAME, (CodeTree) null);
         frameState.setBoolean("definedOffsets", true);
@@ -487,7 +493,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (uncached || data.isDisableBoxingElimination() || typeName.equals("Object")) {
             b.startStatement();
             b.startCall("UFA", "unsafeSetObject");
-            b.string("$frame");
+            b.string(m.enableYield ? "$stackFrame" : "$frame");
             b.string("$sp - " + destOffset);
             b.tree(value);
             b.end(2);
@@ -497,7 +503,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             // {
             b.startStatement();
             b.startCall("UFA", "unsafeSetObject");
-            b.string("$frame");
+            b.string(m.enableYield ? "$stackFrame" : "$frame");
             b.string("$sp - " + destOffset);
             b.string("value");
             b.end(2);
@@ -506,7 +512,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             // {
             b.startStatement();
             b.startCall("UFA", "unsafeSet" + typeName);
-            b.string("$frame");
+            b.string(m.enableYield ? "$stackFrame" : "$frame");
             b.string("$sp - " + destOffset);
             b.string("value");
             b.end(2);
@@ -661,7 +667,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         FrameKind resultKind = getFrameType(method.getReturnType().getKind());
 
         b.startCall("expect" + resultKind.getFrameName());
-        b.string("$frame");
+        b.string(m.enableYield ? "$stackFrame" : "$frame");
         b.string("$sp - " + offset);
         b.end();
 

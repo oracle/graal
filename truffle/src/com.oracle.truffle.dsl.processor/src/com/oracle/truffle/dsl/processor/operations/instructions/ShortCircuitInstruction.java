@@ -42,12 +42,13 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 
 public class ShortCircuitInstruction extends CustomInstruction {
 
-    public ShortCircuitInstruction(String name, int id, SingleOperationData data) {
-        super(name, id, data, 0);
+    public ShortCircuitInstruction(OperationsContext ctx, String name, int id, SingleOperationData data) {
+        super(ctx, name, id, data, 0);
         addPopIndexed("value");
         addBranchTarget("end");
     }
@@ -69,7 +70,10 @@ public class ShortCircuitInstruction extends CustomInstruction {
         }
 
         b.startStaticCall(executeMethod);
-        b.variable(vars.frame);
+        b.variable(vars.stackFrame);
+        if (ctx.getData().enableYield) {
+            b.variable(vars.localFrame);
+        }
         b.string("$this");
         b.variable(vars.bc);
         b.variable(vars.bci);
