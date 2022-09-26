@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+package com.oracle.truffle.regex.tregex.nodes.nfa;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.RegexBodyNode;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
-import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
-public class TRegexTraceFinderRootNode extends RegexBodyNode {
+/**
+ * Common base class for executor nodes used in {@link TRegexBacktrackingNFAExecutorNode}, where the
+ * top-level executor represents a full regular expression, and all nested sub-executors represent
+ * look-around assertions.
+ */
+public abstract class TRegexBacktrackerSubExecutorNode extends TRegexExecutorNode {
 
-    @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
-    @Child private TRegexExecutorEntryNode entryNode;
+    public static final TRegexBacktrackerSubExecutorNode[] NO_SUB_EXECUTORS = {};
 
-    public TRegexTraceFinderRootNode(RegexLanguage language, RegexSource source, PreCalculatedResultFactory[] preCalculatedResults, TRegexExecutorEntryNode entryNode) {
-        super(language, source);
-        this.preCalculatedResults = preCalculatedResults;
-        this.entryNode = insert(entryNode);
+    @Children protected final TRegexBacktrackerSubExecutorNode[] subExecutors;
+
+    TRegexBacktrackerSubExecutorNode(RegexAST ast, int numberOfTransitions, TRegexBacktrackerSubExecutorNode[] subExecutors) {
+        super(ast, numberOfTransitions);
+        this.subExecutors = subExecutors;
+    }
+
+    TRegexBacktrackerSubExecutorNode(TRegexBacktrackerSubExecutorNode copy) {
+        super(copy);
+        if (copy.subExecutors == null) {
+            this.subExecutors = null;
+        } else {
+            TRegexBacktrackerSubExecutorNode[] subExecutorsCopy = new TRegexBacktrackerSubExecutorNode[copy.subExecutors.length];
+            for (int i = 0; i < copy.subExecutors.length; i++) {
+                subExecutorsCopy[i] = copy.subExecutors[i].shallowCopy();
+            }
+            this.subExecutors = subExecutorsCopy;
+        }
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
-        final Object[] args = frame.getArguments();
-        assert args.length == 1;
-        final RegexResult receiver = (RegexResult) args[0];
-        final int traceFinderResult = (int) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd());
-        final int[] result = preCalculatedResults[traceFinderResult].createArrayFromEnd(receiver.getEnd());
-        receiver.setResult(result);
-        return result[0];
-    }
-
-    @Override
-    public String getEngineLabel() {
-        return "DFA traceFinder";
-    }
+    public abstract TRegexBacktrackerSubExecutorNode shallowCopy();
 }
