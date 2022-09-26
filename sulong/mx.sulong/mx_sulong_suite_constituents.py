@@ -36,6 +36,7 @@ import pipes
 
 import mx
 import mx_cmake
+import mx_native
 import mx_unittest
 import mx_subst
 import os
@@ -738,3 +739,11 @@ class HeaderProject(AbstractSulongNativeProject):  # pylint: disable=too-many-an
 
     def isPlatformDependent(self):
         return False
+
+
+class CopiedNativeProject(mx_native.DefaultNativeProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, **kwargs):
+        srcFrom = mx.project(kwargs["srcFrom"])
+        srcDirs = []
+        kwargs["deliverable"] = srcFrom.deliverable
+        super(CopiedNativeProject, self).__init__(suite, name, subDir, srcDirs, deps, workingSets, srcFrom.dir, "shared_lib", **kwargs)

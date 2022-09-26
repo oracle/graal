@@ -373,6 +373,34 @@ suite = {
       "jacoco" : "include",
     },
 
+    "com.oracle.truffle.llvm.nfi.test.native" : {
+      "subDir" : "projects",
+      "class" : "CopiedNativeProject",
+      "srcFrom" : "truffle:com.oracle.truffle.nfi.test.native",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN",
+      "buildDependencies" : [
+        "truffle:TRUFFLE_NFI_NATIVE",
+      ],
+      "workingSets" : "Truffle, LLVM",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.llvm.nfi.test.native.isolation" : {
+      "subDir" : "projects",
+      "class" : "CopiedNativeProject",
+      "srcFrom" : "truffle:com.oracle.truffle.nfi.test.native.isolation",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN",
+      "buildDependencies" : [
+        "truffle:TRUFFLE_NFI_NATIVE",
+      ],
+      "workingSets" : "Truffle, LLVM",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.llvm.nativemode" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -1945,6 +1973,21 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
+        ],
+      },
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_NFI_TESTS" : {
+      "description" : "The Truffle NFI test suite, but compiled with the Sulong toolchain.",
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+            "dependency:com.oracle.truffle.llvm.nfi.test.native/*",
+            "dependency:com.oracle.truffle.llvm.nfi.test.native.isolation/*",
         ],
       },
       "license" : "BSD-new",
