@@ -81,7 +81,7 @@ public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatH
         }
         this.items = new ConditionalBranchEntry[elementCount];
         for (int i = 0; i < elementCount; i++) {
-            this.items[i] = new ConditionalBranchEntry(this, byteCodeOffset, extraDataOffset, extraDataIndex);
+            this.items[i] = new ConditionalBranchEntry(this, byteCodeOffset, extraDataOffset, extraDataIndex, 0);
         }
     }
 
@@ -130,6 +130,11 @@ public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatH
     }
 
     public BranchTargetWithStackChange item(int index) {
+        return items[index];
+    }
+
+    public BranchTargetWithStackChange itemWithValueIndicatorUpdate(int index, int valueIndicator) {
+        items[index].updateValueIndicator(valueIndicator);
         return items[index];
     }
 

@@ -52,12 +52,13 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  */
 public abstract class BranchTargetWithStackChange extends BranchTarget {
 
-    private int typeIndicator;
+    private int valueIndicator;
     private int resultCount;
     private int stackSize;
 
-    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
+    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindValueIndicator) {
         super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
+        this.valueIndicator = unwindValueIndicator;
     }
 
     /**
@@ -66,11 +67,11 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
      * @param resultCount The number of result values
      * @param stackSize The stack size after the jump
      */
-    public void setStackInfo(int typeIndicator, int resultCount, int stackSize) {
-        this.typeIndicator = typeIndicator;
+    public void setStackInfo(int returnValueIndicator, int resultCount, int stackSize) {
+        this.valueIndicator |= returnValueIndicator;
         this.resultCount = resultCount;
         this.stackSize = stackSize;
-        assert !ExtraDataUtil.exceeds2BitValue(typeIndicator) : "Invalid type indicator";
+        assert !ExtraDataUtil.exceeds2BitValue(returnValueIndicator) : "Invalid type indicator";
         if (ExtraDataUtil.exceedsUnsigned7BitValue(resultCount) || ExtraDataUtil.exceedsUnsigned7BitValue(stackSize)) {
             if (ExtraDataUtil.exceedsPositiveIntValue(resultCount) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
@@ -79,8 +80,12 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
         }
     }
 
-    protected int typeIndicator() {
-        return typeIndicator;
+    void updateValueIndicator(int updatedValueIndicator) {
+        this.valueIndicator |= updatedValueIndicator;
+    }
+
+    protected int valueIndicator() {
+        return valueIndicator;
     }
 
     protected int resultCount() {

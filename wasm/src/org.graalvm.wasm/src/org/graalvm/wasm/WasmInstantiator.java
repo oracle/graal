@@ -41,21 +41,21 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
-import org.graalvm.wasm.util.ExtraDataUtil;
 
-import java.util.List;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -147,7 +147,7 @@ public class WasmInstantiator {
     }
 
     private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), ExtraDataUtil.extractTypeIndicator(entry.getResultTypes()));
+        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset());
         List<CallNode> childNodeList = entry.getCallNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;

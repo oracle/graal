@@ -74,17 +74,15 @@ public class ExtraDataUtil {
 
     public static final int PROFILE_SIZE = 1;
 
-    private static final int TYPE_INDICATOR_PRIMITIVE = 0;
-    private static final int TYPE_INDICATOR_REFERENCE = 1;
-    // 2 reserved for potential vector types;
-    private static final int TYPE_INDICATOR_ALL = 3;
+    private static final int PRIMITIVE_VALUE_INDICATOR = 0x0080_0000;
+    private static final int REFERENCE_VALUE_INDICATOR = 0x8000_0000;
 
     private static int createCompactShortValuesWithIndicator(int upperValue, int lowerValue) {
         return ((upperValue << 16) | lowerValue) & 0x7fff_ffff;
     }
 
-    private static int createCompactUpperBytes(int leadValue, int upperValue, int lowerValue) {
-        return (leadValue << 30) | (upperValue << 23) | (lowerValue << 16);
+    private static int createCompactUpperBytes(int valueIndicator, int upperValue, int lowerValue) {
+        return valueIndicator | (upperValue << 24) | (lowerValue << 16);
     }
 
     public static boolean exceeds2BitValue(int value) {
@@ -180,8 +178,8 @@ public class ExtraDataUtil {
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int typeIndicator, int resultCount, int stackSize) {
-        extraData[stackChangeOffset] = createCompactUpperBytes(typeIndicator, resultCount, stackSize);
+    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int valueIndicator, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = createCompactUpperBytes(valueIndicator, resultCount, stackSize);
         return COMPACT_STACK_CHANGE_SIZE;
     }
 
@@ -307,19 +305,12 @@ public class ExtraDataUtil {
         return PROFILE_SIZE;
     }
 
-    public static int extractTypeIndicator(byte[] types) {
-        boolean primitive = false;
-        boolean reference = false;
+    public static int extractValueIndicator(byte[] types) {
+        int valueIndicator = 0;
         for (byte type : types) {
-            primitive = primitive | WasmType.isNumberType(type);
-            reference = reference | WasmType.isReferenceType(type);
+            valueIndicator |= WasmType.isNumberType(type) ? PRIMITIVE_VALUE_INDICATOR : 0;
+            valueIndicator |= WasmType.isReferenceType(type) ? REFERENCE_VALUE_INDICATOR : 0;
         }
-        if (primitive && reference) {
-            return TYPE_INDICATOR_ALL;
-        }
-        if (reference) {
-            return TYPE_INDICATOR_REFERENCE;
-        }
-        return TYPE_INDICATOR_PRIMITIVE;
+        return valueIndicator;
     }
 }

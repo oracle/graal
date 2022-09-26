@@ -51,6 +51,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.validation.collections.ControlStack;
 import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTableEntry;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -315,6 +316,15 @@ public class ParserState {
         pushAll(frame.paramTypes());
     }
 
+    private byte[] unwindBranch(int frameInitialSize) {
+        final int stackSize = valueStack.size();
+        final byte[] unwindTypes = new byte[stackSize - frameInitialSize];
+        for (int i = stackSize; i > frameInitialSize; i--) {
+            unwindTypes[i] = pop();
+        }
+        return unwindTypes;
+    }
+
     /**
      * Performs the necessary branch checks and adds the conditional branch information in the extra
      * data array.
@@ -327,8 +337,10 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
+        final byte[] unwindTypes = unwindBranch(frame.initialStackSize());
+        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractValueIndicator(unwindTypes)));
+        pushAll(unwindTypes);
         pushAll(labelTypes);
-        frame.addBranchTarget(extraData.addConditionalBranch(offset));
     }
 
     /**
@@ -343,7 +355,9 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addBranchTarget(extraData.addUnconditionalBranch(offset));
+        final byte[] unwindTypes = unwindBranch(frame.initialStackSize());
+        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractValueIndicator(unwindTypes)));
+        pushAll(unwindTypes);
     }
 
     /**
@@ -365,8 +379,11 @@ public class ParserState {
             frame = getFrame(otherBranchLabel);
             byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
-            pushAll(popAll(otherBranchLabelReturnTypes));
-            frame.addBranchTarget(branchTable.item(i));
+            popAll(otherBranchLabelReturnTypes);
+            byte[] unwindTypes = unwindBranch(frame.initialStackSize());
+            frame.addBranchTarget(branchTable.itemWithValueIndicatorUpdate(i, ExtraDataUtil.extractValueIndicator(unwindTypes)));
+            pushAll(unwindTypes);
+            pushAll(otherBranchLabelReturnTypes);
         }
         popAll(branchLabelReturnTypes);
     }
