@@ -1166,10 +1166,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return assertion.supports(arch.getFeatures(), AVXKind.getRegisterSize(kind), false);
         }
 
-        public final boolean isSupported(AMD64 arch, AVXSize size, boolean useZMMRegisters) {
-            return assertion.supports(arch.getFeatures(), size, useZMMRegisters);
-        }
-
         @Override
         public String toString() {
             return opcode;
