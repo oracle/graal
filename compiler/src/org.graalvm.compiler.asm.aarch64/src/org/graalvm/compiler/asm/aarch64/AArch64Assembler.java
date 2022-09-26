@@ -63,6 +63,8 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySi
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizesAndRegistersFF;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizesAndRegistersFZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizesAndRegistersRF;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADC;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADCS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADDS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADR;
@@ -138,6 +140,8 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.RET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.REVW;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.REVX;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.RORV;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SBC;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SBCS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SBFM;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SCVTF;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SDIV;
@@ -810,7 +814,6 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     private static final int SignedMulLongOp = 0x9B200000;
     private static final int DataProcessing1SourceOp = 0x5AC00000;
     private static final int DataProcessing2SourceOp = 0x1AC00000;
-    private static final int DataProcessing2SourceWithCarryOp = 0x1A000000;
 
     private static final int Fp1SourceOp = 0x1E204000;
     private static final int Fp2SourceOp = 0x1E200800;
@@ -925,6 +928,11 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         ADDS(ADD.encoding | AddSubSetFlag),
         SUB(0x40000000),
         SUBS(SUB.encoding | AddSubSetFlag),
+
+        ADC(0b00 << 29),
+        ADCS(0b01 << 29),
+        SBC(0b10 << 29),
+        SBCS(0b11 << 29),
 
         CCMP(0x7A400000),
 
@@ -2738,7 +2746,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.1 Adc.
+     * C6.2.1 Add with carry.
      *
      * dst = src1 + src2 + PSTATE.C.
      *
@@ -2748,13 +2756,13 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void adc(int size, Register dst, Register src1, Register src2) {
-        assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
+        assert verifySizeAndRegistersZZZ(size, dst, src1, src2);
 
-        dataProcessing2SourceWithCarryOp(ADD, dst, src1, src2, generalFromSize(size));
+        addSubWithCarryOp(ADC, dst, src1, src2, generalFromSize(size));
     }
 
     /**
-     * C6.2.2 Adcs.
+     * C6.2.2 Add with carry & set flags.
      *
      * dst = src1 + src2 + PSTATE.C, and sets condition flags.
      *
@@ -2764,13 +2772,46 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void adcs(int size, Register dst, Register src1, Register src2) {
-        assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
+        assert verifySizeAndRegistersZZZ(size, dst, src1, src2);
 
-        dataProcessing2SourceWithCarryOp(ADDS, dst, src1, src2, generalFromSize(size));
+        addSubWithCarryOp(ADCS, dst, src1, src2, generalFromSize(size));
     }
 
-    private void dataProcessing2SourceWithCarryOp(Instruction instr, Register dst, Register src1, Register src2, InstructionType type) {
-        emitInt(type.encoding | instr.encoding | DataProcessing2SourceWithCarryOp | rd(dst) | rs1(src1) | rs2(src2));
+    /**
+     * C6.2.231 Subtract with carry.
+     *
+     * dst = src1 - src2 + NOT(PSTATE.C).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void sbc(int size, Register dst, Register src1, Register src2) {
+        assert verifySizeAndRegistersZZZ(size, dst, src1, src2);
+
+        addSubWithCarryOp(SBC, dst, src1, src2, generalFromSize(size));
+    }
+
+    /**
+     * C6.2.232 Subtract with carry & set flags.
+     *
+     * dst = src1 - src2 + NOT(PSTATE.C), and sets condition flags.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void sbcs(int size, Register dst, Register src1, Register src2) {
+        assert verifySizeAndRegistersZZZ(size, dst, src1, src2);
+
+        addSubWithCarryOp(SBCS, dst, src1, src2, generalFromSize(size));
+    }
+
+    private void addSubWithCarryOp(Instruction instr, Register dst, Register src1, Register src2, InstructionType type) {
+        int baseEncoding = 0b0_0_0_11010000_00000_000000_00000_00000;
+        emitInt(instr.encoding | type.encoding | baseEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
 
     /* Bit Operations (5.5.5) */
