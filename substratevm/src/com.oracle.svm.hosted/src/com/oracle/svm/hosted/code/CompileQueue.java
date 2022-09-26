@@ -1480,16 +1480,15 @@ public class CompileQueue {
         ensureCompiledForMethodPointerConstants(method, reason, result);
     }
 
-    protected final void ensureCompiledForMethodPointerConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
+    protected final void ensureCompiledForMethodPointerConstants(HostedMethod compilationRoot, CompileReason reason, CompilationResult result) {
         for (DataPatch dataPatch : result.getDataPatches()) {
             Reference reference = dataPatch.reference;
             if (reference instanceof ConstantReference) {
                 VMConstant constant = ((ConstantReference) reference).getConstant();
                 if (constant instanceof SubstrateMethodPointerConstant) {
                     MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
-                    final ResolvedJavaMethod method1 = pointer.getMethod();
-                    HostedMethod hMethod = (HostedMethod) method1;
-                    ensureCompiled(hMethod, new MethodPointerConstantReason(method, hMethod, reason));
+                    HostedMethod referencedMethod = (HostedMethod) pointer.getMethod();
+                    ensureCompiled(referencedMethod, new MethodPointerConstantReason(compilationRoot, referencedMethod, reason));
                 }
             }
         }
