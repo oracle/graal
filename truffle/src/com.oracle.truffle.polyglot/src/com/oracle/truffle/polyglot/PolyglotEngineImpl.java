@@ -1842,6 +1842,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return null;
         }
 
+        if (getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy) != PolyglotEngineOptions.StaticObjectStorageStrategy.getDefaultValue()) {
+            return null;
+        }
+
         FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
         preInitFs.onLoadPreinitializedContext(config.fileSystem);
         FileSystem oldFileSystem = config.fileSystem;
