@@ -41,6 +41,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -151,6 +152,7 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return thread instanceof SubstrateVirtualThread;
     }

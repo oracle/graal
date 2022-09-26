@@ -78,6 +78,7 @@ public class SubstrateJVM {
     // in).
     private volatile boolean recording;
     private byte[] metadataDescriptor;
+    private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateJVM(List<Configuration> configurations) {
@@ -456,6 +457,19 @@ public class SubstrateJVM {
         // Would only be used in case of an emergency dump, which is not supported at the moment.
     }
 
+    /** See {@code JfrEmergencyDump::set_dump_path}. */
+    public void setDumpPath(String dumpPathText) {
+        dumpPath = dumpPathText;
+    }
+
+    /** See {@code JVM#getDumpPath()}. */
+    public String getDumpPath() {
+        if (dumpPath == null) {
+            dumpPath = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("user.home", null).toString();
+        }
+        return dumpPath;
+    }
+
     /** See {@link JVM#abort}. */
     public void abort(String errorMsg) {
         throw VMError.shouldNotReachHere(errorMsg);
@@ -532,12 +546,12 @@ public class SubstrateJVM {
         return true;
     }
 
-    public boolean setConfiguration(Class<? extends Event> eventClass, Target_jdk_jfr_internal_event_EventConfiguration configuration) {
+    public boolean setConfiguration(Class<? extends Event> eventClass, Object configuration) {
         DynamicHub.fromClass(eventClass).setJrfEventConfiguration(configuration);
         return true;
     }
 
-    public Target_jdk_jfr_internal_event_EventConfiguration getConfiguration(Class<? extends Event> eventClass) {
+    public Object getConfiguration(Class<? extends Event> eventClass) {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
