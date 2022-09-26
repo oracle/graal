@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -86,13 +87,29 @@ public final class ImageClassLoader {
     }
 
     public void initAllClasses() {
-        final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-        classLoaderSupport.initAllClasses(executor, this);
-        boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
-        if (!completed) {
-            throw shouldNotReachHere("timed out while initializing classes");
+        Watchdog watchdog = new Watchdog(15, false) {
+            @Override
+            protected void deadlineMissed() {
+                System.err.println();
+                System.err.println("=== ImageClassLoader.initAllClasses watchdog detected no activity.");
+                super.deadlineMissed();
+            }
+        };
+        ForkJoinPool forkJoinPool = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
+        Executor executeTask = task -> forkJoinPool.execute(() -> {
+            watchdog.recordActivity();
+            task.run();
+        });
+        try {
+            classLoaderSupport.initAllClasses(executeTask, this);
+            boolean completed = forkJoinPool.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+            if (!completed) {
+                throw shouldNotReachHere("timed out while initializing classes");
+            }
+            forkJoinPool.shutdownNow();
+        } finally {
+            watchdog.close();
         }
-        executor.shutdownNow();
     }
 
     private void findSystemElements(Class<?> systemClass) {
