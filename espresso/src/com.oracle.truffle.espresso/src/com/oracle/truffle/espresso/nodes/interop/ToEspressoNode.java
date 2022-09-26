@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -135,8 +136,8 @@ public abstract class ToEspressoNode extends EspressoNode {
         return klass.isAssignableFrom(klass.getMeta().java_lang_Double);
     }
 
-    static boolean isTypeMappingEnabled(Klass klass) {
-        return klass == klass.getMeta().java_lang_Object && klass.getContext().explicitTypeMappingsEnabled();
+    static boolean isTypeMappingEnabled(Klass klass, EspressoContext context, Object value) {
+        return klass.getContext().explicitTypeMappingsEnabled() && isHostObject(context, value);
     }
 
     static boolean isHostObject(EspressoContext context, Object value) {
@@ -323,7 +324,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isForeignException(meta, klass)",
                     "!klass.isAbstract()",
                     "!isString(meta, klass)",
-                    "!isTypeMappingEnabled(klass)"
+                    "!isTypeMappingEnabled(klass, getContext(), value)"
     })
     Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -341,68 +342,49 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "isTypeMappingEnabled(klass)",
                     "!isStaticObject(value)",
                     "!interop.isNull(value)",
-                    "!isString(meta, klass)",
-                    "!isForeignException(klass)",
+                    "!isHostString(value)",
+                    "!isEspressoException(value)",
+                    "!isForeignException(meta, klass)",
                     "!klass.isAbstract()",
-                    "!isBoxedPrimitive(value)",
-                    "isHostObject(getContext(), value)"
+                    "!isString(meta, klass)",
+                    "isTypeMappingEnabled(klass, getContext(), value)"
     })
     Object doForeignClassProxy(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached LookupProxyKlassNode lookupProxyKlassNode,
                     @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                    @Cached TypeCheckNode typeCheckNode,
                     @Cached BranchProfile errorProfile,
                     @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             Object metaObject = getMetaObjectOrThrow(value, interop);
             String metaName = getMetaName(metaObject, interop);
 
-            // first see if a generated proxy can be used for interface mapped types
-            ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
-            if (proxyKlass != null) {
-                return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
-            } else {
-                // then check if there's a specific type mapping available
-                // if not a default no-conversion converter is returned
-                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
-                if (converter == null) {
-                    return StaticObject.createForeign(getLanguage(), klass, value, interop);
+            // check if there's a specific type mapping available
+            PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
+            if (converter != null) {
+                StaticObject converted = (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
+                if (StaticObject.isNull(converted) || typeCheckNode.executeTypeCheck(klass, converted.getKlass())) {
+                    return converted;
                 } else {
-                    return converter.convert(StaticObject.createForeign(getLanguage(), klass, value, interop));
+                    throw new ClassCastException();
                 }
+            } else {
+                if (klass == meta.java_lang_Object) {
+                    // see if a generated proxy can be used for interface mapped types
+                    ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
+                    if (proxyKlass != null) {
+                        return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
+                    }
+                }
+                return StaticObject.createForeign(getLanguage(), klass, value, interop);
             }
         } catch (ClassCastException e) {
             errorProfile.enter();
             throw UnsupportedTypeException.create(new java.lang.Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
         }
-    }
-
-    @Specialization(guards = {
-                    "isTypeMappingEnabled(klass)",
-                    "!isStaticObject(value)",
-                    "!interop.isNull(value)",
-                    "!isString(meta, klass)",
-                    "!isForeignException(klass)",
-                    "!klass.isAbstract()",
-                    "!isBoxedPrimitive(value)",
-                    "!isHostObject(getContext(), value)"
-    })
-    Object doForeignClassProxyNonHost(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile errorProfile,
-                    @Cached InitCheck initCheck,
-                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-        try {
-            checkHasAllFieldsOrThrow(value, klass, interop, meta);
-        } catch (ClassCastException e) {
-            errorProfile.enter();
-            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
-        }
-        initCheck.execute(klass);
-        return StaticObject.createForeign(getLanguage(), klass, value, interop);
     }
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isInterface()", "isHostObject(getContext(), value)"})
