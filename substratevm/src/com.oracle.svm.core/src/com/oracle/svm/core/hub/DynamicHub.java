@@ -64,6 +64,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -72,7 +73,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -1509,6 +1509,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
         return filtered.toArray(new Method[0]);
+    }
+
+    public void setJrfEventConfiguration(Object configuration) {
+        companion.setJfrEventConfiguration(configuration);
+    }
+
+    public Object getJfrEventConfiguration() {
+        return companion.getJfrEventConfiguration();
     }
 
     private static class ReflectionDataAccessors {

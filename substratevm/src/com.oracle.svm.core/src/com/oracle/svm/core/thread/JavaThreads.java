@@ -157,7 +157,8 @@ public final class JavaThreads {
         return VirtualThreads.isSupported();
     }
 
-    static boolean isVirtual(Thread thread) {
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static boolean isVirtual(Thread thread) {
         return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
 

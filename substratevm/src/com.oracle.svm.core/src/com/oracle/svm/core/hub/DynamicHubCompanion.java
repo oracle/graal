@@ -58,6 +58,7 @@ public final class DynamicHubCompanion {
     private Target_java_lang_Class_AnnotationData annotationData;
     private Constructor<?> cachedConstructor;
     private Class<?> newInstanceCallerCache;
+    private Object jfrEventConfiguration;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
@@ -131,5 +132,13 @@ public final class DynamicHubCompanion {
 
     void setNewInstanceCallerCache(Class<?> constructor) {
         newInstanceCallerCache = constructor;
+    }
+
+    public void setJfrEventConfiguration(Object configuration) {
+        jfrEventConfiguration = configuration;
+    }
+
+    public Object getJfrEventConfiguration() {
+        return jfrEventConfiguration;
     }
 }

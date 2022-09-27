@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -62,6 +63,7 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return Target_java_lang_VirtualThread.class.isInstance(thread);
     }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -115,25 +116,41 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer);
 
+        // needs to be in sync with JfrThreadConstant::serialize
+        boolean isVirtual = JavaThreads.isVirtual(thread);
+        long osThreadId = isVirtual ? 0 : JavaThreads.getThreadId(thread);
+        ThreadGroup threadGroup = thread.getThreadGroup();
+        long threadGroupId = getThreadGroupId(isVirtual, threadGroup);
+
         JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // JFR trace id
         JfrNativeEventWriter.putString(data, thread.getName()); // Java or native thread name
-        JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // OS thread id
+        JfrNativeEventWriter.putLong(data, osThreadId); // OS thread id
         JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
         JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // Java thread id
-
-        ThreadGroup threadGroup = thread.getThreadGroup();
-        if (threadGroup != null) {
-            long threadGroupId = JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
-            JfrNativeEventWriter.putLong(data, threadGroupId);
+        JfrNativeEventWriter.putLong(data, threadGroupId); // Java thread group
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            JfrNativeEventWriter.putBoolean(data, isVirtual); // isVirtual
+        }
+        if (!isVirtual && threadGroup != null) {
             registerThreadGroup(threadGroupId, threadGroup);
-        } else {
-            JfrNativeEventWriter.putLong(data, 0);
         }
         JfrNativeEventWriter.commit(data);
 
         // Maybe during writing, the thread buffer was replaced with a new (larger) one, so we
         // need to update the repository pointer as well.
         epochData.threadBuffer = data.getJfrBuffer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    private static long getThreadGroupId(boolean isVirtual, ThreadGroup threadGroup) {
+        if (isVirtual) {
+            // java thread group - VirtualThread threadgroup reserved id 1
+            return 1;
+        } else if (threadGroup == null) {
+            return 0;
+        } else {
+            return JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
+        }
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
