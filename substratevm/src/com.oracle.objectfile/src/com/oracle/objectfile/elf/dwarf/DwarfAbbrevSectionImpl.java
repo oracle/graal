@@ -154,6 +154,15 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * instance fields. They are not needed when typing local vars and parameters held in
          * registers or on the stack as they appear as raw addresses.
          *
+         * <li><code>code = namespace, tag = namespace, parent = class_unit, array_unit,
+         * interface_unit<code> - a wrap-around DIE that is used to embed all the normal level 1
+         * DIEs of a <code>class_unit</code> or <code>array_unit</code_unit> in a namespace. This is
+         * needed when the corresponding class/interface or array base element type have been loaded
+         * by a loader with a non-empty loader in order to ensure that mangled names for the class
+         * and its members can legitimately employ the loader id as a namespace prefix. Note that
+         * use of a namespace wrapper DIE causes all the embedded level 1+ DIEs documented above and
+         * all their children to be generated at a level one greater than documented here.
+         *
          * </ul>
          *
          * <ul>
@@ -198,7 +207,18 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Details of each specific DIE contents are as follows:
          *
-         * Primitive Types: For each non-void Java primitive type there is a level 0 DIE defining a
+         * A single instance of the level 0 <code>buitin_unit</code> compile unit provides details
+         * of all Java primitive types and of the struct type which describes the layout of object
+         * headers, including array headers.
+         *
+         * <li><code>abbrev_code == builtin_unit, tag == DW_TAG_compilation_unit,
+         * has_children</code>
+         *
+         * <li><code>DW_AT_language : ... DW_FORM_data1</code>
+         *
+         * </ul>
+         *
+         * Primitive Types: For each non-void Java primitive type there is a level 1 DIE defining a
          * base type
          *
          * <ul>
@@ -225,7 +245,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * Header: There is a level 0 DIE defining structure types used to define the various types
+         * Header: There is a level 1 DIE defining structure types used to define the various types
          * of header structure embedded at the start of every instance or array. All instances embed
          * the same object header. Array headers embed the object header as a parent type, allowing
          * an array to be viewed as a type of object. Multiple array headers structures are defined
@@ -243,7 +263,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * Header Data: A level 1 DIE of type member is used to describe the fields of both object
+         * Header Data: A level 2 DIE of type member is used to describe the fields of both object
          * and array headers. This includes the type tag and other tag bits in all objects, the
          * length field in all arrays and any padding bytes needed to complete the layout.
          *
@@ -289,6 +309,20 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>DW_AT_stmt_list : .. DW_FORM_sec_offset</code>
          *
          * </ul>
+         *
+         * Namespace embedding:
+         *
+         * When the class loader associated with a class defined in a <code>class_unit</code>
+         * compile unit has a non-empty loader id string then a namespace DIE is used to wrap all
+         * its child DIEs. Otherwise the children are embedded directly. The namespace DIE has a
+         * single attribute defining the namespace's name as the loader id string.
+         *
+         * <li><code>abbrev_code == namespace, tag == DW_TAG_namespace, has_children</code>
+         *
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+         *
+         * </ul>
+         *
          *
          * Instance Class Structure: Each class_unit DIE contains a series of level 1 DIEs. The
          * first one describes the class layout. The normal layout does not include a data_location
@@ -663,9 +697,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Array Structure: Each array_unit DIE contains four level 1 DIEs. The first one describes
          * the array layout. It has only one child, a super_reference DIE (see above) that
-         * references the appropriate array header type for an obnject aray or primitive array of
+         * references the appropriate array header type for an object arary or primitive array of
          * the relevant primitive type). The size of the array layout is the same as the size of the
          * array header.
+         *
+         * Note that when the base element type of the array is a class whose loader has an
+         * associated loader id the array's children are embedded in a namespace DIE. This is needed
+         * because the encoded type name for the array will include a namespace prefix in order to
+         * guarantee that it remains unique.
          *
          * <ul>
          *
@@ -824,6 +863,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writePrimitiveTypeAbbrev(context, buffer, pos);
         pos = writeVoidTypeAbbrev(context, buffer, pos);
         pos = writeObjectHeaderAbbrev(context, buffer, pos);
+
+        pos = writeNamespaceAbbrev(context, buffer, pos);
 
         pos = writeClassLayoutAbbrevs(context, buffer, pos);
         pos = writeClassReferenceAbbrev(context, buffer, pos);
@@ -994,6 +1035,21 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeNamespaceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_namespace, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_namespace, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         /*
          * Now terminate.
          */

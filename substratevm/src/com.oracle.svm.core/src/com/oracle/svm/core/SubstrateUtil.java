@@ -337,6 +337,9 @@ public class SubstrateUtil {
      *         the special set whose method names do not need qualification.
      */
     public static String classLoaderNameAndId(ClassLoader loader) {
+        if (loader == null) {
+            return "";
+        }
         try {
             return (String) classLoaderNameAndId.get(loader);
         } catch (IllegalAccessException e) {

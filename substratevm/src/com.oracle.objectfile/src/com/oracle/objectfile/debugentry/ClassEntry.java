@@ -63,6 +63,10 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private FileEntry fileEntry;
     /**
+     * Details of the associated loader.
+     */
+    private LoaderEntry loader;
+    /**
      * Details of methods located in this instance.
      */
     protected List<MethodEntry> methods;
@@ -108,6 +112,7 @@ public class ClassEntry extends StructureTypeEntry {
         super(className, size);
         this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
+        this.loader = null;
         this.methods = new ArrayList<>();
         this.methodsIndex = new HashMap<>();
         this.normalCompiledEntries = new ArrayList<>();
@@ -149,6 +154,10 @@ public class ClassEntry extends StructureTypeEntry {
         debugContext.log("typename %s adding super %s\n", typeName, superName);
         if (superType != null) {
             this.superClass = debugInfoBase.lookupClassEntry(superType);
+        }
+        String loaderName = debugInstanceTypeInfo.loaderName();
+        if (!loaderName.isEmpty()) {
+            this.loader = debugInfoBase.ensureLoaderEntry(loaderName);
         }
         debugInstanceTypeInfo.interfaces().forEach(interfaceType -> processInterface(interfaceType, debugInfoBase, debugContext));
         /* Add details of fields and field types */
@@ -254,6 +263,10 @@ public class ClassEntry extends StructureTypeEntry {
 
     public FileEntry getFileEntry() {
         return fileEntry;
+    }
+
+    public String getLoaderId() {
+        return (loader != null ? loader.getLoaderId() : "");
     }
 
     /**
