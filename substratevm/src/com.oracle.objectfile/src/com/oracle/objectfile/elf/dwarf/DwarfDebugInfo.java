@@ -78,6 +78,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_primitive_type = 5;
     public static final int DW_ABBREV_CODE_void_type = 6;
     public static final int DW_ABBREV_CODE_object_header = 7;
+    public static final int DW_ABBREV_CODE_namespace = 41;
     public static final int DW_ABBREV_CODE_class_layout1 = 8;
     public static final int DW_ABBREV_CODE_class_layout2 = 9;
     public static final int DW_ABBREV_CODE_class_pointer = 10;
@@ -131,6 +132,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_TAG_base_type = 0x24;
     public static final int DW_TAG_subprogram = 0x2e;
     public static final int DW_TAG_variable = 0x34;
+    public static final int DW_TAG_namespace = 0x39;
     public static final int DW_TAG_unspecified_type = 0x3b;
     public static final int DW_TAG_inlined_subroutine = 0x1d;
 

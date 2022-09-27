@@ -85,6 +85,11 @@ public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvid
                         SubstrateUtil.digest(fullName.toString());
     }
 
+    @Override
+    public String uniqueShortName(ClassLoader classLoader) {
+        return SubstrateUtil.classLoaderNameAndId(classLoader);
+    }
+
     public static class UseDefault implements BooleanSupplier {
 
         @Override

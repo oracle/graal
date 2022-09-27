@@ -138,6 +138,8 @@ public interface DebugInfoProvider {
     public interface DebugInstanceTypeInfo extends DebugTypeInfo {
         int headerSize();
 
+        String loaderName();
+
         Stream<DebugFieldInfo> fieldInfoProvider();
 
         Stream<DebugMethodInfo> methodInfoProvider();

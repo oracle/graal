@@ -61,7 +61,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
     @Override
     public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        String loaderName = classLoaderNameAndId(loader);
+        String loaderName = uniqueShortName(loader);
         return bfdMangle(loaderName, declaringClass, methodName, methodSignature, isConstructor);
     }
 
@@ -70,7 +70,8 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         return bfdMangle(m);
     }
 
-    private String classLoaderNameAndId(ClassLoader loader) {
+    @Override
+    public String uniqueShortName(ClassLoader loader) {
         // no need to qualify classes loaded by a builtin loader
         if (isBuiltinLoader(loader)) {
             return "";
@@ -88,10 +89,10 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
     }
 
     private String classLoaderNameAndId(ResolvedJavaType type) {
-        return classLoaderNameAndId(getClassLoader(type));
+        return uniqueShortName(getClassLoader(type));
     }
 
-    private String stripOuterClass(String name) {
+    private static String stripOuterClass(String name) {
         return name.substring(name.lastIndexOf('$') + 1);
     }
 
@@ -384,7 +385,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
         public String mangle(Member member) {
             Class<?> declaringClass = member.getDeclaringClass();
-            String loaderName = nameProvider.classLoaderNameAndId(declaringClass.getClassLoader());
+            String loaderName = nameProvider.uniqueShortName(declaringClass.getClassLoader());
             String className = declaringClass.getName();
             String selector = member.getName();
             boolean isConstructor = member instanceof Constructor<?>;
@@ -516,7 +517,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
                 mangleArrayType(type);
             } else {
                 sb.append('P');
-                mangleClassName(nameProvider.classLoaderNameAndId(type.getClassLoader()), type.getName());
+                mangleClassName(nameProvider.uniqueShortName(type.getClassLoader()), type.getName());
             }
         }
 
@@ -544,7 +545,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             while (baseType.isArray()) {
                 baseType = baseType.getComponentType();
             }
-            String loaderName = nameProvider.classLoaderNameAndId(baseType.getClassLoader());
+            String loaderName = nameProvider.uniqueShortName(baseType.getClassLoader());
             mangleArrayName(loaderName, baseType.getName(), count);
         }
 

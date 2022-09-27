@@ -43,6 +43,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.UniqueShortNameProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -671,6 +672,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int headerSize() {
             return getObjectLayout().getFirstFieldOffset();
+        }
+
+        @Override
+        public String loaderName() {
+
+            return UniqueShortNameProvider.singleton().uniqueShortName(hostedType.getJavaClass().getClassLoader());
         }
 
         @Override
