@@ -28,7 +28,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
@@ -54,29 +53,15 @@ import java.util.List;
  * classloader id otherwise the mangled name will not be recognised and demangled successfully.
  * TODO: Namespace embedding is not yet implemented.
  */
-class NativeImageBFDNameProvider extends UniqueShortNameProvider {
+class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
     NativeImageBFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
     }
 
     @Override
-    public String uniqueShortName(ResolvedJavaMethod method) {
-        return bfdMangle("", method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
-    }
-
-    @Override
-    public String uniqueStubName(ResolvedJavaMethod method) {
-        // we can base the stub method name on this method's short name using a digest string
-        // prefixed with the target method base name and class for readability.
-        String mangledName = bfdMangle("", method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
-        return stripPackage(method.getDeclaringClass().toJavaName()) + "_" +
-                        (method.isConstructor() ? "constructor" : method.getName()) + "_" +
-                        SubstrateUtil.digest(mangledName);
-    }
-
-    @Override
-    public String uniqueShortName(String loaderName, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+    public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        String loaderName = classLoaderNameAndId(loader);
         return bfdMangle(loaderName, declaringClass, methodName, methodSignature, isConstructor);
     }
 
@@ -85,8 +70,7 @@ class NativeImageBFDNameProvider extends UniqueShortNameProvider {
         return bfdMangle(m);
     }
 
-    @Override
-    public String classLoaderNameAndId(ClassLoader loader) {
+    private String classLoaderNameAndId(ClassLoader loader) {
         // no need to qualify classes loaded by a builtin loader
         if (isBuiltinLoader(loader)) {
             return "";
@@ -94,16 +78,21 @@ class NativeImageBFDNameProvider extends UniqueShortNameProvider {
         if (isGraalImageLoader(loader)) {
             return "";
         }
-        String name = lookupNameAndIdField(loader);
+        String name = SubstrateUtil.classLoaderNameAndId(loader);
         // name will look like "org.foo.bar.FooBarClassLoader @1234"
         // trim it down to something more manageable
-        name = stripPackage(name);
+        name = SubstrateUtil.stripPackage(name);
+        name = stripOuterClass(name);
         name = name.replace(" @", "_");
         return name;
     }
 
-    protected String classLoaderNameAndId(ResolvedJavaType type) {
+    private String classLoaderNameAndId(ResolvedJavaType type) {
         return classLoaderNameAndId(getClassLoader(type));
+    }
+
+    private String stripOuterClass(String name) {
+        return name.substring(name.lastIndexOf('$') + 1);
     }
 
     private static ClassLoader getClassLoader(ResolvedJavaType type) {
@@ -117,7 +106,6 @@ class NativeImageBFDNameProvider extends UniqueShortNameProvider {
             HostedType hostedType = (HostedType) type;
             return hostedType.getJavaClass().getClassLoader();
         }
-        // we may need to revisit this
         return null;
     }
 
@@ -404,7 +392,7 @@ class NativeImageBFDNameProvider extends UniqueShortNameProvider {
 
             if (isConstructor) {
                 assert selector.equals("<init>");
-                selector = stripPackage(className);
+                selector = SubstrateUtil.stripPackage(className);
             }
             mangleClassAndMemberName(loaderName, className, selector);
             if (isMethod) {
@@ -419,6 +407,8 @@ class NativeImageBFDNameProvider extends UniqueShortNameProvider {
         }
 
         private void mangleSimpleName(String s) {
+            // a simple name starting with a digit would invalidate the C++ mangled encoding scheme
+            assert !s.startsWith("[0-9]");
             sb.append(s.length());
             sb.append(s);
         }
@@ -654,15 +644,6 @@ class NativeImageBFDNameProvider extends UniqueShortNameProvider {
 
         private int prefixIdx(String prefix) {
             return prefixes.indexOf(prefix);
-        }
-    }
-
-    private static String stripPackage(String name) {
-        int dotIdx = name.lastIndexOf('.');
-        if (dotIdx >= 0) {
-            return name.substring(dotIdx + 1);
-        } else {
-            return name;
         }
     }
 }
