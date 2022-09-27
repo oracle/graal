@@ -57,6 +57,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -97,7 +98,7 @@ public class SubstrateOptions {
          * Parsing all graphs before static analysis is work-in-progress and for JIT compilation is
          * only enabled when ParseOnceJIT is set.
          */
-        return ParseOnce.getValue() && (ParseOnceJIT.getValue() || !DeoptimizationSupport.enabled());
+        return ParseOnce.getValue() && (ParseOnceJIT.getValue() || (!RuntimeCompilation.isEnabled() && !DeoptimizationSupport.enabled()));
     }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//

@@ -59,7 +59,6 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -67,6 +66,7 @@ import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -540,7 +540,7 @@ public final class GCImpl implements GC {
                 rootScanTimer.close();
             }
 
-            if (DeoptimizationSupport.enabled()) {
+            if (RuntimeCompilation.isEnabled()) {
                 Timer cleanCodeCacheTimer = timers.cleanCodeCache.open();
                 try {
                     /*
@@ -680,7 +680,7 @@ public final class GCImpl implements GC {
                 /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
 
-                if (DeoptimizationSupport.enabled()) {
+                if (RuntimeCompilation.isEnabled()) {
                     /*
                      * Visit the runtime compiled code, now that we know all the reachable objects.
                      */
@@ -771,7 +771,7 @@ public final class GCImpl implements GC {
                 /* Visit all the Objects promoted since the snapshot, transitively. */
                 scanGreyObjects(true);
 
-                if (DeoptimizationSupport.enabled()) {
+                if (RuntimeCompilation.isEnabled()) {
                     /*
                      * Visit the runtime compiled code, now that we know all the reachable objects.
                      */
@@ -914,7 +914,7 @@ public final class GCImpl implements GC {
                  */
             }
 
-            if (DeoptimizationSupport.enabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
+            if (RuntimeCompilation.isEnabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
                 /*
                  * For runtime-compiled code that is currently on the stack, we need to treat all
                  * the references to Java heap objects as strong references. It is important that we

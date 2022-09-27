@@ -96,6 +96,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.RuntimeCompilationCanaryFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
@@ -346,7 +347,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
         if (Services.IS_BUILDING_NATIVE_IMAGE) {
             return List.of(FieldsOffsetsFeature.class);
         }
-        return List.of(DeoptimizationFeature.class, FieldsOffsetsFeature.class);
+        return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
     @Override
