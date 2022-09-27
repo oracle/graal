@@ -74,11 +74,12 @@ public class IsolatedNamespaceTest extends NFITest {
 
     @BeforeClass
     public static void loadIsolatedLibraries() {
+        String libPath = getLibPath("isolationtest");
         // The library is loaded in the global namespace.
-        globalLibrary = loadLibrary("load '" + System.getProperty("native.isolation.test.lib") + "'");
+        globalLibrary = loadLibrary("load '" + libPath + "'");
         try {
             // And loaded again in the isolated namespace.
-            isolatedLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + System.getProperty("native.isolation.test.lib") + "'");
+            isolatedLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + libPath + "'");
         } catch (IllegalArgumentException iea) {
             Assume.assumeNoException("Cannot load test library in isolated namespace", iea);
         }

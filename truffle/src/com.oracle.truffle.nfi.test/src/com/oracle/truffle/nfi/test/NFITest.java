@@ -55,23 +55,53 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.tck.TruffleRunner;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class NFITest {
 
     protected static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
-    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true));
+    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true).allowIO(true));
 
     protected static Object defaultLibrary;
     protected static Object testLibrary;
 
     private static CallTarget lookupAndBind;
 
+    static final String TEST_BACKEND = System.getProperty("native.test.backend");
+
+    static final boolean IS_LINUX = System.getProperty("os.name").equals("Linux");
+    static final boolean IS_DARWIN = System.getProperty("os.name").equals("Mac OS X") || System.getProperty("os.name").equals("Darwin");
+    static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
+
+    static final boolean IS_AMD64 = System.getProperty("os.arch").equals("amd64");
+
+    protected static String getLibPath(String lib) {
+        String filename;
+        if (IS_LINUX) {
+            filename = String.format("lib%s.so", lib);
+        } else if (IS_DARWIN) {
+            filename = String.format("lib%s.dylib", lib);
+        } else {
+            assert IS_WINDOWS;
+            filename = String.format("%s.dll", lib);
+        }
+
+        String propName = "native.test.path";
+        if (TEST_BACKEND != null) {
+            propName = propName + "." + TEST_BACKEND;
+        }
+
+        String path = System.getProperty(propName);
+        Path absPath = Paths.get(path, filename).toAbsolutePath();
+        return absPath.toString();
+    }
+
     protected static Object loadLibrary(String lib) {
-        String testBackend = System.getProperty("native.test.backend");
         String sourceString;
-        if (testBackend != null) {
-            sourceString = String.format("with %s %s", testBackend, lib);
+        if (TEST_BACKEND != null) {
+            sourceString = String.format("with %s %s", TEST_BACKEND, lib);
         } else {
             sourceString = lib;
         }
@@ -83,8 +113,12 @@ public class NFITest {
 
     @BeforeClass
     public static void loadLibraries() {
-        defaultLibrary = loadLibrary("default");
-        testLibrary = loadLibrary("load '" + System.getProperty("native.test.lib") + "'");
+        try {
+            defaultLibrary = loadLibrary("default");
+        } catch (Exception ex) {
+            defaultLibrary = null;
+        }
+        testLibrary = loadLibrary("load '" + getLibPath("nativetest") + "'");
         lookupAndBind = new LookupAndBindNode().getCallTarget();
     }
 
@@ -170,9 +204,6 @@ public class NFITest {
         return lookupAndBind(testLibrary, name, signature);
     }
 
-    static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
-    static final boolean IS_AMD64 = System.getProperty("os.arch").equals("amd64");
-
     protected static Object lookupAndBindDefault(String name, String signature) {
         if (IS_WINDOWS) {
             return lookupAndBind(testLibrary, "reexport_" + name, signature);
@@ -182,7 +213,13 @@ public class NFITest {
     }
 
     protected static Object parseSignature(String signature) {
-        Source sigSource = Source.newBuilder("nfi", signature, "signature").internal(true).build();
+        String withSignature;
+        if (TEST_BACKEND != null) {
+            withSignature = String.format("with %s %s", TEST_BACKEND, signature);
+        } else {
+            withSignature = signature;
+        }
+        Source sigSource = Source.newBuilder("nfi", withSignature, "signature").internal(true).build();
         CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
         return sigTarget.call();
     }
