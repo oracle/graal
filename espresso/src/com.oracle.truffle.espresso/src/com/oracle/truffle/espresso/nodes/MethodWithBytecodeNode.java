@@ -28,6 +28,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
  * {@link RootTag} node that separates the Java method prolog e.g. copying arguments to the frame,
@@ -57,6 +58,7 @@ final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @Override
+    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "bytecodeNode may be replaced by instrumentation with a wrapper node")
     boolean isTrivial() {
         // Instrumented nodes are not trivial.
         return !(bytecodeNode instanceof WrapperNode) && bytecodeNode.isTrivial();
