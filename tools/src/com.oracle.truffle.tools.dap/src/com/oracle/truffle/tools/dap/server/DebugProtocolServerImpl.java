@@ -104,6 +104,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -122,6 +123,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private volatile DebugProtocolClient client;
     private volatile DebuggerSession debuggerSession;
     private final Enabler ioEnabler;
+    private volatile boolean launched;  // true when launched, false when attached
     private boolean disposed = false;
     private final List<Runnable> runOnDispose = new CopyOnWriteArrayList<>();
 
@@ -241,6 +243,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 client.output(OutputEvent.EventBody.create(sb.toString()));
             }
             client.output(OutputEvent.EventBody.create("Debugger attached.").setCategory("stderr"));
+            launched = true;
         });
     }
 
@@ -252,7 +255,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<Void> disconnect(DisconnectArguments args) {
+    public CompletableFuture<Void> disconnect(DisconnectArguments args, Consumer<? super Void> responseConsumer) {
         return CompletableFuture.runAsync(() -> {
             DebuggerSession session;
             synchronized (DebugProtocolServerImpl.this) {
@@ -265,6 +268,14 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 session.close();
             }
             context.dispose();
+            responseConsumer.accept(null);
+            if (launched) {
+                // Cancel all contexts to terminate the execution
+                AllContextsCancel cancel = new AllContextsCancel();
+                EventBinding<ContextsListener> binding = context.getEnv().getInstrumenter().attachContextsListener(cancel, true);
+                cancel.waitForAllCanceled();
+                binding.dispose();
+            }
         });
     }
 
@@ -694,6 +705,42 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
             OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
             event.setCategory(category);
             context.getClient().output(event);
+        }
+    }
+
+    private static class AllContextsCancel implements ContextsListener {
+
+        private final Phaser allClosed = new Phaser(1);
+
+        @Override
+        public void onContextCreated(TruffleContext context) {
+            allClosed.register();
+            context.closeCancelled(null, "Cancel on debugger disconnect.");
+        }
+
+        @Override
+        public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onContextClosed(TruffleContext context) {
+            allClosed.arriveAndDeregister();
+        }
+
+        void waitForAllCanceled() {
+            allClosed.arriveAndAwaitAdvance();
         }
     }
 }
