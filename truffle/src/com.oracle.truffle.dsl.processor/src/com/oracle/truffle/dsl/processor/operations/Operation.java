@@ -61,7 +61,9 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.EmitArguments;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadNonlocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.StoreNonlocalInstruction;
 
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
@@ -241,6 +243,68 @@ public abstract class Operation {
         @Override
         public int numLocalReferences() {
             return instruction.numLocalReferences();
+        }
+    }
+
+    public static class LoadNonlocal extends Operation {
+        private final LoadNonlocalInstruction instr;
+
+        public LoadNonlocal(OperationsContext context, int id, LoadNonlocalInstruction instr) {
+            super(context, "LoadNonlocal", id, 1);
+            this.instr = instr;
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(ProcessorContext.getInstance().getTypes().OperationLocal);
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+
+            EmitArguments args = new EmitArguments();
+            args.arguments = new CodeTree[1];
+            args.arguments[0] = CodeTreeBuilder.singleString("((OperationLocalImpl)operationData.arguments[0]).id");
+
+            // TODO validate the local is nested properly
+            // (not security critical since non-local accesses use safe API)
+            return OperationGeneratorUtils.createEmitInstruction(vars, instr, args);
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("1");
+        }
+    }
+
+    public static class StoreNonlocal extends Operation {
+        private final StoreNonlocalInstruction instr;
+
+        public StoreNonlocal(OperationsContext context, int id, StoreNonlocalInstruction instr) {
+            super(context, "StoreNonlocal", id, 2);
+            this.instr = instr;
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(ProcessorContext.getInstance().getTypes().OperationLocal);
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+
+            EmitArguments args = new EmitArguments();
+            args.arguments = new CodeTree[1];
+            args.arguments[0] = CodeTreeBuilder.singleString("((OperationLocalImpl)operationData.arguments[0]).id");
+
+            // TODO validate the local is nested properly
+            // (not security critical since non-local accesses use safe API)
+            return OperationGeneratorUtils.createEmitInstruction(vars, instr, args);
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
         }
     }
 

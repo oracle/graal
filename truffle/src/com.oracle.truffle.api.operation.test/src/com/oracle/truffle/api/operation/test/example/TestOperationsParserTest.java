@@ -76,7 +76,7 @@ public class TestOperationsParserTest {
             System.out.println(node.dump());
         }
 
-        return nodes.getNodes().get(0);
+        return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
     @Test
@@ -1090,5 +1090,89 @@ public class TestOperationsParserTest {
         });
 
         Assert.assertEquals(1L, root.call());
+    }
+
+    @Test
+    public void testNonlocalRead() {
+        RootCallTarget root = parse(b -> {
+            // x = 1
+            // return (lambda: x)()
+            b.beginRoot(LANGUAGE);
+
+            OperationLocal xLoc = b.createLocal();
+
+            b.beginStoreLocal(xLoc);
+            b.emitConstObject(1L);
+            b.endStoreLocal();
+
+            b.beginReturn();
+
+            b.beginInvoke();
+
+                b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                b.beginLoadNonlocal(xLoc);
+                b.emitLoadArgument(0);
+                b.endLoadNonlocal();
+                b.endReturn();
+                TestOperations inner = b.endRoot();
+
+            b.beginCreateClosure();
+            b.emitConstObject(inner);
+            b.endCreateClosure();
+
+            b.endInvoke();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        Assert.assertEquals(1L, root.call());
+    }
+
+    @Test
+    public void testNonlocalWrite() {
+        RootCallTarget root = parse(b -> {
+            // x = 1
+            // (lambda: x = 2)()
+            // return x
+            b.beginRoot(LANGUAGE);
+
+            OperationLocal xLoc = b.createLocal();
+
+            b.beginStoreLocal(xLoc);
+            b.emitConstObject(1L);
+            b.endStoreLocal();
+
+
+            b.beginInvoke();
+
+                b.beginRoot(LANGUAGE);
+
+                b.beginStoreNonlocal(xLoc);
+                b.emitLoadArgument(0);
+                b.emitConstObject(2L);
+                b.endStoreNonlocal();
+
+                b.beginReturn();
+                b.emitConstObject(null);
+                b.endReturn();
+
+                TestOperations inner = b.endRoot();
+
+            b.beginCreateClosure();
+            b.emitConstObject(inner);
+            b.endCreateClosure();
+
+            b.endInvoke();
+
+            b.beginReturn();
+            b.emitLoadLocal(xLoc);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        Assert.assertEquals(2L, root.call());
     }
 }

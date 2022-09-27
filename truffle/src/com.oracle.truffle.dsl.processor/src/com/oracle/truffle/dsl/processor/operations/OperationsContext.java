@@ -49,7 +49,9 @@ import java.util.Set;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.ShortCircuitOperation;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
@@ -64,10 +66,12 @@ import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationL
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadArgumentInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadNonlocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.StoreNonlocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ThrowInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.YieldInstruction;
 
@@ -134,6 +138,9 @@ public class OperationsContext {
         createLoadArgument();
         createLoadStoreLocal();
         createReturn();
+
+        add(new Operation.LoadNonlocal(this, operationId++, add(new LoadNonlocalInstruction(instructionId++))));
+        add(new Operation.StoreNonlocal(this, operationId++, add(new StoreNonlocalInstruction(instructionId++))));
 
         if (data.enableYield) {
             add(new Operation.Simple(this, "Yield", operationId++, 1, add(new YieldInstruction(instructionId++))));

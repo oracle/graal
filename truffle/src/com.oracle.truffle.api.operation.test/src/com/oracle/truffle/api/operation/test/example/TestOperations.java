@@ -43,6 +43,7 @@ package com.oracle.truffle.api.operation.test.example;
 import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -183,6 +185,34 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         public static Object doInvoke(TestOperations root, @Variadic Object[] args) {
             return root.getCallTarget().call(args);
         }
+
+        @Specialization
+        public static Object doInvoke(TestClosure root, @Variadic Object[] args) {
+            assert args.length == 0 : "not implemented";
+            return root.call();
+        }
+    }
+
+    @Operation
+    public static final class CreateClosure {
+        @Specialization
+        public static TestClosure materialize(VirtualFrame frame, TestOperations root) {
+            return new TestClosure(frame.materialize(), root);
+        }
+    }
+}
+
+class TestClosure {
+    private final MaterializedFrame frame;
+    private final RootCallTarget root;
+
+    TestClosure(MaterializedFrame frame, TestOperations root) {
+        this.frame = frame;
+        this.root = root.getCallTarget();
+    }
+
+    public Object call() {
+        return root.call(frame);
     }
 }
 
