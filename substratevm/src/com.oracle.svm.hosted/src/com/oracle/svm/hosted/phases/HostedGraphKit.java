@@ -81,7 +81,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
     @Override
     public StructuredGraph finalizeGraph() {
         StructuredGraph g1 = super.finalizeGraph();
-        g1.getGraphState().configureExplicitExceptions();
+        g1.getGraphState().configureExplicitExceptionsNoDeopt();
         return g1;
     }
 

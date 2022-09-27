@@ -58,8 +58,6 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.GraphState.GuardsStage;
-import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.FloatingGuardPhase;
@@ -254,8 +252,7 @@ public class GraalSupport {
         if (graph.getSpeculationLog() == null) {
             s = getWithoutSpeculativeSuites();
         }
-
-        if (graph.getGuardsStage() == GuardsStage.FIXED_DEOPTS || graph.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING)) {
+        if (graph.getGraphState().isExplicitExceptionsNoDeopt()) {
             s = getExplicitExceptionSuites();
         }
         return s;

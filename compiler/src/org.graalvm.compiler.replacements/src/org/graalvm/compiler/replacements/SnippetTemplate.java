@@ -1220,9 +1220,10 @@ public class SnippetTemplate {
                  * If the graph was configured for explicit exception edges its guards are already
                  * lowered == there never have been floating guards.
                  */
-                if (snippetCopy.getGraphState().isBeforeStage(StageFlag.GUARD_LOWERING)) {
+                if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
                     new GuardLoweringPhase().apply(snippetCopy, providers);
                 }
+                assert snippetCopy.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING);
                 new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {

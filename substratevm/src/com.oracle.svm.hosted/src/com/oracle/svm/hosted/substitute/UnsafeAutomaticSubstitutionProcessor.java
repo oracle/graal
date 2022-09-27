@@ -1097,7 +1097,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                         .method(clinit)
                         .recordInlinedMethods(false)
                         .build();
-        graph.getGraphState().configureExplicitExceptions();
+        graph.getGraphState().configureExplicitExceptionsNoDeopt();
 
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true),
                         context.getOptimisticOptimizations());

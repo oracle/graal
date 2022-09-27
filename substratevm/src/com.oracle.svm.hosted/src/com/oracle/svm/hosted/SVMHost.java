@@ -521,7 +521,7 @@ public class SVMHost extends HostVM {
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
-            graph.getGraphState().configureExplicitExceptionsIfNecessary();
+            graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
 
             if (parseOnce) {
                 new ImplicitAssertionsPhase().apply(graph, bb.getProviders());

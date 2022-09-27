@@ -850,7 +850,7 @@ public class CompileQueue {
                     GraphBuilderConfiguration gbConf = createHostedGraphBuilderConfiguration(providers, method);
                     new HostedGraphBuilderPhase(providers, gbConf, getOptimisticOpts(), null, providers.getWordTypes()).apply(graph);
                 } else {
-                    graph.getGraphState().configureExplicitExceptionsIfNecessary();
+                    graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
                 }
 
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();

@@ -95,7 +95,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         super.build(startInstruction, startFrameState);
 
         /* We never have floating guards in AOT compiled code. */
-        getGraph().getGraphState().configureExplicitExceptions();
+        getGraph().getGraphState().configureExplicitExceptionsNoDeopt();
 
         assert !getMethod().isEntryPoint() : "Cannot directly use as entry point, create a call stub ";
     }
