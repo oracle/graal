@@ -63,7 +63,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -174,7 +174,7 @@ public class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
-    public void initAllClasses(Executor executor, ImageClassLoader imageClassLoader) {
+    public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
         new ClassInit(executor, imageClassLoader).init();
     }
 
@@ -593,10 +593,10 @@ public class NativeImageClassLoaderSupport {
 
     private class ClassInit {
 
-        protected final Executor executor;
+        protected final ForkJoinPool executor;
         protected final ImageClassLoader imageClassLoader;
 
-        protected ClassInit(Executor executor, ImageClassLoader imageClassLoader) {
+        protected ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
         }
