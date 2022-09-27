@@ -115,4 +115,50 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
          */
         GraphOrder.assertSchedulableGraph(g);
     }
+
+    static int S;
+
+    public static int loopSnippet02() {
+        int phi1;
+        if (S == 123) {
+            GraalDirectives.sideEffect(1);
+            phi1 = 12345;
+        } else {
+            GraalDirectives.sideEffect(123);
+            phi1 = 1222;
+        }
+        int tmp1 = (char) phi1;
+        int tmp2 = tmp1 & 127;
+        int i = 0;
+        int emptyPhi1 = 100;
+        while (true) {
+            if (i >= 10000) {
+                break;
+            }
+            emptyPhi1 = (byte) (emptyPhi1 + tmp2);
+            if (foo(1) != 1) {
+                GraalDirectives.sideEffect(emptyPhi1);
+            }
+            i++;
+        }
+        return i;
+    }
+
+    @Test
+    public void test02() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("loopSnippet02"), AllowAssumptions.NO);
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        g.clearAllStateAfterForTestingOnly();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        /*
+         * Now the only values holding the emptyPhis alive is a chain of indirect usages, i.e., a
+         * cycle. The only part of the codebase that could cleanup this cycle is a proper latest
+         * schedule that will not visit the phi and its usages and consider them dead and will
+         * delete them. We have to run a canon before that detects these patterns, else verification
+         * of the schedule would fail.
+         */
+        GraphOrder.assertSchedulableGraph(g);
+    }
 }

@@ -232,51 +232,80 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                     break;
                 }
             }
-
             if (onlySelfUsage) {
                 return null;
             }
-        }
+            if (this.hasExactlyOneUsage() && this.graph() != null) {
+                tryOptimizeDeadPhiCycles: {
+                    /*
+                     * Determine if this phi is only held alive by (indirect) self references.
+                     */
 
-        if (this.hasExactlyOneUsage() && this.graph() != null) {
-            tryOptimizeDeadPhiCycles: {
-                /*
-                 * Determine if this phi is only held alive by (indirect) self references.
-                 */
-
-                NodeFlood nf = this.graph().createNodeFlood();
-                nf.add(this);
-                int steps = 0;
-                for (Node flooded : nf) {
-                    if (steps++ >= DEAD_PHI_CYCLE_STEPS) {
-                        // too much effort, abort
-                        break tryOptimizeDeadPhiCycles;
-                    }
-                    if (!flooded.hasExactlyOneUsage()) {
-                        // node is used outside the cycle
-                        break tryOptimizeDeadPhiCycles;
-                    }
-                    for (Node usage : flooded.usages()) {
-                        if (!GraphUtil.isFloatingNode(usage)) {
-                            // Fixed node usage: can never have a dead cycle
+                    NodeFlood nf = this.graph().createNodeFlood();
+                    nf.add(this);
+                    int steps = 0;
+                    for (Node flooded : nf) {
+                        if (steps++ >= DEAD_PHI_CYCLE_STEPS) {
+                            // too much effort, abort
                             break tryOptimizeDeadPhiCycles;
                         }
-                        if (usage instanceof VirtualState || usage instanceof ProxyNode) {
-                            // usages that still require the (potential) dead cycle to be alive
+                        if (!flooded.hasExactlyOneUsage()) {
+                            // node is used outside the cycle
                             break tryOptimizeDeadPhiCycles;
                         }
-                        if (!nf.isMarked(usage)) {
-                            nf.add(usage);
+                        for (Node usage : flooded.usages()) {
+                            if (!processCycleDetectionNode(nf, usage)) {
+                                break tryOptimizeDeadPhiCycles;
+                            }
                         }
+                        if (flooded != this) {
+                            for (Node input : flooded.inputs()) {
+                                if (flooded instanceof PhiNode && input == ((PhiNode) flooded).merge()) {
+                                    continue;
+                                }
+                                if (!processCycleDetectionNode(nf, input)) {
+                                    break tryOptimizeDeadPhiCycles;
+                                }
+                            }
+                        }
+                    }
+                    /*
+                     * We process all inputs and usages we can visit but we still require to have
+                     * found all backedge values: this is necessary to cleanup complex, constant
+                     * node input, cycles while we do not visit constant nodes
+                     */
+                    boolean allValuesFound = true;
+                    for (int j = 1; j < this.valueCount(); j++) {
+                        allValuesFound = allValuesFound && nf.getVisited().isMarked(valueAt(j));
+                    }
+                    if (allValuesFound) {
+                        // we managed to find a dead cycle
+                        this.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Found dead phi cycle %s", nf.getVisited());
+                        return null;
                     }
                 }
-                // we managed to find a dead cycle
-                this.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Found dead phi cycle %s", nf.getVisited());
-                return null;
             }
         }
 
         return singleValueOrThis();
+    }
+
+    private static boolean processCycleDetectionNode(NodeFlood nf, Node n) {
+        if (!GraphUtil.isFloatingNode(n)) {
+            // Fixed node usage: can never have a dead cycle
+            return false;
+        }
+        if (n instanceof VirtualState || n instanceof ProxyNode) {
+            // usages that still require the (potential) dead cycle to be alive
+            return false;
+        }
+        if (n instanceof ConstantNode) {
+            return true;
+        }
+        if (!nf.isMarked(n)) {
+            nf.add(n);
+        }
+        return true;
     }
 
     /**
