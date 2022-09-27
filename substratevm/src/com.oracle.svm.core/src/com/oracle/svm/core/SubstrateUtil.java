@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
@@ -271,29 +272,30 @@ public class SubstrateUtil {
     }
 
     /**
-     * Convenience method that delegates to the corresponding method of the currently registered
-     * UniqueShortNameProvider image singleton.
+     * Convenience method that unwraps the method details and delegates to the currently registered
+     * UniqueShortNameProvider image singleton with the significant exception that it always passes
+     * null for the class loader.
      * 
      * @param m a method whose unique short name is required
      * @return a unique short name for the method
      */
     public static String uniqueShortName(ResolvedJavaMethod m) {
-        return UniqueShortNameProvider.provider().uniqueShortName(m);
+        return UniqueShortNameProvider.singleton().uniqueShortName(null, m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
     }
 
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
      * 
-     * @param loaderName the unique loader id for some method's class loader
+     * @param loader the class loader for the method's owning class
      * @param declaringClass the method's declaring class
      * @param methodName the method's name
      * @param methodSignature the method's signature
      * @param isConstructor true if the method is a constructor otherwise false
      * @return a unique short name for the method
      */
-    public static String uniqueShortName(String loaderName, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        return UniqueShortNameProvider.provider().uniqueShortName(loaderName, declaringClass, methodName, methodSignature, isConstructor);
+    public static String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        return UniqueShortNameProvider.singleton().uniqueShortName(loader, declaringClass, methodName, methodSignature, isConstructor);
     }
 
     /**
@@ -304,30 +306,45 @@ public class SubstrateUtil {
      * @return a unique short name for the member
      */
     public static String uniqueShortName(Member m) {
-        return UniqueShortNameProvider.provider().uniqueShortName(m);
+        return UniqueShortNameProvider.singleton().uniqueShortName(m);
     }
 
     /**
-     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
-     * image singleton.
-     * 
-     * @param m a method whose unique stub name is required
+     * Generate a unique short name to be used as the selector for a stub method which invokes the
+     * supplied target method. Note that the returned name must be derived using the name and class
+     * of the target method even though the stub method will be owned to another class. This ensures
+     * that any two stubs which target corresponding methods whose selector name is identical will
+     * end up with different stub names.
+     *
+     * @param m a stub target method for which a unique stub method selector name is required
      * @return a unique stub name for the method
      */
     public static String uniqueStubName(ResolvedJavaMethod m) {
-        return UniqueShortNameProvider.provider().uniqueStubName(m);
+        String shortName = UniqueShortNameProvider.singleton().uniqueShortName(null, m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+        return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
+                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
+                        SubstrateUtil.digest(shortName);
+
     }
 
     /**
-     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
-     * image singleton.
-     * 
-     * @param loader a class loader whose identifier is required
-     * @return A unique identifier for the class loader
+     * Returns a unique identifier for a class loader that can be folded into the unique short name
+     * of methods where needed in order to disambiguate name collisions that can arise when the same
+     * class bytecode is loaded by more than one loader.
+     *
+     * @param loader The loader whose identifier is to be returned.
+     * @return A unique identifier for the classloader or the empty string when the loader is one of
+     *         the special set whose method names do not need qualification.
      */
     public static String classLoaderNameAndId(ClassLoader loader) {
-        return UniqueShortNameProvider.provider().classLoaderNameAndId(loader);
+        try {
+            return (String) classLoaderNameAndId.get(loader);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere("Cannot reflectively access ClassLoader.nameAndId");
+        }
     }
+
+    private static Field classLoaderNameAndId = ReflectionUtil.lookupField(ClassLoader.class, "nameAndId");
 
     /**
      * Mangle the given method name according to our image's (default) mangling convention. A rough
@@ -402,4 +419,8 @@ public class SubstrateUtil {
         return dimension;
     }
 
+    public static String stripPackage(String qualifiedClassName) {
+        /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
+        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
+    }
 }
