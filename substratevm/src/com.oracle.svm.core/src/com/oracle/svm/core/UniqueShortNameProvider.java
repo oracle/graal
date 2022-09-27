@@ -66,4 +66,13 @@ public interface UniqueShortNameProvider {
      * @return A unique short name for the member
      */
     String uniqueShortName(Member m);
+
+    /**
+     * Returns a unique short name for the supplied class loader or an empty string for any loader
+     * whose delegation policy will not be responsible for class duplication.
+     * 
+     * @param classLoader the loader whose unique short name is desired
+     * @return a unique short name for the loader or an empty string
+     */
+    String uniqueShortName(ClassLoader classLoader);
 }
