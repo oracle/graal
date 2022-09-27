@@ -91,7 +91,6 @@ class BenchmarkLanguage extends TruffleLanguage<Object> {
 
 @GenerateOperations(//
                 languageClass = BenchmarkLanguage.class, //
-                boxingEliminationTypes = {int.class}, //
                 decisionsFile = "decisions.json")
 abstract class BMOperationRootNode extends RootNode implements OperationRootNode {
     protected BMOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

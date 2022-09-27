@@ -492,7 +492,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         if (uncached || data.isDisableBoxingElimination() || typeName.equals("Object")) {
             b.startStatement();
-            b.startCall("UFA", "unsafeSetObject");
+            if (m.getBoxingEliminatedTypes().size() == 0) {
+                b.startCall("UFA", "unsafeUncheckedSetObject");
+            } else {
+                b.startCall("UFA", "unsafeSetObject");
+            }
             b.string(m.enableYield ? "$stackFrame" : "$frame");
             b.string("$sp - " + destOffset);
             b.tree(value);

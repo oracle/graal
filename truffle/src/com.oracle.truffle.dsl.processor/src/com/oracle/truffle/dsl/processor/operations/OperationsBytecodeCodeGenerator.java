@@ -257,6 +257,9 @@ public class OperationsBytecodeCodeGenerator {
         b.declaration("int", vars.bci.getName(), CodeTreeBuilder.singleString("$startBci"));
         b.declaration("Counter", "loopCounter", "new Counter()");
 
+        // this moves the frame null check out of the loop
+        b.startStatement().startCall(vars.stackFrame, "getArguments").end(2);
+
         if (isUncached) {
             // todo: better signaling to compiler that the method is not ready for compilation
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());

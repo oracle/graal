@@ -75,7 +75,19 @@ public abstract class UnsafeFrameAccess {
 
     public abstract double unsafeGetDouble(Frame frame, int slot);
 
+    public abstract Object unsafeUncheckedGetObject(Frame frame, int slot);
+
+    public abstract boolean unsafeUncheckedGetBoolean(Frame frame, int slot);
+
+    public abstract int unsafeUncheckedGetInt(Frame frame, int slot);
+
+    public abstract long unsafeUncheckedGetLong(Frame frame, int slot);
+
+    public abstract double unsafeUncheckedGetDouble(Frame frame, int slot);
+
     public abstract void unsafeSetObject(Frame frame, int slot, Object value);
+
+    public abstract void unsafeUncheckedSetObject(Frame frame, int slot, Object value);
 
     public abstract void unsafeSetBoolean(Frame frame, int slot, boolean value);
 
@@ -169,8 +181,38 @@ public abstract class UnsafeFrameAccess {
         }
 
         @Override
+        public Object unsafeUncheckedGetObject(Frame frame, int slot) {
+            return castFrame(frame).unsafeUncheckedGetObject(slot);
+        }
+
+        @Override
+        public int unsafeUncheckedGetInt(Frame frame, int slot) {
+            return castFrame(frame).unsafeUncheckedGetInt(slot);
+        }
+
+        @Override
+        public boolean unsafeUncheckedGetBoolean(Frame frame, int slot) {
+            return castFrame(frame).unsafeUncheckedGetBoolean(slot);
+        }
+
+        @Override
+        public long unsafeUncheckedGetLong(Frame frame, int slot) {
+            return castFrame(frame).unsafeUncheckedGetLong(slot);
+        }
+
+        @Override
+        public double unsafeUncheckedGetDouble(Frame frame, int slot) {
+            return castFrame(frame).unsafeUncheckedGetDouble(slot);
+        }
+
+        @Override
         public void unsafeSetObject(Frame frame, int slot, Object value) {
             castFrame(frame).unsafeSetObject(slot, value);
+        }
+
+        @Override
+        public void unsafeUncheckedSetObject(Frame frame, int slot, Object value) {
+            castFrame(frame).unsafeUncheckedSetObject(slot, value);
         }
 
         @Override

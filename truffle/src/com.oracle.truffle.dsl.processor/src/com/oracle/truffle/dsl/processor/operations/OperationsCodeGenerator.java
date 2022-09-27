@@ -1722,7 +1722,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         baseClass.add(createFormatConstant());
-        baseClass.add(createExpectObject());
+        baseClass.add(createExpectObject(m.getBoxingEliminatedTypes().size() > 0));
         baseClass.add(createSetResultBoxedImpl());
         for (TypeKind kind : m.getBoxingEliminatedTypes()) {
             FrameKind frameKind = FrameKind.valueOfPrimitive(kind);
@@ -2430,19 +2430,25 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     // -------------------------- helper methods moved to generated code --------------------------
 
-    private CodeExecutableElement createExpectObject() {
+    private CodeExecutableElement createExpectObject(boolean hasAnyBoxingElimination) {
         CodeExecutableElement mExpectObject = new CodeExecutableElement(MOD_PROTECTED_STATIC, context.getType(Object.class), "expectObject");
         mExpectObject.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         mExpectObject.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
 
         CodeTreeBuilder b = mExpectObject.createBuilder();
 
-        b.startIf().string("UFA.unsafeIsObject(frame, slot)").end().startBlock(); // if {
-        b.startReturn().string("UFA.unsafeGetObject(frame, slot)").end();
-        b.end().startElseBlock(); // } else {
-        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-        b.startReturn().string("frame.getValue(slot)").end();
-        b.end(); // }
+        if (hasAnyBoxingElimination) {
+            b.startIf().string("UFA.unsafeIsObject(frame, slot)").end().startBlock(); // if {
+        }
+
+        b.startReturn().string("UFA.unsafeUncheckedGetObject(frame, slot)").end();
+
+        if (hasAnyBoxingElimination) {
+            b.end().startElseBlock(); // } else {
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.startReturn().string("frame.getValue(slot)").end();
+            b.end(); // }
+        }
 
         return mExpectObject;
     }
@@ -2463,11 +2469,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.startSwitch().string("UFA.unsafeGetTag(frame, slot)").end().startBlock(); // switch {
 
         b.startCase().string(kind.ordinal() + " /* " + kind + " */").end().startCaseBlock(); // {
-        b.startReturn().string("UFA.unsafeGet" + kind.getFrameName() + "(frame, slot)").end();
+        b.startReturn().string("UFA.unsafeUncheckedGet" + kind.getFrameName() + "(frame, slot)").end();
         b.end(); // }
 
         b.startCase().string(FrameKind.OBJECT.ordinal() + " /* OBJECT */").end().startCaseBlock(); // {
-        b.declaration("Object", "value", "UFA.unsafeGetObject(frame, slot)");
+        b.declaration("Object", "value", "UFA.unsafeUncheckedGetObject(frame, slot)");
 
         b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
         b.startReturn().string("(" + kind.getTypeName() + ") value").end();

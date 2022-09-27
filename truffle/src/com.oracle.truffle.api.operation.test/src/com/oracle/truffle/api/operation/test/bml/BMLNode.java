@@ -1,6 +1,5 @@
 package com.oracle.truffle.api.operation.test.bml;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -12,7 +11,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public abstract class BMLNode extends Node {
 
@@ -20,9 +18,9 @@ public abstract class BMLNode extends Node {
 
     public abstract Object execute(VirtualFrame frame);
 
-    public abstract int executeInt(VirtualFrame frame) throws UnexpectedResultException;
+    // public abstract int executeInt(VirtualFrame frame) throws UnexpectedResultException;
 
-    public abstract boolean executeBool(VirtualFrame frame) throws UnexpectedResultException;
+    // public abstract boolean executeBool(VirtualFrame frame) throws UnexpectedResultException;
 }
 
 @SuppressWarnings("serial")
@@ -166,26 +164,12 @@ class IfNode extends BMLNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        try {
-            if (condition.executeBool(frame)) {
-                thenBranch.execute(frame);
-            } else {
-                thenBranch.execute(frame);
-            }
-            return VOID;
-        } catch (UnexpectedResultException e) {
-            throw CompilerDirectives.shouldNotReachHere();
+        if (condition.execute(frame) == Boolean.TRUE) {
+            thenBranch.execute(frame);
+        } else {
+            thenBranch.execute(frame);
         }
-    }
-
-    @Override
-    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
+        return VOID;
     }
 }
 
@@ -206,27 +190,13 @@ class WhileNode extends BMLNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        try {
-            int count = 0;
-            while (condition.executeBool(frame)) {
-                body.execute(frame);
-                count++;
-            }
-            LoopNode.reportLoopCount(this, count);
-            return VOID;
-        } catch (UnexpectedResultException e) {
-            throw CompilerDirectives.shouldNotReachHere();
+        int count = 0;
+        while (condition.execute(frame) == Boolean.TRUE) {
+            body.execute(frame);
+            count++;
         }
-    }
-
-    @Override
-    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
+        LoopNode.reportLoopCount(this, count);
+        return VOID;
     }
 }
 
@@ -248,16 +218,6 @@ class BlockNode extends BMLNode {
             node.execute(frame);
         }
         return VOID;
-    }
-
-    @Override
-    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
-        throw CompilerDirectives.shouldNotReachHere();
     }
 }
 
