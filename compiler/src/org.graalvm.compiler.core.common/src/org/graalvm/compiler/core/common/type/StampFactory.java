@@ -197,8 +197,7 @@ public class StampFactory {
             case Short:
             case Int:
             case Long:
-                long mask = value.asLong() & CodeUtil.mask(kind.getBitCount());
-                return forInteger(kind.getStackKind(), value.asLong(), value.asLong(), mask, mask);
+                return IntegerStamp.createConstant(kind.getStackKind().getBitCount(), value.asLong());
             case Float:
                 return forFloat(kind, value.asFloat(), value.asFloat(), !Float.isNaN(value.asFloat()));
             case Double:
