@@ -44,12 +44,10 @@ public class DeadlockWatchdog implements Closeable {
     private volatile long nextDeadline;
     private volatile boolean stopped;
 
-    DeadlockWatchdog() {
-        /* Access to options must be done in main thread because it requires ImageSingletons. */
-        watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue();
-        watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue();
-
-        if (watchdogInterval > 0) {
+    DeadlockWatchdog(int watchdogInterval, boolean watchdogExitOnTimeout) {
+        this.watchdogInterval = watchdogInterval;
+        this.watchdogExitOnTimeout = watchdogExitOnTimeout;
+        if (this.watchdogInterval > 0) {
             thread = new Thread(this::watchdogThread);
             thread.start();
         } else {

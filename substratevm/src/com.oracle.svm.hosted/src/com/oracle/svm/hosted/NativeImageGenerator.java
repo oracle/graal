@@ -322,8 +322,8 @@ public class NativeImageGenerator {
     protected final ImageClassLoader loader;
     protected final HostedOptionProvider optionProvider;
     private final ProgressReporter reporter;
+    private final DeadlockWatchdog watchdog;
 
-    private DeadlockWatchdog watchdog;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
     private Inflation bb;
@@ -341,6 +341,7 @@ public class NativeImageGenerator {
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
+        this.watchdog = loader.classLoaderSupport.watchdog;
         /*
          * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
          * parsing at run time.
@@ -529,7 +530,6 @@ public class NativeImageGenerator {
             ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
             ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
             ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-            watchdog = new DeadlockWatchdog();
             try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
                 ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
                 doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
