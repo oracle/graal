@@ -25,8 +25,12 @@ env:
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
   GRAALVM_HOME: ${{ github.workspace }}/graalvm
 
+permissions: {}
 jobs:
   build-quarkus-and-graalvm:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Nightly quarkus and GraalVM build
     runs-on: ubuntu-20.04
     outputs:

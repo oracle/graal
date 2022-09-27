@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import static com.oracle.truffle.api.CompilerDirectives.LIKELY_PROBABILITY;
+import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -56,6 +59,11 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 
 public abstract class TRegexExecutorNode extends Node {
 
+    public static final double CONTINUE_PROBABILITY = 0.99;
+    public static final double EXIT_PROBABILITY = 1.0 - CONTINUE_PROBABILITY;
+    public static final double LATIN1_PROBABILITY = 0.7;
+    public static final double BMP_PROBABILITY = 0.2;
+    public static final double ASTRAL_PROBABILITY = 0.1;
     private final RegexSource source;
     private final int numberOfCaptureGroups;
     private final int numberOfTransitions;
@@ -178,7 +186,7 @@ public abstract class TRegexExecutorNode extends Node {
         if (getEncoding() == Encodings.UTF_16) {
             locals.setNextIndex(inputIncRaw(index));
             int c = inputReadRaw(locals);
-            if (inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex())) {
+            if (injectBranchProbability(ASTRAL_PROBABILITY, inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex()))) {
                 int c2 = inputReadRaw(locals, locals.getNextIndex());
                 if (inputUTF16IsLowSurrogate(c2)) {
                     locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
@@ -188,7 +196,7 @@ public abstract class TRegexExecutorNode extends Node {
             return c;
         } else if (getEncoding() == Encodings.UTF_8) {
             int c = inputReadRaw(locals);
-            if (c < 0x80) {
+            if (injectBranchProbability(LATIN1_PROBABILITY, c < 0x80)) {
                 locals.setNextIndex(inputIncRaw(index));
                 return c;
             }
@@ -197,7 +205,7 @@ public abstract class TRegexExecutorNode extends Node {
                 assert c >> 6 == 2;
                 for (int i = 1; i < 4; i++) {
                     c = inputReadRaw(locals, locals.getIndex() - i);
-                    if (i < 3 && c >> 6 == 2) {
+                    if (injectBranchProbability(LIKELY_PROBABILITY, i < 3 && c >> 6 == 2)) {
                         codepoint |= (c & 0x3f) << (6 * i);
                     } else {
                         break;

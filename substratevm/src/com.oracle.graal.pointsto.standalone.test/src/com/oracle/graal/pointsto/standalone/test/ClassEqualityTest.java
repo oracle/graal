@@ -24,25 +24,33 @@
  * questions.
  */
 
-package com.oracle.graal.pointsto.standalone.meta;
+package com.oracle.graal.pointsto.standalone.test;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
+import org.junit.Test;
 
-public class StandaloneConstantFieldProvider extends JavaConstantFieldProvider {
-
-    public StandaloneConstantFieldProvider(MetaAccessProvider metaAccess) {
-        super(metaAccess);
+public class ClassEqualityTest {
+    static class C {
+        public static void foo() {
+        }
     }
 
-    /**
-     * In standalone mode, all classes are runtime initialized. We take all fields as not final, so
-     * that it doesn't read field value from current environment. Test
-     * com.oracle.graal.pointsto.test.ConstantFieldTest verifies this method.
-     **/
-    @Override
-    public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        return false;
+    public static void main(String[] args) {
+        equals(C.class);
+    }
+
+    private static void equals(Class<?> clazz) {
+        if (clazz == C.class) {
+            C.foo();
+        }
+    }
+
+    @Test
+    public void test() {
+        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(this.getClass());
+        tester.setAnalysisArguments(tester.getTestClassName(),
+                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
+
+        tester.setExpectedReachableMethods(C.class.getName() + ".foo()");
+        tester.runAnalysisAndAssert();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -79,17 +79,28 @@ public final class BinUtil {
         }
     }
 
+    private static boolean isWindows() {
+        return System.getProperty("os.name").startsWith("Windows");
+    }
+
     private static String getProcessName() {
         String binPathName = System.getProperty("org.graalvm.launcher.executablename");
 
         if (binPathName == null) {
-            if (ProcessProperties.getArgumentVectorBlockSize() <= 0) {
-                return null;
-            }
-            binPathName = ProcessProperties.getArgumentVectorProgramName();
+            if (isWindows()) {
+                binPathName = System.getenv("GRAALVM_ARGUMENT_VECTOR_PROGRAM_NAME");
+                if (binPathName == null) {
+                    return null;
+                }
+            } else {
+                if (ProcessProperties.getArgumentVectorBlockSize() <= 0) {
+                    return null;
+                }
+                binPathName = ProcessProperties.getArgumentVectorProgramName();
 
-            if (binPathName == null) {
-                return null;
+                if (binPathName == null) {
+                    return null;
+                }
             }
         }
 
@@ -100,6 +111,12 @@ public final class BinUtil {
             return null;
         }
 
-        return f.toString();
+        String result = f.toString();
+
+        if (isWindows()) {
+            result = result.replace(".cmd", ".exe");
+        }
+
+        return result;
     }
 }
