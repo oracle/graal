@@ -413,7 +413,7 @@
         ]
     },
     {
-        "name": "native-image-llvm-backend-installable-svm-java11",
+        "name": "native-image-llvm-backend-installable-ce-java11",
         "core": false,
         "jdk": "jdk_11",
         "artifacts": [
@@ -428,19 +428,11 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
             }
         ]
     },
     {
-        "name": "native-image-llvm-backend-installable-svm-java17",
+        "name": "native-image-llvm-backend-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -455,19 +447,11 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
             }
         ]
     },
     {
-        "name": "native-image-llvm-backend-installable-svm-java19",
+        "name": "native-image-llvm-backend-installable-ce-java19",
         "core": false,
         "jdk": "jdk_19",
         "artifacts": [
@@ -481,14 +465,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
                 "arch": "amd64"
             }
         ]
