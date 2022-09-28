@@ -433,7 +433,7 @@ deploy_graalvm_installables_windows_amd64: {
   timelimit: "1:30:00"
 }
 
-test_graalvm_installables_windows_amd64: {
+gate_graalvm_installables_windows_amd64: {
   run: [
     [set-export, VM_ENV, "${VM_ENV}-win"]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, graalvm-show]
@@ -511,7 +511,7 @@ builds += [
   ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java11-windows-amd64}
   ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java17-windows-amd64}
   ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64}{run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java17-windows-amd64}
-  ${vm_java_17} ${svm-common-windows-jdk17} ${gate_vm_windows} ${js_windows_jdk17} ${test_graalvm_installables_windows_amd64}{run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${test_graalvm_installables_windows_amd64.run}, name: test-vm-installable-java17-windows-amd64}
+  ${vm_java_17} ${svm-common-windows-jdk17} ${gate_vm_windows} ${js_windows_jdk17} ${gate_graalvm_installables_windows_amd64}{run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${gate_graalvm_installables_windows_amd64.run}, name: gate-vm-installable-java17-windows-amd64}
 
   #
   # Deploy GraalVM+Ruby images
