@@ -100,20 +100,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void test01() {
-        StructuredGraph g = parseEager(getResolvedJavaMethod("loopSnippet01"), AllowAssumptions.NO);
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        canonicalizer.apply(g, getDefaultHighTierContext());
-        g.clearAllStateAfterForTestingOnly();
-        canonicalizer.apply(g, getDefaultHighTierContext());
-        canonicalizer.apply(g, getDefaultHighTierContext());
-        /*
-         * Now the only values holding the emptyPhis alive is a chain of indirect usages, i.e., a
-         * cycle. The only part of the codebase that could cleanup this cycle is a proper latest
-         * schedule that will not visit the phi and its usages and consider them dead and will
-         * delete them. We have to run a canon before that detects these patterns, else verification
-         * of the schedule would fail.
-         */
-        GraphOrder.assertSchedulableGraph(g);
+        testSchedulable("loopSnippet01", 1);
     }
 
     static int S;
@@ -146,7 +133,119 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void test02() {
-        StructuredGraph g = parseEager(getResolvedJavaMethod("loopSnippet02"), AllowAssumptions.NO);
+        testSchedulable("loopSnippet02", 1);
+    }
+
+    public static int loopSnippet03() {
+        int phi1;
+        if (S == 123) {
+            GraalDirectives.sideEffect(1);
+            phi1 = 12345;
+        } else {
+            GraalDirectives.sideEffect(123);
+            phi1 = 1222;
+        }
+        int tmp1 = (char) phi1;
+        int tmp2 = tmp1 & 127;
+        int i = 0;
+        int emptyPhi1 = 100;
+        while (true) {
+            if (i >= 10000) {
+                break;
+            }
+            if (GraalDirectives.sideEffect(i) > 12) {
+                GraalDirectives.sideEffect(i);
+                emptyPhi1 = 13;
+            } else {
+                emptyPhi1 = (byte) (emptyPhi1 + tmp2);
+            }
+            i++;
+        }
+        return i;
+    }
+
+    @Test
+    public void test03() {
+        testSchedulable("loopSnippet03", 1);
+    }
+
+    public static int loopSnippet04() {
+        int phi1;
+        if (S == 123) {
+            GraalDirectives.sideEffect(1);
+            phi1 = 12345;
+        } else {
+            GraalDirectives.sideEffect(123);
+            phi1 = 1222;
+        }
+        int tmp1 = (char) phi1;
+        int tmp2 = tmp1 & 127;
+        int i = 0;
+        int emptyPhi1 = 100;
+        while (true) {
+            if (i >= 10000) {
+                break;
+            }
+            if (GraalDirectives.sideEffect(i) > 12) {
+                GraalDirectives.sideEffect(i);
+                emptyPhi1 = 13;
+            } else if (GraalDirectives.sideEffect(i) < 1235) {
+                GraalDirectives.sideEffect(12);
+                emptyPhi1 = (byte) (emptyPhi1 + tmp2);
+            } else {
+                GraalDirectives.sideEffect(1245);
+                emptyPhi1 = (byte) (emptyPhi1 + 1);
+            }
+            i++;
+        }
+        return i;
+    }
+
+    @Test
+    public void test04() {
+        testSchedulable("loopSnippet04", 1);
+    }
+
+    public static int loopSnippet05() {
+        int phi1;
+        if (S == 123) {
+            GraalDirectives.sideEffect(1);
+            phi1 = 12345;
+        } else {
+            GraalDirectives.sideEffect(123);
+            phi1 = 1222;
+        }
+        int tmp1 = (char) phi1;
+        int tmp2 = tmp1 & 127;
+        int i = 0;
+        int emptyPhi1 = 100;
+        int phi4 = 0;
+        while (true) {
+            if (i >= 10000) {
+                break;
+            }
+            if (GraalDirectives.sideEffect(i) > 12) {
+                GraalDirectives.sideEffect(i);
+                emptyPhi1 = 13;
+            } else {
+                GraalDirectives.sideEffect(12);
+                int tmp3 = (byte) (emptyPhi1 + tmp2);
+                emptyPhi1 = tmp3;
+                phi4 = tmp3; // usage of the intermediate cycle node
+            }
+            i++;
+        }
+        return i + phi4;
+
+    }
+
+    @Test
+    public void test05() {
+        testSchedulable("loopSnippet05", 3);
+    }
+
+    private void testSchedulable(String snippet, int loopPhisAfter) {
+        StructuredGraph g = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.NO);
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         canonicalizer.apply(g, getDefaultHighTierContext());
         g.clearAllStateAfterForTestingOnly();
@@ -160,5 +259,6 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
          * of the schedule would fail.
          */
         GraphOrder.assertSchedulableGraph(g);
+        Assert.assertEquals(loopPhisAfter, g.getNodes().filter(PhiNode.class).filter(x -> ((PhiNode) x).isLoopPhi()).count());
     }
 }
