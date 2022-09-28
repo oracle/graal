@@ -140,6 +140,10 @@ else()
 
   target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
   target_sources(sulong++ PRIVATE libsulongxx/windows/exception_helpers.cpp libsulongxx/windows/type_info.cpp)
+  target_compile_definitions(sulong++ PRIVATE _VCRT_BUILD)
+  # source of _Init_thread_* functions
+  target_sources(sulong++ PUBLIC ${VCRUNTIME_SRC}/thread_safe_statics.cpp)
+  set_source_files_properties(${VCRUNTIME_SRC}/thread_safe_statics.cpp PROPERTIES COMPILE_FLAGS "-O0") # prevent inlining of init thread functions
 
   set_source_files_properties(libsulongxx/windows/type_info.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
 endif()
