@@ -146,6 +146,19 @@ else()
   # source of _Init_thread_* functions
   target_sources(sulong++ PUBLIC ${VCRUNTIME_SRC}/thread_safe_statics.cpp)
   set_source_files_properties(${VCRUNTIME_SRC}/thread_safe_statics.cpp PROPERTIES COMPILE_FLAGS "-O0") # prevent inlining of init thread functions
+  # source of operator new functions
+  target_sources(sulong++ PUBLIC
+    ${VCRUNTIME_SRC}/delete_array.cpp
+    ${VCRUNTIME_SRC}/delete_array_nothrow.cpp
+    ${VCRUNTIME_SRC}/delete_array_size.cpp
+    ${VCRUNTIME_SRC}/delete_scalar.cpp
+    ${VCRUNTIME_SRC}/delete_scalar_nothrow.cpp
+    ${VCRUNTIME_SRC}/delete_scalar_size.cpp
+    ${VCRUNTIME_SRC}/new_array.cpp
+    ${VCRUNTIME_SRC}/new_array_nothrow.cpp
+    ${VCRUNTIME_SRC}/new_scalar.cpp
+    ${VCRUNTIME_SRC}/new_scalar_nothrow.cpp
+  )
 
   set_source_files_properties(libsulongxx/windows/type_info.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
 endif()
