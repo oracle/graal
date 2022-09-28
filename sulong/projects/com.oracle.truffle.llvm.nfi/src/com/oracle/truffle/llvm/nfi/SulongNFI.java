@@ -100,17 +100,26 @@ public final class SulongNFI extends TruffleLanguage<Env> {
 
         @ExportMessage
         Object getSimpleType(NativeSimpleType type) {
-            return type; // Sulong does not need extra information here
+            switch (type) {
+                case STRING:
+                    // not implemented
+                    return null;
+                default:
+                    // Sulong does not need extra information here
+                    return type;
+            }
         }
 
         @ExportMessage
         Object getArrayType(@SuppressWarnings("unused") NativeSimpleType type) {
-            throw CompilerDirectives.shouldNotReachHere("array types not yet implemented");
+            // not implemented
+            return null;
         }
 
         @ExportMessage
         Object getEnvType() {
-            throw CompilerDirectives.shouldNotReachHere("env type not yet implemented");
+            // not implemented
+            return null;
         }
 
         @ExportMessage
