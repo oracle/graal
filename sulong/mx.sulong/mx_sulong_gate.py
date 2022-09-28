@@ -85,6 +85,7 @@ class UnittestTaskFactory(object):
             unittestArgs = ['--very-verbose', '--enable-timing']
         unittestArgs += extraUnittestArgs or []
         unittestArgs += args.extra_llvm_arguments
+        unittestArgs = [mx_subst.path_substitutions.substitute(arg) for arg in unittestArgs]
 
         def _sulong_gate_format_description(testClasses, description=None):
             if description:
@@ -174,8 +175,8 @@ class SulongGateEnv(object):
 def _sulong_gate_runner(args, tasks):
     _unittest_task_factory = UnittestTaskFactory()
 
-    def _unittest(title, test_suite, tags=None, testClasses=None, unittestArgs=None, description=None):
-        _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs, description=description)
+    def _unittest(title, test_suite, tags=None, testClasses=None, unittestArgs=None, extraUnittestArgs=None, description=None):
+        _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs, extraUnittestArgs=extraUnittestArgs, description=description)
 
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
@@ -196,6 +197,8 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
     _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'sulongCoverage'])
     _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongCoverage'],
+            extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>'])
     _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic', 'sulongCoverage'])
     _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
