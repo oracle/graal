@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -36,7 +37,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.hosted.meta.HostedType;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -114,6 +114,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
@@ -344,7 +345,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     if (isAccessModeSupported) {
                         /*
                          * Force initialization of the @Stable field VarHandle.methodHandleTable (or
-                         * VarHandle.typesAndInvokers.methodHandle_tabel on JDK < 19) .
+                         * VarHandle.typesAndInvokers.methodHandle_tabel on JDK <= 17) .
                          */
                         varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
                     }
@@ -476,7 +477,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
-    private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
             @Override
@@ -514,6 +515,32 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 b.push(JavaKind.Object, b.addNonNullCast(object));
                 return true;
+            }
+        });
+        r = new Registration(plugins, MethodHandle.class, replacements);
+        r.register(new RequiredInvocationPlugin("asType", Receiver.class, MethodType.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newTypeNode) {
+                ValueNode methodHandleNode = receiver.get();
+                if (methodHandleNode.isJavaConstant() && newTypeNode.isJavaConstant()) {
+                    try {
+                        /*
+                         * If both, the MethodHandle and the MethodType are constant, we can
+                         * evaluate asType eagerly and embed the result as a constant in the graph.
+                         */
+                        SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
+                        MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
+                        MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
+                        MethodHandle asType = mh.asType(mt);
+                        JavaConstant asTypeConstant = snippetReflection.forObject(asType);
+                        ConstantNode asTypeNode = ConstantNode.forConstant(asTypeConstant, b.getMetaAccess(), b.getGraph());
+                        b.push(JavaKind.Object, asTypeNode);
+                        return true;
+                    } catch (Throwable t) {
+                        /* ignore */
+                    }
+                }
+                return false;
             }
         });
     }
