@@ -98,6 +98,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -441,6 +442,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * ones they are, but they are all be from the same package.
                  */
                 return createStandardInlineInfo(method);
+            } else if (className.equals("sun.invoke.util.ValueConversions")) {
+                /*
+                 * Inline trivial helper methods for value conversion.
+                 */
+                return new InlineDuringParsingPlugin().shouldInlineInvoke(b, method, args);
             }
             return null;
         }
