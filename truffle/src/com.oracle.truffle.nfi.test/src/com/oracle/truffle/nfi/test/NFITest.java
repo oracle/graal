@@ -100,15 +100,19 @@ public class NFITest {
         return absPath.toString();
     }
 
-    protected static Object loadLibrary(String lib) {
+    protected static Source parseSource(String source) {
         String sourceString;
         if (TEST_BACKEND != null) {
-            sourceString = String.format("with %s %s", TEST_BACKEND, lib);
+            sourceString = String.format("with %s %s", TEST_BACKEND, source);
         } else {
-            sourceString = lib;
+            sourceString = source;
         }
 
-        Source source = Source.newBuilder("nfi", sourceString, "loadLibrary").internal(true).build();
+        return Source.newBuilder("nfi", sourceString, "loadLibrary").internal(true).build();
+    }
+
+    protected static Object loadLibrary(String lib) {
+        Source source = parseSource(lib);
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         return target.call();
     }
@@ -215,14 +219,8 @@ public class NFITest {
     }
 
     protected static Object parseSignature(String signature) {
-        String withSignature;
-        if (TEST_BACKEND != null) {
-            withSignature = String.format("with %s %s", TEST_BACKEND, signature);
-        } else {
-            withSignature = signature;
-        }
         try {
-            Source sigSource = Source.newBuilder("nfi", withSignature, "signature").internal(true).build();
+            Source sigSource = parseSource(signature);
             CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
             return sigTarget.call();
         } catch (AbstractTruffleException ex) {
