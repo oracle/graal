@@ -48,7 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.operation.serialization.OperationSerializationCallback;
+import com.oracle.truffle.api.operation.serialization.OperationSerializer;
 import com.oracle.truffle.api.source.Source;
 
 public abstract class OperationNodes {
@@ -113,7 +113,7 @@ public abstract class OperationNodes {
     }
 
     @SuppressWarnings("unused")
-    public void serialize(OperationConfig config, DataOutputStream buffer, OperationSerializationCallback callback) throws IOException {
+    public void serialize(OperationConfig config, DataOutputStream buffer, OperationSerializer callback) throws IOException {
         throw new UnsupportedOperationException("Serialization not supported");
     }
 }

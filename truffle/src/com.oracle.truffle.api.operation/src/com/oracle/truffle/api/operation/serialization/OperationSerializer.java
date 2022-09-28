@@ -40,15 +40,16 @@
  */
 package com.oracle.truffle.api.operation.serialization;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.operation.OperationRootNode;
 
-public interface OperationDeserializationCallback {
-    interface Context {
-        OperationRootNode deserializeOperationNode(ByteBuffer buffer) throws IOException;
+@FunctionalInterface
+public interface OperationSerializer {
+    interface SerializerContext {
+        void serializeOperationNode(DataOutputStream buffer, OperationRootNode node) throws IOException;
     }
 
-    Object deserialize(Context context, ByteBuffer buffer) throws IOException;
+    void serialize(SerializerContext context, DataOutputStream buffer, Object object) throws IOException;
 }

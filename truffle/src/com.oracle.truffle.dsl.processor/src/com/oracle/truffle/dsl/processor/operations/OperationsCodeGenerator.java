@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -183,7 +182,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement parLanguage = new CodeVariableElement(types.TruffleLanguage, "language");
         CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
         CodeVariableElement parBuffer = new CodeVariableElement(context.getType(DATA_INPUT_CLASS), "input");
-        CodeVariableElement parCallback = new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback"), "callback");
+        CodeVariableElement parCallback = new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializer"), "callback");
         CodeExecutableElement met = new CodeExecutableElement(MOD_PUBLIC_STATIC, types.OperationNodes, "deserialize", parLanguage, parConfig, parBuffer, parCallback);
 
         met.addThrownType(context.getType(IOException.class));
@@ -217,7 +216,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private CodeExecutableElement createSerializeMethod(CodeTypeElement typBuilder, CodeTypeElement typBuilderImpl) {
         CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
         CodeVariableElement parBuffer = new CodeVariableElement(context.getType(DATA_OUTPUT_CLASS), "buffer");
-        CodeVariableElement parCallback = new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializationCallback"), "callback");
+        CodeVariableElement parCallback = new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializer"), "callback");
         CodeVariableElement parParser = new CodeVariableElement(operationParser(typBuilder.asType()), "generator");
         CodeExecutableElement metCreate = new CodeExecutableElement(MOD_PUBLIC_STATIC, context.getType(void.class), "serialize");
         metCreate.addParameter(parConfig);
@@ -311,7 +310,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeVariableElement createSerializationContext() {
-        DeclaredType typeContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializationCallback.Context");
+        DeclaredType typeContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext");
         CodeVariableElement fld = new CodeVariableElement(typeContext, "SER_CONTEXT");
         CodeTreeBuilder b = fld.createInitBuilder();
 
@@ -928,7 +927,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(boolean.class), "isSerializing"));
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(DATA_OUTPUT_CLASS), "serBuffer"));
-            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializationCallback"), "serCallback"));
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializer"), "serCallback"));
         }
 
         typBuilderImpl.add(createBuilderImplFinish());
@@ -1057,7 +1056,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "deserializeParser");
         met.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
         met.addParameter(new CodeVariableElement(context.getType(DATA_INPUT_CLASS), "buffer"));
-        met.addParameter(new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback"), "callback"));
+        met.addParameter(new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializer"), "callback"));
         met.addParameter(new CodeVariableElement(typBuilder.asType(), "builder"));
 
         CodeTreeBuilder b = met.createBuilder();
@@ -1067,7 +1066,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("ArrayList<OperationLabel> labels = new ArrayList<>()");
             b.statement("ArrayList<" + m.getTemplateType().getSimpleName() + "> builtNodes = new ArrayList<>()");
 
-            TypeMirror deserContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback.Context");
+            TypeMirror deserContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext");
 
             b.startStatement();
             b.type(deserContext);

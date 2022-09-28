@@ -48,8 +48,9 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNodes;
-import com.oracle.truffle.api.operation.serialization.OperationDeserializationCallback;
-import com.oracle.truffle.api.operation.serialization.OperationSerializationCallback;
+import com.oracle.truffle.api.operation.serialization.OperationDeserializer;
+import com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext;
+import com.oracle.truffle.api.operation.serialization.OperationSerializer;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -69,31 +70,29 @@ public class SLOperationSerialization {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-        nodes.serialize(OperationConfig.COMPLETE, outputStream, new OperationSerializationCallback() {
-            public void serialize(OperationSerializationCallback.Context context, DataOutputStream buffer, Object object) throws IOException {
-                if (object instanceof SLNull) {
-                    buffer.writeByte(CODE_SL_NULL);
-                } else if (object instanceof TruffleString) {
-                    TruffleString str = (TruffleString) object;
-                    buffer.writeByte(CODE_STRING);
-                    writeByteArray(buffer, str.getInternalByteArrayUncached(SLLanguage.STRING_ENCODING).getArray());
-                } else if (object instanceof Long) {
-                    buffer.writeByte(CODE_LONG);
-                    buffer.writeLong((long) object);
-                } else if (object instanceof SLBigNumber) {
-                    SLBigNumber num = (SLBigNumber) object;
-                    buffer.writeByte(CODE_BIG_INT);
-                    writeByteArray(buffer, num.getValue().toByteArray());
-                } else if (object instanceof Source) {
-                    Source s = (Source) object;
-                    buffer.writeByte(CODE_SOURCE);
-                    writeByteArray(buffer, s.getName().getBytes());
-                } else if (object instanceof Class<?>) {
-                    buffer.writeByte(CODE_CLASS);
-                    writeByteArray(buffer, ((Class<?>) object).getName().getBytes());
-                } else {
-                    throw new UnsupportedOperationException("unsupported constant: " + object.getClass().getSimpleName() + " " + object);
-                }
+        nodes.serialize(OperationConfig.COMPLETE, outputStream, (context, buffer, object) -> {
+            if (object instanceof SLNull) {
+                buffer.writeByte(CODE_SL_NULL);
+            } else if (object instanceof TruffleString) {
+                TruffleString str = (TruffleString) object;
+                buffer.writeByte(CODE_STRING);
+                writeByteArray(buffer, str.getInternalByteArrayUncached(SLLanguage.STRING_ENCODING).getArray());
+            } else if (object instanceof Long) {
+                buffer.writeByte(CODE_LONG);
+                buffer.writeLong((long) object);
+            } else if (object instanceof SLBigNumber) {
+                SLBigNumber num = (SLBigNumber) object;
+                buffer.writeByte(CODE_BIG_INT);
+                writeByteArray(buffer, num.getValue().toByteArray());
+            } else if (object instanceof Source) {
+                Source s = (Source) object;
+                buffer.writeByte(CODE_SOURCE);
+                writeByteArray(buffer, s.getName().getBytes());
+            } else if (object instanceof Class<?>) {
+                buffer.writeByte(CODE_CLASS);
+                writeByteArray(buffer, ((Class<?>) object).getName().getBytes());
+            } else {
+                throw new UnsupportedOperationException("unsupported constant: " + object.getClass().getSimpleName() + " " + object);
             }
         });
 
@@ -115,35 +114,33 @@ public class SLOperationSerialization {
     public static OperationNodes deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
         ByteBuffer buf = ByteBuffer.wrap(inputData);
 
-        return SLOperationRootNodeGen.deserialize(language, OperationConfig.DEFAULT, buf, new OperationDeserializationCallback() {
-            public Object deserialize(OperationDeserializationCallback.Context context, ByteBuffer buffer) throws IOException {
-                byte tag;
-                switch (tag = buffer.get()) {
-                    case CODE_SL_NULL:
-                        return SLNull.SINGLETON;
-                    case CODE_STRING: {
-                        return TruffleString.fromByteArrayUncached(readByteArray(buffer), SLLanguage.STRING_ENCODING);
-                    }
-                    case CODE_LONG:
-                        return buffer.getLong();
-                    case CODE_BIG_INT: {
-                        return new SLBigNumber(new BigInteger(readByteArray(buffer)));
-                    }
-                    case CODE_SOURCE: {
-                        String name = new String(readByteArray(buffer));
-                        return Source.newBuilder(SLLanguage.ID, "", name).build();
-                    }
-                    case CODE_CLASS: {
-                        String name = new String(readByteArray(buffer));
-                        try {
-                            return Class.forName(name);
-                        } catch (ClassNotFoundException ex) {
-                            throw new UnsupportedOperationException("could not load class: " + name);
-                        }
-                    }
-                    default:
-                        throw new UnsupportedOperationException("unsupported tag: " + tag);
+        return SLOperationRootNodeGen.deserialize(language, OperationConfig.DEFAULT, buf, (context, buffer) -> {
+            byte tag;
+            switch (tag = buffer.get()) {
+                case CODE_SL_NULL:
+                    return SLNull.SINGLETON;
+                case CODE_STRING: {
+                    return TruffleString.fromByteArrayUncached(readByteArray(buffer), SLLanguage.STRING_ENCODING);
                 }
+                case CODE_LONG:
+                    return buffer.getLong();
+                case CODE_BIG_INT: {
+                    return new SLBigNumber(new BigInteger(readByteArray(buffer)));
+                }
+                case CODE_SOURCE: {
+                    String name = new String(readByteArray(buffer));
+                    return Source.newBuilder(SLLanguage.ID, "", name).build();
+                }
+                case CODE_CLASS: {
+                    String name = new String(readByteArray(buffer));
+                    try {
+                        return Class.forName(name);
+                    } catch (ClassNotFoundException ex) {
+                        throw new UnsupportedOperationException("could not load class: " + name);
+                    }
+                }
+                default:
+                    throw new UnsupportedOperationException("unsupported tag: " + tag);
             }
         });
     }

@@ -71,8 +71,6 @@ import com.oracle.truffle.api.operation.test.bml.BMOperationRootNodeGen.Builder;
 @State(Scope.Benchmark)
 public class BenmarkSimple extends BaseBenchmark {
 
-    private static final int TARGET_AMOUNT = 100000;
-
     private static final String NAME_TEST_LOOP = "simple:test-loop";
     private static final String NAME_TEST_LOOP_NO_BE = "simple:test-loop-no-be";
     private static final String NAME_TEST_LOOP_QUICKEN = "simple:test-loop-quicken";
