@@ -48,6 +48,7 @@ import org.junit.ClassRule;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -57,6 +58,7 @@ import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.tck.TruffleRunner;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.junit.Assume;
 
 public class NFITest {
 
@@ -219,9 +221,16 @@ public class NFITest {
         } else {
             withSignature = signature;
         }
-        Source sigSource = Source.newBuilder("nfi", withSignature, "signature").internal(true).build();
-        CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
-        return sigTarget.call();
+        try {
+            Source sigSource = Source.newBuilder("nfi", withSignature, "signature").internal(true).build();
+            CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
+            return sigTarget.call();
+        } catch (AbstractTruffleException ex) {
+            if (ex.getClass().getSimpleName().equals("NFIUnsupportedTypeException")) {
+                Assume.assumeNoException(ex);
+            }
+            throw ex;
+        }
     }
 
     protected static Object lookupAndBind(Object library, String name, String signature) {
