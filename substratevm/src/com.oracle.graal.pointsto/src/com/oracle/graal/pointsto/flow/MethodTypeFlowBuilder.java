@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static org.graalvm.compiler.options.OptionType.Expert;
 
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -95,6 +96,8 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
@@ -141,6 +144,11 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
 
 public class MethodTypeFlowBuilder {
+
+    public static class Options {
+        @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
+        public static final OptionKey<Boolean> PEABeforeAnalysis = new OptionKey<>(true);
+    }
 
     protected final PointsToAnalysis bb;
     protected final MethodFlowsGraph flowsGraph;
@@ -198,8 +206,10 @@ public class MethodTypeFlowBuilder {
                  */
                 new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
 
-                new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-                new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                if (Options.PEABeforeAnalysis.getValue(bb.getOptions())) {
+                    new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+                    new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                }
             }
 
             // Do it again after canonicalization changed type checks and field accesses.
