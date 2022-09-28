@@ -1098,6 +1098,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
+        if (name == null) {
+            throw new NullPointerException();
+        }
         Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
         if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
             result = loader.loadClass(name); // may throw
