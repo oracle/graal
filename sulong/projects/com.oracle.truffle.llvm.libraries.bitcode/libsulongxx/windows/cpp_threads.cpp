@@ -28,41 +28,53 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+extern "C" {
 #include <graalvm/llvm/threads.h>
+}
+#include <stdio.h>
 
-int __sulong_thread_create(__sulong_thread_t *thread, void *(*start_routine)(void *), void *arg) {
-    return sulong_thread_error;
+typedef unsigned long long __libcpp_thread_id;
+typedef void *__libcpp_thread_t;
+
+#define LIBCPP_EXPORT __declspec(dllexport)
+
+namespace std::__1 {
+
+LIBCPP_EXPORT int __libcpp_thread_create(__libcpp_thread_t *__t, void *(*__func)(void *), void *__arg) {
+    __sulong_thread_t sthread;
+    int ret = __sulong_thread_create(&sthread, __func, __arg);
+    if (ret == 0) {
+        *__t = (__libcpp_thread_t) sthread;
+    }
+    return ret;
 }
 
-void *__sulong_thread_join(__sulong_thread_t thread) {
-    return NULL;
-}
-
-__sulong_thread_t __sulong_thread_self() {
-    return -1;
-}
-
-int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name) {
-    return sulong_thread_error;
-}
-
-int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len) {
-    return sulong_thread_error;
-}
-
-void __sulong_thread_yield() {
-}
-
-__sulong_key_t __sulong_thread_key_create(void (*destructor)(void *)) {
+LIBCPP_EXPORT int __libcpp_thread_join(__libcpp_thread_t *__t) {
+    void *ret = __sulong_thread_join((__sulong_thread_t) *__t);
     return 0;
 }
 
-void __sulong_thread_key_delete(__sulong_key_t key) {
+LIBCPP_EXPORT bool __libcpp_thread_equal(__libcpp_thread_id __lhs, __libcpp_thread_id __rhs) {
+    return __lhs == __rhs;
 }
 
-void *__sulong_thread_getspecific(__sulong_key_t key) {
-    return NULL;
+LIBCPP_EXPORT bool __libcpp_thread_less(__libcpp_thread_id __lhs, __libcpp_thread_id __rhs) {
+    return __lhs < __rhs;
 }
 
-void __sulong_thread_setspecific(__sulong_key_t key, const void *value) {
+LIBCPP_EXPORT bool __libcpp_thread_is_null(const __libcpp_thread_t *__t) {
+    return *__t == 0;
 }
+
+LIBCPP_EXPORT __libcpp_thread_id __libcpp_thread_get_current_id() {
+    return (__libcpp_thread_id) __sulong_thread_self();
+}
+
+LIBCPP_EXPORT __libcpp_thread_id __libcpp_thread_get_id(const __libcpp_thread_t *__t) {
+    return (__libcpp_thread_id) *__t;
+}
+
+LIBCPP_EXPORT void __libcpp_thread_yield() {
+    __sulong_thread_yield();
+}
+} // namespace std::__1

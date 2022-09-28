@@ -140,6 +140,8 @@ else()
 
   target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
   target_sources(sulong++ PRIVATE libsulongxx/windows/exception_helpers.cpp libsulongxx/windows/type_info.cpp)
+  target_sources(sulong++ PRIVATE libsulongxx/windows/cpp_threads.cpp)
+
   target_compile_definitions(sulong++ PRIVATE _VCRT_BUILD)
   # source of _Init_thread_* functions
   target_sources(sulong++ PUBLIC ${VCRUNTIME_SRC}/thread_safe_statics.cpp)
