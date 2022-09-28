@@ -94,7 +94,7 @@ import org.graalvm.options.OptionValues;
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
                                 LLVMLanguage.LLVM_MS_DOS_MIME_TYPE}, //
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
-                website = "https://www.graalvm.org/22.1/reference-manual/llvm/")
+                website = "https://www.graalvm.org/22.3/reference-manual/llvm/")
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
