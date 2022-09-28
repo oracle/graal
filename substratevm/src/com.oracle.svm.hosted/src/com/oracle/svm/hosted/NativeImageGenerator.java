@@ -322,7 +322,6 @@ public class NativeImageGenerator {
     protected final ImageClassLoader loader;
     protected final HostedOptionProvider optionProvider;
     private final ProgressReporter reporter;
-    private final DeadlockWatchdog watchdog;
 
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
@@ -341,7 +340,6 @@ public class NativeImageGenerator {
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
-        this.watchdog = loader.watchdog;
         /*
          * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
          * parsing at run time.
@@ -535,7 +533,6 @@ public class NativeImageGenerator {
                 doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
             } finally {
                 reporter.ensureCreationStageEndCompleted();
-                watchdog.close();
             }
         } finally {
             analysisExecutor.shutdownNow();
@@ -878,7 +875,7 @@ public class NativeImageGenerator {
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
-                bb = createBigBang(options, target, aUniverse, analysisExecutor, watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
+                bb = createBigBang(options, target, aUniverse, analysisExecutor, loader.watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
                                 annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders);
                 aUniverse.setBigBang(bb);
 
