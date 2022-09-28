@@ -204,7 +204,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
         }
         AArch64Kind memKind = (AArch64Kind) integerAccessKind.getPlatformKind();
-        Variable result = newVariable(integerAccessKind);
+        Variable result = newVariable(toRegisterKind(integerAccessKind));
         AllocatableValue allocatableExpectedValue = asAllocatable(reinterpretedExpectedValue);
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue);
         append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
@@ -218,16 +218,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(Value address, ValueKind<?> kind, Value newValue) {
-        Variable result = newVariable(kind);
-        append(new AtomicReadAndWriteOp((AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
+        Variable result = newVariable(toRegisterKind(accessKind));
+        append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
         return result;
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
-        Variable result = newVariable(kind);
-        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), delta));
+    public Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
+        Variable result = newVariable(toRegisterKind(accessKind));
+        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), delta));
         return result;
     }
 
