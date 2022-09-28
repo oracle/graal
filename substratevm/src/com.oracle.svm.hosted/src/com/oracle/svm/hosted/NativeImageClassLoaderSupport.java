@@ -181,16 +181,11 @@ public class NativeImageClassLoaderSupport {
     private HostedOptionParser hostedOptionParser;
     private OptionValues parsedHostedOptions;
     private List<String> remainingArguments;
-    DeadlockWatchdog watchdog;
 
     public void setupHostedOptionParser(List<String> arguments) {
         hostedOptionParser = new HostedOptionParser(getClassLoader());
         remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse(arguments)));
         parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
-
-        int watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue(parsedHostedOptions);
-        boolean watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue(parsedHostedOptions);
-        watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
     public HostedOptionParser getHostedOptionParser() {

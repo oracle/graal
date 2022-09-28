@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +39,6 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -51,6 +48,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -62,7 +60,6 @@ public final class ImageClassLoader {
      * classes.
      */
     private static final int CLASS_LOADING_MAX_SCALING = 8;
-    private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
         /*
@@ -74,6 +71,7 @@ public final class ImageClassLoader {
 
     public final Platform platform;
     public final NativeImageClassLoaderSupport classLoaderSupport;
+    public final DeadlockWatchdog watchdog;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
@@ -83,16 +81,17 @@ public final class ImageClassLoader {
     ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
+
+        int watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue(classLoaderSupport.getParsedHostedOptions());
+        boolean watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue(classLoaderSupport.getParsedHostedOptions());
+        this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
     public void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
         classLoaderSupport.initAllClasses(executor, this);
-        boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
-        if (!completed) {
-            throw shouldNotReachHere("timed out while initializing classes");
-        }
         executor.shutdownNow();
+        watchdog.recordActivity();
     }
 
     private void findSystemElements(Class<?> systemClass) {

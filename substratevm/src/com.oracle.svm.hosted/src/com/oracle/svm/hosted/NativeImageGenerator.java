@@ -341,7 +341,7 @@ public class NativeImageGenerator {
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
-        this.watchdog = loader.classLoaderSupport.watchdog;
+        this.watchdog = loader.watchdog;
         /*
          * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
          * parsing at run time.
