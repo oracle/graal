@@ -116,6 +116,11 @@ class StaticObjectModelTest {
             return isFieldBased() && !TruffleOptions.AOT;
         }
 
+        /* GR-41426 */
+        public boolean supportsSafetyChecks() {
+            return !(isFieldBased() && TruffleOptions.AOT);
+        }
+
         @Override
         public void close() {
             context.close();
