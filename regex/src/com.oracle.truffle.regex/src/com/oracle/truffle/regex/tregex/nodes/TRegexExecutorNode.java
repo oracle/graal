@@ -46,13 +46,8 @@ import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
@@ -62,8 +57,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 
-@GenerateWrapper
-public abstract class TRegexExecutorNode extends Node implements InstrumentableNode {
+public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
 
     public static final double CONTINUE_PROBABILITY = 0.99;
     public static final double EXIT_PROBABILITY = 1.0 - CONTINUE_PROBABILITY;
@@ -420,16 +414,4 @@ public abstract class TRegexExecutorNode extends Node implements InstrumentableN
     public abstract boolean writesCaptureGroups();
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
-
-    public abstract Object execute(VirtualFrame frame, TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
-
-    @Override
-    public boolean isInstrumentable() {
-        return true;
-    }
-
-    @Override
-    public WrapperNode createWrapper(ProbeNode probeNode) {
-        return new TRegexExecutorNodeWrapper(this, this, probeNode);
-    }
 }
