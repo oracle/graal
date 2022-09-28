@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeFlood;
@@ -38,6 +39,7 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -235,54 +237,9 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
             if (onlySelfUsage) {
                 return null;
             }
-            if (this.hasExactlyOneUsage() && this.graph() != null) {
-                tryOptimizeDeadPhiCycles: {
-                    /*
-                     * Determine if this phi is only held alive by (indirect) self references.
-                     */
-
-                    NodeFlood nf = this.graph().createNodeFlood();
-                    nf.add(this);
-                    int steps = 0;
-                    for (Node flooded : nf) {
-                        if (steps++ >= DEAD_PHI_CYCLE_STEPS) {
-                            // too much effort, abort
-                            break tryOptimizeDeadPhiCycles;
-                        }
-                        if (!flooded.hasExactlyOneUsage()) {
-                            // node is used outside the cycle
-                            break tryOptimizeDeadPhiCycles;
-                        }
-                        for (Node usage : flooded.usages()) {
-                            if (!processCycleDetectionNode(nf, usage)) {
-                                break tryOptimizeDeadPhiCycles;
-                            }
-                        }
-                        if (flooded != this) {
-                            for (Node input : flooded.inputs()) {
-                                if (flooded instanceof PhiNode && input == ((PhiNode) flooded).merge()) {
-                                    continue;
-                                }
-                                if (!processCycleDetectionNode(nf, input)) {
-                                    break tryOptimizeDeadPhiCycles;
-                                }
-                            }
-                        }
-                    }
-                    /*
-                     * We process all inputs and usages we can visit but we still require to have
-                     * found all backedge values: this is necessary to cleanup complex, constant
-                     * node input, cycles while we do not visit constant nodes
-                     */
-                    boolean allValuesFound = true;
-                    for (int j = 1; j < this.valueCount(); j++) {
-                        allValuesFound = allValuesFound && nf.getVisited().isMarked(valueAt(j));
-                    }
-                    if (allValuesFound) {
-                        // we managed to find a dead cycle
-                        this.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Found dead phi cycle %s", nf.getVisited());
-                        return null;
-                    }
+            if (this.graph() != null) {
+                if (isDeadLoopPhiCycle(this)) {
+                    return null;
                 }
             }
         }
@@ -290,21 +247,82 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         return singleValueOrThis();
     }
 
-    private static boolean processCycleDetectionNode(NodeFlood nf, Node n) {
-        if (!GraphUtil.isFloatingNode(n)) {
-            // Fixed node usage: can never have a dead cycle
-            return false;
+    /**
+     * Determine if the given {@link PhiNode} is the root of a dead (no real usages outside the
+     * cycle) phi cycle. Loop phis ({@link PhiNode#isLoopPhi()}) often form cyclic chains of
+     * floating nodes due to heavy usage of {@link InductionVariable} in loop code.
+     *
+     * Dead phi cycles are often the result of inlining, conditional elimination and partial escape
+     * analysis.
+     *
+     * Cycle detection is a best-effort operation: we do not want to spend a lot of compile time
+     * cleaning up extremely complex or long dead cycles (they will be handled by the scheduling
+     * phase).
+     *
+     * Consider the following intended complex example
+     *
+     * <pre>
+     * int phi = 0;
+     * while (true) {
+     *     if (sth) {
+     *         code();
+     *         phi = 12; // constant
+     *     } else if (sthElse) {
+     *         moreCode();
+     *         phi = phi - 125; // sub node usage
+     *     } else {
+     *         evenMoreCode();
+     *         phi = phi + 127; // add node usage
+     *     }
+     * }
+     * </pre>
+     *
+     * The cycle detection will start by processing the node associated with {@code phi} and process
+     * its usages. Note that the phi itself has multiple usages even though it is still dead. The
+     * detection will follow all usages of marked nodes which means at the end the nodes visited
+     * will be {@code phi, constant(12), sub, constant(125), add, constant(127)}. Since no node
+     * visited in between has other usages except one (so no outside usages) and no fixed node
+     * usages we can conclude we found a dead phi cycle that can be removed.
+     */
+    private static boolean isDeadLoopPhiCycle(PhiNode thisPhi) {
+        GraalError.guarantee(thisPhi.isLoopPhi(), "Must only process loop phis");
+        NodeFlood nf = thisPhi.graph().createNodeFlood();
+        nf.add(thisPhi);
+        int steps = 0;
+        for (Node flooded : nf) {
+            if (flooded != thisPhi && !flooded.hasExactlyOneUsage()) {
+                /*
+                 * Node is used outside the cycle (presumably). While following usages would also
+                 * find dead floating nodes hanging of a phi cycle no other place is guaranteed to
+                 * kill them in the correct order (like GraphUtil#killWithUnusedFloatingInputs).
+                 */
+                return false;
+            }
+            // constants are always marked as visited but we never visit their usages, they are leaf
+            // nodes and can appear everywhere
+            if (flooded instanceof ConstantNode) {
+                continue;
+            }
+            if (steps++ >= DEAD_PHI_CYCLE_STEPS) {
+                // too much effort, abort
+                return false;
+            }
+            for (Node usage : flooded.usages()) {
+                if (!GraphUtil.isFloatingNode(usage)) {
+                    // Fixed node usage: can never have a dead cycle
+                    return false;
+                }
+                if (usage instanceof VirtualState || usage instanceof ProxyNode) {
+                    // usages that still require the (potential) dead cycle to be alive
+                    return false;
+                }
+                if (!nf.isMarked(usage)) {
+                    nf.add(usage);
+                }
+            }
         }
-        if (n instanceof VirtualState || n instanceof ProxyNode) {
-            // usages that still require the (potential) dead cycle to be alive
-            return false;
-        }
-        if (n instanceof ConstantNode) {
-            return true;
-        }
-        if (!nf.isMarked(n)) {
-            nf.add(n);
-        }
+        // we managed to find a dead cycle
+        thisPhi.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, thisPhi.graph(), "Found dead phi cycle %s", nf.getVisited());
         return true;
     }
 
