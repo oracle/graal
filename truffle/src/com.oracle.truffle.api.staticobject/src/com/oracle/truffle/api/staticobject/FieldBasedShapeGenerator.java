@@ -113,8 +113,10 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitVarInsn(ALOAD, 0);
             int var = 1;
             for (Class<?> constructorParameter : superConstructor.getParameterTypes()) {
-                int loadOpcode = Type.getType(constructorParameter).getOpcode(ILOAD);
-                mv.visitVarInsn(loadOpcode, var++);
+                Type parameterType = Type.getType(constructorParameter);
+                int loadOpcode = parameterType.getOpcode(ILOAD);
+                mv.visitVarInsn(loadOpcode, var);
+                var += parameterType.getSize();
             }
             mv.visitMethodInsn(INVOKESPECIAL, storageSuperName, "<init>", superConstructorDescriptor, false);
             mv.visitInsn(RETURN);
@@ -139,21 +141,24 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitCode();
             mv.visitTypeInsn(NEW, Type.getInternalName(storageClass));
             mv.visitInsn(DUP);
-            int maxStack = 2;
+            int maxStack = 2;  // DUP
+            int maxLocals = 1; // this
             StringBuilder constructorDescriptor = new StringBuilder();
             constructorDescriptor.append('(');
             Class<?>[] params = m.getParameterTypes();
-            for (int i = 0; i < params.length; i++) {
-                int loadOpcode = Type.getType(params[i]).getOpcode(ILOAD);
-                mv.visitVarInsn(loadOpcode, i + 1);
-                constructorDescriptor.append(Type.getDescriptor(params[i]));
-                maxStack++;
+            for (Class<?> param : params) {
+                Type paramType = Type.getType(param);
+                int loadOpcode = paramType.getOpcode(ILOAD);
+                mv.visitVarInsn(loadOpcode, maxLocals);
+                constructorDescriptor.append(Type.getDescriptor(param));
+                maxStack += paramType.getSize();
+                maxLocals += paramType.getSize();
             }
             constructorDescriptor.append(")V");
             String storageName = Type.getInternalName(storageClass);
             mv.visitMethodInsn(INVOKESPECIAL, storageName, "<init>", constructorDescriptor.toString(), false);
             mv.visitInsn(ARETURN);
-            mv.visitMaxs(maxStack, maxStack - 1);
+            mv.visitMaxs(maxStack, maxLocals);
             mv.visitEnd();
         }
     }
