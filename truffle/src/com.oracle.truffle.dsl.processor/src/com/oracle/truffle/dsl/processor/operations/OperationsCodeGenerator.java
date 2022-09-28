@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -480,6 +481,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typOperationNodeImpl.add(createBoxingDescriptors());
         typOperationNodeImpl.add(createSetResultUnboxed());
+        typOperationNodeImpl.add(createLoadVariadicArguments());
         typOperationNodeImpl.add(createSetResultBoxedImpl());
         typOperationNodeImpl.add(createCounter());
         if (m.enableYield) {
@@ -495,6 +497,27 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createSerializeMethod(typBuilderImpl, typBuilderImpl));
 
         return typOperationNodeImpl;
+    }
+
+    private CodeExecutableElement createLoadVariadicArguments() {
+        CodeExecutableElement el = new CodeExecutableElement(MOD_PRIVATE_STATIC, arrayOf(context.getType(Object.class)), "do_loadVariadicArguments");
+        el.addParameter(new CodeVariableElement(types.VirtualFrame, "$frame"));
+        el.addParameter(new CodeVariableElement(context.getType(int.class), "$sp"));
+        el.addParameter(new CodeVariableElement(context.getType(int.class), "numVariadics"));
+        el.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
+
+        CodeTreeBuilder b = el.createBuilder();
+        b.tree(GeneratorUtils.createPartialEvaluationConstant("$sp"));
+        b.tree(GeneratorUtils.createPartialEvaluationConstant("numVariadics"));
+        b.declaration("Object[]", "result", "new Object[numVariadics]");
+
+        b.startFor().string("int varIndex = 0; varIndex < numVariadics; varIndex++").end().startBlock();
+        b.statement("result[varIndex] = UFA.unsafeUncheckedGetObject($frame, $sp - numVariadics + varIndex)");
+        b.end();
+
+        b.startReturn().string("result").end();
+
+        return el;
     }
 
     private CodeTypeElement createContinuationRoot(CodeTypeElement typOperationNodeImpl) {

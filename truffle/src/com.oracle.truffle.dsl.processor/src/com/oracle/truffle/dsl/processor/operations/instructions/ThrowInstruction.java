@@ -62,7 +62,7 @@ public class ThrowInstruction extends Instruction {
 
         b.startThrow();
         b.cast(ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"));
-        b.startCall(vars.stackFrame, "getObject").string("slot").end();
+        b.startCall("UFA", "unsafeUncheckedGetObject").variable(vars.stackFrame).string("slot").end();
         b.end();
 
         return b.build();

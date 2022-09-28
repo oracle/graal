@@ -172,14 +172,16 @@ public class CustomInstruction extends Instruction {
                 String inputName = "input_" + inputIndex;
                 switch (kind) {
                     case STACK_VALUE:
-                        b.declaration("Object", inputName, "UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
+                        // safety: use unchecked since we never BE variadic functions
+                        b.declaration("Object", inputName, "UFA.unsafeUncheckedGetObject(" + vars.stackFrame.getName() + ", $sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VARIADIC:
-                        b.declaration("Object[]", inputName, "new Object[numVariadics]");
-                        b.startFor().string("int varIndex = 0; varIndex < numVariadics; varIndex++").end().startBlock();
-                        b.startStatement().string(inputName, "[varIndex] = UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - numVariadics + varIndex)").end();
-                        b.end();
+                        b.startAssign("Object[] " + inputName).startCall("do_loadVariadicArguments");
+                        b.variable(vars.stackFrame);
+                        b.variable(vars.sp);
+                        b.string("numVariadics");
+                        b.end(2);
                         inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VIRTUAL_FRAME:
