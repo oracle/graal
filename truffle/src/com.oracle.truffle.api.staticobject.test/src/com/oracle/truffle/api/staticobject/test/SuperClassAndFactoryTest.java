@@ -118,21 +118,21 @@ public class SuperClassAndFactoryTest extends StaticObjectModelTest {
     }
 
     public static class CustomStaticObject implements Cloneable {
-        final int i;
+        final long l;
         final Object o;
 
-        public CustomStaticObject(int i, Object o) {
-            this.i = i;
+        public CustomStaticObject(long l, Object o) {
+            this.l = l;
             this.o = o;
         }
     }
 
     public static class WrongCloneCustomStaticObject implements Cloneable {
-        final int i;
+        final long l;
         final Object o;
 
-        public WrongCloneCustomStaticObject(int i, Object o) {
-            this.i = i;
+        public WrongCloneCustomStaticObject(long l, Object o) {
+            this.l = l;
             this.o = o;
         }
 
@@ -147,11 +147,11 @@ public class SuperClassAndFactoryTest extends StaticObjectModelTest {
     }
 
     public interface CustomFactoryInterface {
-        CustomStaticObject create(int i, Object o);
+        CustomStaticObject create(long l, Object o);
     }
 
     public interface WrongCloneFactoryInterface {
-        WrongCloneCustomStaticObject create(int i, Object o);
+        WrongCloneCustomStaticObject create(long l, Object o);
     }
 
     public interface WrongAbstractFactoryInterface {
@@ -159,10 +159,10 @@ public class SuperClassAndFactoryTest extends StaticObjectModelTest {
     }
 
     public interface WrongArgsFactoryInterface {
-        CustomStaticObject create(int i);
+        CustomStaticObject create(long l);
     }
 
     public interface WrongReturnTypeFactoryInterface {
-        String create(int i, Object o);
+        String create(long l, Object o);
     }
 }
