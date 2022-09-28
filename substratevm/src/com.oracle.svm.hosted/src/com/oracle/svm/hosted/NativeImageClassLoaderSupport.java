@@ -174,8 +174,8 @@ public class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
-    public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        new ClassInit(executor, imageClassLoader).init();
+    public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
+        new LoadClassHandler(executor, imageClassLoader).run();
     }
 
     private HostedOptionParser hostedOptionParser;
@@ -589,17 +589,17 @@ public class NativeImageClassLoaderSupport {
                         .map(excludeDirectoriesRoot::resolve).collect(Collectors.toUnmodifiableSet());
     }
 
-    private class ClassInit {
+    private final class LoadClassHandler {
 
-        protected final ForkJoinPool executor;
-        protected final ImageClassLoader imageClassLoader;
+        private final ForkJoinPool executor;
+        private final ImageClassLoader imageClassLoader;
 
-        protected ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
+        private LoadClassHandler(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
         }
 
-        protected void init() {
+        private void run() {
             List<String> requiresInit = Arrays.asList(
                             "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
                             "org.graalvm.sdk", "org.graalvm.truffle");
@@ -661,7 +661,7 @@ public class NativeImageClassLoaderSupport {
             }
         }
 
-        protected static final String CLASS_EXTENSION = ".class";
+        private static final String CLASS_EXTENSION = ".class";
 
         private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes) {
             boolean useFilter = root.equals(excludeRoot);
@@ -729,7 +729,7 @@ public class NativeImageClassLoaderSupport {
             return result.substring(0, result.length() - CLASS_EXTENSION.length());
         }
 
-        protected void handleClassFileName(URI container, Module module, String fileName, char fileSystemSeparatorChar) {
+        private void handleClassFileName(URI container, Module module, String fileName, char fileSystemSeparatorChar) {
             String strippedClassFileName = strippedClassFileName(fileName);
             if (strippedClassFileName.equals("module-info")) {
                 return;

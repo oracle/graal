@@ -87,9 +87,9 @@ public final class ImageClassLoader {
         this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
-    public void initAllClasses() {
+    public void loadAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-        classLoaderSupport.initAllClasses(executor, this);
+        classLoaderSupport.loadAllClasses(executor, this);
         executor.shutdownNow();
         watchdog.recordActivity();
     }
