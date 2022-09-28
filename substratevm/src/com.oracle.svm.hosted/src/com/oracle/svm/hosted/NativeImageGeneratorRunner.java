@@ -327,7 +327,7 @@ public class NativeImageGeneratorRunner {
                     Method mainEntryPoint;
                     Class<?> mainClass;
                     try {
-                        Object mainModule = null;
+                        Module mainModule = null;
                         if (!moduleName.isEmpty()) {
                             mainModule = classLoader.findModule(moduleName)
                                             .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));

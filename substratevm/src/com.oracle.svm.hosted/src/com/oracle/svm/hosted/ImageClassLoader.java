@@ -296,7 +296,7 @@ public final class ImageClassLoader {
         return Class.forName(className, initialize, classLoaderSupport.getClassLoader());
     }
 
-    public Class<?> forName(String className, Object module) throws ClassNotFoundException {
+    public Class<?> forName(String className, Module module) throws ClassNotFoundException {
         if (module == null) {
             return forName(className);
         }

@@ -565,11 +565,9 @@ public class NativeImageClassLoaderSupport {
         return UserError.abort("Invalid option %s provided by %s.%s", SubstrateOptionsParser.commandArgument(option, value), origin, detailMessage);
     }
 
-    Class<?> loadClassFromModule(Object module, String className) {
-        assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
-        Module m = (Module) module;
-        assert isModuleClassLoader(classLoader, m.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
-        return Class.forName(m, className);
+    Class<?> loadClassFromModule(Module module, String className) {
+        assert isModuleClassLoader(classLoader, module.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
+        return Class.forName(module, className);
     }
 
     private static boolean isModuleClassLoader(ClassLoader loader, ClassLoader moduleClassLoader) {
@@ -736,7 +734,7 @@ public class NativeImageClassLoaderSupport {
             return result.substring(0, result.length() - CLASS_EXTENSION.length());
         }
 
-        protected void handleClassFileName(URI container, Object module, String fileName, char fileSystemSeparatorChar) {
+        protected void handleClassFileName(URI container, Module module, String fileName, char fileSystemSeparatorChar) {
             String strippedClassFileName = strippedClassFileName(fileName);
             if (strippedClassFileName.equals("module-info")) {
                 return;
