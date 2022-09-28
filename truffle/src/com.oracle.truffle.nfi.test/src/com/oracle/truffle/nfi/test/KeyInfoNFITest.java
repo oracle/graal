@@ -163,7 +163,11 @@ public class KeyInfoNFITest extends NFITest {
             boolean success = tryRead(interop, object, symbol);
             assertBoolean("trying to read member", read, success);
 
-            assertBoolean("isMemberInvocable", invoke, interop.isMemberInvocable(object, symbol));
+            /*
+             * Some NFI backends are able to invoke members that are not bound. This is not
+             * guaranteed to work, but should also not be reported as an error.
+             */
+            assertBooleanOptional("isMemberInvocable", invoke, interop.isMemberInvocable(object, symbol));
 
             assertBoolean("isMemberInsertable", false, interop.isMemberInsertable(object, symbol));
             assertBoolean("isMemberModifiable", false, interop.isMemberModifiable(object, symbol));
