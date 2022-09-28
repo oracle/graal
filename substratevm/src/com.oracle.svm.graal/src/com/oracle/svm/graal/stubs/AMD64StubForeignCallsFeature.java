@@ -57,7 +57,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
     private static final EnumSet<CPUFeature> BASELINE = EnumSet.of(SSE2);
 
     public AMD64StubForeignCallsFeature() {
-        super(new StubDescriptor[]{
+        super(SVMIntrinsicStubsGen.class, new StubDescriptor[]{
                         new StubDescriptor(AMD64ArrayEqualsWithMaskForeignCalls.STUBS, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(AMD64CalcStringAttributesForeignCalls.STUBS, true, AMD64CalcStringAttributesNode.minFeaturesAMD64(), RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(ArrayCompareToForeignCalls.STUBS, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
@@ -65,7 +65,6 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(ArrayEqualsForeignCalls.STUBS, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AMD64, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(ArrayRegionCompareToForeignCalls.STUBS, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
-                        new StubDescriptor(VectorizedMismatchForeignCalls.STUB, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(VectorizedMismatchForeignCalls.STUB, true, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(CryptoForeignCalls.AES_STUBS, false, AESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
                         new StubDescriptor(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS, false, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),

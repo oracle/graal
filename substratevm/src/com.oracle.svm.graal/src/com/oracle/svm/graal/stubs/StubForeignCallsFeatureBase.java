@@ -52,7 +52,7 @@ import jdk.vm.ci.code.Architecture;
 @Platforms({Platform.AMD64.class, Platform.AARCH64.class})
 public class StubForeignCallsFeatureBase implements InternalFeature {
 
-    static final class StubDescriptor {
+    public static final class StubDescriptor {
 
         private final ForeignCallDescriptor[] foreignCallDescriptors;
         private final boolean isReexecutable;
@@ -60,25 +60,25 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         private final EnumSet<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
-        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+        public StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
         }
 
-        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+        public StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
             this.isReexecutable = isReexecutable;
             this.minimumRequiredFeatures = minimumRequiredFeatures;
             this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
-        private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs() {
+        private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs(Class<?> stubsHolder) {
             if (stubs == null) {
-                stubs = mapStubs();
+                stubs = mapStubs(stubsHolder);
             }
             return stubs;
         }
 
-        private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
+        private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs(Class<?> stubsHolder) {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
             boolean isJITCompilationEnabled = DeoptimizationSupport.enabled();
             // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
@@ -91,10 +91,10 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {
-                    ret.add(SnippetRuntime.findForeignCall(SVMIntrinsicStubsGen.class, call.getName(), isReexecutable));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), isReexecutable));
                 }
                 if (generateRuntimeChecked) {
-                    ret.add(SnippetRuntime.findForeignCall(SVMIntrinsicStubsGen.class, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, isReexecutable));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, isReexecutable));
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);
@@ -102,9 +102,11 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
     }
 
+    private final Class<?> stubsHolder;
     private final StubDescriptor[] stubDescriptors;
 
-    protected StubForeignCallsFeatureBase(StubDescriptor[] stubDescriptors) {
+    protected StubForeignCallsFeatureBase(Class<?> stubsHolder, StubDescriptor[] stubDescriptors) {
+        this.stubsHolder = stubsHolder;
         this.stubDescriptors = stubDescriptors;
     }
 
@@ -116,14 +118,14 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         for (StubDescriptor sd : stubDescriptors) {
-            registerStubRoots(access, sd.getStubs());
+            registerStubRoots(access, sd.getStubs(stubsHolder));
         }
     }
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         for (StubDescriptor sd : this.stubDescriptors) {
-            foreignCalls.register(sd.getStubs());
+            foreignCalls.register(sd.getStubs(stubsHolder));
         }
     }
 

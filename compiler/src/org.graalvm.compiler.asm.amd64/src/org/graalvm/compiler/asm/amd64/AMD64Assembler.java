@@ -3943,7 +3943,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshufb(Register dst, Register src) {
-        assert supports(CPUFeature.SSSE3);
+        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, dst, src, PD, P_0F38, false);
         emitByte(0x00);
@@ -3951,7 +3951,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshufb(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSSE3);
+        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
         assert inRC(XMM, dst);
         simdPrefix(dst, dst, src, PD, P_0F38, false);
         emitByte(0x00);
@@ -3959,7 +3959,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshuflw(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE2);
+        GraalError.guarantee(supports(CPUFeature.SSE2), "pshuflw requires SSE2");
         assert isUByte(imm8) : "invalid value";
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, SD, P_0F, false);
@@ -4182,6 +4182,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void xorl(Register dst, Register src) {
         XOR.rmOp.emit(this, DWORD, dst, src);
+    }
+
+    public final void xorl(Register dst, int imm32) {
+        XOR.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     public final void xorq(Register dst, Register src) {
