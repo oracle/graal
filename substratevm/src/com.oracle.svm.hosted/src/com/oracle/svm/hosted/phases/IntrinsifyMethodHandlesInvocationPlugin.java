@@ -163,12 +163,14 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static final Field varHandleVFormField;
     private static final Method varFormInitMethod;
+    private static final Method varHandleGetMethodHandleMethod;
 
     static {
         varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
         try {
             Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
             varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+            varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -332,12 +334,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * Force initialization of the @Stable field VarHandle.vform.memberName_table.
                      * Starting with JDK 17, this field is lazily initialized.
                      */
-                    varHandle.isAccessModeSupported(accessMode);
+                    boolean isAccessModeSupported = varHandle.isAccessModeSupported(accessMode);
                     /*
                      * Force initialization of the @Stable field
                      * VarHandle.typesAndInvokers.methodType_table.
                      */
                     varHandle.accessModeType(accessMode);
+
+                    if (isAccessModeSupported) {
+                        /*
+                         * Force initialization of the @Stable field VarHandle.methodHandleTable (or
+                         * VarHandle.typesAndInvokers.methodHandle_tabel on JDK < 19) .
+                         */
+                        varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
+                    }
                 }
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
