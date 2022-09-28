@@ -122,6 +122,7 @@ install(TARGETS sulong DESTINATION bin)
 
 add_library(sulong++ SHARED)
 target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src ${LIBCXX_SRC}/libcxxabi/include)
+target_include_directories(sulong++ PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR} ${GRAALVM_LLVM_LIBS_INCLUDE_DIR})
 target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
 target_compile_options(sulong++ PRIVATE -std=c++14 -stdlib=libc++ -Wno-undefined-internal)
 target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
@@ -135,6 +136,7 @@ else()
 
   target_include_directories(sulong++ PRIVATE ${VCRUNTIME_SRC})
   target_link_directories(sulong++ PRIVATE ${GRAALVM_LLVM_LIB_DIR})
+  target_link_libraries(sulong++ graalvm-llvm)
   target_compile_options(sulong++ PRIVATE -stdlib++-isystem ${LIBCXX_ISYSTEM})
   target_link_options(sulong++ PRIVATE -nostdlib)
 
