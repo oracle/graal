@@ -29,4 +29,6 @@
 ;
 
 EXPORTS
-  sulong_eh_canCatch_windows
+  __sulong_eh_canCatch_windows
+  __sulong_eh_copy_windows
+  __sulong_eh_unwind_windows

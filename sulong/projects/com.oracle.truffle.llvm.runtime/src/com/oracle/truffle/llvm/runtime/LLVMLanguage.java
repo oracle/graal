@@ -34,6 +34,7 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -72,6 +73,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -240,6 +242,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         LLVMPointer localStorage;
         LLVMGlobalContainer[][] globalContainers = new LLVMGlobalContainer[10][];
 
+        List<LLVMUserException> exceptionStack = new ArrayList<>();
+
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
             this.thread = new WeakReference<>(thread);
@@ -292,6 +296,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public LLVMStack getLLVMStack() {
             return stack;
+        }
+
+        public void pushException(LLVMUserException exception) {
+            exceptionStack.add(exception);
+        }
+
+        public LLVMUserException popException() {
+            return exceptionStack.remove(exceptionStack.size() - 1);
         }
 
         public void setLLVMStack(LLVMStack stack) {
