@@ -63,7 +63,11 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -594,29 +598,49 @@ public class NativeImageClassLoaderSupport {
         private final ForkJoinPool executor;
         private final ImageClassLoader imageClassLoader;
 
+        AtomicInteger entriesProcessed;
+        volatile String currentlyProcessedEntry;
+        boolean initialReport;
+
         private LoadClassHandler(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
+
+            entriesProcessed = new AtomicInteger(0);
+            currentlyProcessedEntry = "Unknown Entry";
+            initialReport = true;
         }
 
         private void run() {
-            List<String> requiresInit = Arrays.asList(
-                            "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
-                            "org.graalvm.sdk", "org.graalvm.truffle");
+            try (ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor()) {
+                scheduledExecutor.scheduleAtFixedRate(() -> {
+                    if (initialReport) {
+                        initialReport = false;
+                        System.out.println("Loading classes is taking a long time. This can be caused by class- or module-path entries that point to large directory structures.");
+                    }
+                    System.out.println("Total processed entries: " + entriesProcessed.get() + ", current entry: " + currentlyProcessedEntry);
+                }, 5, 1, TimeUnit.MINUTES);
 
-            for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
-                if (requiresInit.contains(moduleReference.descriptor().name())) {
+                List<String> requiresInit = Arrays.asList(
+                                "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
+                                "org.graalvm.sdk", "org.graalvm.truffle");
+
+                for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
+                    if (requiresInit.contains(moduleReference.descriptor().name())) {
+                        initModule(moduleReference);
+                    }
+                }
+                for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
                     initModule(moduleReference);
                 }
-            }
-            for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
-                initModule(moduleReference);
-            }
 
-            classpath().parallelStream().forEach(this::loadClassesFromPath);
+                classpath().parallelStream().forEach(this::loadClassesFromPath);
+            }
         }
 
         private void initModule(ModuleReference moduleReference) {
+            String moduleReferenceLocation = moduleReference.location().map(URI::toString).orElse("UnknownModuleReferenceLocation");
+            currentlyProcessedEntry = moduleReferenceLocation;
             Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
             if (optionalModule.isEmpty()) {
                 return;
@@ -625,8 +649,10 @@ public class NativeImageClassLoaderSupport {
                 Module module = optionalModule.get();
                 moduleReader.list().forEach(moduleResource -> {
                     if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                        currentlyProcessedEntry = moduleReferenceLocation + "/" + moduleResource;
                         executor.execute(() -> handleClassFileName(moduleReference.location().orElseThrow(), module, moduleResource, '/'));
                     }
+                    entriesProcessed.incrementAndGet();
                 });
             } catch (IOException e) {
                 throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
@@ -675,6 +701,7 @@ public class NativeImageClassLoaderSupport {
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    currentlyProcessedEntry = dir.toUri().toString();
                     if (useFilter && excludes.contains(dir)) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
@@ -686,8 +713,10 @@ public class NativeImageClassLoaderSupport {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
                     String fileName = root.relativize(file).toString();
                     if (fileName.endsWith(CLASS_EXTENSION)) {
+                        currentlyProcessedEntry = file.toUri().toString();
                         executor.execute(() -> handleClassFileName(container, null, fileName, fileSystemSeparatorChar));
                     }
+                    entriesProcessed.incrementAndGet();
                     return FileVisitResult.CONTINUE;
                 }
 

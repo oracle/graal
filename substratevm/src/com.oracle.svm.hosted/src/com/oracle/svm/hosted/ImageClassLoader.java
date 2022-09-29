@@ -88,10 +88,17 @@ public final class ImageClassLoader {
     }
 
     public void loadAllClasses() {
-        final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
+        ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
+            @Override
+            public void execute(Runnable task) {
+                super.execute(() -> {
+                    task.run();
+                    watchdog.recordActivity();
+                });
+            }
+        };
         classLoaderSupport.loadAllClasses(executor, this);
         executor.shutdownNow();
-        watchdog.recordActivity();
     }
 
     private void findSystemElements(Class<?> systemClass) {
