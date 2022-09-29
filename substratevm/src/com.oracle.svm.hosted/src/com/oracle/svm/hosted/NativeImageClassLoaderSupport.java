@@ -612,7 +612,8 @@ public class NativeImageClassLoaderSupport {
         }
 
         private void run() {
-            try (ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor()) {
+            ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+            try {
                 scheduledExecutor.scheduleAtFixedRate(() -> {
                     if (initialReport) {
                         initialReport = false;
@@ -635,6 +636,8 @@ public class NativeImageClassLoaderSupport {
                 }
 
                 classpath().parallelStream().forEach(this::loadClassesFromPath);
+            } finally {
+                scheduledExecutor.shutdown();
             }
         }
 
