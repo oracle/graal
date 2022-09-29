@@ -208,6 +208,7 @@ GraalTags = Tags([
     'debuginfotest',
     'debuginfotest_quickbuild',
     'test',
+    'test_build_time_eval',
     'test_quickbuild',
     'js',
     'js_quickbuild',
@@ -385,6 +386,11 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
 
+    with Task('native build-time unittests', tasks, tags=[GraalTags.test_build_time_eval]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                native_unittests_task(extra_build_args=["-H:+UseNewExperimentalClassInitialization", "-H:+UseExperimentalBuildTimeEvaluation"])
+
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -501,7 +507,8 @@ def native_unittests_task(extra_build_args=None):
 
     additional_build_args = [
         '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
+        '--initialize-at-build-time=com.oracle.svm.test.buildtimeeval.heap'
     ]
     if extra_build_args is not None:
         additional_build_args += extra_build_args

@@ -257,6 +257,7 @@ import com.oracle.svm.hosted.c.SizeOfSupportImpl;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -284,6 +285,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
+import com.oracle.svm.hosted.phases.BuildTimeEvaluationPlugin;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
@@ -1232,6 +1234,9 @@ public class NativeImageGenerator {
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
 
+        if (ClassInitializationOptions.UseExperimentalBuildTimeEvaluation.getValue()) {
+            plugins.appendNodePlugin(new BuildTimeEvaluationPlugin(annotationSubstitutionProcessor, aUniverse, ParsingReason.PointsToAnalysis, null));
+        }
         plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
