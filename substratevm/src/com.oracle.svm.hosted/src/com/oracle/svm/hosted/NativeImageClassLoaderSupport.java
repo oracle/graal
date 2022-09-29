@@ -67,7 +67,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -598,7 +598,7 @@ public class NativeImageClassLoaderSupport {
         private final ForkJoinPool executor;
         private final ImageClassLoader imageClassLoader;
 
-        AtomicInteger entriesProcessed;
+        LongAdder entriesProcessed;
         volatile String currentlyProcessedEntry;
         boolean initialReport;
 
@@ -606,7 +606,7 @@ public class NativeImageClassLoaderSupport {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
 
-            entriesProcessed = new AtomicInteger(0);
+            entriesProcessed = new LongAdder();
             currentlyProcessedEntry = "Unknown Entry";
             initialReport = true;
         }
@@ -619,7 +619,7 @@ public class NativeImageClassLoaderSupport {
                         initialReport = false;
                         System.out.println("Loading classes is taking a long time. This can be caused by class- or module-path entries that point to large directory structures.");
                     }
-                    System.out.println("Total processed entries: " + entriesProcessed.get() + ", current entry: " + currentlyProcessedEntry);
+                    System.out.println("Total processed entries: " + entriesProcessed.longValue() + ", current entry: " + currentlyProcessedEntry);
                 }, 5, 1, TimeUnit.MINUTES);
 
                 List<String> requiresInit = Arrays.asList(
@@ -655,7 +655,7 @@ public class NativeImageClassLoaderSupport {
                         currentlyProcessedEntry = moduleReferenceLocation + "/" + moduleResource;
                         executor.execute(() -> handleClassFileName(moduleReference.location().orElseThrow(), module, moduleResource, '/'));
                     }
-                    entriesProcessed.incrementAndGet();
+                    entriesProcessed.increment();
                 });
             } catch (IOException e) {
                 throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
@@ -719,7 +719,7 @@ public class NativeImageClassLoaderSupport {
                         currentlyProcessedEntry = file.toUri().toString();
                         executor.execute(() -> handleClassFileName(container, null, fileName, fileSystemSeparatorChar));
                     }
-                    entriesProcessed.incrementAndGet();
+                    entriesProcessed.increment();
                     return FileVisitResult.CONTINUE;
                 }
 
