@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.lang.ref.WeakReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -54,28 +53,20 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
          * is valid.
          */
         OptimizedAssumptionDependency dependency;
-
-        /**
-         * Machine code that is guaranteed to be invalid once the
-         * {@link OptimizedAssumptionDependency} object becomes unreachable.
-         */
-        WeakReference<OptimizedAssumptionDependency> weakDependency;
+        boolean pending = true;
 
         Entry next;
 
         @Override
         public synchronized void accept(OptimizedAssumptionDependency dep) {
-            if (dep == null || dep.soleExecutionEntryPoint()) {
-                this.weakDependency = new WeakReference<>(dep);
-            } else {
-                this.dependency = dep;
-            }
+            this.dependency = dep;
+            this.pending = false;
             this.notifyAll();
         }
 
         synchronized OptimizedAssumptionDependency awaitDependency() {
             boolean interrupted = false;
-            while (dependency == null && weakDependency == null) {
+            while (pending) {
                 try {
                     this.wait();
                 } catch (InterruptedException e) {
@@ -85,33 +76,21 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             if (interrupted) {
                 Thread.currentThread().interrupt();
             }
-
-            if (dependency != null) {
-                return dependency;
-            }
-            return weakDependency.get();
+            return dependency;
         }
 
-        synchronized boolean isValid() {
-            if (dependency != null) {
-                return dependency.isValid();
+        synchronized boolean isAlive() {
+            if (dependency == null) {
+                // A pending dependency is treated as alive
+                return pending;
             }
-            if (weakDependency != null) {
-                OptimizedAssumptionDependency dep = weakDependency.get();
-                return dep != null && dep.isValid();
-            }
-            // A pending dependency is treated as valid
-            return true;
+            return dependency.isAlive();
         }
 
         @Override
         public synchronized String toString() {
             if (dependency != null) {
                 return String.format("%x[%s]", hashCode(), dependency);
-            }
-            if (weakDependency != null) {
-                OptimizedAssumptionDependency dep = weakDependency.get();
-                return String.format("%x[%s]", hashCode(), dep);
             }
             return String.format("%x", hashCode());
         }
@@ -129,7 +108,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
     /**
      * Number of entries in {@link #dependencies} after most recent call to
-     * {@link #removeInvalidEntries()}.
+     * {@link #removeDeadEntries()}.
      */
     private int sizeAfterLastRemove;
 
@@ -222,12 +201,12 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
     }
 
-    private void removeInvalidEntries() {
+    private void removeDeadEntries() {
         Entry last = null;
         Entry e = dependencies;
         dependencies = null;
         while (e != null) {
-            if (e.isValid()) {
+            if (e.isAlive()) {
                 if (last == null) {
                     dependencies = e;
                 } else {
@@ -246,10 +225,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     }
 
     /**
-     * Removes all {@linkplain OptimizedAssumptionDependency#isValid() invalid} dependencies.
+     * Removes all {@linkplain OptimizedAssumptionDependency#isAlive() invalid} dependencies.
      */
-    public synchronized void removeInvalidDependencies() {
-        removeInvalidEntries();
+    public synchronized void removeDeadDependencies() {
+        removeDeadEntries();
     }
 
     /**
@@ -273,7 +252,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
         if (isValid) {
             if (size >= 2 * sizeAfterLastRemove) {
-                removeInvalidEntries();
+                removeDeadEntries();
             }
             Entry e = new Entry();
             e.next = dependencies;

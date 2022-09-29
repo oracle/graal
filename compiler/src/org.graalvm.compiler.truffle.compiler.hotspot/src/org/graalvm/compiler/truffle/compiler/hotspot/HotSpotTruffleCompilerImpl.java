@@ -98,7 +98,6 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -340,23 +339,6 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
         return null;
-    }
-
-    /**
-     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal are executed through a
-     * {@code Method::_code} field pointing to them. That is, they can be executed even when the
-     * {@link HotSpotNmethod} created during code installation dies. As such, these objects must
-     * remain strongly reachable from {@code OptimizedAssumption}s they depend on.
-     */
-    @Override
-    protected boolean soleExecutionEntryPoint(InstalledCode installedCode) {
-        if (installedCode instanceof HotSpotNmethod) {
-            HotSpotNmethod nmethod = (HotSpotNmethod) installedCode;
-            if (nmethod.isDefault()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
