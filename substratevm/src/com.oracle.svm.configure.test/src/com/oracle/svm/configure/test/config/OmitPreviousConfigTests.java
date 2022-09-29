@@ -100,6 +100,7 @@ public class OmitPreviousConfigTests {
         assertTrue(config.getResourceConfiguration().isEmpty());
         assertTrue(config.getSerializationConfiguration().isEmpty());
         assertTrue(config.getPredefinedClassesConfiguration().isEmpty());
+        assertTrue(config.getExceptionConfiguration().isEmpty());
     }
 
     @Test

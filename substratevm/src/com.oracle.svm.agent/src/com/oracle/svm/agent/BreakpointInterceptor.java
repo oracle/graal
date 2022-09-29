@@ -206,6 +206,14 @@ final class BreakpointInterceptor {
         }
     }
 
+    private static void traceException(JNIEnvironment env, String className, JNIObjectHandle exception) {
+        JNIObjectHandle exceptionClass = jniFunctions().getGetObjectClass().invoke(env, exception);
+        String exceptionClassName = Support.fromJniString(env, Support.callObjectMethod(env, exceptionClass, agent.handles().javaLangClassGetName));
+        if (tracer != null && exceptionClassName != null) {
+            tracer.traceException(className, exceptionClassName);
+        }
+    }
+
     private static boolean forName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle name = getObjectArgument(thread, 0);
@@ -235,6 +243,10 @@ final class BreakpointInterceptor {
              */
             int initialize = 0;
             JNIObjectHandle loadedClass = Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read());
+            JNIObjectHandle exception = Support.handleException(jni, false);
+            if (exception.notEqual(nullHandle())) {
+                traceException(jni, className, exception);
+            }
             if (clearException(jni)) {
                 loadedClass = nullHandle();
             }
