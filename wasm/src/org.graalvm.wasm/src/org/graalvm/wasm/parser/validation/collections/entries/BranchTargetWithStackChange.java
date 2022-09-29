@@ -71,7 +71,7 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
         this.valueIndicator |= returnValueIndicator;
         this.resultCount = resultCount;
         this.stackSize = stackSize;
-        assert !ExtraDataUtil.exceeds2BitValue(returnValueIndicator) : "Invalid type indicator";
+        assert ExtraDataUtil.isValidValueIndicator(returnValueIndicator) : "Invalid type indicator";
         if (ExtraDataUtil.exceedsUnsigned7BitValue(resultCount) || ExtraDataUtil.exceedsUnsigned7BitValue(stackSize)) {
             if (ExtraDataUtil.exceedsPositiveIntValue(resultCount) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);

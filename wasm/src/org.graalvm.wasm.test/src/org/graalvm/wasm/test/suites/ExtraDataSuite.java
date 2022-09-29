@@ -57,11 +57,10 @@ public class ExtraDataSuite {
         return ((e << 16) + b) & 0x7fff_ffff;
     }
 
-    private static int compactStackChange(int typeIndicator, int returnLength, int stackChange) {
-        int t = Short.toUnsignedInt((short) typeIndicator);
+    private static int compactStackChange(int typeIndicator, int returnLength, int stackSize) {
         int r = Short.toUnsignedInt((short) returnLength);
-        int s = Short.toUnsignedInt((short) stackChange);
-        return (t << 30) | (r << 23) | (s << 16);
+        int s = Short.toUnsignedInt((short) stackSize);
+        return typeIndicator | (r << 24) | (s << 16);
     }
 
     private static int extendedTargetInfo(int extraDataTarget) {
@@ -193,7 +192,7 @@ public class ExtraDataSuite {
         state.exit(20, false);
         state.pop();
         state.exit(21, false);
-        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0, 1, 0)};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x0080_0000, 1, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -209,7 +208,7 @@ public class ExtraDataSuite {
         state.exit(20, true);
         state.popAll(returnTypes);
         state.exit(21, true);
-        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0, 127, 0)};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x0080_0000, 127, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -225,7 +224,7 @@ public class ExtraDataSuite {
         state.exit(20, true);
         state.popAll(returnTypes);
         state.exit(21, true);
-        final int[] expected = {extendedTargetInfo(6), 10, 0, 128, 0, 0};
+        final int[] expected = {extendedTargetInfo(6), 10, 0x0080_0000, 128, 0, 0};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -289,7 +288,7 @@ public class ExtraDataSuite {
         state.exit(20, false);
         state.pop();
         state.exit(21, false);
-        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(1, 1, 0)};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8000_0000, 1, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -305,7 +304,69 @@ public class ExtraDataSuite {
         state.pop();
         state.pop();
         state.exit(21, true);
-        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(3, 2, 0)};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8080_0000, 2, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testNumericStackChange() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.exit(20, false);
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x0080_0000, 0, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testReferenceStackChange() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.push(WasmType.FUNCREF_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.exit(20, false);
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8000_0000, 0, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testBothTypesStackChange() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.push(WasmType.FUNCREF_TYPE);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.pop();
+        state.exit(20, false);
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8080_0000, 0, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testMixedTypeStackChangeAndReturn() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, new byte[]{WasmType.I32_TYPE});
+        state.push(WasmType.FUNCREF_TYPE);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.pop();
+        state.push(WasmType.I32_TYPE);
+        state.exit(20, false);
+        state.pop();
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8080_0000, 1, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 }

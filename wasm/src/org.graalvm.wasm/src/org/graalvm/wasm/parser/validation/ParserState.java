@@ -316,11 +316,17 @@ public class ParserState {
         pushAll(frame.paramTypes());
     }
 
-    private byte[] unwindBranch(int frameInitialSize) {
+    /**
+     * Unwinds the frame up to the given limit. After using this method, the values should be pushed
+     * back onto the stack.
+     * 
+     * @return The value types on the stack.
+     */
+    private byte[] unwindStackToInitialFrameStackSize(int initialFrameStackSize) {
         final int stackSize = valueStack.size();
-        final byte[] unwindTypes = new byte[stackSize - frameInitialSize];
-        for (int i = stackSize; i > frameInitialSize; i--) {
-            unwindTypes[i] = pop();
+        final byte[] unwindTypes = new byte[stackSize - initialFrameStackSize];
+        for (int i = unwindTypes.length - 1; i >= 0; i--) {
+            unwindTypes[i] = valueStack.popBack();
         }
         return unwindTypes;
     }
@@ -337,7 +343,7 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        final byte[] unwindTypes = unwindBranch(frame.initialStackSize());
+        final byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
         frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractValueIndicator(unwindTypes)));
         pushAll(unwindTypes);
         pushAll(labelTypes);
@@ -355,7 +361,7 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        final byte[] unwindTypes = unwindBranch(frame.initialStackSize());
+        final byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
         frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractValueIndicator(unwindTypes)));
         pushAll(unwindTypes);
     }
@@ -380,7 +386,7 @@ public class ParserState {
             byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
             popAll(otherBranchLabelReturnTypes);
-            byte[] unwindTypes = unwindBranch(frame.initialStackSize());
+            byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
             frame.addBranchTarget(branchTable.itemWithValueIndicatorUpdate(i, ExtraDataUtil.extractValueIndicator(unwindTypes)));
             pushAll(unwindTypes);
             pushAll(otherBranchLabelReturnTypes);

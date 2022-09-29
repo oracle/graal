@@ -73,9 +73,9 @@ public class ExtraDataAccessor {
     public static final int COMPACT_CALL_INDIRECT_PROFILE_OFFSET = 0;
     public static final int EXTENDED_CALL_INDIRECT_PROFILE_OFFSET = 1;
 
-    public static final int PRIMITIVE_INDICATOR = 0x0080_0000;
-    public static final int REFERENCE_INDICATOR = 0x8000_0000;
-    public static final int DUAL_INDICATOR = 0x8080_0000;
+    public static final int PRIMITIVE_TYPE_INDICATOR = 0x0080_0000;
+    public static final int REFERENCE_TYPE_INDICATOR = 0x8000_0000;
+    public static final int VALUE_TYPE_INDICATOR = 0x8080_0000;
 
     public static int firstValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {

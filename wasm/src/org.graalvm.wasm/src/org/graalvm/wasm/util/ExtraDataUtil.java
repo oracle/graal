@@ -54,7 +54,6 @@ public class ExtraDataUtil {
     private static final int MIN_SIGNED_15BIT_VALUE = 0xffff_c000;
     private static final int MAX_SIGNED_15BIT_VALUE = 0x0000_3fff;
     private static final int MAX_UNSIGNED_7BIT_VALUE = 0x0000_007f;
-    private static final int MAX_UNSIGNED_2BIT_VALUE = 0x0000_0003;
 
     /**
      * Compact sizes.
@@ -85,8 +84,8 @@ public class ExtraDataUtil {
         return valueIndicator | (upperValue << 24) | (lowerValue << 16);
     }
 
-    public static boolean exceeds2BitValue(int value) {
-        return Integer.compareUnsigned(value, MAX_UNSIGNED_2BIT_VALUE) > 0;
+    public static boolean isValidValueIndicator(int value) {
+        return value == 0 || value == PRIMITIVE_VALUE_INDICATOR || value == REFERENCE_VALUE_INDICATOR || value == (PRIMITIVE_VALUE_INDICATOR | REFERENCE_VALUE_INDICATOR);
     }
 
     public static boolean exceedsUnsigned7BitValue(int value) {
