@@ -371,6 +371,7 @@ suite = {
       "dependencies" : [
         "JVMCI_SERVICES",
         "JVMCI_API",
+        "org.graalvm.compiler.serviceprovider"
       ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "javaCompliance" : "8+",
