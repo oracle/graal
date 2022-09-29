@@ -29,13 +29,10 @@
 #
 import argparse
 import os
-import sys
-import subprocess
 from argparse import ArgumentParser
 
 import mx
 import mx_subst
-import mx_sulong
 import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
@@ -185,11 +182,8 @@ def _sulong_gate_runner(args, tasks):
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
-    with Task('BuildLLVMorg', tasks, tags=['style', 'clangformat']) as t:
-        # needed for clang-format
-        if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
-        if t: clangformat([])
+        if t: mx.command_function('clangformat')([])
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
     _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc', 'sulongCoverage'])
@@ -280,69 +274,3 @@ def runLLVMUnittests(unittest_runner):
     build_args = ['--language:llvm'] + java_run_props
     unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--force-builder-on-cp', '--run-args'] + run_args +
                     ['--build-args', '--initialize-at-build-time'] + build_args)
-
-
-def build_llvm_org(args=None):
-    defaultBuildArgs = ['-p']
-    if not args.no_warning_as_error:
-        defaultBuildArgs += ['--warning-as-error']
-    mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
-
-
-@mx.command(_suite.name, "clangformat")
-def clangformat(args=None):
-    """ Runs clang-format on C/C++ files in native projects of the primary suite """
-    parser = ArgumentParser(prog='mx clangformat')
-    parser.add_argument('--with-projects', action='store_true', help='check native projects. Defaults to true unless a path is specified.')
-    parser.add_argument('paths', metavar='path', nargs='*', help='check given paths')
-    args = parser.parse_args(args)
-    paths = [(p, "<cmd-line-argument>") for p in args.paths]
-
-    if not paths or args.with_projects:
-        paths += [(p.dir, p.name) for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
-
-    error = False
-    for f, reason in paths:
-        if not checkCFiles(f, reason):
-            error = True
-    if error:
-        mx.log_error("found formatting errors!")
-        sys.exit(-1)
-
-
-def checkCFiles(target, reason):
-    error = False
-    files_to_check = []
-    if os.path.isfile(target):
-        files_to_check.append(target)
-    else:
-        for path, _, files in os.walk(target):
-            for f in files:
-                if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
-                    files_to_check.append(os.path.join(path, f))
-    if not files_to_check:
-        mx.logv("clang-format: no files found {} ({})".format(target, reason))
-        return True
-    mx.logv("clang-format: checking {} ({}, {} files)".format(target, reason, len(files_to_check)))
-    for f in files_to_check:
-        if not checkCFile(f):
-            error = True
-    return not error
-
-
-def checkCFile(targetFile):
-    mx.logvv("  checking file " + targetFile)
-    """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = mx_sulong.findBundledLLVMProgram('clang-format')
-    formatCommand = [clangFormat, targetFile]
-    formattedContent = mx_sulong._decode(subprocess.check_output(formatCommand)).splitlines()
-    with open(targetFile) as f:
-        originalContent = f.read().splitlines()
-    if not formattedContent == originalContent:
-        # modify the file to the right format
-        subprocess.check_output(formatCommand + ['-i'])
-        mx.log('\n'.join(formattedContent))
-        mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
-        mx.logv("command: " + " ".join(formatCommand))
-        return False
-    return True
