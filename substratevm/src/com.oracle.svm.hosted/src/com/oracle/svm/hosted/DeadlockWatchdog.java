@@ -43,10 +43,12 @@ public class DeadlockWatchdog implements Closeable {
 
     private volatile long nextDeadline;
     private volatile boolean stopped;
+    private volatile boolean enabled;
 
     DeadlockWatchdog(int watchdogInterval, boolean watchdogExitOnTimeout) {
         this.watchdogInterval = watchdogInterval;
         this.watchdogExitOnTimeout = watchdogExitOnTimeout;
+        enabled = true;
         if (this.watchdogInterval > 0) {
             thread = new Thread(this::watchdogThread);
             thread.start();
@@ -72,7 +74,7 @@ public class DeadlockWatchdog implements Closeable {
 
         while (!stopped) {
             long now = System.currentTimeMillis();
-            if (now >= nextDeadline) {
+            if (enabled && now >= nextDeadline) {
                 System.err.println();
                 System.err.println("=== Image generator watchdog detected no activity. This can be a sign of a deadlock during image building. Dumping all stack traces. Current time: " + new Date());
                 threadDump();
@@ -105,6 +107,16 @@ public class DeadlockWatchdog implements Closeable {
                 /* Nothing to do, when close() was called then we will exit the loop. */
             }
         }
+    }
+
+    public void setEnabled(boolean enable) {
+        if (enable == this.enabled) {
+            return;
+        }
+        if (enable) {
+            recordActivity();
+        }
+        this.enabled = enable;
     }
 
     private static void threadDump() {
