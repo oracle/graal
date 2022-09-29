@@ -87,7 +87,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
      * Reflective reference to {@code InstalledCode.invalidate(boolean deoptimize)} so that this
      * code can be compiled against older JVMCI API.
      */
-    private static final Method invalidateInstalledCode;
+    @SuppressWarnings("unused") private static final Method invalidateInstalledCode;
 
     static {
         Method method = null;
@@ -113,15 +113,17 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
         if (oldCode == code) {
             return;
         }
-        if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
-            try {
-                invalidateInstalledCode.invoke(oldCode, false);
-            } catch (Error e) {
-                throw e;
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        }
+
+        // TODO commented until GR-41428 is resolved.
+        // if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
+        // try {
+        // invalidateInstalledCode.invoke(oldCode, false);
+        // } catch (Error e) {
+        // throw e;
+        // } catch (Throwable throwable) {
+        // throw new InternalError(throwable);
+        // }
+        // }
 
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
         // and so allowing it to be installed here would invalidate the truth of
