@@ -624,7 +624,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
 
         protected final ValuePhiNode createValuePhi(Stamp stamp) {
-            return new ValuePhiNode(stamp, merge, new ValueNode[mergeBlock.getPredecessorCount()]);
+            ValuePhiNode valuePhi = new ValuePhiNode(stamp, merge, new ValueNode[mergeBlock.getPredecessorCount()]);
+            valuePhi.setNodeSourcePosition(merge.getNodeSourcePosition());
+            return valuePhi;
         }
 
         protected final void setPhiInput(PhiNode phi, int index, ValueNode value) {

@@ -27,14 +27,16 @@ package com.oracle.svm.configure.config.conditional;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public class PartialConfigurationWithOrigins extends ConfigurationParser implements JsonPrintable {
     private static final ConfigurationSet emptyConfigurationSet = new ConfigurationSet();
@@ -94,16 +96,16 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
 
     @Override
     public void parseAndRegister(Object json, URI origin) throws IOException {
-        Map<String, Object> topObject = asMap(json, "Top level of document must be an object");
+        EconomicMap<String, Object> topObject = asMap(json, "Top level of document must be an object");
         Object originsObject = topObject.get("configuration-with-origins");
         if (originsObject == null) {
             throw new JSONParserException("Top level object must have a 'configuration-with-origins' property.");
         }
-        Map<String, Object> rootMethod = asMap(originsObject, "'configuration-with-origins' must be an object");
+        EconomicMap<String, Object> rootMethod = asMap(originsObject, "'configuration-with-origins' must be an object");
         parseMethodEntry(null, rootMethod, origin);
     }
 
-    private static String getStringProperty(Map<String, ?> json, String property) {
+    private static String getStringProperty(EconomicMap<String, ?> json, String property) {
         Object prop = json.get(property);
         if (prop == null) {
             throw new JSONParserException("Missing property '" + property + "'");
@@ -111,7 +113,7 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
         return asString(prop);
     }
 
-    private void parseMethodEntry(MethodCallNode parent, Map<String, ?> methodJson, URI origin) throws IOException {
+    private void parseMethodEntry(MethodCallNode parent, EconomicMap<String, ?> methodJson, URI origin) throws IOException {
         /* Check if we are parsing the root node */
         MethodCallNode target;
         if (parent == null) {
@@ -126,14 +128,14 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
 
         Object config = methodJson.get("config");
         if (config != null) {
-            Map<String, ?> configJson = asMap(config, "'config' must be an object");
+            EconomicMap<String, ?> configJson = asMap(config, "'config' must be an object");
             parseConfigurationSet(configJson, target.getConfiguration(), origin);
         }
 
         Object methods = methodJson.get("methods");
         List<Object> methodsList = asList(methods, "'methods' must be a list");
         for (Object methodObject : methodsList) {
-            Map<String, ?> method = asMap(methodObject, "'methods' must contain objects");
+            EconomicMap<String, ?> method = asMap(methodObject, "'methods' must contain objects");
             parseMethodEntry(target, method, origin);
         }
     }
@@ -159,14 +161,15 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
         }
     }
 
-    private static void parseConfigurationSet(Map<String, ?> configJson, ConfigurationSet configurationSet, URI origin) throws IOException {
-        for (Map.Entry<String, ?> entry : configJson.entrySet()) {
-            String configName = entry.getKey();
+    private static void parseConfigurationSet(EconomicMap<String, ?> configJson, ConfigurationSet configurationSet, URI origin) throws IOException {
+        MapCursor<String, ?> cursor = configJson.getEntries();
+        while (cursor.advance()) {
+            String configName = cursor.getKey();
             ConfigurationFile configType = ConfigurationFile.getByName(configName);
             if (configType == null) {
                 throw new JSONParserException("Invalid configuration type: " + configName);
             }
-            configurationSet.getConfiguration(configType).createParser().parseAndRegister(entry.getValue(), origin);
+            configurationSet.getConfiguration(configType).createParser().parseAndRegister(cursor.getValue(), origin);
         }
     }
 }

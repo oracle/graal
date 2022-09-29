@@ -34,7 +34,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -249,11 +248,8 @@ public class LoopEx {
                         }
                     }
                 }
-                DebugContext debug = graph.getDebug();
-                if (debug.isLogEnabled()) {
-                    debug.log("%s : Re-associated %s into %s", graph.method().format("%H::%n"), binary, result);
-                }
                 binary.replaceAtUsages(result);
+                graph.getOptimizationLog().report(LoopEx.class, "InvariantReassociation", binary);
                 GraphUtil.killWithUnusedFloatingInputs(binary);
                 count++;
             }

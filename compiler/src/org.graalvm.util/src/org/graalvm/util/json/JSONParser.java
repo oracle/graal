@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util.json;
+package org.graalvm.util.json;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
 
 public class JSONParser {
 
@@ -102,7 +102,7 @@ public class JSONParser {
     }
 
     private Object parseObject() {
-        Map<String, Object> result = new HashMap<>();
+        EconomicMap<String, Object> result = EconomicMap.create();
         int state = STATE_EMPTY;
 
         assert peek() == '{';
@@ -120,7 +120,7 @@ public class JSONParser {
                     final String id = parseString();
                     expectColon();
                     final Object value = parseLiteral();
-                    final Map<String, Object> object = result;
+                    final EconomicMap<String, Object> object = result;
                     object.put(id, value);
                     state = STATE_ELEMENT_PARSED;
                     break;
@@ -476,5 +476,4 @@ public class JSONParser {
 
         return sb.toString();
     }
-
 }

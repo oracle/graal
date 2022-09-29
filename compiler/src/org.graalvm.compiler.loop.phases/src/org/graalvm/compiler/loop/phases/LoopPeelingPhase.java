@@ -26,7 +26,6 @@ package org.graalvm.compiler.loop.phases;
 
 import java.util.Optional;
 
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
@@ -47,8 +46,6 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
         public static final OptionKey<Integer> IterativePeelingLimit = new OptionKey<>(2);
         // @formatter:on
     }
-
-    public static final CounterKey PEELED = DebugContext.counter("Peeled");
 
     public LoopPeelingPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
         super(policies, canonicalizer);
@@ -80,12 +77,9 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                     if (canPeel(loop)) {
                         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
                             if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) {
-                                debug.log("Peeling %s, iteration %s", loop, iteration);
-                                PEELED.increment(debug);
                                 LoopTransformations.peel(loop);
                                 loop.invalidateFragmentsAndIVs();
                                 data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
-                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s, iteration %s", loop, iteration);
                             }
                         }
                     }

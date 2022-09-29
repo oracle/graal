@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util.json;
+package org.graalvm.profdiff.parser.experiment;
 
+import org.graalvm.profdiff.core.ExperimentId;
+
+/**
+ * Indicates that an experiment could not be parsed.
+ */
 @SuppressWarnings("serial")
-public final class JSONParserException extends RuntimeException {
-
-    public JSONParserException(final String msg) {
-        super(msg);
+public class ExperimentParserError extends Exception {
+    /**
+     * Constructs an experiment parser error.
+     *
+     * @param experimentId the ID of the experiment that could not be parsed
+     * @param resourceName the name of the resource from the experiment that could not be parsed
+     * @param message a clarification of the error
+     */
+    ExperimentParserError(ExperimentId experimentId, String resourceName, String message) {
+        super("Failed to parse experiment " + experimentId + " in " + resourceName + ": " + message);
     }
 }
