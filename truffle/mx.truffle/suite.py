@@ -183,6 +183,20 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
+    "com.oracle.truffle.api.jdk19" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "19",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "19+",
+      "javaPreviewNeeded": "19",
+      "workingSets" : "API,Truffle",
+    },
+
     "com.oracle.truffle.api.utilities" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -266,6 +280,23 @@ suite = {
       ],
       "checkstyle": "com.oracle.truffle.api",
       "javaCompliance" : "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.api.test.jdk19": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.test",
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.test",
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance" : "19+",
+      "javaPreviewNeeded": "19",
+      "multiReleaseJarVersion" : "19",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
