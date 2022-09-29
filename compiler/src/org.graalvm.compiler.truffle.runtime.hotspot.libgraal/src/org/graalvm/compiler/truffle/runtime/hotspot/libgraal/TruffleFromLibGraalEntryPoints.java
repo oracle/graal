@@ -98,6 +98,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
@@ -107,6 +108,7 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.nativebridge.BinaryOutput;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
@@ -115,7 +117,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativebridge.BinaryOutput;
 
 /**
  * Entry points in HotSpot for {@link TruffleFromLibGraal calls} from libgraal.
@@ -127,8 +128,15 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
-    static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, Object dep) {
-        consumer.accept((OptimizedAssumptionDependency) dep);
+    static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, Object target, long installedCode) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
+        OptimizedAssumptionDependency dependency;
+        if (callTarget == null) {
+            dependency = null;
+        } else {
+            dependency = new TruffleCompilerAssumptionDependency(callTarget, LibGraal.unhand(InstalledCode.class, installedCode));
+        }
+        consumer.accept(dependency);
     }
 
     @TruffleFromLibGraal(CountInlinedCalls)

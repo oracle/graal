@@ -185,16 +185,16 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     static class TestOptimizedAssumptionDependency implements OptimizedAssumptionDependency {
-        boolean valid = true;
+        boolean alive = true;
 
         @Override
         public void onAssumptionInvalidated(Object source, CharSequence reason) {
-            valid = false;
+            alive = false;
         }
 
         @Override
-        public boolean isValid() {
-            return valid;
+        public boolean isAlive() {
+            return alive;
         }
     }
 
@@ -224,18 +224,17 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
                 invalidated++;
             }
         }
-        assumption.removeInvalidDependencies();
+        assumption.removeDeadDependencies();
         Assert.assertEquals(invalidated, assumption.countDependencies());
 
         for (int i = 0; i < deps.length; i++) {
             deps[i].onAssumptionInvalidated(assumption, null);
         }
-        assumption.removeInvalidDependencies();
+        assumption.removeDeadDependencies();
         Assert.assertEquals(0, assumption.countDependencies());
 
         WeakReference<TestOptimizedAssumptionDependency> dep = new WeakReference<>(new TestOptimizedAssumptionDependency());
         if (dep.get() != null) {
-            Assert.assertTrue(dep.get().soleExecutionEntryPoint());
             assumption.registerDependency().accept(dep.get());
             Assert.assertEquals(1, assumption.countDependencies());
             int attempts = 10;
@@ -243,7 +242,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
                 System.gc();
             }
             if (dep.get() == null) {
-                assumption.removeInvalidDependencies();
+                assumption.removeDeadDependencies();
                 Assert.assertEquals(0, assumption.countDependencies());
             } else {
                 // System.gc is not guaranteed to do anything

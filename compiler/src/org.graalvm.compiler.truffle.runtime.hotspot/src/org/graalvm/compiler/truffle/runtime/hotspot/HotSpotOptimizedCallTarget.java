@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
@@ -43,7 +41,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * A HotSpot specific {@link OptimizedCallTarget} whose machine code (if any) is represented by an
  * associated {@link InstalledCode}.
  */
-public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements OptimizedAssumptionDependency {
+public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
     /**
      * Initial value for {@link #installedCode}.
@@ -69,12 +67,6 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
     public HotSpotOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
         this.installedCode = INVALID_CODE;
-    }
-
-    @Override
-    public boolean soleExecutionEntryPoint() {
-        // This relies on the check for a non-default nmethod in `setInstalledCode`
-        return true;
     }
 
     /**
@@ -163,11 +155,6 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
-        return this;
-    }
-
-    @Override
     public boolean isValid() {
         return installedCode.isValid();
     }
@@ -184,17 +171,8 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget implem
     }
 
     @Override
-    public void onAssumptionInvalidated(Object source, CharSequence reason) {
-        boolean wasAlive = false;
-        if (installedCode.isAlive()) {
-            installedCode.invalidate();
-            wasAlive = true;
-        }
-        onInvalidate(source, reason, wasAlive);
-    }
-
-    @Override
     public SpeculationLog getCompilationSpeculationLog() {
         return HotSpotTruffleRuntimeServices.getCompilationSpeculationLog(this);
     }
+
 }
