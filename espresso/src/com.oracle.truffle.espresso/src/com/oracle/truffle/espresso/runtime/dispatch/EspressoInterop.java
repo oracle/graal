@@ -808,7 +808,7 @@ public class EspressoInterop extends BaseInterop {
         if (notNull(receiver)) {
             Field f = lookupField.execute(getInteropKlass(receiver), member);
             if (f != null) {
-                return InteropUtils.unwrap(EspressoLanguage.get(lookupField), f.get(receiver), getMeta());
+                return InteropUtils.unwrap(EspressoLanguage.get(lookupField), f.get(receiver), receiver.getKlass().getMeta());
             }
             try {
                 Method[] candidates = lookupMethod.execute(getInteropKlass(receiver), member, -1);
