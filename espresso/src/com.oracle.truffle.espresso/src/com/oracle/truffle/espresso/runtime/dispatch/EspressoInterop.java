@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
+import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -92,13 +93,6 @@ public class EspressoInterop extends BaseInterop {
     public static Meta getMeta() {
         CompilerAsserts.neverPartOfCompilation();
         return EspressoContext.get(null).getMeta();
-    }
-
-    static Object unwrapForeign(EspressoLanguage language, Object receiver) {
-        if (receiver instanceof StaticObject && ((StaticObject) receiver).isForeignObject()) {
-            return ((StaticObject) receiver).rawForeignObject(language);
-        }
-        return receiver;
     }
 
     @ExportMessage
@@ -814,7 +808,7 @@ public class EspressoInterop extends BaseInterop {
         if (notNull(receiver)) {
             Field f = lookupField.execute(getInteropKlass(receiver), member);
             if (f != null) {
-                return unwrapForeign(EspressoLanguage.get(lookupField), f.get(receiver));
+                return InteropUtils.unwrap(EspressoLanguage.get(lookupField), f.get(receiver), getMeta());
             }
             try {
                 Method[] candidates = lookupMethod.execute(getInteropKlass(receiver), member, -1);

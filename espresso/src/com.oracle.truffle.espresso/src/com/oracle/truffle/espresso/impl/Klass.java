@@ -54,7 +54,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -85,6 +84,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
+import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
@@ -142,9 +142,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         Field field = lookupFieldNode.execute(this, member, true);
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
-            if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-                EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
-                return ((StaticObject) result).rawForeignObject(language);
+            if (result instanceof StaticObject) {
+                result = InteropUtils.unwrap((StaticObject) result, getMeta(), lookupFieldNode);
             }
             return result;
         }

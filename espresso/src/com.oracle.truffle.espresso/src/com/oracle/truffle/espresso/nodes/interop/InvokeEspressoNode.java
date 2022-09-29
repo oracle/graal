@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @GenerateUncached
@@ -56,10 +57,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
          * Espresso and unwrapped when going out)
          */
-        if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-            return ((StaticObject) result).rawForeignObject(getLanguage());
-        }
-        return result;
+        return InteropUtils.unwrap(getLanguage(), result, getMeta());
     }
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
