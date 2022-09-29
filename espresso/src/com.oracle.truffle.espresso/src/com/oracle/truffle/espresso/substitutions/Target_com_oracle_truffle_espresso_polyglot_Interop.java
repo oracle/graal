@@ -1451,7 +1451,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             try {
-                return interop.isMetaInstance(InteropUtils.unwrap(getLanguage(), receiver, getMeta()), InteropUtils.unwrapForeign(getLanguage(), instance));
+                return interop.isMetaInstance(InteropUtils.unwrapForeign(getLanguage(), receiver), InteropUtils.unwrapForeign(getLanguage(), instance));
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -1529,7 +1529,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject other,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary otherInterop) {
-            return interop.isIdentical(InteropUtils.unwrap(getLanguage(), receiver, getMeta()), InteropUtils.unwrapForeign(getLanguage(), other), otherInterop);
+            return interop.isIdentical(InteropUtils.unwrapForeign(getLanguage(), receiver), InteropUtils.unwrapForeign(getLanguage(), other), otherInterop);
         }
     }
 
