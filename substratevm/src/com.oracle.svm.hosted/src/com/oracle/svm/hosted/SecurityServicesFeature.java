@@ -412,8 +412,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
+        /*
+         * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the new
+         * signature first and fall back to the old one in case we're on a JDK without the change.
+         */
         a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+                        optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
+                                        .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
         a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
                         method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
         a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
