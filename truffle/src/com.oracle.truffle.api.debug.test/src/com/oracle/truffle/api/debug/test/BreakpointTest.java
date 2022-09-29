@@ -1172,9 +1172,9 @@ public class BreakpointTest extends AbstractDebugTest {
     @Test
     public void testMisplacedBreakpointPositions() throws Exception {
         String source = " B1_{} R1-2_{S B2_}B3_\n" +
-                        "R3_[SFB ]\n" +
-                        "{F{B\n" +
-                        "  B4_{I B5_ } R4-5_[SFIB B6_ R6-7_{S}B7_] B8_\n" +
+                        "R3_[SFR ]\n" +
+                        "{F{R\n" +
+                        "  B4_{I B5_ } R4-5_[SFIR B6_ R6-7_{S}B7_] B8_\n" +
                         "  {}\n" +
                         "  R8-11_{S}\n" +
                         "B9_}B10_}B11_\n";
@@ -1191,12 +1191,15 @@ public class BreakpointTest extends AbstractDebugTest {
         tester.close();
         tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().allowExperimentalOptions(true).option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "2"));
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+        // Source without content, with a relative source path
+        tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().allowExperimentalOptions(true).option(InstrumentablePositionsTestLanguage.ID + ".SourceRoot", "a_relative/path"));
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID, URI.create("a_relative/path"));
     }
 
     @Test
     public void testOutOfRootBreakpointPositions() {
         String source = "  \n" +
-                        " B1_     < {F R1_[SB]\n" +
+                        " B1_     < {F R1_[SRB]\n" +
                         "B2_R2_{S}  } \n" +
                         "\n";
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);

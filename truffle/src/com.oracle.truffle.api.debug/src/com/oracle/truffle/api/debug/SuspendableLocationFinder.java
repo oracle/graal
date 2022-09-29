@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -79,18 +80,17 @@ final class SuspendableLocationFinder {
     }
 
     static SourceSection findNearest(Source source, SourceElement[] sourceElements, int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
-        if (!source.hasCharacters()) {
-            return null;
-        }
         int boundLine = line;
         int boundColumn = column;
-        int maxLine = source.getLineCount();
-        if (boundLine > maxLine) {
-            boundLine = maxLine;
-        }
-        int maxColumn = source.getLineLength(boundLine) + 1;
-        if (boundColumn > maxColumn) {
-            boundColumn = maxColumn;
+        if (source.hasCharacters()) {
+            int maxLine = source.getLineCount();
+            if (boundLine > maxLine) {
+                boundLine = maxLine;
+            }
+            int maxColumn = source.getLineLength(boundLine) + 1;
+            if (boundColumn > maxColumn) {
+                boundColumn = maxColumn;
+            }
         }
         return findNearestBound(source, getElementTags(sourceElements), boundLine, boundColumn, anchor, env);
     }
@@ -108,11 +108,8 @@ final class SuspendableLocationFinder {
 
     private static SourceSection findNearestBound(Source source, Set<Class<? extends Tag>> elementTags,
                     int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
-        int offset = source.getLineStartOffset(line);
-        if (column > 0) {
-            offset += column - 1;
-        }
-        NearestSections sectionsCollector = new NearestSections(elementTags, (column <= 0) ? line : 0, offset, anchor);
+        int offset = getOffset(source, line, column);
+        NearestSections sectionsCollector = new NearestSections(elementTags, new Position(line, column, offset), anchor);
         // All SourceSections of the Source are loaded already when the source was executed
         env.getInstrumenter().visitLoadedSourceSections(
                         SourceSectionFilter.newBuilder().sourceIs(source).build(),
@@ -136,23 +133,49 @@ final class SuspendableLocationFinder {
             SourceSection sourceSection = ((Node) contextNode).getSourceSection();
             // Handle a special case when the location is not in any RootNode,
             // but it's on a line with an existing code at a greater column:
-            boolean onLineBeforeLocation = sourceSection != null && anchor == SuspendAnchor.BEFORE && line == sourceSection.getStartLine() && column <= sourceSection.getStartColumn();
+            boolean onLineBeforeLocation = sourceSection != null && anchor == SuspendAnchor.BEFORE && sourceSection.hasLines() && line == sourceSection.getStartLine() &&
+                            column <= sourceSection.getStartColumn();
             if (!onLineBeforeLocation) {
                 return null;
             }
         }
-        Node node = contextNode.findNearestNodeAt(offset, elementTags);
+        Node node;
+        SourceSection contextSection = ((Node) contextNode).getSourceSection();
+        if (offset >= 0 && contextSection.hasCharIndex()) {
+            node = contextNode.findNearestNodeAt(offset, elementTags);
+        } else {
+            node = DefaultNearestNodeSearch.findNearestNodeAt(line, column, (Node) contextNode, elementTags);
+        }
         if (node == null) {
             return null;
         }
         return node.getSourceSection();
     }
 
+    private static int getOffset(Source source, int line, int column) {
+        if (!source.hasCharacters()) {
+            return -1;
+        }
+        int offset = source.getLineStartOffset(line);
+        if (column > 0) {
+            offset += column - 1;
+        }
+        return offset;
+    }
+
+    private static boolean isEnclosing(SourceSection section, SourceSection enclosingSection) {
+        Position s1 = Position.startOf(section);
+        Position s2 = Position.endOf(section);
+        Position es1 = Position.startOf(enclosingSection);
+        Position es2 = Position.endOf(enclosingSection);
+        return es1.isLessThanOrEqual(s1) && s2.isLessThan(es2) ||
+                        es1.isLessThan(s1) && s2.isLessThanOrEqual(es2);
+    }
+
     private static class NearestSections implements LoadSourceSectionListener {
 
         private final Set<Class<? extends Tag>> elementTags;
-        private final int line;
-        private final int offset;
+        private final Position position;
         private final SuspendAnchor anchor;
         private SourceSection exactLineMatch;
         private SourceSection exactIndexMatch;
@@ -164,10 +187,9 @@ final class SuspendableLocationFinder {
         private LinkedNodes nextNode;
         private boolean isOffsetInRoot = false;
 
-        NearestSections(Set<Class<? extends Tag>> elementTags, int line, int offset, SuspendAnchor anchor) {
+        NearestSections(Set<Class<? extends Tag>> elementTags, Position position, SuspendAnchor anchor) {
             this.elementTags = elementTags;
-            this.line = line;
-            this.offset = offset;
+            this.position = position;
             this.anchor = anchor;
         }
 
@@ -177,35 +199,36 @@ final class SuspendableLocationFinder {
             if (!(eventNode instanceof InstrumentableNode && ((InstrumentableNode) eventNode).isInstrumentable())) {
                 return;
             }
+            SourceSection sourceSection = event.getSourceSection();
             if (!isOffsetInRoot) {
                 SourceSection rootSection = eventNode.getRootNode().getSourceSection();
                 if (rootSection != null) {
-                    isOffsetInRoot = rootSection.getCharIndex() <= offset && offset < rootSection.getCharEndIndex();
+                    boolean is = position.isIn(rootSection);
+                    if (!is && rootSection.hasLines() && rootSection.getStartLine() == rootSection.getEndLine()) {
+                        // It's likely that the root source section is incomplete
+                        // Check if the position is between root start and the end of this section
+                        is = Position.startOf(rootSection).isLessThanOrEqual(position) && position.isLessThanOrEqual(Position.endOf(sourceSection));
+                    }
+                    isOffsetInRoot = is;
                 }
             }
             InstrumentableNode node = (InstrumentableNode) eventNode;
-            SourceSection sourceSection = event.getSourceSection();
             if (matchSectionLine(node, sourceSection)) {
                 // We have exact line match, we do not need to do anything more
                 return;
             }
-            int o1 = sourceSection.getCharIndex();
-            int o2;
-            if (sourceSection.getCharLength() > 0) {
-                o2 = sourceSection.getCharEndIndex() - 1;
-            } else {
-                o2 = sourceSection.getCharIndex();
-            }
-            if (matchSectionOffset(node, sourceSection, o1, o2)) {
+            Position p1 = Position.startOf(sourceSection);
+            Position p2 = Position.endOf(sourceSection);
+            if (matchSectionPosition(node, sourceSection, p1, p2)) {
                 // We have exact offset index match, we do not need to do anything more
                 return;
             }
             // Offset approximation
-            findOffsetApproximation(node, sourceSection, o1, o2);
+            findOffsetApproximation(node, sourceSection, p1, p2);
         }
 
         private boolean matchSectionLine(InstrumentableNode node, SourceSection sourceSection) {
-            if (line > 0) {
+            if (position.line > 0 && position.column <= 0) {
                 int l;
                 switch (anchor) {
                     case BEFORE:
@@ -217,10 +240,27 @@ final class SuspendableLocationFinder {
                     default:
                         throw new IllegalArgumentException(anchor.name());
                 }
-                if (line == l && isTaggedWith(node, elementTags)) {
-                    if (exactLineMatch == null ||
-                                    (anchor == SuspendAnchor.BEFORE) && sourceSection.getCharIndex() < exactLineMatch.getCharIndex() ||
-                                    (anchor == SuspendAnchor.AFTER) && sourceSection.getCharEndIndex() > exactLineMatch.getCharEndIndex()) {
+                if (position.line == l && isTaggedWith(node, elementTags)) {
+                    // Either the exactIndexMatch was not set yet,
+                    // or this section starts before or ends after it,
+                    // or is greater than it
+                    boolean match = false;
+                    if (exactLineMatch == null) {
+                        match = true;
+                    } else if (anchor == SuspendAnchor.BEFORE) {
+                        Position p1 = Position.startOf(sourceSection);
+                        Position ep1 = Position.startOf(exactLineMatch);
+                        if (p1.isLessThan(ep1) || p1.equals(ep1) && Position.endOf(sourceSection).isGreaterThan(Position.endOf(exactLineMatch))) {
+                            match = true;
+                        }
+                    } else {
+                        Position p2 = Position.endOf(sourceSection);
+                        Position ep2 = Position.endOf(exactLineMatch);
+                        if (p2.isGreaterThan(ep2) || p2.equals(ep2) && Position.startOf(sourceSection).isLessThan(Position.startOf(exactLineMatch))) {
+                            match = true;
+                        }
+                    }
+                    if (match) {
                         exactLineMatch = sourceSection;
                     }
                 }
@@ -231,20 +271,12 @@ final class SuspendableLocationFinder {
             return false;
         }
 
-        private boolean matchSectionOffset(InstrumentableNode node, SourceSection sourceSection, int o1, int o2) {
-            int o;
-            switch (anchor) {
-                case BEFORE:
-                    o = o1;
-                    break;
-                case AFTER:
-                    o = o2;
-                    break;
-                default:
-                    throw new IllegalArgumentException(anchor.name());
-            }
-            if (offset == o && isTaggedWith(node, elementTags)) {
-                if (exactIndexMatch == null || sourceSection.getCharLength() > exactIndexMatch.getCharLength()) {
+        private boolean matchSectionPosition(InstrumentableNode node, SourceSection sourceSection, Position p1, Position p2) {
+            boolean anchorBefore = anchor == SuspendAnchor.BEFORE;
+            Position p = anchorBefore ? p1 : p2;
+            if (position.equals(p) && isTaggedWith(node, elementTags)) {
+                // Either the exactIndexMatch was not set yet, or this section is greater than it
+                if (exactIndexMatch == null || anchorBefore && p2.isGreaterThan(Position.endOf(exactIndexMatch)) || !anchorBefore && p1.isLessThan(Position.startOf(exactIndexMatch))) {
                     exactIndexMatch = sourceSection;
                 }
             }
@@ -254,34 +286,34 @@ final class SuspendableLocationFinder {
             return false;
         }
 
-        private void findOffsetApproximation(InstrumentableNode node, SourceSection sourceSection, int o1, int o2) {
-            if (o1 <= offset && offset <= o2) {
+        private void findOffsetApproximation(InstrumentableNode node, SourceSection sourceSection, Position p1, Position p2) {
+            if (p1.isLessThanOrEqual(position) && position.isLessThanOrEqual(p2)) {
                 // Exact match. There can be more of these, find the smallest one:
-                if (containsMatch == null || containsMatch.getCharLength() > sourceSection.getCharLength()) {
+                if (containsMatch == null || isEnclosing(sourceSection, containsMatch)) {
                     containsMatch = sourceSection;
                     containsNode = new LinkedNodes(node);
-                } else if (containsMatch.getCharLength() == sourceSection.getCharLength()) {
+                } else if (containsMatch.equals(sourceSection)) {
                     containsNode.append(new LinkedNodes(node));
                 }
-            } else if (o2 < offset) {
+            } else if (p2.isLessThan(position)) {
                 // Previous match. Find the nearest one (with the largest end index):
-                if (previousMatch == null || previousMatch.getCharEndIndex() < sourceSection.getCharEndIndex() ||
+                if (previousMatch == null || Position.endOf(previousMatch).isLessThan(Position.endOf(sourceSection)) ||
                                 // when equal end, find the largest one
-                                previousMatch.getCharEndIndex() == sourceSection.getCharEndIndex() && previousMatch.getCharLength() < sourceSection.getCharLength()) {
+                                Position.endOf(previousMatch).equals(Position.endOf(sourceSection)) && Position.startOf(previousMatch).isLessThan(Position.startOf(sourceSection))) {
                     previousMatch = sourceSection;
                     previousNode = new LinkedNodes(node);
-                } else if (previousMatch.getCharEndIndex() == sourceSection.getCharEndIndex() && previousMatch.getCharLength() == sourceSection.getCharLength()) {
+                } else if (previousMatch.equals(sourceSection)) {
                     previousNode.append(new LinkedNodes(node));
                 }
             } else {
-                assert offset < o1;
+                assert position.isLessThan(p1);
                 // Next match. Find the nearest one (with the smallest start index):
-                if (nextMatch == null || nextMatch.getCharIndex() > sourceSection.getCharIndex() ||
+                if (nextMatch == null || Position.startOf(nextMatch).isGreaterThan(Position.startOf(sourceSection)) ||
                                 // when equal start, find the largest one
-                                nextMatch.getCharIndex() == sourceSection.getCharIndex() && nextMatch.getCharLength() < sourceSection.getCharLength()) {
+                                Position.startOf(nextMatch).equals(Position.startOf(sourceSection)) && Position.endOf(nextMatch).isLessThan(Position.endOf(sourceSection))) {
                     nextMatch = sourceSection;
                     nextNode = new LinkedNodes(node);
-                } else if (nextMatch.getCharIndex() == sourceSection.getCharIndex() && nextMatch.getCharLength() == sourceSection.getCharLength()) {
+                } else if (nextMatch.equals(sourceSection)) {
                     nextNode.append(new LinkedNodes(node));
                 }
             }
@@ -310,30 +342,26 @@ final class SuspendableLocationFinder {
             if (containsNode == null) {
                 return null;
             }
-            if (line > 0) {
-                if (anchor == SuspendAnchor.BEFORE && line == containsMatch.getStartLine() || anchor == SuspendAnchor.AFTER && line == containsMatch.getEndLine()) {
-                    return (InstrumentableNode) containsNode.getOuter(containsMatch.getCharLength());
-                }
+            boolean anchorBefore = anchor == SuspendAnchor.BEFORE;
+            if (anchorBefore && position.equals(Position.startOf(containsMatch)) || !anchorBefore && position.equals(Position.endOf(containsMatch))) {
+                return (InstrumentableNode) containsNode.getOuter(containsMatch);
             } else {
-                if (anchor == SuspendAnchor.BEFORE && offset == containsMatch.getCharIndex() || anchor == SuspendAnchor.AFTER && offset == containsMatch.getCharEndIndex() - 1) {
-                    return (InstrumentableNode) containsNode.getOuter(containsMatch.getCharLength());
-                }
+                return (InstrumentableNode) containsNode.getInner(containsMatch);
             }
-            return (InstrumentableNode) containsNode.getInner(containsMatch.getCharLength());
         }
 
         InstrumentableNode getPreviousNode() {
             if (previousNode == null) {
                 return null;
             }
-            return (InstrumentableNode) previousNode.getOuter(previousMatch.getCharLength());
+            return (InstrumentableNode) previousNode.getOuter(previousMatch);
         }
 
         InstrumentableNode getNextNode() {
             if (nextNode == null) {
                 return null;
             }
-            return (InstrumentableNode) nextNode.getOuter(nextMatch.getCharLength());
+            return (InstrumentableNode) nextNode.getOuter(nextMatch);
         }
     }
 
@@ -356,7 +384,7 @@ final class SuspendableLocationFinder {
             tail.next = lns;
         }
 
-        Node getInner(int sectionLength) {
+        Node getInner(SourceSection section) {
             Node inner = this.node;
             LinkedNodes linkedNodes = this.next;
             while (linkedNodes != null) {
@@ -367,7 +395,7 @@ final class SuspendableLocationFinder {
                     inner = inner2;
                 } else {
                     // They are in different functions, find out which encloses the other
-                    if (hasLargerParent(inner2, sectionLength)) {
+                    if (hasLargerParent(inner2, section)) {
                         // inner stays
                     } else {
                         inner = inner2;
@@ -378,7 +406,7 @@ final class SuspendableLocationFinder {
             return inner;
         }
 
-        Node getOuter(int sectionLength) {
+        Node getOuter(SourceSection section) {
             Node outer = this.node;
             LinkedNodes linkedNodes = this.next;
             while (linkedNodes != null) {
@@ -389,7 +417,7 @@ final class SuspendableLocationFinder {
                     // outer stays
                 } else {
                     // They are in different functions, find out which encloses the other
-                    if (hasLargerParent(outer2, sectionLength)) {
+                    if (hasLargerParent(outer2, section)) {
                         outer = outer2;
                     } else {
                         // outer stays
@@ -428,12 +456,12 @@ final class SuspendableLocationFinder {
             return false;
         }
 
-        private static boolean hasLargerParent(Node ch, int sectionLength) {
+        private static boolean hasLargerParent(Node ch, SourceSection section) {
             Node parent = ch.getParent();
             while (parent != null) {
                 if (parent instanceof InstrumentableNode && ((InstrumentableNode) parent).isInstrumentable() || parent instanceof RootNode) {
                     SourceSection pss = parent.getSourceSection();
-                    if (pss != null && pss.getCharLength() > sectionLength) {
+                    if (pss != null && isEnclosing(section, pss)) {
                         return true;
                     }
                 }
@@ -441,5 +469,141 @@ final class SuspendableLocationFinder {
             }
             return false;
         }
+    }
+
+    static final class Position {
+
+        private final int line;     // 1-based line, or <= 0 when unknown
+        private final int column;   // 1-based column, or <= 0 when unknown
+        private final int offset;   // 0-based offset, or < 0 when unknown
+
+        Position(int line, int column, int offset) {
+            this.line = line;
+            this.column = column;
+            this.offset = offset;
+        }
+
+        static Position startOf(SourceSection section) {
+            int line = section.hasLines() ? section.getStartLine() : -1;
+            int column = section.hasColumns() ? section.getStartColumn() : -1;
+            int offset = section.hasCharIndex() ? section.getCharIndex() : -1;
+            return new Position(line, column, offset);
+        }
+
+        static Position endOf(SourceSection section) {
+            int line = section.hasLines() ? section.getEndLine() : -1;
+            int column = section.hasColumns() ? section.getEndColumn() : -1;
+            int offset;
+            if (section.hasCharIndex()) {
+                if (section.getCharLength() > 0) {
+                    offset = section.getCharEndIndex() - 1;
+                } else {
+                    offset = section.getCharIndex();
+                }
+            } else {
+                offset = -1;
+            }
+            return new Position(line, column, offset);
+        }
+
+        boolean isIn(SourceSection section) {
+            if (offset >= 0 && section.hasCharIndex()) {
+                return section.getCharIndex() <= offset && offset < section.getCharEndIndex();
+            }
+            if (line > 0 && section.hasLines()) {
+                if (section.getStartLine() <= line && line <= section.getEndLine()) {
+                    if (column > 0 && section.hasColumns()) {
+                        if (section.getStartLine() == line) {
+                            if (column < section.getStartColumn()) {
+                                return false;
+                            }
+                        }
+                        if (section.getEndLine() == line) {
+                            if (section.getEndColumn() < column) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 29 * hash + this.line;
+            hash = 29 * hash + this.column;
+            hash = 29 * hash + this.offset;
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof Position) {
+                final Position other = (Position) obj;
+                if (this.offset >= 0 && other.offset >= 0) {
+                    return this.offset == other.offset;
+                }
+                if (this.line != other.line) {
+                    return false;
+                }
+                if (this.column > 0 && other.column > 0) {
+                    return this.column == other.column;
+                } else {
+                    // If one of the columns is undefined, it still matches
+                    return true;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        boolean isLessThan(Position other) {
+            if (this.offset >= 0 && other.offset >= 0) {
+                return this.offset < other.offset;
+            }
+            if (0 < this.line && this.line < other.line) {
+                return true;
+            }
+            return this.line == other.line && 0 < this.column && this.column < other.column;
+        }
+
+        boolean isLessThanOrEqual(Position other) {
+            if (this.offset >= 0 && other.offset >= 0) {
+                return this.offset <= other.offset;
+            }
+            if (0 < this.line && this.line < other.line) {
+                return true;
+            }
+            return this.line == other.line && (0 < this.column && this.column <= other.column || this.column <= 0 || other.column <= 0);
+        }
+
+        boolean isGreaterThan(Position other) {
+            return other.isLessThan(this);
+        }
+
+        boolean isGreaterThanOrEqual(Position other) {
+            return other.isGreaterThanOrEqual(this);
+        }
+
+        static Comparator<? super Position> COMPARATOR = new Comparator<>() {
+
+            @Override
+            public int compare(Position p1, Position p2) {
+                if (p1.equals(p2)) {
+                    return 0;
+                }
+                if (p1.isLessThan(p2)) {
+                    return -1;
+                } else {
+                    return +1;
+                }
+            }
+        };
     }
 }

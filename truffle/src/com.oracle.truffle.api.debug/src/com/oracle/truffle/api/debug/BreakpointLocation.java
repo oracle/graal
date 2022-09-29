@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,7 +105,12 @@ abstract class BreakpointLocation {
 
     abstract boolean canAdjustLocation();
 
+    abstract boolean canReadjustLocation(SourceSection rootSection);
+
     abstract SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor);
+
+    void resetAdjustment() {
+    }
 
     abstract SourceSectionFilter createLocationFilter(Source source, SuspendAnchor suspendAnchor);
 
@@ -121,8 +126,11 @@ abstract class BreakpointLocation {
 
         private final Object key;
         private final SourceSection sourceSection;
+        private final int lineOriginal;
+        private final int columnOriginal;
         private int line;
         private int column;
+        private boolean adjusted;
 
         /**
          * @param key non-null source identifier
@@ -133,8 +141,8 @@ abstract class BreakpointLocation {
             assert key instanceof Source || key instanceof URI;
             this.key = key;
             this.sourceSection = sourceSection;
-            this.line = -1;
-            this.column = -1;
+            this.line = this.lineOriginal = -1;
+            this.column = this.columnOriginal = -1;
         }
 
         /**
@@ -148,16 +156,16 @@ abstract class BreakpointLocation {
             assert line > 0 || line == -1;
             assert column > 0 || column == -1;
             this.key = key;
-            this.line = line;
-            this.column = column;
+            this.line = this.lineOriginal = line;
+            this.column = this.columnOriginal = column;
             this.sourceSection = null;
         }
 
         private BreakpointSourceLocation() {
             super(null);
             this.key = null;
-            this.line = -1;
-            this.column = -1;
+            this.line = this.lineOriginal = -1;
+            this.column = this.columnOriginal = -1;
             this.sourceSection = null;
         }
 
@@ -227,6 +235,32 @@ abstract class BreakpointLocation {
         }
 
         @Override
+        boolean canReadjustLocation(SourceSection rootSection) {
+            if (key == null) {
+                return false;
+            }
+            // Test if the original position is within the root section
+            if (lineOriginal > 0 && rootSection.hasLines()) {
+                if (rootSection.getStartLine() <= lineOriginal && lineOriginal <= rootSection.getEndLine()) {
+                    if (columnOriginal > 0 && rootSection.hasColumns()) {
+                        if (rootSection.getStartLine() == lineOriginal) {
+                            if (columnOriginal < rootSection.getStartColumn()) {
+                                return false;
+                            }
+                        }
+                        if (rootSection.getEndLine() == lineOriginal) {
+                            if (rootSection.getEndColumn() < columnOriginal) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
         SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor) {
             if (sourceSection != null) {
                 return sourceSection;
@@ -234,30 +268,51 @@ abstract class BreakpointLocation {
             if (key == null) {
                 return null;
             }
-            if (line == -1) {
+            if (lineOriginal == -1) {
                 return source.createUnavailableSection();
             }
-            boolean hasColumn = column > 0;
-            SourceSection location = SuspendableLocationFinder.findNearest(source, sourceElements, line, column, suspendAnchor, env);
+            boolean hasColumn = columnOriginal > 0;
+            SourceSection location = SuspendableLocationFinder.findNearest(source, sourceElements, lineOriginal, columnOriginal, suspendAnchor, env);
             if (location != null) {
+                int locationLine;
+                int locationColumn = -1;
                 switch (suspendAnchor) {
                     case BEFORE:
-                        line = location.getStartLine();
+                        locationLine = location.getStartLine();
                         if (hasColumn) {
-                            column = location.getStartColumn();
+                            locationColumn = location.getStartColumn();
                         }
                         break;
                     case AFTER:
-                        line = location.getEndLine();
+                        locationLine = location.getEndLine();
                         if (hasColumn) {
-                            column = location.getEndColumn();
+                            locationColumn = location.getEndColumn();
                         }
                         break;
                     default:
                         throw new IllegalArgumentException("Unknown suspend anchor: " + suspendAnchor);
                 }
+                if (!adjusted) {
+                    adjusted = true;
+                } else {
+                    if (line == locationLine && (!hasColumn || column == locationColumn)) {
+                        // The adjusted location did not change.
+                        return null;
+                    }
+                }
+                line = locationLine;
+                if (hasColumn) {
+                    column = locationColumn;
+                }
             }
             return location;
+        }
+
+        @Override
+        void resetAdjustment() {
+            line = lineOriginal;
+            column = columnOriginal;
+            adjusted = false;
         }
 
         @Override
@@ -336,6 +391,11 @@ abstract class BreakpointLocation {
 
         @Override
         boolean canAdjustLocation() {
+            return false;
+        }
+
+        @Override
+        boolean canReadjustLocation(SourceSection rootSection) {
             return false;
         }
 

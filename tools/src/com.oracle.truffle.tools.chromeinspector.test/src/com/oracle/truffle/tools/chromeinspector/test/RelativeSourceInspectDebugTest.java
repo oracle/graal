@@ -281,9 +281,16 @@ public class RelativeSourceInspectDebugTest {
 
     @Test
     public void testBreakpoints() throws Exception {
+        testBreakpoints(0, 0, 0, 0, "fdfc3c86f176a91df464039fffffffffffffffff");
+        testBreakpoints(10, 4, 10, 0, "f6a4c78bef714d0af464039fffffffffffffffff");
+        testBreakpoints(10, 4, 10, 2, "f6a4c78bef714d0af464039fffffffffffffffff");
+        testBreakpoints(10, 4, 11, 2, "f6a4c78bef714d0af464039fffffffffffffffff");
+    }
+
+    private static void testBreakpoints(int sectionLine, int sectionColumn, int bpLine, int bpColumn, String hash) throws Exception {
         Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
         String relativePath = "relative/test1.file";
-        String sourceContent = "relative source1\nVarA";
+        String sourceContent = "\n".repeat(sectionLine) + " ".repeat(sectionColumn) + "relative source1\nVarA";
         URI sourcePathURI = testSourcePath.toUri();
         Files.createDirectory(testSourcePath.resolve("relative"));
         Path filePath = testSourcePath.resolve(relativePath);
@@ -292,7 +299,7 @@ public class RelativeSourceInspectDebugTest {
 
         TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
         ProxyLanguage.setDelegate(language);
-        Source source = Source.create(ProxyLanguage.ID, "relative source1\nVarA");
+        Source source = Source.create(ProxyLanguage.ID, sourceContent);
 
         InspectorTester tester = InspectorTester.start(false, false, false, Collections.singletonList(sourcePathURI));
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -307,19 +314,20 @@ public class RelativeSourceInspectDebugTest {
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
-        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":0,\"url\":\"" + fileURI + "\",\"columnNumber\":0,\"condition\":\"\"}}");
+        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":" + bpLine + ",\"url\":\"" + fileURI + "\",\"columnNumber\":" + bpColumn + ",\"condition\":\"\"}}");
 
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":4}", tester.getMessages(true).trim());
         tester.eval(source);
-        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":1,\"scriptId\":\"0\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() + ",\"executionContextId\":1,\"url\":\"" + fileURI + "\",\"hash\":\"fdfc3c86f176a91df464039fffffffffffffffff\"}}\n"));
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":" + (sectionLine + 1) + ",\"scriptId\":\"0\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() + ",\"executionContextId\":1,\"url\":\"" + fileURI + "\",\"hash\":\"" + hash + "\"}}\n"));
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.breakpointResolved\",\"params\":{\"breakpointId\":\"1\",\"location\":{\"scriptId\":\"0\",\"columnNumber\":" + sectionColumn + ",\"lineNumber\":" + sectionLine + "}}}\n"));
         // Suspend at the beginning of the script:
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"1\"]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
                                                  "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
                                                  "\"this\":null," +
-                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":" + sectionColumn + ",\"lineNumber\":" + sectionLine + "}," +
+                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":" + sectionColumn + ",\"lineNumber\":" + sectionLine + "}," +
                                                  "\"url\":\"" + fileURI + "\"}]}}\n"));
         tester.sendMessage("{\"id\":5,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
