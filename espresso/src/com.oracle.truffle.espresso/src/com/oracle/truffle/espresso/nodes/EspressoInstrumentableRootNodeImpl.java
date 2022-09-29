@@ -30,39 +30,28 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Base node for all implementations of Java methods.
  */
-public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
+abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentableRootNode {
 
-    private final MethodVersion method;
+    private final MethodVersion methodVersion;
     private SourceSection sourceSection;
 
-    EspressoMethodNode(MethodVersion method) {
-        this.method = method;
+    EspressoInstrumentableRootNodeImpl(MethodVersion methodVersion) {
+        this.methodVersion = methodVersion;
     }
 
     @Override
-    public MethodVersion getMethodVersion() {
-        return method;
+    final MethodVersion getMethodVersion() {
+        return methodVersion;
     }
 
     @Override
-    public final Method getMethod() {
-        return method.getMethod();
-    }
-
-    public final ObjectKlass getDeclaringKlass() {
-        return getMethod().getDeclaringKlass();
-    }
-
-    @Override
-    protected boolean isTrivial() {
+    boolean isTrivial() {
         return false;
     }
 
@@ -73,13 +62,8 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
 
     // Overridden in children which support splitting
     @Override
-    public EspressoBaseMethodNode split() {
+    public EspressoInstrumentableRootNode split() {
         throw EspressoError.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.RootBodyTag.class;
     }
 
     @TruffleBoundary
@@ -92,7 +76,7 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
 
         if (sourceSection == null) {
             SourceSection localSourceSection = null;
-            LineNumberTableAttribute lineNumberTable = method.getLineNumberTableAttribute();
+            LineNumberTableAttribute lineNumberTable = methodVersion.getLineNumberTableAttribute();
 
             if (lineNumberTable != LineNumberTableAttribute.EMPTY) {
                 List<LineNumberTableAttribute.Entry> entries = lineNumberTable.getEntries();
@@ -126,6 +110,17 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
     }
 
     public final Source getSource() {
-        return getMethod().getSource();
+        return getMethodVersion().getSource();
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.RootTag.class) {
+            return true;
+        }
+        if (tag == StandardTags.RootBodyTag.class) {
+            return true;
+        }
+        return false;
     }
 }

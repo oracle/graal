@@ -22,12 +22,26 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.ReturnAddress;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-final class EspressoFrame {
+/**
+ * Exposes accessors to the Espresso frame e.g. operand stack, locals and current BCI.
+ */
+public final class EspressoFrame {
 
     private EspressoFrame() {
         throw EspressoError.shouldNotReachHere();
@@ -39,68 +53,373 @@ final class EspressoFrame {
      * indexed frame slots}, and contain one slot for the BCI followed by the locals and the stack
      * ("values").
      */
-
-    static final int BCI_SLOT = 0;
-    static final int VALUES_START = 1;
+    private static final int BCI_SLOT = 0;
+    private static final int VALUES_START = 1;
 
     public static FrameDescriptor createFrameDescriptor(int locals, int stack) {
         int slotCount = locals + stack;
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(slotCount + VALUES_START);
-        int bciSlot = builder.addSlot(FrameSlotKind.Int, null, null); // BCI
+        int bciSlot = builder.addSlot(FrameSlotKind.Static, null, null); // BCI
         assert bciSlot == BCI_SLOT;
-        int valuesStart = builder.addSlots(slotCount, FrameSlotKind.Illegal); // locals + stack
+        int valuesStart = builder.addSlots(slotCount, FrameSlotKind.Static); // locals + stack
         assert valuesStart == VALUES_START;
         return builder.build();
     }
 
-    public static void dup1(VirtualFrame frame, int top) {
+    // region Operand stack accessors
+
+    public static void dup1(Frame frame, int top) {
         // value1 -> value1, value1
-        frame.copy(top - 1, top);
+        copyStatic(frame, top - 1, top);
     }
 
-    public static void dupx1(VirtualFrame frame, int top) {
+    public static void dupx1(Frame frame, int top) {
         // value2, value1 -> value1, value2, value1
-        frame.copy(top - 1, top);
-        frame.copy(top - 2, top - 1);
-        frame.copy(top, top - 2);
+        copyStatic(frame, top - 1, top);
+        copyStatic(frame, top - 2, top - 1);
+        copyStatic(frame, top, top - 2);
     }
 
-    public static void dupx2(VirtualFrame frame, int top) {
+    public static void dupx2(Frame frame, int top) {
         // value3, value2, value1 -> value1, value3, value2, value1
-        frame.copy(top - 1, top);
-        frame.copy(top - 2, top - 1);
-        frame.copy(top - 3, top - 2);
-        frame.copy(top, top - 3);
+        copyStatic(frame, top - 1, top);
+        copyStatic(frame, top - 2, top - 1);
+        copyStatic(frame, top - 3, top - 2);
+        copyStatic(frame, top, top - 3);
     }
 
-    public static void dup2(VirtualFrame frame, int top) {
+    public static void dup2(Frame frame, int top) {
         // {value2, value1} -> {value2, value1}, {value2, value1}
-        frame.copy(top - 2, top);
-        frame.copy(top - 1, top + 1);
+        copyStatic(frame, top - 2, top);
+        copyStatic(frame, top - 1, top + 1);
     }
 
-    public static void swapSingle(VirtualFrame frame, int top) {
+    public static void swapSingle(Frame frame, int top) {
         // value2, value1 -> value1, value2
-        frame.swap(top - 1, top - 2);
+        swapStatic(frame, top);
     }
 
-    public static void dup2x1(VirtualFrame frame, int top) {
+    public static void dup2x1(Frame frame, int top) {
         // value3, {value2, value1} -> {value2, value1}, value3, {value2, value1}
-        frame.copy(top - 2, top);
-        frame.copy(top - 1, top + 1);
-        frame.copy(top - 3, top - 1);
-        frame.copy(top, top - 3);
-        frame.copy(top + 1, top - 2);
+        copyStatic(frame, top - 2, top);
+        copyStatic(frame, top - 1, top + 1);
+        copyStatic(frame, top - 3, top - 1);
+        copyStatic(frame, top, top - 3);
+        copyStatic(frame, top + 1, top - 2);
     }
 
-    public static void dup2x2(VirtualFrame frame, int top) {
+    public static void dup2x2(Frame frame, int top) {
         // {value4, value3}, {value2, value1} -> {value2, value1}, {value4, value3}, {value2,
         // value1}
-        frame.copy(top - 1, top + 1);
-        frame.copy(top - 2, top);
-        frame.copy(top - 3, top - 1);
-        frame.copy(top - 4, top - 2);
-        frame.copy(top, top - 4);
-        frame.copy(top + 1, top - 3);
+        copyStatic(frame, top - 1, top + 1);
+        copyStatic(frame, top - 2, top);
+        copyStatic(frame, top - 3, top - 1);
+        copyStatic(frame, top - 4, top - 2);
+        copyStatic(frame, top, top - 4);
+        copyStatic(frame, top + 1, top - 3);
+    }
+
+    private static void swapStatic(Frame frame, int top) {
+        frame.swapStatic(top - 1, top - 2);
+    }
+
+    private static void copyStatic(Frame frame, int src, int dst) {
+        frame.copyStatic(src, dst);
+    }
+
+    public static int popInt(Frame frame, int slot) {
+        int result = frame.getIntStatic(slot);
+        // Avoid keeping track of popped slots in FrameStates.
+        clearPrimitive(frame, slot);
+        return result;
+    }
+
+    public static StaticObject peekObject(Frame frame, int slot) {
+        Object result = frame.getObjectStatic(slot);
+        assert result != null;
+        return (StaticObject) result;
+    }
+
+    /**
+     * Reads and clear the operand stack slot.
+     */
+    public static StaticObject popObject(Frame frame, int slot) {
+        // nulls-out the slot, use peekObject to read only
+        Object result = frame.getObjectStatic(slot);
+        clearReference(frame, slot);
+        return (StaticObject) result;
+    }
+
+    public static float popFloat(Frame frame, int slot) {
+        float result = frame.getFloatStatic(slot);
+        // Avoid keeping track of popped slots in FrameStates.
+        clearPrimitive(frame, slot);
+        return result;
+    }
+
+    public static long popLong(Frame frame, int slot) {
+        long result = frame.getLongStatic(slot);
+        // Avoid keeping track of popped slots in FrameStates.
+        clearPrimitive(frame, slot);
+        return result;
+    }
+
+    public static double popDouble(Frame frame, int slot) {
+        double result = frame.getDoubleStatic(slot);
+        // Avoid keeping track of popped slots in FrameStates.
+        clearPrimitive(frame, slot);
+        return result;
+    }
+
+    static Object popReturnAddressOrObject(Frame frame, int slot) {
+        Object result = frame.getObjectStatic(slot);
+        clearReference(frame, slot);
+        assert result instanceof StaticObject || result instanceof ReturnAddress;
+        return result;
+    }
+
+    static void putReturnAddress(Frame frame, int slot, int targetBCI) {
+        frame.setObjectStatic(slot, ReturnAddress.create(targetBCI));
+    }
+
+    public static void putObject(Frame frame, int slot, StaticObject value) {
+        assert value != null;
+        frame.setObjectStatic(slot, value);
+    }
+
+    public static void putInt(Frame frame, int slot, int value) {
+        frame.setIntStatic(slot, value);
+    }
+
+    public static void putFloat(Frame frame, int slot, float value) {
+        frame.setFloatStatic(slot, value);
+    }
+
+    public static void putLong(Frame frame, int slot, long value) {
+        frame.setLongStatic(slot + 1, value);
+    }
+
+    public static void putDouble(Frame frame, int slot, double value) {
+        frame.setDoubleStatic(slot + 1, value);
+    }
+
+    private static void clearReference(Frame frame, int slot) {
+        frame.clearObjectStatic(slot);
+    }
+
+    private static void clearPrimitive(Frame frame, int slot) {
+        frame.clearPrimitiveStatic(slot);
+    }
+
+    public static void clear(Frame frame, int slot) {
+        frame.clearStatic(slot);
+    }
+
+    // endregion Operand stack accessors
+
+    // region Local accessors
+
+    public static void clearLocal(Frame frame, int localSlot) {
+        clear(frame, VALUES_START + localSlot);
+    }
+
+    public static void setLocalObject(Frame frame, int localSlot, StaticObject value) {
+        assert value != null;
+        frame.setObjectStatic(VALUES_START + localSlot, value);
+    }
+
+    static void setLocalObjectOrReturnAddress(Frame frame, int localSlot, Object value) {
+        assert value instanceof StaticObject || value instanceof ReturnAddress;
+        frame.setObjectStatic(VALUES_START + localSlot, value);
+    }
+
+    public static void setLocalInt(Frame frame, int localSlot, int value) {
+        frame.setIntStatic(VALUES_START + localSlot, value);
+    }
+
+    public static void setLocalFloat(Frame frame, int localSlot, float value) {
+        frame.setFloatStatic(VALUES_START + localSlot, value);
+    }
+
+    public static void setLocalLong(Frame frame, int localSlot, long value) {
+        frame.setLongStatic(VALUES_START + localSlot, value);
+    }
+
+    public static void setLocalDouble(Frame frame, int localSlot, double value) {
+        frame.setDoubleStatic(VALUES_START + localSlot, value);
+    }
+
+    public static int getLocalInt(Frame frame, int localSlot) {
+        return frame.getIntStatic(VALUES_START + localSlot);
+    }
+
+    public static StaticObject getLocalObject(Frame frame, int localSlot) {
+        Object result = frame.getObjectStatic(VALUES_START + localSlot);
+        assert result != null;
+        return (StaticObject) result;
+    }
+
+    static int getLocalReturnAddress(Frame frame, int localSlot) {
+        Object result = frame.getObjectStatic(VALUES_START + localSlot);
+        assert result != null;
+        return ((ReturnAddress) result).getBci();
+    }
+
+    public static float getLocalFloat(Frame frame, int localSlot) {
+        return frame.getFloatStatic(VALUES_START + localSlot);
+    }
+
+    public static long getLocalLong(Frame frame, int localSlot) {
+        return frame.getLongStatic(VALUES_START + localSlot);
+    }
+
+    public static double getLocalDouble(Frame frame, int localSlot) {
+        return frame.getDoubleStatic(VALUES_START + localSlot);
+    }
+
+    // endregion Local accessors
+
+    static void setBCI(Frame frame, int bci) {
+        frame.setIntStatic(BCI_SLOT, bci);
+    }
+
+    static int getBCI(Frame frame) {
+        return frame.getIntStatic(BCI_SLOT);
+    }
+
+    public static int startingStackOffset(int maxLocals) {
+        return VALUES_START + maxLocals;
+    }
+
+    @ExplodeLoop
+    public static Object[] popArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
+        int argCount = Signatures.parameterCount(signature);
+
+        int extraParam = hasReceiver ? 1 : 0;
+        final Object[] args = new Object[argCount + extraParam];
+
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        CompilerAsserts.partialEvaluationConstant(hasReceiver);
+
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= 0; --i) {
+            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : args[i + extraParam] = (popInt(frame, argAt) != 0);  break;
+                case 'B' : args[i + extraParam] = (byte) popInt(frame, argAt);  break;
+                case 'S' : args[i + extraParam] = (short) popInt(frame, argAt); break;
+                case 'C' : args[i + extraParam] = (char) popInt(frame, argAt);  break;
+                case 'I' : args[i + extraParam] = popInt(frame, argAt);         break;
+                case 'F' : args[i + extraParam] = popFloat(frame, argAt);       break;
+                case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + extraParam] = popObject(frame, argAt);      break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            --argAt;
+
+        }
+        if (hasReceiver) {
+            args[0] = popObject(frame, argAt);
+        }
+        return args;
+    }
+
+    // Effort to prevent double copies. Erases sub-word primitive types.
+    @ExplodeLoop
+    public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
+        // Use basic types
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        int argAt = top - 1;
+        for (int i = argCount - 1; i >= 0; --i) {
+            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            // @formatter:off
+            switch (argType.byteAt(0)) {
+                case 'Z' : // fall through
+                case 'B' : // fall through
+                case 'S' : // fall through
+                case 'C' : // fall through
+                case 'I' : args[i + start] = popInt(frame, argAt);    break;
+                case 'F' : args[i + start] = popFloat(frame, argAt);  break;
+                case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
+                case '[' : // fall through
+                case 'L' : args[i + start] = popObject(frame, argAt); break;
+                default  :
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            --argAt;
+        }
+        return args;
+    }
+
+    /**
+     * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
+     * int) are always treated as int.
+     *
+     * Returns the number of used slots.
+     *
+     * @param value value to push
+     * @param kind kind to push
+     */
+    public static int putKind(VirtualFrame frame, int top, Object value, JavaKind kind) {
+        // @formatter:off
+        switch (kind) {
+            case Boolean : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
+            case Byte    : putInt(frame, top, (byte) value);              break;
+            case Short   : putInt(frame, top, (short) value);             break;
+            case Char    : putInt(frame, top, (char) value);              break;
+            case Int     : putInt(frame, top, (int) value);               break;
+            case Float   : putFloat(frame, top, (float) value);           break;
+            case Long    : putLong(frame, top, (long) value);             break;
+            case Double  : putDouble(frame, top, (double) value);         break;
+            case Object  : putObject(frame, top, (StaticObject) value);   break;
+            case Void    : /* ignore */                                   break;
+            default      :
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+        return kind.getSlotCount();
+    }
+
+    /**
+     * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
+     * int) are always treated as int.
+     *
+     * Returns the number of used slots.
+     *
+     * @param value value to push
+     * @param type type to push
+     */
+    public static int putType(VirtualFrame frame, int top, Object value, Symbol<Type> type) {
+        // @formatter:off
+        switch (type.byteAt(0)) {
+            case 'Z' : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
+            case 'B' : putInt(frame, top, (byte) value);              break;
+            case 'S' : putInt(frame, top, (short) value);             break;
+            case 'C' : putInt(frame, top, (char) value);              break;
+            case 'I' : putInt(frame, top, (int) value);               break;
+            case 'F' : putFloat(frame, top, (float) value);           break;
+            case 'J' : putLong(frame, top, (long) value);             break;
+            case 'D' : putDouble(frame, top, (double) value);         break;
+            case '[' : // fall through
+            case 'L' : putObject(frame, top, (StaticObject) value);   break;
+            case 'V' : /* ignore */                                   break;
+            default      :
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+        return Types.slotCount(type);
     }
 }

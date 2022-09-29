@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.IntArrayStore;
 import com.oracle.truffle.espresso.nodes.bytecodes.IntArrayStoreNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -47,9 +47,9 @@ public final class IntArrayStoreQuickNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        int value = BytecodeNode.popInt(frame, top - 1);
-        int index = BytecodeNode.popInt(frame, top - 2);
-        StaticObject array = nullCheck(BytecodeNode.popObject(frame, top - 3));
+        int value = EspressoFrame.popInt(frame, top - 1);
+        int index = EspressoFrame.popInt(frame, top - 2);
+        StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 3));
         intArrayStore.execute(array, index, value);
         return stackEffectOf_IASTORE;
     }
