@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.agent;
+package com.oracle.svm.diagnosticsagent;
 
 import java.util.HashSet;
 import java.util.Set;
