@@ -557,7 +557,7 @@ public class NativeImageResourcePath implements Path {
         int i = 0;
         for (int j = 0; j < resourcePath.length; j++) {
             int k = resourcePath[j];
-            if (k == '\\') {
+            if (k == '\\' || (k == '/' && j == resourcePath.length - 1)) {
                 return normalize(resourcePath, j);
             }
             if ((k == '/') && (i == '/')) {
