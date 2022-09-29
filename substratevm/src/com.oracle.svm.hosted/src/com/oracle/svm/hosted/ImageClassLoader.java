@@ -39,6 +39,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -60,6 +61,7 @@ public final class ImageClassLoader {
      * classes.
      */
     private static final int CLASS_LOADING_MAX_SCALING = 8;
+    private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
         /*
@@ -87,7 +89,7 @@ public final class ImageClassLoader {
         this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
-    public void loadAllClasses() {
+    public void loadAllClasses() throws InterruptedException {
         ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
             @Override
             public void execute(Runnable task) {
@@ -97,8 +99,12 @@ public final class ImageClassLoader {
                 });
             }
         };
-        classLoaderSupport.loadAllClasses(executor, this);
-        executor.shutdownNow();
+        try {
+            classLoaderSupport.loadAllClasses(executor, this);
+        } finally {
+            executor.shutdown();
+            executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+        }
     }
 
     private void findSystemElements(Class<?> systemClass) {
