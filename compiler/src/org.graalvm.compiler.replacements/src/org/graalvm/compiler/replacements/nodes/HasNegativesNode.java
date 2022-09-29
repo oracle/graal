@@ -22,18 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.calc;
+package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
+import java.util.EnumSet;
+
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -42,20 +46,43 @@ import jdk.vm.ci.meta.JavaKind;
  * contain a negative value.
  */
 @NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Cannot estimate the time of a loop", size = SIZE_64)
-public final class HasNegativesNode extends FixedWithNextNode implements LIRLowerable {
+public final class HasNegativesNode extends PureFunctionStubIntrinsicNode {
     public static final NodeClass<HasNegativesNode> TYPE = NodeClass.create(HasNegativesNode.class);
+
+    public static final ForeignCallDescriptor STUB = ForeignCalls.pureFunctionForeignCallDescriptor("stringCodingHasNegatives", boolean.class, Pointer.class, int.class);
 
     @Input protected ValueNode array;
     @Input protected ValueNode len;
 
     public HasNegativesNode(ValueNode array, ValueNode len) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this(array, len, null);
+    }
+
+    public HasNegativesNode(ValueNode array, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         this.array = array;
         this.len = len;
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitHasNegatives(gen.operand(array), gen.operand(len)));
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return STUB;
     }
+
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{array, len};
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.getLIRGeneratorTool().emitHasNegatives(runtimeCheckedCPUFeatures, gen.operand(array), gen.operand(len)));
+    }
+
+    @NodeIntrinsic
+    @GenerateStub
+    public static native boolean stringCodingHasNegatives(Pointer array, int len);
+
+    @NodeIntrinsic
+    public static native boolean stringCodingHasNegatives(Pointer array, int len, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 }
