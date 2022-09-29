@@ -136,6 +136,10 @@ public abstract class ToEspressoNode extends EspressoNode {
         return klass.isAssignableFrom(klass.getMeta().java_lang_Double);
     }
 
+    /*
+     * If this method returns true for a specialization, the following guards are known to be false:
+     * 1. isEspressoException(object) 2. isStaticObject(object)
+     */
     static boolean isTypeMappingEnabled(Klass klass, EspressoContext context, Object value) {
         return klass.getContext().explicitTypeMappingsEnabled() && isHostObject(context, value);
     }
@@ -317,6 +321,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
+                    "!isTypeMappingEnabled(klass, getContext(), value)",
                     "!isStaticObject(value)",
                     "!interop.isNull(value)",
                     "!isHostString(value)",
@@ -324,7 +329,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isForeignException(meta, klass)",
                     "!klass.isAbstract()",
                     "!isString(meta, klass)",
-                    "!isTypeMappingEnabled(klass, getContext(), value)"
+                    "!isBoxedPrimitive(value)"
     })
     Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -342,14 +347,15 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "!isStaticObject(value)",
+                    "isTypeMappingEnabled(klass, getContext(), value)",
                     "!interop.isNull(value)",
                     "!isHostString(value)",
-                    "!isEspressoException(value)",
                     "!isForeignException(meta, klass)",
                     "!klass.isAbstract()",
                     "!isString(meta, klass)",
-                    "isTypeMappingEnabled(klass, getContext(), value)"
+                    "!isBoxedPrimitive(value)",
+                    // "!isStaticObject(value)", // redundant
+                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignClassProxy(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -379,6 +385,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
                     }
                 }
+                checkHasAllFieldsOrThrow(value, klass, interop, meta);
                 return StaticObject.createForeign(getLanguage(), klass, value, interop);
             }
         } catch (ClassCastException e) {
