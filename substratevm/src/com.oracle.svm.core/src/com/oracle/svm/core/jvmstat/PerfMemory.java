@@ -71,8 +71,38 @@ public class PerfMemory {
     }
 
     public boolean initialize() {
-        PerfMemoryProvider m = getPerfMemoryProvider();
-        ByteBuffer b = m.create();
+        if (!createBuffer()) {
+            return false;
+        }
+
+        PerfMemoryPrologue.initialize(rawMemory, ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN));
+
+        used = PerfMemoryPrologue.getPrologueSize();
+        initialTime = System.nanoTime();
+        return true;
+    }
+
+    private boolean createBuffer() {
+        PerfMemoryProvider m = null;
+        ByteBuffer b = null;
+        if (PerfDataMemoryMappedFile.getValue() && tryAcquirePerfDataFile()) {
+            m = ImageSingletons.lookup(PerfMemoryProvider.class);
+            b = m.create();
+            if (b == null) {
+                releasePerfDataFile();
+            }
+        }
+
+        if (b == null) {
+            /*
+             * Memory mapped file support is disabled, another isolate already owns the perf data
+             * file, or the file or buffer could not be created. Either way, this isolate needs to
+             * use C heap memory instead.
+             */
+            m = new CHeapPerfMemoryProvider();
+            b = m.create();
+        }
+
         if (b == null || b.capacity() < PerfMemoryPrologue.getPrologueSize()) {
             return false;
         }
@@ -83,23 +113,7 @@ public class PerfMemory {
         rawMemory = WordFactory.pointer(SubstrateUtil.cast(b, Target_java_nio_Buffer.class).address);
         assert verifyRawMemoryAccess();
 
-        PerfMemoryPrologue.initialize(rawMemory, ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN));
-
-        used = PerfMemoryPrologue.getPrologueSize();
-        initialTime = System.nanoTime();
         return true;
-    }
-
-    private static PerfMemoryProvider getPerfMemoryProvider() {
-        if (PerfDataMemoryMappedFile.getValue() && tryAcquirePerfDataFile()) {
-            return ImageSingletons.lookup(PerfMemoryProvider.class);
-        }
-
-        /*
-         * Memory mapped file support is disabled or another isolate already owns the perf data
-         * file. Either way, this isolate needs to use C heap memory instead.
-         */
-        return new CHeapPerfMemoryProvider();
     }
 
     private boolean verifyRawMemoryAccess() {
