@@ -59,6 +59,10 @@ public final class MultiGuardNode extends FloatingNode implements GuardingNode, 
         this.guards = new NodeInputList<>(this, guards);
     }
 
+    public NodeInputList<ValueNode> getGuards() {
+        return guards;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
     }

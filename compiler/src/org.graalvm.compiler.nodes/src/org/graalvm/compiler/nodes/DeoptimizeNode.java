@@ -47,7 +47,7 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     protected DeoptimizationAction action;
     protected DeoptimizationReason reason;
     protected int debugId;
-    protected final Speculation speculation;
+    protected Speculation speculation;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
         this(action, reason, DEFAULT_DEBUG_ID, SpeculationLog.NO_SPECULATION, null);
@@ -126,6 +126,11 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     @Override
     public Speculation getSpeculation() {
         return speculation;
+    }
+
+    @Override
+    public void setSpeculation(Speculation speculation) {
+        this.speculation = speculation;
     }
 
     @NodeIntrinsic

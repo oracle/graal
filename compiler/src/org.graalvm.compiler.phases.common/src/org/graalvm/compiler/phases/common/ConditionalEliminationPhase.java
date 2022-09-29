@@ -24,16 +24,18 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import static org.graalvm.compiler.nodes.StaticDeoptimizingNode.mergeActions;
+import static org.graalvm.compiler.core.common.GraalOptions.RangeCheckElimination;
 import static org.graalvm.compiler.phases.common.ConditionalEliminationUtil.getOtherSafeStamp;
 import static org.graalvm.compiler.phases.common.ConditionalEliminationUtil.getSafeStamp;
 import static org.graalvm.compiler.phases.common.ConditionalEliminationUtil.rewireGuards;
 
 import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -52,6 +54,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
@@ -75,21 +78,29 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
+import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
+import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
+import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
@@ -107,7 +118,6 @@ import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.GuardRewire
 import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.GuardedCondition;
 import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
 import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.InfoElementProvider;
-import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.InputFilter;
 import org.graalvm.compiler.phases.common.ConditionalEliminationUtil.Marks;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -115,6 +125,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 /**
  * Performs conditional branch elimination on a {@link StructuredGraph}. This is done by optimizing
@@ -168,6 +179,11 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     private static final CounterKey counterStampsRegistered = DebugContext.counter("StampsRegistered");
     private static final CounterKey counterIfsKilled = DebugContext.counter("CE_KilledIfs");
     private static final CounterKey counterPhiStampsImproved = DebugContext.counter("CE_ImprovedPhis");
+    private static final CounterKey RangeCheckEliminated = DebugContext.counter("RangeCheckEliminated");
+    private static final CounterKey RangeCheckEliminatedAfterReordering = DebugContext.counter("RangeCheckEliminatedAfterReordering");
+    private static final CounterKey RangeCheckSmearing = DebugContext.counter("RangeCheckSmearing");
+    private static final SpeculationReasonGroup RANGE_CHECK_SMEARING = new SpeculationReasonGroup("Range check smearing");
+
     private final boolean fullSchedule;
     private final boolean moveGuards;
 
@@ -352,7 +368,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    public static class Instance implements ControlFlowGraph.RecursiveVisitor<Marks> {
+    public class Instance implements ControlFlowGraph.RecursiveVisitor<Marks> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
         protected final NodeMap<Block> nodeToBlock;
@@ -369,7 +385,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
          */
-        private Deque<DeoptimizingGuard> pendingTests;
+        private ArrayList<DeoptimizingGuard> pendingTests;
+        private int validPendingTests;
 
         public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, CoreProviders context) {
             this.graph = graph;
@@ -378,7 +395,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             this.nodeToBlock = nodeToBlock;
             this.undoOperations = new NodeStack();
             this.map = graph.createNodeMap();
-            this.pendingTests = new ArrayDeque<>();
+            this.pendingTests = new ArrayList<>();
             this.conditions = new ArrayDeque<>();
             tool = GraphUtil.getDefaultSimplifier(context, false, graph.getAssumptions(), graph.getOptions());
             mergeMaps = EconomicMap.create(Equivalence.IDENTITY);
@@ -386,7 +403,12 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
                 @Override
                 public InfoElement infoElements(ValueNode value) {
-                    return getInfoElements(value);
+                    InfoElement infoElement = getInfoElements(value);
+                    if (infoElement != null && !infoElement.isAlive()) {
+                        // if this guard was optimized out, pick the next one
+                        infoElement = nextElement(infoElement);
+                    }
+                    return infoElement;
                 }
             };
             guardFolding = new GuardFolding() {
@@ -439,7 +461,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     }
                 }
                 return true;
-            })) {
+            }) &&
+                            !tryOptimizeRangeCheck(node)) {
                 registerNewCondition(node.getCondition(), node.isNegated(), node);
             }
         }
@@ -575,11 +598,12 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         public Marks enter(Block block) {
             int infoElementsMark = undoOperations.size();
             int conditionsMark = conditions.size();
+            int pendingTestsMark = pendingTests.size();
+            validPendingTests = pendingTestsMark;
             debug.log("[Pre Processing block %s]", block);
             // For now conservatively collect guards only within the same block.
-            pendingTests.clear();
             processNodes(block);
-            return new Marks(infoElementsMark, conditionsMark);
+            return new Marks(infoElementsMark, conditionsMark, pendingTestsMark);
         }
 
         protected void processNodes(Block block) {
@@ -616,7 +640,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         protected void processNode(Node node) {
             try (DebugCloseable closeable = node.withNodeSourcePosition()) {
                 if (node instanceof NodeWithState && !(node instanceof GuardingNode)) {
-                    pendingTests.clear();
+                    validPendingTests = pendingTests.size();
                 }
 
                 if (node instanceof MergeNode) {
@@ -838,7 +862,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 // For <PI proven always true> no need since both optimizable classes of logic nodes
                 // are handled under the unary and binary cases above
                 assert ((DeoptimizingGuard) guard).getCondition() == condition;
-                pendingTests.push((DeoptimizingGuard) guard);
+                pendingTests.add((DeoptimizingGuard) guard);
             }
             registerCondition(condition, negated, guard);
         }
@@ -874,7 +898,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
          * </pre>
          */
         protected boolean foldPendingTest(DeoptimizingGuard thisGuard, ValueNode original, Stamp newStamp, GuardRewirer rewireGuardFunction) {
-            for (DeoptimizingGuard pendingGuard : pendingTests) {
+            for (DeoptimizingGuard pendingGuard : pendingTests.subList(validPendingTests, pendingTests.size())) {
                 LogicNode pendingCondition = pendingGuard.getCondition();
                 TriState result = TriState.UNKNOWN;
                 if (pendingCondition instanceof UnaryOpLogicNode) {
@@ -911,29 +935,82 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             return false;
         }
 
+        /**
+         * Checks for safe nodes when moving pending tests up.
+         */
+        class InputFilter extends Node.EdgeVisitor {
+            boolean ok;
+            private ValueNode value;
+            private Node target;
+
+            InputFilter(ValueNode value, Node target) {
+                this.value = value;
+                this.target = target;
+                this.ok = true;
+            }
+
+            @Override
+            public Node apply(Node node, Node curNode) {
+                if (!ok) {
+                    // Abort the recursion
+                    return curNode;
+                }
+                if (!(curNode instanceof ValueNode)) {
+                    ok = false;
+                    return curNode;
+                }
+                ValueNode curValue = (ValueNode) curNode;
+                if (curValue.isConstant() || curValue == value || curValue instanceof ParameterNode || (fullSchedule && dominates(curValue, target))) {
+                    return curNode;
+                }
+                if (curValue instanceof BinaryNode || curValue instanceof UnaryNode) {
+                    curValue.applyInputs(this);
+                } else {
+                    ok = false;
+                }
+                return curNode;
+            }
+        }
+
         private boolean canScheduleAbove(Node n, Node target, ValueNode knownToBeAbove) {
-            Block targetBlock = nodeToBlock.get(target);
-            Block testBlock = nodeToBlock.get(n);
+            if (dominates(n, target)) {
+                return true;
+            }
+            InputFilter v = new InputFilter(knownToBeAbove, target);
+            n.applyInputs(v);
+            return v.ok;
+        }
+
+        private boolean canScheduleBelow(GuardNode n, Node target) {
+            for (Node usage : n.usages()) {
+                if (dominates(usage, target)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean dominates(Node n, Node target) {
+            Block targetBlock = !nodeToBlock.isNew(target) ? nodeToBlock.get(target) : null;
+            Block testBlock = !nodeToBlock.isNew(n) ? nodeToBlock.get(n) : null;
             if (targetBlock != null && testBlock != null) {
                 if (targetBlock == testBlock) {
                     for (Node fixed : blockToNodes.get(targetBlock)) {
                         if (fixed == n) {
                             return true;
                         } else if (fixed == target) {
-                            break;
+                            return false;
                         }
                     }
                 } else if (AbstractControlFlowGraph.dominates(testBlock, targetBlock)) {
                     return true;
                 }
             }
-            InputFilter v = new InputFilter(knownToBeAbove);
-            n.applyInputs(v);
-            return v.ok;
+            return false;
         }
 
         protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, boolean outcome, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
-            DeoptimizationAction action = mergeActions(otherGuard.getAction(), thisGuard.getAction());
+            DeoptimizationAction action = StaticDeoptimizingNode.mergeActions(otherGuard.getAction(), thisGuard.getAction());
             if (action != null && otherGuard.getSpeculation() == thisGuard.getSpeculation()) {
                 LogicNode condition = (LogicNode) thisGuard.getCondition().copyWithInputs();
                 /*
@@ -974,7 +1051,408 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         protected boolean tryProveGuardCondition(DeoptimizingGuard thisGuard, LogicNode node, GuardRewirer rewireGuardFunction) {
-            return ConditionalEliminationUtil.tryProveGuardCondition(infoElementProvider, conditions, guardFolding, thisGuard, node, rewireGuardFunction);
+            if (ConditionalEliminationUtil.tryProveGuardCondition(infoElementProvider, conditions, guardFolding, thisGuard, node, rewireGuardFunction)) {
+                return true;
+            }
+            return false;
+        }
+
+        public ValueNode getRangeCheckIndex(IntegerBelowNode integerBelowNode) {
+            ValueNode index = integerBelowNode.getX();
+            if (index instanceof AddNode) {
+                index = ((AddNode) index).getX();
+            }
+            return index;
+        }
+
+        public Optional<ValueNode> getRangeCheckOffset(IntegerBelowNode integerBelowNode) {
+            ValueNode index = integerBelowNode.getX();
+            Optional<ValueNode> offset = Optional.empty();
+            if (index instanceof AddNode) {
+                offset = Optional.of(((AddNode) integerBelowNode.getX()).getY());
+            }
+            return offset;
+        }
+
+        public IntegerStamp getRangeCheckOffsetStamp(IntegerBelowNode integerBelowNode) {
+            return (IntegerStamp) getRangeCheckOffset(integerBelowNode).map(n -> n.stamp(NodeView.DEFAULT)).orElse(StampFactory.forConstant(JavaConstant.INT_0));
+        }
+
+        private boolean tryOptimizeRangeCheck(GuardNode thisGuard) {
+            if (!RangeCheckElimination.getValue(graph.getOptions())) {
+                return false;
+            }
+
+            // Optimize range checks of the form: i + constant |<| array.length
+            // For instance in the range check sequence:
+            //
+            // i |<| array.length
+            // i + 2 |<| array.length
+            // i + 1 |<| array.length
+            //
+            // the i + 1 range check is redundant. The access that's guarded by the range check now
+            // depends on both i and i+2 range checks.
+            final LogicNode node = thisGuard.getCondition();
+            if (node instanceof IntegerBelowNode && !thisGuard.isNegated()) {
+                IntegerBelowNode check = (IntegerBelowNode) node;
+                final ValueNode y = check.getY();
+                IntegerStamp offset = getRangeCheckOffsetStamp(check);
+                ValueNode index = getRangeCheckIndex(check);
+                IntegerStamp lowerOffset = offset;
+                IntegerStamp upperOffset = offset;
+                GuardNode lowerGuard = null;
+                GuardNode upperGuard = null;
+
+                for (GuardedCondition guardedCondition : conditions) {
+                    LogicNode condition = guardedCondition.getCondition();
+                    final GuardingNode guard = guardedCondition.getGuard();
+                    if (guard instanceof GuardNode && condition instanceof IntegerBelowNode) {
+                        IntegerBelowNode otherCheck = (IntegerBelowNode) condition;
+                        if (y == otherCheck.getY() && !guardedCondition.isNegated()) {
+                            final IntegerStamp otherOffset = getRangeCheckOffsetStamp(otherCheck);
+                            final ValueNode otherIndex = getRangeCheckIndex(otherCheck);
+                            if (index == otherIndex) {
+                                if (otherOffset.lowerBound() > upperOffset.upperBound()) {
+                                    upperGuard = ((GuardNode) guard);
+                                    upperOffset = otherOffset;
+                                } else if (lowerOffset.lowerBound() > otherOffset.upperBound()) {
+                                    lowerGuard = ((GuardNode) guard);
+                                    lowerOffset = otherOffset;
+                                }
+                            }
+                        }
+                    }
+                }
+                // 1) Check for a pair of dominating range checks that guarantee the current one
+                // can't fail
+                if (offset.lowerBound() > lowerOffset.upperBound() && offset.upperBound() < upperOffset.lowerBound()) {
+                    assert upperGuard != null && lowerGuard != null;
+                    fixGuardUsages(thisGuard, upperGuard, lowerGuard);
+                    RangeCheckEliminated.increment(graph.getDebug());
+                    return true;
+                }
+
+                // 2) Look for dominating range checks that would always succeed if they were right
+                // below the current check, that is they dependent on some dominating range checks
+                // and the current check. If they can float below the current position, eliminate
+                // them.
+                if (offset.lowerBound() > lowerOffset.upperBound() || offset.upperBound() < upperOffset.lowerBound()) {
+                    List<DeoptimizingGuard> subList = pendingTests.subList(validPendingTests, pendingTests.size());
+                    for (DeoptimizingGuard pendingGuard : subList) {
+                        LogicNode pendingCondition = pendingGuard.getCondition();
+                        if (!(pendingGuard instanceof GuardNode)) {
+                            continue;
+                        }
+                        if (pendingCondition instanceof IntegerBelowNode) {
+                            IntegerBelowNode pendingCheck = (IntegerBelowNode) pendingCondition;
+                            if (y == pendingCheck.getY() && !pendingGuard.isNegated()) {
+                                ValueNode pendingIndex = getRangeCheckIndex(pendingCheck);
+                                IntegerStamp pendingOffset = getRangeCheckOffsetStamp(pendingCheck);
+                                if (index == pendingIndex) {
+                                    if (pendingOffset.lowerBound() > lowerOffset.upperBound() && pendingOffset.upperBound() < upperOffset.lowerBound() &&
+                                                    canScheduleBelow((GuardNode) pendingGuard, thisGuard)) {
+                                        GuardNode otherGuard;
+                                        if (offset == lowerOffset) {
+                                            assert upperGuard != null;
+                                            otherGuard = upperGuard;
+                                        } else {
+                                            assert offset == upperOffset && lowerGuard != null;
+                                            otherGuard = lowerGuard;
+                                        }
+                                        DeoptimizationAction action = mergeActions(pendingGuard, thisGuard, otherGuard);
+                                        if (action != null) {
+                                            fixGuardUsages(((GuardNode) pendingGuard), thisGuard, otherGuard);
+                                            thisGuard.setAction(action);
+                                            otherGuard.setAction(action);
+                                            RangeCheckEliminatedAfterReordering.increment(graph.getDebug());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // 3) Try to eliminate the current check by speculatively widening dominating
+                    // range checks.
+                    SpeculationLog.SpeculationReason reason = RANGE_CHECK_SMEARING.createSpeculationReason();
+                    if (graph.getSpeculationLog() != null && graph.getSpeculationLog().maySpeculate(reason)) {
+                        Speculation speculation = graph.getSpeculationLog().speculate(reason);
+                        final GuardNode[] pendingGuards = new GuardNode[3];
+                        int count = 0;
+                        IntegerBelowNode minCheck = check;
+                        IntegerBelowNode maxCheck = check;
+                        IntegerStamp minOffset = offset;
+                        IntegerStamp maxOffset = offset;
+                        for (DeoptimizingGuard pendingGuard : pendingTests) {
+                            LogicNode pendingCondition = pendingGuard.getCondition();
+                            if (pendingGuard instanceof GuardNode && pendingCondition instanceof IntegerBelowNode) {
+                                IntegerBelowNode pendingCheck = (IntegerBelowNode) pendingCondition;
+                                if (y == pendingCheck.getY() && !pendingGuard.isNegated()) {
+                                    ValueNode pendingIndex = getRangeCheckIndex(pendingCheck);
+                                    IntegerStamp pendingOffset = getRangeCheckOffsetStamp(pendingCheck);
+                                    if (index == pendingIndex) {
+                                        if (pendingOffset.lowerBound() > maxOffset.upperBound()) {
+                                            maxOffset = pendingOffset;
+                                            maxCheck = pendingCheck;
+                                        }
+                                        if (pendingOffset.upperBound() < minOffset.lowerBound()) {
+                                            minOffset = pendingOffset;
+                                            minCheck = pendingCheck;
+                                        }
+                                        if (count < 3 && pendingOffset.upperBound() <= maxOffset.lowerBound() && pendingOffset.lowerBound() >= minOffset.upperBound()) {
+                                            pendingGuards[count] = ((GuardNode) pendingGuard);
+                                            count++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (count >= 2) {
+                            // If the top range check's offset is the min or max of all constants we
+                            // widen the next one to cover the whole range of constants.
+                            final IntegerStamp offset0 = getRangeCheckOffsetStamp(((IntegerBelowNode) pendingGuards[0].getCondition()));
+                            if (offset0.lowerBound() >= maxOffset.upperBound()) {
+                                DeoptimizationAction action = mergeActions(thisGuard, pendingGuards[0], pendingGuards[1]);
+                                if (action != null) {
+                                    pendingGuards[0].setAction(action);
+                                    pendingGuards[0].setSpeculation(speculation);
+                                    pendingGuards[1].setAction(action);
+                                    pendingGuards[1].setSpeculation(speculation);
+                                    if (pendingGuards[1].getCondition() != minCheck) {
+                                        pendingGuards[1].setCondition(minCheck, false);
+                                        fixGuardUsages(pendingGuards[1], pendingGuards[1], pendingGuards[0]);
+                                    }
+                                    fixGuardUsages(thisGuard, pendingGuards[0], pendingGuards[1]);
+                                    RangeCheckSmearing.increment(graph.getDebug());
+                                    return true;
+                                }
+                            } else if (offset0.upperBound() <= minOffset.lowerBound()) {
+                                DeoptimizationAction action = mergeActions(thisGuard, pendingGuards[0], pendingGuards[1]);
+                                if (action != null) {
+                                    pendingGuards[0].setAction(action);
+                                    pendingGuards[0].setSpeculation(speculation);
+                                    pendingGuards[1].setAction(action);
+                                    pendingGuards[1].setSpeculation(speculation);
+                                    if (pendingGuards[1].getCondition() != maxCheck) {
+                                        pendingGuards[1].setCondition(maxCheck, false);
+                                        fixGuardUsages(pendingGuards[1], pendingGuards[1], pendingGuards[0]);
+                                    }
+                                    fixGuardUsages(thisGuard, pendingGuards[0], pendingGuards[1]);
+                                    RangeCheckSmearing.increment(graph.getDebug());
+                                    return true;
+                                }
+                            } else if (count >= 3) {
+                                // If the top test's offset is not the min or max of all offsets, we
+                                // need 3 range checks. We must leave the top test unchanged because
+                                // widening it would allow the accesses it protects to successfully
+                                // read/write out of bounds.
+                                DeoptimizationAction action = mergeActions(thisGuard, pendingGuards[0], pendingGuards[1], pendingGuards[2]);
+                                if (action != null) {
+                                    final IntegerStamp offset1 = getRangeCheckOffsetStamp(((IntegerBelowNode) pendingGuards[1].getCondition()));
+                                    pendingGuards[0].setAction(action);
+                                    pendingGuards[0].setSpeculation(speculation);
+                                    pendingGuards[1].setSpeculation(speculation);
+                                    pendingGuards[2].setSpeculation(speculation);
+                                    // The top range check a+i covers interval:
+                                    // -a <= i < length-a
+                                    // The second range check b+i covers interval:
+                                    // -b <= i < length-b
+                                    if (offset1.upperBound() < offset0.upperBound()) {
+                                        // if b <= a, we change the second range check to:
+                                        // -min_of_all_offsets <= i < length-min_of_all_offsets
+                                        // Together top and second range checks now cover:
+                                        // -min_of_all_offsets <= i < length-a
+                                        // which is more restrictive than
+                                        // -b <= i < length-b:
+                                        // -b <= -min_of_all_offsets <= i < length-a <= length-b
+                                        // The third check is then changed to:
+                                        // -max_of_all_offsets <= i < length-max_of_all_offsets
+                                        // so 2nd and 3rd checks restrict allowed values of i to:
+                                        // -min_of_all_offsets <= i < length-max_of_all_offsets
+                                        if (pendingGuards[1].getCondition() != minCheck) {
+                                            pendingGuards[1].setCondition(minCheck, false);
+                                            fixGuardUsages(pendingGuards[1], pendingGuards[1], pendingGuards[0]);
+                                        }
+                                        if (pendingGuards[2].getCondition() != maxCheck) {
+                                            pendingGuards[2].setCondition(maxCheck, false);
+                                            fixGuardUsages(pendingGuards[2], pendingGuards[2], pendingGuards[1]);
+                                        }
+                                        fixGuardUsages(thisGuard, pendingGuards[1], pendingGuards[2]);
+                                        RangeCheckSmearing.increment(graph.getDebug());
+                                        return true;
+                                    } else {
+                                        // if b > a, we change the second range check to:
+                                        // -max_of_all_offsets <= i < length-max_of_all_offsets
+                                        // Together top and second range checks now cover:
+                                        // -a <= i < length-max_of_all_offsets
+                                        // which is more restrictive than
+                                        // -b <= i < length-b:
+                                        // -b < -a <= i < length-max_of_all_offsets <= length-b
+                                        // The third check is then changed to:
+                                        // -max_of_all_offsets <= i < length-max_of_all_offsets
+                                        // so 2nd and 3rd checks restrict allowed values of i to:
+                                        // -min_of_all_offsets <= i < length-max_of_all_offsets
+                                        assert offset1.lowerBound() > offset0.upperBound();
+                                        if (pendingGuards[1].getCondition() != maxCheck) {
+                                            pendingGuards[1].setCondition(maxCheck, false);
+                                            fixGuardUsages(pendingGuards[1], pendingGuards[1], pendingGuards[0]);
+                                        }
+                                        if (pendingGuards[2].getCondition() != minCheck) {
+                                            pendingGuards[2].setCondition(minCheck, false);
+                                            fixGuardUsages(pendingGuards[2], pendingGuards[2], pendingGuards[1]);
+                                        }
+                                        fixGuardUsages(thisGuard, pendingGuards[1], pendingGuards[2]);
+                                        RangeCheckSmearing.increment(graph.getDebug());
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        private void fixGuardUsages(GuardNode oldGuard, GuardNode newGuard0, GuardNode newGuard1) {
+            // Both newGuard0 and newGuard1 make oldGuard redundant: replace oldGuard with
+            // MultiGuard(newGuard0, newGuard1) in uses. However, it's possible that some uses
+            // already are a MultiGuard from a previous pass of range check optimizations. That
+            // MultiGuard can be updated to keep only 2 input guards but in the process we must make
+            // sure we don't narrow the range being checked by both guards.
+            final IntegerBelowNode newCondition0 = (IntegerBelowNode) newGuard0.getCondition();
+            final ValueNode newIndex0 = getRangeCheckIndex(newCondition0);
+            final IntegerStamp newOffset0 = getRangeCheckOffsetStamp(newCondition0);
+
+            final IntegerBelowNode newCondition1 = (IntegerBelowNode) newGuard1.getCondition();
+            final ValueNode newIndex1 = getRangeCheckIndex(newCondition1);
+            final IntegerStamp newOffset1 = getRangeCheckOffsetStamp(newCondition1);
+
+            assert newIndex0 == newIndex1;
+
+            GuardingNode combinedGuard = null;
+            for (Node usage : oldGuard.usages().snapshot()) {
+                if (usage instanceof GuardedNode) {
+                    if (combinedGuard == null) {
+                        if (newOffset0.upperBound() < newOffset1.lowerBound()) {
+                            combinedGuard = MultiGuardNode.combine(newGuard0, newGuard1);
+                        } else {
+                            assert newOffset1.upperBound() < newOffset0.lowerBound();
+                            combinedGuard = MultiGuardNode.combine(newGuard1, newGuard0);
+                        }
+                    }
+                    ((GuardedNode) usage).setGuard(combinedGuard);
+                } else if (usage instanceof MultiGuardNode) {
+                    final List<ValueNode> guards = new ArrayList<>();
+                    IntegerStamp lowerBound = null;
+                    GuardNode lowerGuard = null;
+                    IntegerStamp upperBound = null;
+                    GuardNode upperGuard = null;
+                    for (ValueNode node : ((MultiGuardNode) usage).getGuards()) {
+                        if (!(node instanceof GuardNode)) {
+                            guards.add(node);
+                            continue;
+                        }
+                        final GuardNode guard = (GuardNode) node;
+                        final LogicNode condition = guard.getCondition();
+                        if (!(condition instanceof IntegerBelowNode) || guard.isNegated()) {
+                            guards.add(guard);
+                            continue;
+                        }
+
+                        final IntegerBelowNode integerBelowNode = (IntegerBelowNode) guard.getCondition();
+                        final ValueNode index = getRangeCheckIndex(integerBelowNode);
+                        final IntegerStamp offset = getRangeCheckOffsetStamp(integerBelowNode);
+
+                        if (index != newIndex0) {
+                            guards.add(guard);
+                            continue;
+                        }
+
+                        if (lowerBound == null) {
+                            assert upperBound == null;
+                            assert lowerGuard == null && upperGuard == null;
+                            lowerBound = upperBound = offset;
+                            lowerGuard = upperGuard = guard;
+                        } else {
+                            if (offset.lowerBound() > upperBound.upperBound()) {
+                                upperBound = offset;
+                                upperGuard = guard;
+                            } else if (offset.upperBound() < lowerBound.lowerBound()) {
+                                lowerBound = offset;
+                                lowerGuard = guard;
+                            }
+                        }
+                    }
+
+                    if (newOffset0.lowerBound() > upperBound.upperBound()) {
+                        upperBound = newOffset0;
+                        upperGuard = newGuard0;
+                    } else if (newOffset0.upperBound() < lowerBound.lowerBound()) {
+                        lowerBound = newOffset0;
+                        lowerGuard = newGuard0;
+                    }
+
+                    if (newOffset1.lowerBound() > upperBound.upperBound()) {
+                        upperBound = newOffset1;
+                        upperGuard = newGuard1;
+                    } else if (newOffset1.upperBound() < lowerBound.lowerBound()) {
+                        lowerBound = newOffset1;
+                        lowerGuard = newGuard1;
+                    }
+
+                    guards.add(lowerGuard);
+                    guards.add(upperGuard);
+
+                    final MultiGuardNode unique = graph.unique(new MultiGuardNode(guards.toArray(new ValueNode[0])));
+
+                    if (unique != usage) {
+                        assert checkMultiGuardsDiffer((MultiGuardNode) usage, unique);
+                        usage.replaceAndDelete(unique);
+                    }
+                } else {
+                    throw new GraalError("Unexpected node " + usage);
+                }
+            }
+            if (oldGuard.hasNoUsages()) {
+                oldGuard.safeDelete();
+            }
+        }
+
+        private boolean checkMultiGuardsDiffer(MultiGuardNode guard1, MultiGuardNode guard2) {
+            if (guard1.getGuards().size() != guard2.getGuards().size()) {
+                return true;
+            }
+            for (ValueNode guard : guard1.getGuards()) {
+                boolean found = false;
+                for (ValueNode otherGuard : guard2.getGuards()) {
+                    if (guard == otherGuard) {
+                        found = true;
+                    }
+                }
+                if (!found) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private DeoptimizationAction mergeActions(DeoptimizingGuard toReplace, GuardingNode... guards) {
+            Speculation speculation = toReplace.getSpeculation();
+            DeoptimizationAction action = toReplace.getAction();
+            for (GuardingNode guard : guards) {
+                if (!(guard instanceof DeoptimizingGuard)) {
+                    continue;
+                }
+                final DeoptimizingGuard deoptimizingGuard = (DeoptimizingGuard) guard;
+                if (deoptimizingGuard.getSpeculation() != speculation) {
+                    return null;
+                }
+                action = StaticDeoptimizingNode.mergeActions(deoptimizingGuard.getAction(), deoptimizingGuard.getAction());
+                if (action == null) {
+                    return null;
+                }
+            }
+            return action;
         }
 
         protected void registerCondition(LogicNode condition, boolean negated, GuardingNode guard) {
@@ -1063,7 +1541,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static boolean maybeMultipleUsages(ValueNode value) {
+        private boolean maybeMultipleUsages(ValueNode value) {
             if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
@@ -1108,6 +1586,9 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             }
 
             int conditionsMark = marks.conditions;
+            int pendingTestsMark = marks.getPendingTests();
+            pendingTests.subList(pendingTestsMark, pendingTests.size()).clear();
+            assert pendingTests.size() == pendingTestsMark;
             while (conditions.size() > conditionsMark) {
                 conditions.pop();
             }

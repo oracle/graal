@@ -43,6 +43,8 @@ public interface StaticDeoptimizingNode extends ValueNodeInterface {
 
     Speculation getSpeculation();
 
+    void setSpeculation(Speculation speculation);
+
     /**
      * Describes how much information is gathered when deoptimization triggers.
      *

@@ -59,10 +59,16 @@ public class ConditionalEliminationUtil {
 
         final int infoElementOperations;
         final int conditions;
+        private int pendingTests;
 
-        public Marks(int infoElementOperations, int conditions) {
+        public Marks(int infoElementOperations, int conditions, int pendingTests) {
             this.infoElementOperations = infoElementOperations;
             this.conditions = conditions;
+            this.pendingTests = pendingTests;
+        }
+
+        public int getPendingTests() {
+            return pendingTests;
         }
 
         public int getInfoElementOperations() {
@@ -180,6 +186,10 @@ public class ConditionalEliminationUtil {
         public String toString() {
             return stamp + " -> " + guard;
         }
+
+        public boolean isAlive() {
+            return guard.asNode().isAlive();
+        }
     }
 
     /**
@@ -211,17 +221,21 @@ public class ConditionalEliminationUtil {
         InfoElement infoElements(ValueNode value);
 
         default InfoElement nextElement(InfoElement current) {
-            InfoElement parent = current.getParent();
-            if (parent != null) {
-                return parent;
-            } else {
-                ValueNode proxifiedInput = current.getProxifiedInput();
-                if (proxifiedInput instanceof PiNode) {
-                    PiNode piNode = (PiNode) proxifiedInput;
-                    return infoElements(piNode.getOriginalNode());
+            InfoElement next = null;
+            InfoElement elem = current;
+            // next non optimized out guard
+            do {
+                next = elem.getParent();
+                if (next == null) {
+                    ValueNode proxifiedInput = elem.getProxifiedInput();
+                    if (proxifiedInput instanceof PiNode) {
+                        PiNode piNode = (PiNode) proxifiedInput;
+                        next = infoElements(piNode.getOriginalNode());
+                    }
                 }
-            }
-            return null;
+                elem = next;
+            } while (next != null && !next.isAlive());
+            return next;
         }
     }
 
@@ -293,7 +307,7 @@ public class ConditionalEliminationUtil {
 
         for (GuardedCondition guardedCondition : conditions) {
             TriState result = guardedCondition.getCondition().implies(guardedCondition.isNegated(), node);
-            if (result.isKnown()) {
+            if (result.isKnown() && guardedCondition.getGuard().asNode().isAlive()) {
                 return rewireGuards(guardedCondition.getGuard(), result.toBoolean(), null, null, rewireGuardFunction);
             }
         }
