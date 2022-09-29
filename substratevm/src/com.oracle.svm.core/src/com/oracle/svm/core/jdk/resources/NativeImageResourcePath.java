@@ -140,6 +140,10 @@ public class NativeImageResourcePath implements Path {
         return (this.path.length > 0 && path[0] == '/');
     }
 
+    public boolean isEmpty() {
+        return this.path.length == 0;
+    }
+
     @Override
     public NativeImageResourcePath getRoot() {
         if (isAbsolute()) {
@@ -295,7 +299,7 @@ public class NativeImageResourcePath implements Path {
     public Path resolve(Path other) {
         NativeImageResourcePath p1 = this;
         NativeImageResourcePath p2 = checkPath(other);
-        if (p2.isAbsolute()) {
+        if (p1.isEmpty() || p2.isAbsolute()) {
             return p2;
         }
         byte[] result;
