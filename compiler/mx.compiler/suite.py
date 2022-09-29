@@ -1658,6 +1658,25 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.compiler.truffle.test.jdk19" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": [
+        "org.graalvm.compiler.truffle.test",
+      ],
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+      ],
+      "overlayTarget" : "org.graalvm.compiler.truffle.test",
+      "multiReleaseJarVersion" : "19",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "19+",
+      "javaPreviewNeeded": "19",
+      "checkPackagePrefix" : "false",
+      "workingSets" : "Graal,HotSpot",
+      "testProject" : True,
+    },
+
     "org.graalvm.compiler.truffle.common.hotspot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
