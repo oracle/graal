@@ -91,15 +91,18 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             }
         }
 
-        // this method is used to unwrap an espresso object prior to leaving espresso
-        // conversion to boxed primitive host values will occur
+        /*
+         * This method is used to unwrap an espresso object prior to leaving espresso. Conversion to
+         * boxed primitive host values will occur.
+         */
         static Object unwrap(EspressoLanguage language, StaticObject object, Meta meta) {
             return com.oracle.truffle.espresso.runtime.InteropUtils.unwrap(language, object, meta);
         }
 
-        // this method is used to unwrap an espresso object when we know
-        // the resulting unwrapped object does not leave espresso
-        // no conversion of boxed primitive espresso objects occur
+        /*
+         * This method is used to unwrap an espresso object to temporarily use the original interop
+         * value.
+         */
         static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
             return object.isForeignObject() ? object.rawForeignObject(language) : object;
         }

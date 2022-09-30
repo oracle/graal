@@ -735,8 +735,8 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "isInteropPrimitive(value)"})
-        static void doEspressoInteropPrimitive(StaticObject receiver, long index, Object value,
+        @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
+        static void doEspressoGeneric(StaticObject receiver, long index, Object value,
                         @CachedLibrary("receiver") InteropLibrary receiverLib,
                         @Shared("toEspresso") @Cached ToEspressoNode toEspressoNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -804,8 +804,8 @@ public class EspressoInterop extends BaseInterop {
                         isDoubleArray(object);
     }
 
-    protected static boolean isInteropPrimitive(Object value) {
-        return value instanceof Number || value instanceof Character || value instanceof Boolean;
+    protected static boolean isStaticObject(Object object) {
+        return object instanceof StaticObject;
     }
 
     @ExportMessage
