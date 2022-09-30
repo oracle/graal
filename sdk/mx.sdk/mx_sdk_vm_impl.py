@@ -50,7 +50,6 @@ import inspect
 import json
 import os
 from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
-import pipes
 import pprint
 import re
 import shlex
@@ -331,8 +330,6 @@ _src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
 """:type: dict[str, (str, str)]"""
 _parent_info_cache = {}
 
-_jlink_copy_plugin = None
-
 def _graalvm_maven_attributes(tag='graalvm'):
     """
     :type tag: str
@@ -612,7 +609,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
         assert _libpolyglot_component is None or len(_libpolyglot_component.library_configs) == 1
         _libpolyglot_macro_dir = (_macros_dir + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _macros_dir is not None and _libpolyglot_component is not None else None
-        _jlink_copyfiles = set()
+
         for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
             _component_type_base = _get_component_type_base(_component)
@@ -727,11 +724,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _svm_library_home = _component_base
                 _svm_library_dest = _svm_library_home + _library_config.destination
                 if not stage1 and _get_svm_support().is_supported():
-                    if _skip_libraries(_library_config):
-                        _source_type = 'skip'
-                    else:
-                        _source_type = 'dependency'
-                        _jlink_copyfiles.add(_svm_library_dest[len('<jre_base>/'):])
+                    _source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
                     _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
@@ -800,9 +793,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
-
-        if is_graalvm and add_jdk_base and _has_jlink_copy_plugin() and _jlink_copyfiles:
-            _add(layout, '<jdk_base>/conf/jlink.copyfiles', 'string:{}'.format('\n'.join(sorted(_jlink_copyfiles))))
 
         if has_graal_compiler:
             _add(layout, '<jre_base>/lib/jvmci/compiler-name', 'string:graal')
@@ -3773,18 +3763,6 @@ def _base_jdk_info():
         mx.abort("Unexpected base JDK info: '{}'. Expected format: 'NAME:VERSION'.".format(base_jdk_info))
     else:
         return base_jdk_info.split(':')
-
-
-def _has_jlink_copy_plugin():
-    global _jlink_copy_plugin
-    if _jlink_copy_plugin is None:
-        out = mx.LinesOutputCapture()
-        args = [_src_jdk.exe_path('jlink'), '--list-plugins']
-        exit_status = mx.run(args, out=out, err=out, nonZeroIsFatal=False)
-        if exit_status:
-            raise mx.abort('Failed to run \"{}\". Output:\n{}'.format(' '.join([pipes.quote(str(arg)) for arg in args]), '\n'.join(out.lines)))
-        _jlink_copy_plugin = any('--copy-files' in line for line in out.lines)
-    return _jlink_copy_plugin
 
 
 def mx_post_parse_cmd_line(args):
