@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common.util;
 
-public abstract class AbstractTypeReader implements TypeReader {
-    @Override
-    public long getSV() {
-        return decodeSign(read());
+package com.oracle.svm.core.posix;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.locks.VMSemaphore;
+
+public abstract class PosixVMSemaphoreSupport {
+
+    @Fold
+    public static PosixVMSemaphoreSupport singleton() {
+        return ImageSingletons.lookup(PosixVMSemaphoreSupport.class);
     }
 
-    @Override
-    public long getUV() {
-        return read();
-    }
+    /**
+     * Must be called once early during startup, before any semaphore is used.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    public abstract boolean initialize();
 
-    private static long decodeSign(long value) {
-        return (value >>> 1) ^ -(value & 1);
-    }
+    /**
+     * Must be called during isolate teardown.
+     */
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public abstract void destroy();
 
-    private long read() {
-        int b0 = getU1();
-        if (b0 < UnsafeArrayTypeWriter.NUM_LOW_CODES) {
-            return b0;
-        } else {
-            return readPacked(b0);
-        }
-    }
+    public abstract VMSemaphore[] getSemaphores();
 
-    private long readPacked(int b0) {
-        assert b0 >= UnsafeArrayTypeWriter.NUM_LOW_CODES;
-        long sum = b0;
-        long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
-        for (int i = 2;; i++) {
-            long b = getU1();
-            sum += b << shift;
-            if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
-                return sum;
-            }
-            shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
-        }
-    }
 }

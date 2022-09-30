@@ -28,8 +28,11 @@ import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -159,7 +162,26 @@ public abstract class SubstrateSigprofHandler {
 
     public static class Options {
         @Option(help = "Allow sampling-based profiling. Default: disabled in execution.")//
-        static final RuntimeOptionKey<Boolean> SamplingBasedProfiling = new RuntimeOptionKey<>(Boolean.FALSE);
+        static final RuntimeOptionKey<Boolean> SamplingBasedProfiling = new RuntimeOptionKey<>(Boolean.FALSE) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue) {
+                    /* Enabling sampling-based profiling requires to enabled JFR as well. */
+                    SubstrateOptions.FlightRecorder.update(values, true);
+                }
+            }
+        };
+
+        @Option(help = "Start sampling-based profiling with options.")//
+        public static final RuntimeOptionKey<String> StartSamplingBasedProfiling = new RuntimeOptionKey<>("") {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+                if (!newValue.isEmpty()) {
+                    /* Starting sampling-based profiling requires to start JFR as well. */
+                    SubstrateOptions.StartFlightRecording.update(values, newValue);
+                }
+            }
+        };
     }
 
     private boolean enabled;
@@ -174,18 +196,26 @@ public abstract class SubstrateSigprofHandler {
     }
 
     @Fold
-    static SubstrateSigprofHandler singleton() {
+    public static SubstrateSigprofHandler singleton() {
         return ImageSingletons.lookup(SubstrateSigprofHandler.class);
     }
 
     @Fold
-    static SamplerStackWalkVisitor visitor() {
+    public static SamplerStackWalkVisitor visitor() {
         return ImageSingletons.lookup(SamplerStackWalkVisitor.class);
     }
 
     @Fold
     static boolean isProfilingSupported() {
+        return isOSSupported() && isJDKSupported();
+    }
+
+    private static boolean isOSSupported() {
         return Platform.includedIn(Platform.LINUX.class);
+    }
+
+    private static boolean isJDKSupported() {
+        return JavaVersionUtil.JAVA_SPEC < 19;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -194,12 +224,12 @@ public abstract class SubstrateSigprofHandler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    SamplerBufferStack availableBuffers() {
+    public SamplerBufferStack availableBuffers() {
         return availableBuffers;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    SamplerBufferStack fullBuffers() {
+    public SamplerBufferStack fullBuffers() {
         return fullBuffers;
     }
 
@@ -274,46 +304,30 @@ public abstract class SubstrateSigprofHandler {
             }
         }
 
-        /* Initialize stack walk. */
-        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
-        if (prepareStackWalk(data)) {
-            /* Walk the stack. */
-            if (JavaStackWalker.walkCurrentThread(sp, ip, visitor())) {
-                SamplerSampleWriter.commit(data);
-            }
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean prepareStackWalk(SamplerSampleWriterData data) {
-        if (singleton().availableBuffers().isLockedByCurrentThread() || singleton().fullBuffers().isLockedByCurrentThread()) {
+        if (SubstrateSigprofHandler.singleton().availableBuffers().isLockedByCurrentThread() || SubstrateSigprofHandler.singleton().fullBuffers().isLockedByCurrentThread()) {
             /*
              * The current thread already holds the stack lock, so we can't access it. It's way
              * better to lose one sample, then potentially the whole buffer.
              */
             SamplerThreadLocal.increaseMissedSamples();
-            return false;
+            return;
         }
 
-        SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer();
-        if (buffer.isNull()) {
-            /* Pop first free buffer from the pool. */
-            buffer = singleton().availableBuffers().popBuffer();
-            if (buffer.isNull()) {
-                /* No available buffers on the pool. Fallback! */
-                SamplerThreadLocal.increaseMissedSamples();
-                return false;
+        /* Initialize stack walk. */
+        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
+        /* Buffer size constrains stack walk size. */
+        if (SamplerSampleWriterDataAccess.initialize(data, 0, Integer.MAX_VALUE)) {
+            SamplerSampleWriter.begin(data);
+            /*
+             * Walk the stack.
+             * 
+             * We should commit the sample if: the stack walk was done successfully or the stack
+             * walk was interrupted because stack size exceeded given depth.
+             */
+            if (JavaStackWalker.walkCurrentThread(sp, ip, visitor()) || data.getTruncated()) {
+                SamplerSampleWriter.end(data);
             }
-            SamplerThreadLocal.setThreadLocalBuffer(buffer);
         }
-
-        /* Initialize the buffer. */
-        data.setSamplerBuffer(buffer);
-        data.setStartPos(buffer.getPos());
-        data.setCurrentPos(buffer.getPos());
-        data.setEndPos(SamplerBufferAccess.getDataEnd(buffer));
-        SamplerThreadLocal.setWriterData(data);
-        return true;
     }
 
     /** Called from the platform dependent sigprof handler to enter isolate. */

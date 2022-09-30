@@ -126,7 +126,7 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
 
         UninterruptibleEntry entry = get(valueOnStack);
         if (entry.isNonNull()) {
-            return WordFactory.nullPointer();
+            return entry;
         } else {
             return insertEntry(valueOnStack);
         }

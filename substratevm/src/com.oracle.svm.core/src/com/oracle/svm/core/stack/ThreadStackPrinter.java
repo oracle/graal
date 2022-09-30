@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -39,16 +38,17 @@ import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAll
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.code.ReusableTypeReader;
+import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 
 public class ThreadStackPrinter {
     private static final int MAX_STACK_FRAMES_PER_THREAD_TO_PRINT = 100_000;
 
     public static class StackFramePrintVisitor extends Stage1StackFramePrintVisitor {
-        private static final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
+        private static final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
         private static final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private static final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
         private static final FrameInfoState frameInfoState = new FrameInfoState();
