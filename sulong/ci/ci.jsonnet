@@ -38,8 +38,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   },
 
   builds: [ sc.defBuild(b) for b in [
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + common.eclipse + sc.gateTags("style") + { name: "gate-sulong-style-jdk17-linux-amd64" },
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + common.eclipse + common.jdt + sc.gateTags("fullbuild") + { name: "gate-sulong-fullbuild-jdk17-linux-amd64" },
+    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + common.eclipse + sc.gateTags("style,fullbuild") + { name: "gate-sulong-style-fullbuild-jdk17-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc") + $.sulong_test_toolchain + { name: "gate-sulong-misc-jdk17-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,parser") + { name: "gate-sulong-parser-jdk17-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk17-linux-amd64", timelimit: "45:00" },
