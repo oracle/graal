@@ -147,6 +147,11 @@ public final class SimpleLanguageDAPTest {
                     "  nanoTime();\n" +
                     "}\n";
 
+    private static final URI testURI = URI.create("file:///test/SLTest.sl");
+    private static final File testFile = new File(testURI);
+    private static final String testFilePath = getFilePath(testFile);
+    private static final String NL = replaceNewLines(System.getProperty("line.separator"));
+
     private DAPTester tester;
 
     @After
@@ -159,7 +164,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testInitialSuspendAndSource() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -175,20 +180,20 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Get loaded sources
         tester.sendMessage("{\"command\":\"loadedSources\",\"type\":\"request\",\"seq\":7}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"sources\":[{\"sourceReference\":1,\"name\":\"SL builtin\"},{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"loadedSources\",\"seq\":13}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"sources\":[{\"sourceReference\":1,\"name\":\"SL builtin\"},{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"loadedSources\",\"seq\":13}");
         // Get the script code:
-        tester.sendMessage("{\"command\":\"source\",\"arguments\":{\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"},\"sourceReference\":2},\"type\":\"request\",\"seq\":8}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"content\":\"" + source.getCharacters().toString().replace("\n", "\\n") + "\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"source\",\"seq\":14}");
+        tester.sendMessage("{\"command\":\"source\",\"arguments\":{\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"},\"sourceReference\":2},\"type\":\"request\",\"seq\":8}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"content\":\"" + replaceNewLines(source.getCharacters().toString()) + "\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"source\",\"seq\":14}");
         // Continue to finish
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages(
@@ -201,7 +206,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testStepping() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -217,14 +222,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
@@ -235,7 +240,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":8,\"command\":\"threads\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":3,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":9,\"command\":\"stackTrace\",\"seq\":17}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":3,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":9,\"command\":\"stackTrace\",\"seq\":17}");
         // Step in:
         tester.sendMessage("{\"command\":\"stepIn\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
         tester.compareReceivedMessages(
@@ -246,7 +251,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":11,\"command\":\"threads\",\"seq\":21}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":12}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":11,\"name\":\"factorial\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":22}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":11,\"name\":\"factorial\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":22}");
         // Step out:
         tester.sendMessage("{\"command\":\"stepOut\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages(
@@ -257,7 +262,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"threads\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":3,\"name\":\"main\",\"column\":21,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":3,\"name\":\"main\",\"column\":21,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
         // Step out to finish:
         tester.sendMessage("{\"command\":\"stepOut\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages(
@@ -272,7 +277,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE1);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -391,7 +396,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE2);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -493,7 +498,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testGuestFunctionBreakpoints() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", GUEST_FUNCTIONS, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", GUEST_FUNCTIONS, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -509,14 +514,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Set function breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[{\"name\":\"foo0\"}]},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":1,\"endColumn\":1,\"line\":1,\"verified\":true,\"column\":1,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
@@ -530,7 +535,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"threads\",\"seq\":17}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"foo0\",\"column\":10,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":10,\"command\":\"stackTrace\",\"seq\":18}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"foo0\",\"column\":10,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":10,\"command\":\"stackTrace\",\"seq\":18}");
         // Remove the breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[]},\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[]},\"type\":\"response\",\"request_seq\":11,\"command\":\"setFunctionBreakpoints\",\"seq\":19}");
@@ -546,7 +551,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testBuiltInFunctionBreakpoints() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", BUILTIN_FUNCTIONS, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", BUILTIN_FUNCTIONS, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -562,14 +567,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Set function breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[{\"name\":\"isNull\"}]},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":1,\"endColumn\":1,\"line\":1,\"verified\":true,\"column\":1,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
@@ -583,7 +588,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"threads\",\"seq\":17}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":4,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":10,\"command\":\"stackTrace\",\"seq\":18}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":4,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":10,\"command\":\"stackTrace\",\"seq\":18}");
         // Remove the breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[]},\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[]},\"type\":\"response\",\"request_seq\":11,\"command\":\"setFunctionBreakpoints\",\"seq\":19}");
@@ -599,7 +604,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testScopes() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -615,14 +620,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Ask for the local scope variables at the beginning of main:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":2},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
@@ -640,7 +645,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":11,\"command\":\"threads\",\"seq\":19}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":12}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":5,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":20}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":5,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":20}");
         // Ask for the local scope variables at line 5:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"scopes\",\"seq\":21}");
@@ -656,7 +661,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":16,\"command\":\"threads\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":17}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":17,\"command\":\"stackTrace\",\"seq\":27}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":17,\"command\":\"stackTrace\",\"seq\":27}");
         // Ask for the local scope variables at line 6:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":18}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
@@ -679,7 +684,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testNotSuspended() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -695,14 +700,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Continue:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
@@ -718,7 +723,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testReturnValue() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -734,14 +739,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // at main:2
         tester.sendMessage("{\"command\":\"stepIn\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
@@ -752,7 +757,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":8,\"command\":\"threads\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":9,\"command\":\"stackTrace\",\"seq\":17}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":9,\"command\":\"stackTrace\",\"seq\":17}");
         // at addThem:6
         tester.sendMessage("{\"command\":\"stepIn\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
         tester.compareReceivedMessages(
@@ -763,7 +768,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":11,\"command\":\"threads\",\"seq\":21}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":12}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":12,\"name\":\"fn\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":22}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":12,\"name\":\"fn\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":22}");
         // at fn:12, step into steps to the end of fn and a return value is accessible
         tester.sendMessage("{\"command\":\"stepIn\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages(
@@ -774,7 +779,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"threads\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":13,\"name\":\"fn\",\"column\":2,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":13,\"name\":\"fn\",\"column\":2,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":4,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":5,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":16,\"command\":\"scopes\",\"seq\":28}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":4},\"type\":\"request\",\"seq\":17}");
@@ -792,7 +797,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":20}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":20,\"command\":\"threads\",\"seq\":34}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":21}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":21,\"command\":\"stackTrace\",\"seq\":35}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":21,\"command\":\"stackTrace\",\"seq\":35}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":22}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"scopes\",\"seq\":36}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":23}");
@@ -807,7 +812,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":25}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":25,\"command\":\"threads\",\"seq\":41}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":26}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":26,\"command\":\"stackTrace\",\"seq\":42}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":26,\"command\":\"stackTrace\",\"seq\":42}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":27}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":27,\"command\":\"scopes\",\"seq\":43}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":28}");
@@ -822,7 +827,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":30}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":30,\"command\":\"threads\",\"seq\":48}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":31}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":12,\"name\":\"fn\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":7,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":31,\"command\":\"stackTrace\",\"seq\":49}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":12,\"name\":\"fn\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":7,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":31,\"command\":\"stackTrace\",\"seq\":49}");
         // at fn:10, step out from fn
         tester.sendMessage("{\"command\":\"stepOut\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":32}");
         tester.compareReceivedMessages(
@@ -833,7 +838,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":33}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":33,\"command\":\"threads\",\"seq\":53}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":34}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":34,\"command\":\"stackTrace\",\"seq\":54}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":34,\"command\":\"stackTrace\",\"seq\":54}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":35}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":35,\"command\":\"scopes\",\"seq\":55}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":36}");
@@ -843,7 +848,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
                 "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":37,\"command\":\"continue\"}",
-                "{\"event\":\"output\",\"body\":{\"output\":\"10000000002\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":59}"
+                "{\"event\":\"output\",\"body\":{\"output\":\"10000000002" + NL + "\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":59}"
         );
         tester.finish();
     }
@@ -851,7 +856,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testBreakpointCorrections() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -867,14 +872,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Breakpoint before any statements moves to the first statement
         tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":{\"name\":\"SLTest.sl\",\"sourceReference\":2},\"lines\":[6],\"breakpoints\":[{\"line\":6}],\"sourceModified\":false},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":8,\"endColumn\":9,\"line\":7,\"verified\":true,\"column\":3,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setBreakpoints\",\"seq\":13}");
@@ -900,7 +905,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"threads\",\"seq\":21}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":14}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"testLocations\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":14,\"command\":\"stackTrace\",\"seq\":22}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"testLocations\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":14,\"command\":\"stackTrace\",\"seq\":22}");
         // Continue to finish:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
         tester.compareReceivedMessages(
@@ -913,7 +918,7 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testBreakpointLocations() throws Exception {
         tester = DAPTester.start(true);
-        Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
+        Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").uri(testURI).build();
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -929,14 +934,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},\"type\":\"event\",\"seq\":9}"
         );
         // Suspend at the beginning of the script:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":5,\"command\":\"threads\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":6}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Moves from an empty line to a statement location
         tester.sendMessage("{\"command\":\"breakpointLocations\",\"arguments\":{\"source\":{\"name\":\"SLTest.sl\",\"sourceReference\":2},\"line\":6,\"column\":1,\"endLine\":6,\"endColumn\":3},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"line\":7,\"column\":3}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"breakpointLocations\",\"seq\":13}");
@@ -976,7 +981,9 @@ public final class SimpleLanguageDAPTest {
     @Test
     public void testExceptionBreakpoints() throws Exception {
         tester = DAPTester.start(false);
-        Source source = Source.newBuilder("sl", CODE_THROW, "SLThrow.sl").uri(new URI("file:///test/SLThrow.sl")).build();
+        URI uri = new URI("file:///test/SLThrow.sl");
+        Source source = Source.newBuilder("sl", CODE_THROW, "SLThrow.sl").uri(uri).build();
+        String path = getFilePath(new File(uri));
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -994,14 +1001,14 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":8}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":9}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}},\"type\":\"event\",\"seq\":10}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"path\":\"" + path + "\",\"name\":\"SLThrow.sl\"}},\"type\":\"event\",\"seq\":10}"
         );
         // Suspend at the breakpoint:
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"exception\",\"description\":\"Paused on uncaught exception\"},\"type\":\"event\",\"seq\":11}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":6}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":6,\"command\":\"threads\",\"seq\":12}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"invert\",\"column\":13,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":10,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":13}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"invert\",\"column\":13,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + path + "\",\"name\":\"SLThrow.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":10,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"" + path + "\",\"name\":\"SLThrow.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":13}");
         // Ask for the exception info:
         tester.sendMessage("{\"command\":\"exceptionInfo\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"exceptionId\":\"Error\",\"description\":\"Unsupported\",\"breakMode\":\"unhandled\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"exceptionInfo\",\"seq\":14}");
@@ -1019,7 +1026,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE_VARS);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -1101,7 +1108,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE1);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + getFilePath(sourceFile) + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -1134,7 +1141,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"evaluate\",\"arguments\":{\"expression\":\"b\",\"frameId\":2},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"result\":\"2\",\"variablesReference\":0,\"type\":\"Number\"},\"type\":\"response\",\"request_seq\":9,\"command\":\"evaluate\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"evaluate\",\"arguments\":{\"expression\":\"unknown\",\"frameId\":2},\"type\":\"request\",\"seq\":10}");
-        tester.compareReceivedMessages("{\"success\":false,\"body\":{\"error\":{\"format\":\"Error(s) parsing script:\\n-- line 1 col 1: missing 'function' at 'unknown'\",\"id\":2025}},\"type\":\"response\",\"message\":\"Error(s) parsing script:\\n-- line 1 col 1: missing 'function' at 'unknown'\",\"request_seq\":10,\"command\":\"evaluate\",\"seq\":17}");
+        tester.compareReceivedMessages("{\"success\":false,\"body\":{\"error\":{\"format\":\"Error(s) parsing script:" + NL + "-- line 1 col 1: missing 'function' at 'unknown'\",\"id\":2025}},\"type\":\"response\",\"message\":\"Error(s) parsing script:" + NL + "-- line 1 col 1: missing 'function' at 'unknown'\",\"request_seq\":10,\"command\":\"evaluate\",\"seq\":17}");
         // Continue to finish:
         tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":" + sourceJson + ",\"lines\":[],\"breakpoints\":[],\"sourceModified\":false},\"type\":\"request\",\"seq\":18}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[]},\"type\":\"response\",\"request_seq\":18,\"command\":\"setBreakpoints\"}");
@@ -1166,7 +1173,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"path\":\"" + sourceFile.getCanonicalPath() + "\",\"name\":\"" + sourceFile.getName() + "\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"path\":\"" + getFilePath(sourceFile) + "\",\"name\":\"" + sourceFile.getName() + "\"}},\"type\":\"event\",\"seq\":9}"
         );
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");
@@ -1177,6 +1184,9 @@ public final class SimpleLanguageDAPTest {
         tester.finish();
     }
 
+    // @formatter:on
+    // CheckStyle: resume line length check
+
     private static File createTemporaryFile(String content) throws IOException {
         File file = File.createTempFile("test", ".sl");
         file.deleteOnExit();
@@ -1184,6 +1194,19 @@ public final class SimpleLanguageDAPTest {
         return file;
     }
 
-    // @formatter:on
-    // CheckStyle: resume line length check
+    private static String getFilePath(File file) {
+        String path;
+        try {
+            path = file.getCanonicalPath();
+        } catch (IOException ex) {
+            path = file.getAbsolutePath();
+        }
+        // We need to escape backlash for correct JSON:
+        path = path.replace("\\", "\\\\");
+        return path;
+    }
+
+    private static String replaceNewLines(String nl) {
+        return nl.replace("\n", "\\n").replace("\r", "\\r");
+    }
 }
