@@ -357,8 +357,7 @@ import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadQuickNo
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreQuickNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
@@ -1574,7 +1573,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 char cpi = original.readCPI(curBCI);
                 int nodeOpcode = original.currentBC(curBCI);
                 Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                result = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().InlineFieldAccessors));
+                result = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining));
                 nodes[readCPI(curBCI)] = result;
             }
         }
@@ -1635,6 +1634,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        generifyBytecodeLevelInlining();
         InstrumentationSupport info = this.instrumentation;
         if (info == null && materializedTags.contains(StatementTag.class)) {
             Lock lock = getLock();
@@ -2064,7 +2064,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
             char cpi = readCPI(curBCI);
             Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().InlineFieldAccessors);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
         });
         // Perform the call outside of the lock.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -2077,15 +2077,37 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     public int reQuickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode invoke = null;
-        synchronized (this) {
-            assert bs.currentBC(curBCI) == QUICK;
-            char nodeIndex = readCPI(curBCI);
-            invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
-            nodes[nodeIndex] = nodes[nodeIndex].replace(invoke);
-        }
+        BaseQuickNode invoke = generifyInlinedMethodNode(top, curBCI, opcode, statementIndex, resolutionSeed);
         // Perform the call outside of the lock.
         return invoke.execute(frame);
+    }
+
+    /**
+     * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
+     * happening on this node.
+     */
+    public BaseQuickNode generifyInlinedMethodNode(int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed) {
+        synchronized (this) {
+            // Note that another thread might have already generify-ed our node at this point
+            assert bs.currentBC(curBCI) == QUICK;
+            char nodeIndex = readCPI(curBCI);
+            BaseQuickNode invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
+            nodes[nodeIndex] = nodes[nodeIndex].replace(invoke);
+            return invoke;
+        }
+    }
+
+    /**
+     * Reverts all bytecode-level inlining to a generic invoke quick node.
+     */
+    private void generifyBytecodeLevelInlining() {
+        synchronized (this) {
+            for (BaseQuickNode quick : nodes) {
+                if (quick instanceof InlinedMethodNode) {
+                    ((InlinedMethodNode) quick).revertToGeneric(this);
+                }
+            }
+        }
     }
 
     // region quickenForeign
@@ -2176,8 +2198,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     // endregion quickenForeign
 
-    private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
-        assert !allowFieldAccessInlining || getContext().getEspressoEnv().InlineFieldAccessors;
+    private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
         BaseQuickNode invoke;
         Method resolved = resolutionSeed;
         switch (opcode) {
@@ -2251,12 +2272,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
-
-        if (allowFieldAccessInlining && resolved.isInlinableGetter()) {
-            invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI, statementIndex);
-        } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
-            invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI, statementIndex);
-        } else if (resolved.isPolySignatureIntrinsic()) {
+        if (allowBytecodeInlining) {
+            invoke = InlinedMethodNode.createFor(resolutionSeed, top, opcode, curBCI, statementIndex);
+            if (invoke != null) {
+                return invoke;
+            }
+        }
+        if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
             if (resolved.isPrivate()) {

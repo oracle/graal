@@ -29,11 +29,10 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class InlinedGetterNode extends QuickNode {
+public class InlinedGetterNode extends InlinedMethodNode {
 
     private static final DebugCounter getterNodes = DebugCounter.create("getters: ");
     private static final DebugCounter leafGetterNodes = DebugCounter.create("leaf get: ");
@@ -42,24 +41,20 @@ public class InlinedGetterNode extends QuickNode {
     private static final int STATIC_GETTER_BCI = 0;
 
     final Field field;
-    final Method inlinedMethod;
-    protected final int statementIndex;
 
     @Child AbstractGetFieldNode getFieldNode;
 
-    InlinedGetterNode(Method inlinedMethod, int top, int callerBCI, int statementIndex) {
-        super(top, callerBCI);
-        this.inlinedMethod = inlinedMethod;
+    InlinedGetterNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
+        super(inlinedMethod, top, callerBCI, opcode, statementIndex);
         this.field = getInlinedField(inlinedMethod);
-        this.statementIndex = statementIndex;
-        getFieldNode = AbstractGetFieldNode.create(this.field);
+        getFieldNode = insert(AbstractGetFieldNode.create(this.field));
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
     public static InlinedGetterNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
         getterNodes.inc();
         if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedGetterNode(inlinedMethod, top, curBCI, statementIndex);
+            return new InlinedGetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
         } else {
             leafGetterNodes.inc();
             return new LeafAssumptionGetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
@@ -72,11 +67,8 @@ public class InlinedGetterNode extends QuickNode {
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(EspressoFrame.popObject(frame, top - 1));
-        return (getResultAt() - top) + getFieldNode.getField(frame, root, receiver, getResultAt(), statementIndex);
-    }
-
-    private int getResultAt() {
-        return inlinedMethod.isStatic() ? top : (top - 1);
+        getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
+        return stackEffect;
     }
 
     private static Field getInlinedField(Method inlinedMethod) {

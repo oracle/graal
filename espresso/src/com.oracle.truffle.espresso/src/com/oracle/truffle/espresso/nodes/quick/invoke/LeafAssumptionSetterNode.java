@@ -31,27 +31,22 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class LeafAssumptionSetterNode extends InlinedSetterNode {
 
-    private final int curBCI;
-    private final int opcode;
-
-    protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+    LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
         super(inlinedMethod, top, opCode, curBCI, statementIndex);
-        this.curBCI = curBCI;
-        this.opcode = opCode;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
-        if (getContext().getClassHierarchyOracle().isLeafMethod(inlinedMethod.getMethodVersion()).isValid()) {
+        if (getContext().getClassHierarchyOracle().isLeafMethod(method).isValid()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                             : nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
             setFieldNode.setField(frame, root, receiver, top, statementIndex);
-            return -slotCount + stackEffect;
+            return stackEffect;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return root.reQuickenInvoke(frame, top, curBCI, opcode, statementIndex, inlinedMethod);
+            return root.reQuickenInvoke(frame, top, getCallerBCI(), opcode, statementIndex, method.getMethod());
         }
     }
 }

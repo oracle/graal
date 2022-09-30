@@ -23,40 +23,23 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStatic;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStaticNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
-public final class InvokeStaticQuickNode extends QuickNode {
+public final class InvokeStaticQuickNode extends InvokeQuickNode {
 
-    final Method.MethodVersion method;
     @Child InvokeStatic invokeStatic;
     final boolean callsDoPrivileged;
 
-    final int resultAt;
-
-    final JavaKind returnKind;
-    final boolean returnsPrimitiveType;
-
     public InvokeStaticQuickNode(Method method, int top, int curBCI) {
-        super(top, curBCI);
+        super(method, top, curBCI);
         assert method.isStatic();
-        this.method = method.getMethodVersion();
         this.callsDoPrivileged = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
                         Name.doPrivileged.equals(method.getName());
-        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
-                                                                                          // receiver
-        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
-        this.returnKind = method.getReturnKind();
         this.invokeStatic = InvokeStaticNodeGen.create(method);
     }
 
@@ -70,24 +53,8 @@ public final class InvokeStaticQuickNode extends QuickNode {
                 rootNode.setFrameId(frame, VM.GlobalFrameIDs.getID());
             }
         }
-        Object[] args = EspressoFrame.popArguments(frame, top, false, method.getMethod().getParsedSignature());
+        Object[] args = getArguments(frame);
         Object result = invokeStatic.execute(args);
-        if (!returnsPrimitiveType) {
-            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
-        }
-        return (getResultAt() - top) + EspressoFrame.putKind(frame, getResultAt(), result, returnKind);
-    }
-
-    private int getResultAt() {
-        return resultAt;
-    }
-
-    @Override
-    public boolean removedByRedefintion() {
-        if (method.getRedefineAssumption().isValid()) {
-            return false;
-        } else {
-            return method.getMethod().isRemovedByRedefition();
-        }
+        return pushResult(frame, result);
     }
 }

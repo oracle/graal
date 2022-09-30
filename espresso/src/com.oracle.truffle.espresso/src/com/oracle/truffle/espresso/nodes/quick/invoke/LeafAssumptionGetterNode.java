@@ -31,27 +31,22 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class LeafAssumptionGetterNode extends InlinedGetterNode {
 
-    protected final int opCode;
-    protected final int curBCI;
-
-    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
-        super(inlinedMethod, top, curBCI, statementIndex);
-        this.opCode = opCode;
-        this.curBCI = curBCI;
+    LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+        super(inlinedMethod, top, opCode, curBCI, statementIndex);
     }
 
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
-        if (getContext().getClassHierarchyOracle().isLeafMethod(inlinedMethod.getMethodVersion()).isValid()) {
+        if (getContext().getClassHierarchyOracle().isLeafMethod(method).isValid()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                             : nullCheck(EspressoFrame.popObject(frame, top - 1));
-            int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
-            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
+            getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
+            return stackEffect;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return root.reQuickenInvoke(frame, top, curBCI, opCode, statementIndex, inlinedMethod);
+            return root.reQuickenInvoke(frame, top, getCallerBCI(), opcode, statementIndex, method.getMethod());
         }
     }
 }

@@ -1217,7 +1217,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
                 /*
                  * The substitution factory does the validation e.g. some substitutions only apply
-                 * for classes/methods in the boot or platform class loaders. A warning is logged is
+                 * for classes/methods in the boot or platform class loaders. A warning is logged if
                  * the validation fails.
                  */
                 EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());

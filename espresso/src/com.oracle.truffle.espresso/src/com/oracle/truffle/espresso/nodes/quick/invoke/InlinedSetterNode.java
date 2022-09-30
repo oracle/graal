@@ -24,17 +24,15 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class InlinedSetterNode extends QuickNode {
+public class InlinedSetterNode extends InlinedMethodNode {
 
     private static final DebugCounter setterNodes = DebugCounter.create("setters: ");
     private static final DebugCounter leafSetterNodes = DebugCounter.create("leaf set: ");
@@ -43,21 +41,15 @@ public class InlinedSetterNode extends QuickNode {
     private static final int STATIC_SETTER_BCI = 1;
 
     final Field field;
-    final Method inlinedMethod;
-    protected final int stackEffect;
     final int slotCount;
-    protected final int statementIndex;
 
     @Child AbstractSetFieldNode setFieldNode;
 
     InlinedSetterNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
-        super(top, callerBCI);
-        this.inlinedMethod = inlinedMethod;
+        super(inlinedMethod, top, callerBCI, opcode, statementIndex);
         this.field = getInlinedField(inlinedMethod);
         this.slotCount = field.getKind().getSlotCount();
-        this.stackEffect = Bytecodes.stackEffectOf(opcode);
-        this.statementIndex = statementIndex;
-        setFieldNode = AbstractSetFieldNode.create(this.field);
+        setFieldNode = insert(AbstractSetFieldNode.create(this.field));
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
@@ -78,7 +70,7 @@ public class InlinedSetterNode extends QuickNode {
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
         setFieldNode.setField(frame, root, receiver, top, statementIndex);
-        return -slotCount + stackEffect;
+        return stackEffect;
     }
 
     private static Field getInlinedField(Method inlinedMethod) {
