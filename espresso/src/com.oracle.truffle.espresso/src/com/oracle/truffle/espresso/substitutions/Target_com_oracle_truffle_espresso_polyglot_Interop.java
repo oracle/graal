@@ -61,7 +61,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
-    public static final class InteropUtils {
+    static final class InteropUtils {
 
         static @JavaType(Object.class) StaticObject maybeWrapAsObject(Object value, InteropLibrary valueInterop, EspressoContext context) {
             if (value instanceof StaticObject) {
@@ -93,14 +93,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
         // this method is used to unwrap an espresso object prior to leaving espresso
         // conversion to boxed primitive host values will occur
-        public static Object unwrap(EspressoLanguage language, StaticObject object, Meta meta) {
+        static Object unwrap(EspressoLanguage language, StaticObject object, Meta meta) {
             return com.oracle.truffle.espresso.runtime.InteropUtils.unwrap(language, object, meta);
         }
 
         // this method is used to unwrap an espresso object when we know
         // the resulting unwrapped object does not leave espresso
         // no conversion of boxed primitive espresso objects occur
-        public static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
+        static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
             return object.isForeignObject() ? object.rawForeignObject(language) : object;
         }
 
