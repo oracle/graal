@@ -3,6 +3,7 @@
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
 ## Version 22.3.0
+* (GR-19840): An image produced by GraalVM's jlink now includes and uses libgraal by default and its `java -version` output includes GraalVM branding.
 * (GR-32382): Added a dedicated Native Image GC policy for libgraal that will adjust the eden space aggressively to
 minimize RSS memory usage.
 * (GR-38950): Removed deprecated JMX `HotSpotGraalRuntime` management bean from both `libgraal` and `jargraal`.
