@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.deopt;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.util.VMError;
-
-public final class LoomSupport {
-    @Fold
-    public static boolean isEnabled() {
-        VMError.guarantee(ImageSingletons.lookup(ContinuationsFeature.class).hasFinishedRegistration());
-        return ImageSingletons.contains(LoomVirtualThreads.class);
-    }
-
-    // See JDK native enum freeze_result
-    static final int FREEZE_OK = 0;
-    static final int FREEZE_PINNED_CS = 2; // critical section
-    static final int FREEZE_PINNED_NATIVE = 3;
-
-    public static Continuation getInternalContinuation(Target_jdk_internal_vm_Continuation cont) {
-        return cont.internal;
-    }
-
-    private LoomSupport() {
-    }
+/**
+ * The purpose of this feature is to indicate whether deoptimization is enabled in an image. It is
+ * registered as a dependency of {@code DeoptimizationFeature} and so its object will be added to
+ * {@link ImageSingletons} even before {@link Feature#afterRegistration}.
+ *
+ * @see DeoptimizationSupport#enabled()
+ */
+public final class DeoptimizationCanaryFeature implements Feature {
 }
