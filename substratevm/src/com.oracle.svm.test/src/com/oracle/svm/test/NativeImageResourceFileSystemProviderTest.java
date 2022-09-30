@@ -28,6 +28,7 @@ package com.oracle.svm.test;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.NativeImageResourceUtils.ROOT_DIRECTORY;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToPath;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURI;
@@ -61,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.junit.Assert;
@@ -106,6 +108,110 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("Exception occurs during closing file system!");
         }
+    }
+
+    /**
+     * <p>
+     * Query the empty path. Test inspired by issues:
+     * <a href="https://github.com/oracle/graal/issues/5081">5081</a>
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> We are doing next operations: </br>
+     * <ol>
+     * <li>Create new file system</li>
+     * <li>Querying empty path</li>
+     * <li>Closing file system</li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void githubIssue5081() {
+        // 1. Creating new file system.
+        FileSystem fileSystem = createNewFileSystem();
+
+        // 2. Querying an empty path.
+        try {
+            fileSystem.getPath("").resolve(RESOURCE_FILE_1);
+        } catch (Exception e) {
+            Assert.fail("Querying the empty path throws an exception!");
+        }
+
+        // 3. Closing file system.
+        closeFileSystem(fileSystem);
+
+    }
+
+    /**
+     * <p>
+     * Query the root path and iterate through all folders. Test inspired by issues:
+     * <a href="https://github.com/oracle/graal/issues/5020">5020</a>
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> We are doing next operations: </br>
+     * <ol>
+     * <li>Create new file system</li>
+     * <li>Check if the root is proper.</li>
+     * <li>Iterating through all folders in file system starting for the root.</li>
+     * <li>Closing file system</li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void githubIssue5020() {
+        // 1. Creating new file system.
+        FileSystem fileSystem = createNewFileSystem();
+
+        // 2. Check if the root is proper.
+        for (Path rootDirectory : fileSystem.getRootDirectories()) {
+            Assert.assertEquals("The root directory is not equals to " + ROOT_DIRECTORY + "!", ROOT_DIRECTORY, rootDirectory.toString());
+        }
+
+        // 3. Iterating through all resources in file system starting for the root.
+        Path rootPath = fileSystem.getPath(ROOT_DIRECTORY);
+        try (Stream<Path> files = Files.walk(rootPath)) {
+            files.forEach(path -> {
+            });
+        } catch (IOException e) {
+            Assert.fail("IOException occurred during file system walk, starting from the root!");
+        }
+
+        // 4. Closing file system.
+        closeFileSystem(fileSystem);
+    }
+
+    /**
+     * <p>
+     * Query the path with trailing slash and iterate though all its sub-folders. Test inspired by
+     * issues: <a href="https://github.com/oracle/graal/issues/5080">5080</a>
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> We are doing next operations: </br>
+     * <ol>
+     * <li>Create new file system</li>
+     * <li>Iterating through all folders in file system starting for the given path.</li>
+     * <li>Closing file system</li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void githubIssue5080() {
+        // 1. Creating new file system.
+        FileSystem fileSystem = createNewFileSystem();
+
+        // 2. Iterating through all folders in file system starting for the given path.
+        Path path = fileSystem.getPath(RESOURCE_DIR + "/");
+        try (Stream<Path> files = Files.walk(path)) {
+            files.forEach(p -> {
+            });
+        } catch (IOException e) {
+            Assert.fail("IOException occurred during file system walk, starting from the path: " + path + "!");
+        }
+
+        // 3. Closing file system.
+        closeFileSystem(fileSystem);
     }
 
     /**
