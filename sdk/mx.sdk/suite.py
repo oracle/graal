@@ -314,6 +314,9 @@ suite = {
       "requires" : [
         "java.logging",
       ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.module"],
+      },
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
