@@ -292,12 +292,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * snippet.
      */
     @SuppressWarnings("unused")
-    default void emitStringLatin1Inflate(Value src, Value dst, Value len) {
+    default void emitStringLatin1Inflate(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringLatin1.inflate substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
+    default Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
     }
 
@@ -307,12 +307,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+    default Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitHasNegatives(Value array, Value length) {
+    default Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

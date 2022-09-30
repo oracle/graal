@@ -29,19 +29,18 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 
+import java.util.EnumSet;
+
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.replacements.nodes.MemoryKillStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
@@ -56,58 +55,71 @@ import jdk.vm.ci.meta.JavaKind;
  * </ul>
  */
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN, cyclesRationale = "depends on length")
-public final class StringLatin1InflateNode extends FixedWithNextNode
-                implements LIRLowerable, MultiMemoryKill, MemoryAccess {
+public final class StringLatin1InflateNode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<StringLatin1InflateNode> TYPE = NodeClass.create(StringLatin1InflateNode.class);
+
+    public static final LocationIdentity[] KILLED_LOCATIONS_BYTE_CHAR = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Char)};
+    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("stringLatin1Inflate", void.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
+                    false, KILLED_LOCATIONS_BYTE_CHAR, false, false);
 
     /** pointer to src[srcOff]. */
     @Input private ValueNode src;
     /** pointer to dst[dstOff]. */
     @Input private ValueNode dst;
     @Input private ValueNode len;
-
-    private final JavaKind writeKind;
-
-    @OptionalInput(Memory) private MemoryKill lla; // Last access location registered.
+    private final LocationIdentity[] killedLocations;
 
     public StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind writeKind) {
-        super(TYPE, StampFactory.forVoid());
+        this(src, dst, len, new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(writeKind)}, null);
+        GraalError.guarantee(writeKind == JavaKind.Byte || writeKind == JavaKind.Char, "write kind must be either Char or Byte");
+    }
+
+    /**
+     * Constructor for stub compilation. We set {@code killedLocations} to both {@code char} and
+     * {@code byte} array locations here, because we want to re-use the same stub for all call
+     * sites.
+     */
+    public StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len) {
+        this(src, dst, len, KILLED_LOCATIONS_BYTE_CHAR, null);
+    }
+
+    public StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(src, dst, len, KILLED_LOCATIONS_BYTE_CHAR, runtimeCheckedCPUFeatures);
+    }
+
+    private StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len, LocationIdentity[] killedLocations, EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         this.src = src;
         this.dst = dst;
         this.len = len;
-        this.writeKind = writeKind;
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        // Model read access via 'src' using:
-        return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
+        this.killedLocations = killedLocations;
     }
 
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
-        // Model write access via 'dst' using:
-        return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(writeKind)};
+        return killedLocations;
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        LIRGeneratorTool lgt = gen.getLIRGeneratorTool();
-        lgt.emitStringLatin1Inflate(gen.operand(src), gen.operand(dst), gen.operand(len));
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return STUB;
     }
 
     @Override
-    public MemoryKill getLastLocationAccess() {
-        return lla;
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{src, dst, len};
     }
 
     @Override
-    public void setLastLocationAccess(MemoryKill newlla) {
-        updateUsages(ValueNodeUtil.asNode(lla), ValueNodeUtil.asNode(newlla));
-        lla = newlla;
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
+        gen.getLIRGeneratorTool().emitStringLatin1Inflate(runtimeCheckedCPUFeatures, gen.operand(src), gen.operand(dst), gen.operand(len));
     }
 
     @NodeIntrinsic
-    public static native void inflate(Pointer src, Pointer dst, int len, @ConstantNodeParameter JavaKind writeKind);
+    @GenerateStub
+    public static native void stringLatin1Inflate(Pointer src, Pointer dst, int len);
+
+    @NodeIntrinsic
+    public static native void stringLatin1Inflate(Pointer src, Pointer dst, int len, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 }
