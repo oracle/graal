@@ -138,7 +138,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     /*
      * If this method returns true for a specialization, the following guards are known to be false:
-     * 1. isEspressoException(object) 2. isStaticObject(object)
+     * 1. isEspressoException(value) 2. isStaticObject(value)
      */
     static boolean isTypeMappingEnabled(Klass klass, EspressoContext context, Object value) {
         return klass.getContext().explicitTypeMappingsEnabled() && isHostObject(context, value);
