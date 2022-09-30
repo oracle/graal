@@ -272,7 +272,7 @@ public final class ReflectionPlugins {
         boolean initialize = (Boolean) initializeValue;
         Supplier<String> targetParameters = () -> className + ", " + initialize;
 
-        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className);
+        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className, false);
         if (!typeResult.isPresent()) {
             Throwable e = typeResult.getException();
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());

@@ -44,6 +44,7 @@ public final class ClassForNameSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
+        assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }

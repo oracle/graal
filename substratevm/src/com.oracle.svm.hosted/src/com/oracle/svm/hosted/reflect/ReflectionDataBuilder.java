@@ -540,7 +540,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return;
         }
         processedTypes.add(type);
-        if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
+        if (type instanceof Class<?> && !shouldExcludeClass(access, (Class<?>) type)) {
             Class<?> clazz = (Class<?>) type;
             makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz));
 
@@ -689,8 +689,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
+    private static boolean shouldExcludeClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
+        if (clazz.isPrimitive()) {
+            return true; // primitives cannot be looked up by name and have no methods or fields
+        }
+        return SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse());
+    }
+
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
-        if (SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
+        if (shouldExcludeClass(access, clazz)) {
             return;
         }
 

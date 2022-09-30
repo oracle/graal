@@ -259,8 +259,13 @@ public final class ImageClassLoader {
 
     /** Find class, return result encoding class or failure reason. */
     public TypeResult<Class<?>> findClass(String name) {
+        return findClass(name, true);
+    }
+
+    /** Find class, return result encoding class or failure reason. */
+    public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
         try {
-            if (name.indexOf('.') == -1) {
+            if (allowPrimitives && name.indexOf('.') == -1) {
                 switch (name) {
                     case "boolean":
                         return TypeResult.forClass(boolean.class);
