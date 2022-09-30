@@ -735,6 +735,27 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
+        @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "isInteropPrimitive(value)"})
+        static void doEspressoInteropPrimitive(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("receiver") InteropLibrary receiverLib,
+                        @Shared("toEspresso") @Cached ToEspressoNode toEspressoNode,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            EspressoLanguage language = EspressoLanguage.get(receiverLib);
+            if (index < 0 || receiver.length(language) <= index) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            StaticObject espressoValue;
+            try {
+                Klass componentType = ((ArrayKlass) receiver.getKlass()).getComponentType();
+                espressoValue = (StaticObject) toEspressoNode.execute(value, componentType);
+            } catch (UnsupportedOperationException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
+        }
+
         @SuppressWarnings("unused")
         @Fallback
         static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
@@ -781,6 +802,10 @@ public class EspressoInterop extends BaseInterop {
     protected static boolean isPrimitiveArray(StaticObject object) {
         return isBooleanArray(object) || isCharArray(object) || isByteArray(object) || isShortArray(object) || isIntArray(object) || isLongArray(object) || isFloatArray(object) ||
                         isDoubleArray(object);
+    }
+
+    protected static boolean isInteropPrimitive(Object value) {
+        return value instanceof Number || value instanceof Character || value instanceof Boolean;
     }
 
     @ExportMessage
@@ -874,7 +899,7 @@ public class EspressoInterop extends BaseInterop {
     @ExportMessage
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
-                    @Cached ToEspressoNode toEspresso,
+                    @Shared("toEspresso") @Cached ToEspressoNode toEspresso,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         receiver.checkNotForeign();
         Field f = lookup.execute(getInteropKlass(receiver), member);
