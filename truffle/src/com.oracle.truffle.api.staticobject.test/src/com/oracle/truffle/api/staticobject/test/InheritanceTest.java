@@ -152,71 +152,79 @@ public class InheritanceTest extends StaticObjectModelTest {
         CustomStaticObject2 create(long longField, Object objField);
     }
 
-
     @Test
+    @SuppressWarnings("unused")
     public void accessObjField() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             for (int i = 0; i < 100_000; i++) {
                 long longArg = 12345L;
                 Object objArg = new Object();
 
-                // 1. Create a parent shape that can allocate static objects that extend `CustomStaticObject2`
+                // 1. Create a parent shape that can allocate static objects that extend
+                // `CustomStaticObject2`
                 StaticShape.Builder parentBuilder = StaticShape.newBuilder(te.testLanguage);
                 StaticShape<CustomStaticObjectFactory2> parentShape = parentBuilder.build(CustomStaticObject2.class, CustomStaticObjectFactory2.class);
 
                 // 2. Allocate a static object of the parent shape.
-                //    Arguments are passed to the static object factory, which passes them to the constructor
-                //    of the static object, which passes them to the constructor of its super class (`CustomStaticObject2`).
+                // Arguments are passed to the static object factory, which passes them to the
+                // constructor of the static object, which passes them to the constructor of its
+                // super class (`CustomStaticObject2`).
                 CustomStaticObject2 parentObject = parentShape.getFactory().create(longArg, objArg);
 
                 // 3. Create a child static shape that extends the parent shape.
-                //    To reproduce GR-41414 it is necessary that the child shape is created after we allocated
-                //    the static object of the parent shape. It is not necessary to allocate a static object
-                //    of the child shape.
+                // To reproduce GR-41414 it is necessary that the child shape is created after we
+                // allocated the static object of the parent shape. It is not necessary to allocate
+                // a static object of the child shape.
                 StaticShape.Builder childBuilder = StaticShape.newBuilder(te.testLanguage);
                 StaticShape<CustomStaticObjectFactory2> childShape = childBuilder.build(parentShape);
 
-                // 4. Check that `getObjField()` returns the same instance that we passed to the factory.
+                // 4. Check that `getObjField()` returns the same instance that we passed to the
+                // factory.
                 Object obj = parentObject.getObjField();
                 if (obj != objArg) {
-                    System.err.println();
-                    System.err.println("Error at iteration " + i);
-                    System.err.print("Fields do not match. Expected class: " + objArg.getClass() + "\tGot: ");
-                    System.err.println(obj == null ? "null" : obj.getClass());
-                    System.err.println("Expected hashCode: " + System.identityHashCode(objArg) + "\tGot: " + System.identityHashCode(obj));
-                    Assert.fail();
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Error at iteration ").append(i).append(": Fields do not match\n");
+                    sb.append("Expected class: ").append(objArg.getClass());
+                    sb.append("\tGot: ").append(obj == null ? "null" : obj.getClass()).append("\n");
+                    sb.append("Expected hashCode: ").append(System.identityHashCode(objArg));
+                    sb.append("\tGot: ").append(System.identityHashCode(obj));
+                    Assert.fail(sb.toString());
                 }
             }
         }
     }
 
     @Test
+    @SuppressWarnings("unused")
     public void accessLongField() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             for (int i = 0; i < 100_000; i++) {
                 long longArg = 12345L;
                 Object objArg = new Object();
 
-                // 1. Create a parent shape that can allocate static objects that extend `CustomStaticObject2`
+                // 1. Create a parent shape that can allocate static objects that extend
+                // `CustomStaticObject2`
                 StaticShape.Builder parentBuilder = StaticShape.newBuilder(te.testLanguage);
                 StaticShape<CustomStaticObjectFactory2> parentShape = parentBuilder.build(CustomStaticObject2.class, CustomStaticObjectFactory2.class);
 
                 // 2. Allocate a static object of the parent shape.
-                //    `objArg` is passed to the static object factory, which passes it to the constructor
-                //    of the static object, which passes it to the constructor of its super class (`CustomStaticObject2`).
+                // `objArg` is passed to the static object factory, which passes it to the
+                // constructor of the static object, which passes it to the constructor of its
+                // super class (`CustomStaticObject2`).
                 CustomStaticObject2 parentObject = parentShape.getFactory().create(longArg, objArg);
 
                 // 3. Create a child static shape that extends the parent shape.
                 StaticShape.Builder childBuilder = StaticShape.newBuilder(te.testLanguage);
                 StaticShape<CustomStaticObjectFactory2> childShape = childBuilder.build(parentShape);
 
-                // 4. Check that `getLongField()` returns the same instance that we passed to the factory.
+                // 4. Check that `getLongField()` returns the same instance that we passed to the
+                // factory.
                 long l = parentObject.getLongField();
                 if (l != longArg) {
-                    System.err.println();
-                    System.err.println("Error at iteration " + i);
-                    System.err.print("Fields do not match. Expected value: " + longArg + "\tGot: " + l);
-                    Assert.fail();
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Error at iteration ").append(i).append(": Fields do not match\n");
+                    sb.append("Expected value: ").append(longArg).append("\tGot: ").append(l);
+                    Assert.fail(sb.toString());
                 }
             }
         }
