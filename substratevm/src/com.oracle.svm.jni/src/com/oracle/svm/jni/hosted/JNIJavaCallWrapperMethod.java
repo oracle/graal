@@ -80,6 +80,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
@@ -89,6 +90,7 @@ import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
+import com.oracle.svm.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
@@ -246,7 +248,12 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
             ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedReceiver, hubNode));
             kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROFILE);
             kit.thenPart();
-            ValueNode createdObjectOrNull = support.createNewObjectCall(kit, invokeMethod, state, args);
+            ValueNode createdObjectOrNull;
+            if (invokeMethod.getDeclaringClass().isAbstract()) {
+                createdObjectOrNull = throwInstantiationException(kit, state);
+            } else {
+                createdObjectOrNull = support.createNewObjectCall(kit, invokeMethod, state, args);
+            }
             kit.elsePart();
             args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
             ValueNode unboxedReceiverOrNull = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
@@ -322,6 +329,22 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         kit.createReturn(returnValue, returnKind);
 
         return kit.finalizeGraph();
+    }
+
+    /**
+     * When trying to allocate an abstract class, allocate and throw exception instead. The
+     * exception is installed as the JNI pending exception, and the null constant is returned.
+     */
+    private static ValueNode throwInstantiationException(JNIGraphKit kit, FrameStateBuilder state) {
+        ResolvedJavaMethod throwMethod = kit.findMethod(JNIGeneratedMethodSupport.class, "throwInstantiationException", true);
+        int bci = kit.bci();
+        kit.startInvokeWithException(throwMethod, InvokeKind.Static, state, bci);
+        kit.noExceptionPart();
+        kit.append(new LoweredDeadEndNode());
+        kit.exceptionPart();
+        kit.setPendingException(kit.exceptionObject());
+        kit.endInvokeWithException();
+        return kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
     }
 
     private static PiNode typeChecked(JNIGraphKit kit, ValueNode uncheckedValue, ResolvedJavaType type, List<EndNode> illegalTypeEnds, boolean isReceiver) {

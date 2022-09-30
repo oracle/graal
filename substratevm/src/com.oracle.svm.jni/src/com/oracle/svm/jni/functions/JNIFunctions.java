@@ -440,14 +440,9 @@ public final class JNIFunctions {
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) {
+    static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) throws InstantiationException {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
-        Object instance;
-        try {
-            instance = UNSAFE.allocateInstance(clazz);
-        } catch (InstantiationException e) {
-            instance = null;
-        }
+        Object instance = UNSAFE.allocateInstance(clazz);
         return JNIObjectHandles.createLocal(instance);
     }
 

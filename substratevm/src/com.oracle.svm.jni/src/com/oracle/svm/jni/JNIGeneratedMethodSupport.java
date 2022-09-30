@@ -35,6 +35,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
@@ -140,5 +141,10 @@ public final class JNIGeneratedMethodSupport {
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
             UNSAFE.copyMemory(null, buffer.rawValue(), array, offset, count * elementSize);
         }
+    }
+
+    @NeverInline("exception slow path")
+    static void throwInstantiationException() throws InstantiationException {
+        throw new InstantiationException();
     }
 }
