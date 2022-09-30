@@ -29,7 +29,6 @@ import java.util.List;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.util.UserError;
 
 public class MuslLibC implements LibCBase {
 
@@ -64,7 +63,8 @@ public class MuslLibC implements LibCBase {
     @Override
     public void checkIfLibCSupported() {
         if (!SubstrateOptions.StaticExecutable.getValue()) {
-            throw UserError.abort("Musl can only be used for statically linked executables.");
+            System.err.println("Warning: Cross-compiling a musl-based native-image that is not an executable is an experimental feature!" +
+                            "If omitting --static wasn't the intention, then --static should be used when compiling with --libc=musl");
         }
     }
 }
