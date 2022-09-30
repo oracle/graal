@@ -71,26 +71,20 @@ import com.oracle.truffle.regex.tregex.parser.RegexValidator;
  */
 public final class PythonFlavor extends RegexFlavor {
 
-    public static final PythonFlavor INSTANCE = new PythonFlavor(PythonREMode.None);
+    public static final PythonFlavor INSTANCE = new PythonFlavor();
 
-    public static final PythonFlavor STR_INSTANCE = new PythonFlavor(PythonREMode.Str);
-    public static final PythonFlavor BYTES_INSTANCE = new PythonFlavor(PythonREMode.Bytes);
-
-    private final PythonREMode mode;
-
-    private PythonFlavor(PythonREMode mode) {
+    private PythonFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | USES_LAST_GROUP_RESULT_FIELD |
                         LOOKBEHINDS_RUN_LEFT_TO_RIGHT);
-        this.mode = mode;
     }
 
     @Override
     public RegexValidator createValidator(RegexSource source) {
-        return PythonRegexParser.createValidator(source, mode);
+        return PythonRegexParser.createValidator(source);
     }
 
     @Override
     public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return PythonRegexParser.createParser(language, source, compilationBuffer, mode);
+        return PythonRegexParser.createParser(language, source, compilationBuffer);
     }
 }
