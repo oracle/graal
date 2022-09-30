@@ -589,10 +589,12 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         if (clearParts != null && clearParts.length != 0) {
             debugInfo.add(new ClearLocalVariableParts(instructionNodes.size(), variable.getSymbol(), clearParts));
         }
-        if (partIndex < 0 && clearParts == null && value instanceof UndefinedConstant && expression.isOperandEmpty()) {
-            debugInfo.add(new UnavailableLocalVariable(instructionNodes.size(), variable.getSymbol()));
-        } else if (partIndex < 0 && clearParts == null) {
-            debugInfo.add(new SimpleLocalVariable(instructionNodes.size(), mustDereference, valueObject, valueFrameSlot, variable.getSymbol()));
+        if (partIndex < 0 && clearParts == null) {
+            if (value instanceof UndefinedConstant && expression.isOperandEmpty()) {
+                debugInfo.add(new UnavailableLocalVariable(instructionNodes.size(), variable.getSymbol()));
+            } else {
+                debugInfo.add(new SimpleLocalVariable(instructionNodes.size(), mustDereference, valueObject, valueFrameSlot, variable.getSymbol()));
+            }
         } else if (partIndex >= 0) {
             debugInfo.add(new SetLocalVariablePart(instructionNodes.size(), mustDereference, valueObject, valueFrameSlot, variable.getSymbol(), partIndex));
         }
