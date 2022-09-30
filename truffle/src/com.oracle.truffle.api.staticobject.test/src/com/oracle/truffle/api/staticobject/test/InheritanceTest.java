@@ -156,7 +156,7 @@ public class InheritanceTest extends StaticObjectModelTest {
     @SuppressWarnings("unused")
     public void accessObjField() {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            for (int i = 0; i < 100_000; i++) {
+            for (int i = 0; i < 50_000; i++) {
                 long longArg = 12345L;
                 Object objArg = new Object();
 
@@ -198,7 +198,7 @@ public class InheritanceTest extends StaticObjectModelTest {
     @SuppressWarnings("unused")
     public void accessLongField() {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            for (int i = 0; i < 100_000; i++) {
+            for (int i = 0; i < 50_000; i++) {
                 long longArg = 12345L;
                 Object objArg = new Object();
 
