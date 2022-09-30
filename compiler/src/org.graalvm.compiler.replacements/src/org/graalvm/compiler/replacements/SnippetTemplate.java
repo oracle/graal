@@ -1216,10 +1216,6 @@ public class SnippetTemplate {
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
                 new FloatingReadPhase(true, canonicalizer).apply(snippetCopy, providers);
-                /*
-                 * If the graph was configured for explicit exception edges its guards are already
-                 * lowered == there never have been floating guards.
-                 */
                 if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
                     new GuardLoweringPhase().apply(snippetCopy, providers);
                 }

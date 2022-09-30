@@ -219,20 +219,20 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
     }
 
     /**
-     * Removes the phases that implement {@link Speculative}.
+     * Removes all phases in this suite that are assignable to {@code type}.
      */
     @SuppressWarnings("unchecked")
-    public boolean removeSubTypePhases(Class<?> superType) {
+    public boolean removeSubTypePhases(Class<?> type) {
         boolean hasRemovedSpeculativePhase = false;
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
         while (it.hasNext()) {
             BasePhase<? super C> phase = it.next();
-            if (superType.isAssignableFrom(phase.getClass())) {
+            if (type.isAssignableFrom(phase.getClass())) {
                 it.remove();
                 hasRemovedSpeculativePhase = true;
             } else if (phase instanceof PhaseSuite) {
                 PhaseSuite<C> innerSuite = (PhaseSuite<C>) phase;
-                if (innerSuite.removeSubTypePhases(superType)) {
+                if (innerSuite.removeSubTypePhases(type)) {
                     if (innerSuite.phases.isEmpty()) {
                         it.remove();
                     }

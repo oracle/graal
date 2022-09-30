@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -76,13 +75,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, boolean forceTrackNodeSourcePosition) {
         super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), forceTrackNodeSourcePosition);
-    }
-
-    @Override
-    public StructuredGraph finalizeGraph() {
-        StructuredGraph g1 = super.finalizeGraph();
-        g1.getGraphState().configureExplicitExceptionsNoDeopt();
-        return g1;
+        graph.getGraphState().configureExplicitExceptionsNoDeopt();
     }
 
     @Override

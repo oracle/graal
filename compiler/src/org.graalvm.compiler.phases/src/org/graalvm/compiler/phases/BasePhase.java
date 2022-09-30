@@ -401,14 +401,13 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         OptionValues options = graph.getOptions();
 
-        Optional<NotApplicable> canBeApplied = this.canApply(graph.getGraphState());
-        if (canBeApplied.isPresent()) {
+        Optional<NotApplicable> cannotBeApplied = this.canApply(graph.getGraphState());
+        if (cannotBeApplied.isPresent()) {
             String name = this.getClass().getName();
             if (name.contains(".svm.") || name.contains(".truffle.")) {
-                // GR-39494: canApply(GraphState) not yet implemented by SVM or Truffle
-                // phases.
+                // Not yet implemented by SVM (GR-41437) or Truffle (GR-39494).
             } else {
-                GraalError.shouldNotReachHere(graph + ": " + name + ": " + canBeApplied.get());
+                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get());
             }
         }
 
