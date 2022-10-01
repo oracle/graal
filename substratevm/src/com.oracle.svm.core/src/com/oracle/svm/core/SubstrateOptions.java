@@ -64,6 +64,7 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -71,6 +72,17 @@ public class SubstrateOptions {
 
     @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
+                    "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
+    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                throw VMError.shouldNotReachHere("Enabling ParseOnceJIT is currently not supported");
+            }
+            super.onValueUpdate(values, oldValue, newValue);
+        }
+    };
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
@@ -78,10 +90,10 @@ public class SubstrateOptions {
 
     public static boolean parseOnce() {
         /*
-         * Parsing all graphs before static analysis is work-in-progress, and not yet working for
-         * graphs parsed for deoptimization entry points and JIT compilation.
+         * Parsing all graphs before static analysis is work-in-progress and for JIT compilation is
+         * only enabled when ParseOnceJIT is set.
          */
-        return ParseOnce.getValue() && !DeoptimizationSupport.enabled();
+        return ParseOnce.getValue() && (ParseOnceJIT.getValue() || !DeoptimizationSupport.enabled());
     }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//

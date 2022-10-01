@@ -152,7 +152,7 @@ import jdk.vm.ci.services.Services;
  * image. Data that is prepared during image generation and used at run time is stored in
  * {@link GraalSupport}.
  */
-public final class RuntimeCompilationFeature implements Feature {
+public abstract class RuntimeCompilationFeature implements Feature {
 
     public static class Options {
         @Option(help = "Print call tree of methods available for runtime compilation")//
@@ -180,7 +180,23 @@ public final class RuntimeCompilationFeature implements Feature {
     public static final class IsEnabledAndNotLibgraal implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(RuntimeCompilationFeature.class) && !SubstrateUtil.isBuildingLibgraal();
+            return isEnabledAndNotLibgraal();
+        }
+    }
+
+    public static boolean isEnabledAndNotLibgraal() {
+        return ImageSingletons.contains(RuntimeCompilationFeature.class) && !SubstrateUtil.isBuildingLibgraal();
+    }
+
+    public static RuntimeCompilationFeature singleton() {
+        return ImageSingletons.lookup(RuntimeCompilationFeature.class);
+    }
+
+    public static Class<? extends Feature> getRuntimeCompilationFeature() {
+        if (SubstrateOptions.ParseOnceJIT.getValue()) {
+            return ParseOnceRuntimeCompilationFeature.class;
+        } else {
+            return LegacyRuntimeCompilationFeature.class;
         }
     }
 
