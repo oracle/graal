@@ -48,9 +48,11 @@ import com.oracle.truffle.api.strings.TruffleString;
 public final class StringLATIN1 implements AbstractString {
 
     @CompilationFinal(dimensions = 1) private final byte[] str;
+    private final Encodings.Encoding encoding;
 
-    public StringLATIN1(byte[] str) {
+    public StringLATIN1(byte[] str, Encodings.Encoding encoding) {
         this.str = str;
+        this.encoding = encoding;
     }
 
     @Override
@@ -70,7 +72,7 @@ public final class StringLATIN1 implements AbstractString {
 
     @Override
     public StringLATIN1 substring(int start, int end) {
-        return new StringLATIN1(Arrays.copyOfRange(str, start, end));
+        return new StringLATIN1(Arrays.copyOfRange(str, start, end), encoding);
     }
 
     @Override
@@ -89,12 +91,12 @@ public final class StringLATIN1 implements AbstractString {
 
     @Override
     public TruffleString asTString() {
-        return TruffleString.fromByteArrayUncached(str, 0, str.length, TruffleString.Encoding.ISO_8859_1, false);
+        return TruffleString.fromByteArrayUncached(str, 0, str.length, encoding.getTStringEncoding(), false);
     }
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        return TruffleString.WithMask.createUncached(pattern, str, TruffleString.Encoding.ISO_8859_1);
+        return TruffleString.WithMask.createUncached(pattern, str, encoding.getTStringEncoding());
     }
 
     @Override

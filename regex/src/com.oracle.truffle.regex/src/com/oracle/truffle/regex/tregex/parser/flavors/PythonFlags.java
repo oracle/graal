@@ -168,7 +168,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                 return isUnicodeExplicitlySet() || !isAscii();
             case Bytes:
                 return isUnicodeExplicitlySet();
-            case None:
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
