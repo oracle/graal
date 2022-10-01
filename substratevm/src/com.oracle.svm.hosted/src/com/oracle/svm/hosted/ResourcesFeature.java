@@ -124,7 +124,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResources(ConfigurationCondition condition, String pattern) {
-            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
             registerConditionalConfiguration(condition, () -> {
@@ -141,7 +141,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void ignoreResources(ConfigurationCondition condition, String pattern) {
-            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
             registerConditionalConfiguration(condition, () -> {
@@ -153,7 +153,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String name) {
-            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
             registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
@@ -161,7 +161,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
-            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
             registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
@@ -169,7 +169,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
-            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
                 return;
             }
             registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
