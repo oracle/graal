@@ -44,6 +44,7 @@ from __future__ import print_function
 from abc import ABCMeta
 from argparse import ArgumentParser
 from collections import OrderedDict
+from zipfile import ZipFile
 import hashlib
 import io
 import inspect
@@ -56,6 +57,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import zipfile
 
 import mx
 import mx_gate
@@ -350,20 +352,19 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  add_jdk_base=False,
                  base_dir=None,
                  path=None,
-                 jimage_exclusion_list=None,
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
         self.stage1 = stage1
         self.skip_archive = stage1 or graalvm_skip_archive()  # *.tar archives for stage1 distributions are never built
+        if is_graalvm:
+            self.tmp_dir_for_modified_jmods = join(_suite.get_output_root(platformDependent=True, jdkDependent=True), '{}_MODIFIED_JMODS'.format(name))
+            self.modified_jmods = {}
+
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
         base_dir = base_dir or '.'
-        default_jimage_exclusion_list = ['lib/jvm.cfg']
-        jimage_exclusion_list = jimage_exclusion_list or []
-        if src_jdk_base != '.':
-            jimage_exclusion_list = ['/'.join([src_jdk_base, e]) for e in (default_jimage_exclusion_list + jimage_exclusion_list)]
 
         if base_dir != '.':
             self.jdk_base = '/'.join([base_dir, src_jdk_base]) if src_jdk_base != '.' else base_dir
@@ -542,6 +543,21 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 incl_list = _patch_darwin_jdk()
                 for d, s in incl_list:
                     _add(layout, d, s)
+
+            jimage_exclusion_list = ['lib/jvm.cfg']
+            if not stage1:
+                for lc, c in [(lc, c) for c in self.components for lc in c.library_configs if lc.add_to_module]:
+                    assert not lc.add_to_module.endswith('.jmod'), "Library config '{}' of component '{}' has an invalid 'add_to_module' attribute: '{}' cannot end with '.jmod'".format(lc.destination, c.name, lc.add_to_module)
+                    jmod_file = '{}{}'.format(lc.add_to_module, '' if lc.add_to_module.endswith('.jmod') else '.jmod')
+                    self.modified_jmods.setdefault(jmod_file, []).append(lc)
+                    jimage_exclusion_list.append('jmods/{}'.format(jmod_file))
+                    _add(layout, '<jre_base>/jmods/{}'.format(jmod_file), 'file:{}/{}'.format(self.tmp_dir_for_modified_jmods.replace(os.sep, '/'), jmod_file))
+
+            if src_jdk_base != '.':
+                jimage_exclusion_list = ['/'.join([src_jdk_base, e]) for e in jimage_exclusion_list]
+
+            mx.logv("jimage_exclusion_list of {}: {}".format(name, jimage_exclusion_list))
+
             _add(layout, self.jdk_base + '/', {
                 'source_type': 'dependency',
                 'dependency': 'graalvm-stage1-jimage' if stage1 and _needs_stage1_jimage(self, get_final_graalvm_distribution()) else 'graalvm-jimage',
@@ -858,7 +874,7 @@ else:
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, base_name, theLicense=None, stage1=False, components=None, jimage_exclusion_list=None, **kw_args):
+    def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
         self.base_name = base_name
         components_with_dependencies = [] if components is None else GraalVmLayoutDistribution._add_dependencies(components)
         if components is not None:
@@ -881,7 +897,6 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             add_jdk_base=True,
             base_dir=base_dir,
             path=None,
-            jimage_exclusion_list=jimage_exclusion_list,
             stage1=stage1,
             **kw_args)
 
@@ -974,6 +989,7 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
     def __init__(self, args, dist, root_link_name, home_link_name):
         self._root_link_path = join(_suite.dir, root_link_name)
         self._home_link_path = join(_suite.dir, home_link_name)
+        self._library_projects = None
         super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
 
     def _add_link(self):
@@ -1012,7 +1028,40 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
                     return True, '{} is pointing to the wrong directory'.format(link_file)
         return False, None
 
+    @staticmethod
+    def _get_graalvm_jimage(stage1=False, fatalIfMissing=False):
+        expected_name = 'graalvm-stage1-jimage' if stage1 else 'graalvm-jimage'
+        for graalvm_jimage in [p for p in _suite.projects if isinstance(p, GraalVmJImage)]:
+            if graalvm_jimage.name == expected_name:
+                return graalvm_jimage
+        if fatalIfMissing:
+            raise mx.abort("Cannot find the '{}' distribution".format(expected_name))
+        return None
+
+    def _get_library_project(self, library_config):
+        if self._library_projects is None:
+            # projects are uniquely identified by their name
+            self._library_projects = {p.name: p for p in _suite.projects}
+        return self._library_projects[GraalVmLibrary.project_name(library_config)]
+
     def build(self):
+        if self.subject == get_final_graalvm_distribution():
+            mx.ensure_dir_exists(join(self.subject.tmp_dir_for_modified_jmods))
+            graalvm_jimage_home = GraalVmLayoutDistributionTask._get_graalvm_jimage(stage1=False, fatalIfMissing=True).output_directory()
+            for modified_jmod, library_configs in self.subject.modified_jmods.items():
+                # copy 'unmodified' jmod from the jimage to a tmp directory
+                jmod_copy_src = join(graalvm_jimage_home, 'jmods', modified_jmod)
+                jmod_copy_dst = join(self.subject.tmp_dir_for_modified_jmods, modified_jmod)
+                assert mx.exists(jmod_copy_src), "Library configs {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lc.destination for lc in library_configs], jmod_copy_src)
+                mx.copyfile(jmod_copy_src, jmod_copy_dst)
+                # modify the jmod file, adding the required resources
+                for library_config in library_configs:
+                    library_abs_location = self._get_library_project(library_config).output_file()
+                    library_rel_location = join('lib', basename(library_abs_location))
+                    mx.logv("Adding '{}' to '{}' ('{}')".format(library_abs_location, jmod_copy_dst, library_rel_location))
+                    with ZipFile(jmod_copy_dst, 'a', compression=zipfile.ZIP_DEFLATED) as zf:
+                        zf.write(library_abs_location, library_rel_location)
+
         super(GraalVmLayoutDistributionTask, self).build()
         if self.subject == get_final_graalvm_distribution():
             self._add_link()
@@ -1021,6 +1070,8 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
         super(GraalVmLayoutDistributionTask, self).clean(forBuild)
         if self.subject == get_final_graalvm_distribution():
             self._rm_link()
+            if exists(self.subject.tmp_dir_for_modified_jmods):
+                mx.rmtree(self.subject.tmp_dir_for_modified_jmods)
 
 
 class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
@@ -2595,8 +2646,7 @@ def get_final_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _final_graalvm_distribution
     if _final_graalvm_distribution == 'uninitialized':
-        jimage_exclusion_list = ['jmods/java.base.jmod'] if _get_libgraal_component() is not None else []
-        _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, stage1=False, jimage_exclusion_list=jimage_exclusion_list)
+        _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, stage1=False)
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = _graalvm_maven_attributes()
     return _final_graalvm_distribution
