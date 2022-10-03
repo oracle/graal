@@ -370,9 +370,6 @@ public final class GCImpl implements GC {
             verboseGCLog.string("      MinimumHeapSize: ").unsigned(getPolicy().getMinimumHeapSize()).newline();
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).string("]").newline();
-            boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();///rm
-            boolean hasShift = ReferenceAccess.singleton().getCompressEncoding().hasShift();
-            verboseGCLog.string("  has compressed refs: ").bool(compressed).string(", has shift: ").bool(hasShift).newline();
             if (SerialGCOptions.PrintHeapShape.getValue()) {
                 HeapImpl.getHeapImpl().logImageHeapPartitionBoundaries(verboseGCLog);
             }

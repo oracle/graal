@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ParallelGCImpl extends ParallelGC {
 
+    public static final int UNALIGNED_BIT = 0x01;
     private static final int MAX_WORKERS_COUNT = 31;
 
     /**
@@ -88,7 +89,7 @@ public class ParallelGCImpl extends ParallelGC {
         int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
         VMError.guarantee(hubOffset == 0, "hub offset must be 0");
 
-        workerCount = getWorkerCount(); ///cmp serialGC vs pargc with 1 worker
+        workerCount = getWorkerCount();
         allWorkersBusy = ~(-1 << workerCount) & (-1 << 1);
         for (int i = 1; i < workerCount; i++) {
             // We reuse the gc thread for worker #0
@@ -174,9 +175,8 @@ public class ParallelGCImpl extends ParallelGC {
             Pointer ptr;
             while ((ptr = buffer.pop()).notEqual(WordFactory.nullPointer())) {
                 debugLog().string("WW drain chunk=").zhex(ptr).newline();
-                if (ptr.and(0x01).notEqual(0)) {///magic
-                    // unaligned chunk
-                    UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~0x01), getVisitor());
+                if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
+                    UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), getVisitor());
                 } else {
                     AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) ptr, getVisitor());
                 }
@@ -209,7 +209,7 @@ public class ParallelGCImpl extends ParallelGC {
         return SubstrateGCOptions.VerboseGC.getValue() ? Log.log() : Log.noopLog();
     }
 
-    static Log debugLog() {///rm
+    static Log debugLog() {
         return Log.noopLog();
     }
 }

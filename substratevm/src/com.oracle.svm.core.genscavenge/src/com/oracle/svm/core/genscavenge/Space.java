@@ -512,7 +512,7 @@ public final class Space {
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
         if (ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase()) {
-            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(0x01));///magic
+            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGCImpl.UNALIGNED_BIT));
             ParallelGCImpl.mutex.unlock();
         }
 
