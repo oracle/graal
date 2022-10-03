@@ -6,7 +6,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
-import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.jdk.Jvm;
@@ -21,7 +21,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,8 +38,6 @@ public class ParallelGCImpl extends ParallelGC {
     private int allWorkersBusy;
     private final AtomicInteger busyWorkers = new AtomicInteger(0);
 
-    private static final ChunkBuffer buffer = new ChunkBuffer();
-
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
      */
@@ -53,6 +50,7 @@ public class ParallelGCImpl extends ParallelGC {
     private final VMCondition seqPhase = new VMCondition(mutex);
     private final VMCondition parPhase = new VMCondition(mutex);
 
+    private ChunkBuffer buffer;
     private volatile boolean inParallelPhase;
 
     @Fold
@@ -89,10 +87,17 @@ public class ParallelGCImpl extends ParallelGC {
         int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
         VMError.guarantee(hubOffset == 0, "hub offset must be 0");
 
+        // Allocate buffer large enough to store maximum possible number of heap chunks
+        long maxHeapSize = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
+        long alignedChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
+        long unalignedChunkSize = HeapParameters.getLargeArrayThreshold().rawValue();
+        long maxChunks = maxHeapSize / Math.min(alignedChunkSize, unalignedChunkSize) + 1;
+        buffer = new ChunkBuffer((int) maxChunks, ConfigurationValues.getObjectLayout().getReferenceSize());
+
         workerCount = getWorkerCount();
         allWorkersBusy = ~(-1 << workerCount) & (-1 << 1);
+        // We reuse the gc thread for worker #0
         for (int i = 1; i < workerCount; i++) {
-            // We reuse the gc thread for worker #0
             startWorkerThread(i);
         }
     }
@@ -170,7 +175,6 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     private void drainBuffer() {
-        debugLog().string("WW drain size=").unsigned(buffer.size()).newline();
         while (true) {
             Pointer ptr;
             while ((ptr = buffer.pop()).notEqual(WordFactory.nullPointer())) {
