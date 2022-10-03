@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir.processor;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
@@ -79,17 +80,48 @@ public class StubPortProcessor extends AbstractProcessor {
         String sha1 = getAnnotationValue(annotationMirror, "sha1", String.class);
 
         String url = JDK_LATEST + path;
-        URLConnection connection = new URL(url).openConnection(proxy);
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-            // Note that in.lines() discards the line separator and the digest
-            // will be different from hashing the whole file.
-            in.lines().skip(lineStart).limit(lineEnd - lineStart).map(String::getBytes).forEach(md::update);
+        String sha1Latest;
+        try {
+            sha1Latest = digest(proxy, md, url, lineStart, lineEnd);
+        } catch (FileNotFoundException e) {
+            env().getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("File not found in the latest commit: %s", url));
+            return;
         }
-        String sha1Latest = String.format("%040x", new BigInteger(1, md.digest()));
+
         if (!sha1.equals(sha1Latest)) {
             String urlHuman = JDK_LATEST_HUMAN + path + "#L" + lineStart + "-L" + lineEnd;
-            String oldUrl = JDK_COMMIT + commit + '/' + path;
-            int idx = find(proxy, oldUrl, url, lineStart, lineEnd);
+            String urlOld = JDK_COMMIT + commit + '/' + path;
+            String sha1Old = digest(proxy, md, urlOld, lineStart, lineEnd);
+
+            String extraMessage = "";
+
+            if (sha1.equals(sha1Old)) {
+                int idx = find(proxy, urlOld, url, lineStart, lineEnd);
+                if (idx != -1) {
+                    extraMessage = String.format("It may be simply shifted. Try:\n@StubPort(path      = \"%s\",\n" +
+                                    "lineStart = %d,\n" +
+                                    "lineEnd   = %d,\n" +
+                                    "commit    = \"%s\",\n" +
+                                    "sha1      = \"%s\")\n",
+                                    path,
+                                    idx,
+                                    idx + (lineEnd - lineStart),
+                                    fetchLatestCommit(proxy),
+                                    sha1);
+                }
+            } else {
+                extraMessage = String.format("New StubPort? Then:\n@StubPort(path      = \"%s\",\n" +
+                                "lineStart = %d,\n" +
+                                "lineEnd   = %d,\n" +
+                                "commit    = \"%s\",\n" +
+                                "sha1      = \"%s\")\n",
+                                path,
+                                lineStart,
+                                lineEnd,
+                                fetchLatestCommit(proxy),
+                                sha1Latest);
+            }
+
             env().getMessager().printMessage(Diagnostic.Kind.ERROR,
                             String.format("Sha1 digest of %s[%d:%d] (ported by %s) does not match %s : expected %s but was %s. See diff of %s and %s. %s",
                                             path,
@@ -99,20 +131,20 @@ public class StubPortProcessor extends AbstractProcessor {
                                             urlHuman,
                                             sha1,
                                             sha1Latest,
-                                            oldUrl,
+                                            urlOld,
                                             url,
-                                            idx == -1 ? ""
-                                                            : String.format("Or try:\n@StubPort(path      = \"%s\",\n" +
-                                                                            "lineStart = %d,\n" +
-                                                                            "lineEnd   = %d,\n" +
-                                                                            "commit    = \"%s\",\n" +
-                                                                            "sha1      = \"%s\")\n",
-                                                                            path,
-                                                                            idx,
-                                                                            idx + (lineEnd - lineStart),
-                                                                            fetchLatestCommit(proxy),
-                                                                            sha1)));
+                                            extraMessage));
         }
+    }
+
+    private static String digest(Proxy proxy, MessageDigest md, String url, int lineStart, int lineEnd) throws IOException {
+        URLConnection connection = new URL(url).openConnection(proxy);
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+            // Note that in.lines() discards the line separator and the digest
+            // will be different from hashing the whole file.
+            in.lines().skip(lineStart).limit(lineEnd - lineStart).map(String::getBytes).forEach(md::update);
+        }
+        return String.format("%040x", new BigInteger(1, md.digest()));
     }
 
     private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStart, int lineEnd) throws IOException {

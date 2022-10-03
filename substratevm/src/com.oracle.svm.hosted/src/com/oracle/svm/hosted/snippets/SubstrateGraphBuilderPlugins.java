@@ -177,7 +177,8 @@ public class SubstrateGraphBuilderPlugins {
                     InvocationPlugins plugins,
                     Replacements replacements,
                     ParsingReason parsingReason,
-                    Architecture architecture) {
+                    Architecture architecture,
+                    boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
@@ -198,7 +199,9 @@ public class SubstrateGraphBuilderPlugins {
         registerSizeOfPlugins(snippetReflection, plugins);
         registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
-        registerAESPlugins(plugins, replacements, architecture);
+        if (supportsStubBasedPlugins) {
+            registerAESPlugins(plugins, replacements, architecture);
+        }
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {

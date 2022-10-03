@@ -78,15 +78,15 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
 
     public AArch64IntegerArithmeticSnippets(OptionValues options, Providers providers) {
         super(options, providers);
-        idiv = snippet(AArch64IntegerArithmeticSnippets.class, "idivSnippet");
-        ldiv = snippet(AArch64IntegerArithmeticSnippets.class, "ldivSnippet");
-        irem = snippet(AArch64IntegerArithmeticSnippets.class, "iremSnippet");
-        lrem = snippet(AArch64IntegerArithmeticSnippets.class, "lremSnippet");
+        idiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "idivSnippet");
+        ldiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "ldivSnippet");
+        irem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "iremSnippet");
+        lrem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "lremSnippet");
 
-        uidiv = snippet(AArch64IntegerArithmeticSnippets.class, "uidivSnippet");
-        uldiv = snippet(AArch64IntegerArithmeticSnippets.class, "uldivSnippet");
-        uirem = snippet(AArch64IntegerArithmeticSnippets.class, "uiremSnippet");
-        ulrem = snippet(AArch64IntegerArithmeticSnippets.class, "ulremSnippet");
+        uidiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "uidivSnippet");
+        uldiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "uldivSnippet");
+        uirem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "uiremSnippet");
+        ulrem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "ulremSnippet");
     }
 
     public void lower(IntegerDivRemNode node, LoweringTool tool) {
@@ -120,7 +120,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
         args.addConst("needsZeroCheck", needsZeroCheck);
 
-        template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }
 
     @Snippet

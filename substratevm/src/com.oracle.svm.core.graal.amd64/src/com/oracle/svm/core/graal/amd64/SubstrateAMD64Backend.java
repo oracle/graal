@@ -812,6 +812,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public int getArrayLengthOffset() {
             return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
         }
+
+        @Override
+        public Register getHeapBaseRegister() {
+            return ReservedRegisters.singleton().getHeapBaseRegister();
+        }
     }
 
     public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {

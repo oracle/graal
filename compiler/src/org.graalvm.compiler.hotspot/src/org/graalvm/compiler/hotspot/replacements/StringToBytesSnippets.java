@@ -74,7 +74,7 @@ public class StringToBytesSnippets implements Snippets {
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
-            create = snippet(StringToBytesSnippets.class, "transform");
+            create = snippet(providers, StringToBytesSnippets.class, "transform");
         }
 
         public void lower(StringToBytesNode stringToBytesNode, LoweringTool tool) {
@@ -83,8 +83,8 @@ public class StringToBytesSnippets implements Snippets {
             args.addConst("cArray", new CStringConstant(value));
             args.addConst("length", value.length());
             args.addConst("locationIdentity", LocationIdentity.init());
-            SnippetTemplate template = template(stringToBytesNode, args);
-            template.instantiate(providers.getMetaAccess(), stringToBytesNode, DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, stringToBytesNode, args);
+            template.instantiate(tool.getMetaAccess(), stringToBytesNode, DEFAULT_REPLACER, args);
         }
 
     }

@@ -810,6 +810,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     private static final int SignedMulLongOp = 0x9B200000;
     private static final int DataProcessing1SourceOp = 0x5AC00000;
     private static final int DataProcessing2SourceOp = 0x1AC00000;
+    private static final int DataProcessing2SourceWithCarryOp = 0x1A000000;
 
     private static final int Fp1SourceOp = 0x1E204000;
     private static final int Fp2SourceOp = 0x1E200800;
@@ -2351,7 +2352,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param src2 general purpose register. May not be null or stackpointer.
      * @param lsb must be in range 0 to size - 1.
      */
-    protected void extr(int size, Register dst, Register src1, Register src2, int lsb) {
+    public void extr(int size, Register dst, Register src1, Register src2, int lsb) {
         assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
 
         InstructionType type = generalFromSize(size);
@@ -2734,6 +2735,42 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert verifySizeAndRegistersRRR(size, dst, src1, src2);
 
         dataProcessing2SourceOp(RORV, dst, src1, src2, generalFromSize(size));
+    }
+
+    /**
+     * C6.2.1 Adc.
+     *
+     * dst = src1 + src2 + PSTATE.C.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void adc(int size, Register dst, Register src1, Register src2) {
+        assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
+
+        dataProcessing2SourceWithCarryOp(ADD, dst, src1, src2, generalFromSize(size));
+    }
+
+    /**
+     * C6.2.2 Adcs.
+     *
+     * dst = src1 + src2 + PSTATE.C, and sets condition flags.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param src2 general purpose register. May not be null or stackpointer.
+     */
+    public void adcs(int size, Register dst, Register src1, Register src2) {
+        assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
+
+        dataProcessing2SourceWithCarryOp(ADDS, dst, src1, src2, generalFromSize(size));
+    }
+
+    private void dataProcessing2SourceWithCarryOp(Instruction instr, Register dst, Register src1, Register src2, InstructionType type) {
+        emitInt(type.encoding | instr.encoding | DataProcessing2SourceWithCarryOp | rd(dst) | rs1(src1) | rs2(src2));
     }
 
     /* Bit Operations (5.5.5) */

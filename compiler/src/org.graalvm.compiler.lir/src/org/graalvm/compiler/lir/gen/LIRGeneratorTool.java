@@ -336,6 +336,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    @SuppressWarnings("unused")
+    default void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);

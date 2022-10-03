@@ -102,10 +102,6 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
     private static final int OVERFLOW_ARG_AREA_ALIGNMENT = 8;
     private static final int REG_SAVE_AREA_LOCATION = 16;
 
-    private PosixAMD64VaListSnippets(OptionValues options, Providers providers) {
-        super(options, providers);
-    }
-
     @Snippet(allowMissingProbabilities = true)
     protected static double vaArgDoubleSnippet(Pointer vaList) {
         int fpOffset = vaList.readInt(FP_OFFSET_LOCATION);
@@ -154,17 +150,23 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
         new PosixAMD64VaListSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo vaArgDouble;
+    private final SnippetInfo vaArgFloat;
+    private final SnippetInfo vaArgLong;
+    private final SnippetInfo vaArgInt;
+
     private PosixAMD64VaListSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
+        this.vaArgDouble = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
+        this.vaArgFloat = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
+        this.vaArgLong = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
+        this.vaArgInt = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
+
         lowerings.put(VaListNextArgNode.class, new VaListSnippetsLowering());
     }
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
-
-        private final SnippetInfo vaArgDouble = snippet(PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
 
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {
@@ -189,7 +191,7 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("vaList", node.getVaList());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

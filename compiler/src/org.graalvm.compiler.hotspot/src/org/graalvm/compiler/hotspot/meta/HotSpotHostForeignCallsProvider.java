@@ -43,7 +43,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.MULTIPLY_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MUL_ADD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
@@ -137,6 +136,7 @@ import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.word.Word;
@@ -509,10 +509,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(createDescriptor(GENERIC_ARRAYCOPY, LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.any()), c.genericArraycopy, NativeCall);
         registerForeignCall(createDescriptor(UNSAFE_ARRAYCOPY, LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.any()), c.unsafeArraycopy, NativeCall);
 
-        if (c.useMultiplyToLenIntrinsic()) {
-            registerForeignCall(MULTIPLY_TO_LEN, c.multiplyToLen, NativeCall);
-        }
-
         if (c.md5ImplCompress != 0L) {
             registerForeignCall(MD5_IMPL_COMPRESS, c.md5ImplCompress, NativeCall);
         }
@@ -622,6 +618,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringLatin1InflateNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringUTF16CompressNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, EncodeArrayNode.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMultiplyToLenNode.STUB);
     }
 
     @FunctionalInterface

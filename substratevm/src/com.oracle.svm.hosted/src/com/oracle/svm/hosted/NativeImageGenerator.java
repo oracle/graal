@@ -1287,9 +1287,9 @@ public class NativeImageGenerator {
             }
         }
 
-        final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
+        final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
         registerInvocationPlugins(providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
-                        reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer());
+                        reason == ParsingReason.JITCompilation, true, supportsStubBasedPlugins, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
@@ -1315,7 +1315,8 @@ public class NativeImageGenerator {
                         plugins.getInvocationPlugins(),
                         replacements,
                         reason,
-                        architecture);
+                        architecture,
+                        supportsStubBasedPlugins);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins, reason));
 

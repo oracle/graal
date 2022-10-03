@@ -77,6 +77,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayCopyWithConversionsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
+import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
@@ -783,6 +784,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
         append(new AMD64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
+    }
+
+    @Override
+    public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        RegisterValue rX = AMD64.rdi.asValue(x.getValueKind());
+        RegisterValue rXlen = AMD64.rax.asValue(xlen.getValueKind());
+        RegisterValue rY = AMD64.rsi.asValue(y.getValueKind());
+        RegisterValue rYlen = AMD64.rcx.asValue(ylen.getValueKind());
+        RegisterValue rZ = AMD64.r8.asValue(z.getValueKind());
+        RegisterValue rZlen = AMD64.r11.asValue(zlen.getValueKind());
+
+        emitMove(rX, x);
+        emitMove(rXlen, xlen);
+        emitMove(rY, y);
+        emitMove(rYlen, ylen);
+        emitMove(rZ, z);
+        emitMove(rZlen, zlen);
+
+        append(new AMD64BigIntegerMultiplyToLenOp(rX, rXlen, rY, rYlen, rZ, rZlen, getHeapBaseRegister()));
     }
 
     @SuppressWarnings("unchecked")

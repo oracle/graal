@@ -146,10 +146,12 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
         public static class Templates extends AbstractTemplates {
 
-            private final SnippetInfo add = snippet(SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
+            private final SnippetInfo add;
 
             Templates(OptionValues options, Providers providers) {
                 super(options, providers);
+
+                this.add = snippet(providers, SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
             }
 
             public void lower(SnippetCounterNode counter, LoweringTool tool) {
@@ -158,7 +160,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
                 args.addConst("counter", counter.getCounter());
                 args.add("increment", counter.getIncrement());
 
-                template(counter, args).instantiate(providers.getMetaAccess(), counter, DEFAULT_REPLACER, args);
+                template(tool, counter, args).instantiate(tool.getMetaAccess(), counter, DEFAULT_REPLACER, args);
             }
         }
     }

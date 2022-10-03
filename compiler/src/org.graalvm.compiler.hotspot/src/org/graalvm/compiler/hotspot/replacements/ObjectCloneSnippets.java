@@ -49,15 +49,15 @@ public class ObjectCloneSnippets implements Snippets {
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
-            arrayCloneMethods.put(JavaKind.Boolean, snippet(ObjectCloneSnippets.class, "booleanArrayClone"));
-            arrayCloneMethods.put(JavaKind.Byte, snippet(ObjectCloneSnippets.class, "byteArrayClone"));
-            arrayCloneMethods.put(JavaKind.Char, snippet(ObjectCloneSnippets.class, "charArrayClone"));
-            arrayCloneMethods.put(JavaKind.Short, snippet(ObjectCloneSnippets.class, "shortArrayClone"));
-            arrayCloneMethods.put(JavaKind.Int, snippet(ObjectCloneSnippets.class, "intArrayClone"));
-            arrayCloneMethods.put(JavaKind.Float, snippet(ObjectCloneSnippets.class, "floatArrayClone"));
-            arrayCloneMethods.put(JavaKind.Long, snippet(ObjectCloneSnippets.class, "longArrayClone"));
-            arrayCloneMethods.put(JavaKind.Double, snippet(ObjectCloneSnippets.class, "doubleArrayClone"));
-            arrayCloneMethods.put(JavaKind.Object, snippet(ObjectCloneSnippets.class, "objectArrayClone"));
+            arrayCloneMethods.put(JavaKind.Boolean, snippet(providers, ObjectCloneSnippets.class, "booleanArrayClone"));
+            arrayCloneMethods.put(JavaKind.Byte, snippet(providers, ObjectCloneSnippets.class, "byteArrayClone"));
+            arrayCloneMethods.put(JavaKind.Char, snippet(providers, ObjectCloneSnippets.class, "charArrayClone"));
+            arrayCloneMethods.put(JavaKind.Short, snippet(providers, ObjectCloneSnippets.class, "shortArrayClone"));
+            arrayCloneMethods.put(JavaKind.Int, snippet(providers, ObjectCloneSnippets.class, "intArrayClone"));
+            arrayCloneMethods.put(JavaKind.Float, snippet(providers, ObjectCloneSnippets.class, "floatArrayClone"));
+            arrayCloneMethods.put(JavaKind.Long, snippet(providers, ObjectCloneSnippets.class, "longArrayClone"));
+            arrayCloneMethods.put(JavaKind.Double, snippet(providers, ObjectCloneSnippets.class, "doubleArrayClone"));
+            arrayCloneMethods.put(JavaKind.Object, snippet(providers, ObjectCloneSnippets.class, "objectArrayClone"));
         }
     }
 

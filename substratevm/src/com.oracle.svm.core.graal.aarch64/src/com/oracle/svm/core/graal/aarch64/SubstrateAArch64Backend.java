@@ -635,6 +635,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public int getArrayLengthOffset() {
             return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
         }
+
+        @Override
+        public Register getHeapBaseRegister() {
+            return ReservedRegisters.singleton().getHeapBaseRegister();
+        }
     }
 
     public final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {

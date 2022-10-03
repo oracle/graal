@@ -73,15 +73,16 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
         new ExceptionSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo unwind;
+
     private ExceptionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
+        this.unwind = snippet(providers, ExceptionSnippets.class, "unwindSnippet");
         lowerings.put(UnwindNode.class, new UnwindLowering());
     }
 
     protected class UnwindLowering implements NodeLoweringProvider<UnwindNode> {
-
-        private final SnippetInfo unwind = snippet(ExceptionSnippets.class, "unwindSnippet");
 
         @Override
         public void lower(UnwindNode node, LoweringTool tool) {
@@ -95,7 +96,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
             args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

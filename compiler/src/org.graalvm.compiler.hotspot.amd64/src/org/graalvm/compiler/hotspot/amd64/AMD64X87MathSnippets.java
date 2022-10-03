@@ -84,9 +84,9 @@ public class AMD64X87MathSnippets implements Snippets {
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 
-            sin = snippet(AMD64X87MathSnippets.class, "sin");
-            cos = snippet(AMD64X87MathSnippets.class, "cos");
-            tan = snippet(AMD64X87MathSnippets.class, "tan");
+            sin = snippet(providers, AMD64X87MathSnippets.class, "sin");
+            cos = snippet(providers, AMD64X87MathSnippets.class, "cos");
+            tan = snippet(providers, AMD64X87MathSnippets.class, "tan");
         }
 
         public void lower(UnaryMathIntrinsicNode mathIntrinsicNode, LoweringTool tool) {
@@ -108,7 +108,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
             Arguments args = new Arguments(info, mathIntrinsicNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("input", mathIntrinsicNode.getValue());
-            template(mathIntrinsicNode, args).instantiate(providers.getMetaAccess(), mathIntrinsicNode, DEFAULT_REPLACER, tool, args);
+            template(tool, mathIntrinsicNode, args).instantiate(tool.getMetaAccess(), mathIntrinsicNode, DEFAULT_REPLACER, tool, args);
             mathIntrinsicNode.safeDelete();
         }
     }
