@@ -35,6 +35,13 @@
     python_version: "3"
   },
 
+  daily:: {
+    # Re-use existing mailing list for weeklies
+    notify_groups: ["compiler_weekly"],
+    targets: ["daily"],
+    timelimit: "2:00:00",
+  },
+
   weekly:: {
     notify_groups: ["compiler_weekly"],
     targets: ["weekly"],
@@ -152,33 +159,42 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local gates = {
-    "gate-compiler-test-labsjdk-11-linux-amd64": t("1:05:00"),
-    "gate-compiler-test-labsjdk-17-linux-amd64": t("55:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-17-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-17-darwin-aarch64": t("1:00:00"),
-    "gate-compiler-test-labsjdk-17-windows-amd64": t("55:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-19-linux-amd64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-19-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-19-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test-labsjdk-19-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-19-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-19-windows-amd64": t("55:00") + c.mach5_target,
 
-    "gate-compiler-style-labsjdk-17-linux-amd64": t("45:00"),
+    "gate-compiler-style-labsjdk-19-linux-amd64": t("45:00"),
 
-    "gate-compiler-ctw-labsjdk-11-linux-amd64": c.mach5_target,
-    "gate-compiler-ctw-labsjdk-17-linux-amd64": c.mach5_target,
-    "gate-compiler-ctw-labsjdk-17-linux-aarch64": t("1:50:00"),
+    "gate-compiler-ctw-labsjdk-19-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-19-windows-amd64": t("1:50:00"),
 
-    "gate-compiler-ctw_economy-labsjdk-11-linux-amd64": {},
-    "gate-compiler-ctw_economy-labsjdk-17-linux-amd64": {},
-    "gate-compiler-ctw_economy-labsjdk-17-linux-aarch64": t("1:50:00"),
+    "gate-compiler-ctw_economy-labsjdk-19-linux-amd64": {},
+    "gate-compiler-ctw_economy-labsjdk-19-windows-amd64": t("1:50:00"),
 
-    "gate-compiler-benchmarktest-labsjdk-11-linux-amd64": {},
-    "gate-compiler-benchmarktest-labsjdk-17-linux-amd64": {},
+    "gate-compiler-benchmarktest-labsjdk-19-linux-amd64": {},
 
-    "gate-compiler-truffle_xcomp-labsjdk-17-linux-amd64": t("1:30:00"),
+    "gate-compiler-truffle_xcomp-labsjdk-19-linux-amd64": t("1:30:00"),
 
-    "gate-compiler-bootstrap_lite-labsjdk-11-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-19-darwin-amd64": t("1:00:00") + c.mach5_target,
 
-    "gate-compiler-bootstrap_full-labsjdk-17-linux-amd64": s.many_cores + c.mach5_target
+    "gate-compiler-bootstrap_full-labsjdk-19-linux-amd64": s.many_cores + c.mach5_target
+  },
+
+  # This map defines the builders that run daily. Each key in this map
+  # must be the name of a build created by `make_build` (or be the prefix
+  # of a build name if the key ends with "*").
+  # Each value in this map is an object that overrides or extends the
+  # fields of the denoted build.
+  local dailies = {
+    "daily-compiler-ctw-labsjdk-19-linux-aarch64": {},
+    "daily-compiler-ctw-labsjdk-19-darwin-amd64": {},
+    "daily-compiler-ctw-labsjdk-19-darwin-aarch64": {},
+
+    "daily-compiler-ctw_economy-labsjdk-19-linux-aarch64": {},
+    "daily-compiler-ctw_economy-labsjdk-19-darwin-amd64": {},
+    "daily-compiler-ctw_economy-labsjdk-19-darwin-aarch64": {},
   },
 
   # This map defines the builders that run weekly. Each key in this map
@@ -187,28 +203,32 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
-    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-17-linux-amd64": {
+    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-19-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-test-labsjdk-11-windows-amd64": t("55:00"),
-    "weekly-compiler-test-labsjdk-11-darwin-amd64": {},
-    "weekly-compiler-test-labsjdk-11-darwin-aarch64": {},
+    "weekly-compiler-test-labsjdk-17-linux-amd64": {},
+    "weekly-compiler-test-labsjdk-17-linux-aarch64": {},
+    "weekly-compiler-test-labsjdk-17-windows-amd64": {},
+    "weekly-compiler-test-labsjdk-17-darwin-amd64": {},
+    "weekly-compiler-test-labsjdk-17-darwin-aarch64": {},
 
-    "weekly-compiler-test_vec16-labsjdk-17-linux-amd64": {},
-    "weekly-compiler-test_avx0-labsjdk-17-linux-amd64": {},
-    "weekly-compiler-test_avx1-labsjdk-17-linux-amd64": {},
-    "weekly-compiler-test_javabase-labsjdk-17-linux-amd64": {},
-    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-17-linux-amd64": {
+    "weekly-compiler-test_vec16-labsjdk-19-linux-amd64": {},
+    "weekly-compiler-test_avx0-labsjdk-19-linux-amd64": {},
+    "weekly-compiler-test_avx1-labsjdk-19-linux-amd64": {},
+    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-19-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
-    "weekly-compiler-benchmarktest-labsjdk-17Debug-linux-amd64": {},
+
+    "weekly-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+
+    "weekly-compiler-benchmarktest-labsjdk-19Debug-linux-amd64": {},
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-17Debug-linux-amd64": {}
+    "weekly-compiler-test-labsjdk-19Debug-linux-amd64": {}
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -216,40 +236,50 @@
 
   # Creates a CI build object.
   #
-  # jdk: JDK version (e.g. "17", "17Debug")
+  # jdk: JDK version (e.g. "19", "19Debug")
   # os_arch: OS and architecture (e.g., "linux-amd64", "darwin-aarch64")
   # task: name of an object field in self defining the JDK and platform agnostic build details (e.g. "test")
   # extra_tasks: object whose fields define additional tasks to those defined in self
   # gates_manifest: specification of gate builds (e.g. see `gates` local variable)
-  # gates_manifest: specification of weekly builds (e.g. see `weeklies` local variable)
-  # gates_manifest: specification of monthly builds (e.g. see `monthlies` local variable)
+  # dailies_manifest: specification of daily builds (e.g. see `dailies` local variable)
+  # weeklies_manifest: specification of weekly builds (e.g. see `weeklies` local variable)
+  # monthlies_manifest: specification of monthly builds (e.g. see `monthlies` local variable)
   # returns: an object with a single "build" field
   make_build(jdk, os_arch, task, suite="compiler", extra_tasks={},
              include_common_os_arch=true,
              gates_manifest=gates,
+             dailies_manifest=dailies,
              weeklies_manifest=weeklies,
              monthlies_manifest=monthlies):: {
     local base_name = "%s-%s-labsjdk-%s-%s" % [suite, task, jdk, os_arch],
     local gate_name = "gate-" + base_name,
+    local daily_name = "daily-" + base_name,
     local weekly_name = "weekly-" + base_name,
     local monthly_name = "monthly-" + base_name,
     local is_gate = $.manifest_match(gates_manifest, gate_name),
+    local is_daily = $.manifest_match(dailies_manifest, daily_name),
     local is_weekly = $.manifest_match(weeklies_manifest, weekly_name),
-    local is_monthly = !is_gate && !is_weekly,
+    local is_monthly = !is_gate && !is_daily && !is_weekly,
     local is_windows = $.contains(os_arch, "windows"),
     local extra = if is_gate then
         $.get(gates_manifest, gate_name, {})
+      else if is_daily then
+        $.get(dailies_manifest, daily_name, {})
       else if is_weekly then
         $.get(weeklies_manifest, weekly_name, {})
       else
         $.get(monthlies_manifest, monthly_name, {}),
 
     build: {
-      name: if is_gate then gate_name else if is_weekly then weekly_name else monthly_name
+      name: if is_gate   then gate_name
+       else if is_daily  then daily_name
+       else if is_weekly then weekly_name
+       else                   monthly_name
     } +
       (s + extra_tasks)[task] +
       c["labsjdk%s" % jdk] +
       (if include_common_os_arch then c[std.strReplace(os_arch, "-", "_")] else {}) +
+      (if is_daily then s.daily else {}) +
       (if is_weekly then s.weekly else {}) +
       (if is_monthly then s.monthly else {}) +
       (if is_windows then c.devkits["windows-jdk%s" % jdk] else {}) +
@@ -288,7 +318,6 @@
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [self.make_build(jdk, os_arch, task).build
     for jdk in [
-      "11",
       "17",
       "19"
     ]
@@ -313,7 +342,7 @@
   ],
 
   # Builds run on only on linux-amd64-jdk17
-  local linux_amd64_jdk17_builds = [self.make_build("17", "linux-amd64", task).build
+  local linux_amd64_jdk19_builds = [self.make_build("19", "linux-amd64", task).build
     for task in [
       "ctw_phaseplan_fuzzing",
       "test_vec16",
@@ -325,8 +354,8 @@
     ]
   ],
 
-  # Builds run on only on linux-amd64-jdk17Debug
-  local linux_amd64_jdk17Debug_builds = [self.make_build("17Debug", "linux-amd64", task).build
+  # Builds run on only on linux-amd64-jdk19Debug
+  local linux_amd64_jdk19Debug_builds = [self.make_build("19Debug", "linux-amd64", task).build
     for task in [
       "benchmarktest",
       "test"
@@ -336,11 +365,12 @@
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
-    linux_amd64_jdk17_builds +
-    linux_amd64_jdk17Debug_builds,
+    linux_amd64_jdk19_builds +
+    linux_amd64_jdk19Debug_builds,
 
   builds: if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&
+      self.check_manifest(dailies,   all_builds, std.thisFile, "dailies").result &&
       self.check_manifest(weeklies,  all_builds, std.thisFile, "weeklies").result &&
       self.check_manifest(monthlies, all_builds, std.thisFile, "monthlies").result
     then

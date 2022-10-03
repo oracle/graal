@@ -52,13 +52,18 @@ local utils = import '../../../common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
-    "gate-vm-libgraal_compiler-labsjdk-11-linux-amd64": {},
-    "gate-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-11-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_compiler-labsjdk-19-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-19-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-19-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-19-linux-amd64": {},
+  },
+
+  # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
+  local dailies = {
+    "daily-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
   },
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -79,6 +84,7 @@ local utils = import '../../../common-utils.libsonnet';
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
+                 dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
