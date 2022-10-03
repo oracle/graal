@@ -56,10 +56,10 @@ local repo_config = import '../../repo-configuration.libsonnet';
       self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=jvm',    '--gate'],
     ] else [
       self.bench_cmd + ['polybenchmarks-' + suite, '--', '--polybenchmark-vm-config=' + vm_config],
-      $.vm_bench_common.upload
     ],
-    notify_emails+: if (is_gate) then ['boris.spasojevic@oracle.com'] else [],
-    timelimit: if (is_gate) then '1:00:00' else '1:30:00',
+    notify_emails+: if (is_gate) then [] else [ 'boris.spasojevic@oracle.com' ],
+    teardown+:      if (is_gate) then [] else [ $.vm_bench_common.upload ],
+    timelimit:      if (is_gate) then '1:00:00' else '1:30:00',
   },
 
   vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + {
