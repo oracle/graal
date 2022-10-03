@@ -52,7 +52,7 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
     }
 
     private static final Uninterruptible UNINTERRUPTIBLE_ANNOTATION = Objects.requireNonNull(
-                    ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder").getAnnotation(Uninterruptible.class));
+                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder")));
 
     @Override
     public Annotation[] getInjectedAnnotations() {
