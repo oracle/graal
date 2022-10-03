@@ -71,15 +71,15 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * </ul>
  */
 public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
-    public UnconditionalBranchEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindValueIndicator) {
-        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex, unwindValueIndicator);
+    public UnconditionalBranchEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindValueTypeIndicator) {
+        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex, unwindValueTypeIndicator);
     }
 
     @Override
     protected int generateCompactData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
-        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, valueIndicator(), resultCount(), stackSize());
+        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, valueTypeIndicator(), resultCount(), stackSize());
         return offset;
     }
 
@@ -87,7 +87,7 @@ public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
     protected int generateExtendedData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
-        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, valueIndicator(), resultCount(), stackSize());
+        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, valueTypeIndicator(), resultCount(), stackSize());
         return offset;
     }
 

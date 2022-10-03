@@ -133,8 +133,14 @@ public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatH
         return items[index];
     }
 
-    public BranchTargetWithStackChange itemWithValueIndicatorUpdate(int index, int valueIndicator) {
-        items[index].updateValueIndicator(valueIndicator);
+    /**
+     *
+     * @param index The index of the branch item
+     * @param valueTypeIndicator The new value type indicator
+     * @return The updated item
+     */
+    public BranchTargetWithStackChange updateItemValueTypeIndicator(int index, int valueTypeIndicator) {
+        items[index].updateValueTypeIndicator(valueTypeIndicator);
         return items[index];
     }
 

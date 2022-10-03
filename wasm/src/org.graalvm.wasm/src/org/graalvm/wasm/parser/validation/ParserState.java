@@ -344,7 +344,7 @@ public class ParserState {
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         final byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractValueIndicator(unwindTypes)));
+        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
         pushAll(unwindTypes);
         pushAll(labelTypes);
     }
@@ -362,7 +362,7 @@ public class ParserState {
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         final byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractValueIndicator(unwindTypes)));
+        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
         pushAll(unwindTypes);
     }
 
@@ -387,7 +387,7 @@ public class ParserState {
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
             popAll(otherBranchLabelReturnTypes);
             byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-            frame.addBranchTarget(branchTable.itemWithValueIndicatorUpdate(i, ExtraDataUtil.extractValueIndicator(unwindTypes)));
+            frame.addBranchTarget(branchTable.updateItemValueTypeIndicator(i, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
             pushAll(unwindTypes);
             pushAll(otherBranchLabelReturnTypes);
         }

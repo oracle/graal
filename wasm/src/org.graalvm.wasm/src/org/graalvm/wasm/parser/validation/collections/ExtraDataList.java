@@ -102,15 +102,15 @@ public class ExtraDataList implements ExtraDataFormatHelper {
         return entry;
     }
 
-    public BranchTargetWithStackChange addConditionalBranch(int offset, int unwindValueIndicator) {
-        ConditionalBranchEntry entry = new ConditionalBranchEntry(this, offset, size, entries.size(), unwindValueIndicator);
+    public BranchTargetWithStackChange addConditionalBranch(int offset, int unwindValueTypeIndicator) {
+        ConditionalBranchEntry entry = new ConditionalBranchEntry(this, offset, size, entries.size(), unwindValueTypeIndicator);
         addEntry(entry);
         branchEntries.add(entry);
         return entry;
     }
 
-    public BranchTargetWithStackChange addUnconditionalBranch(int offset, int unwindValueIndicator) {
-        UnconditionalBranchEntry entry = new UnconditionalBranchEntry(this, offset, size, entries.size(), unwindValueIndicator);
+    public BranchTargetWithStackChange addUnconditionalBranch(int offset, int unwindValueTypeIndicator) {
+        UnconditionalBranchEntry entry = new UnconditionalBranchEntry(this, offset, size, entries.size(), unwindValueTypeIndicator);
         addEntry(entry);
         branchEntries.add(entry);
         return entry;

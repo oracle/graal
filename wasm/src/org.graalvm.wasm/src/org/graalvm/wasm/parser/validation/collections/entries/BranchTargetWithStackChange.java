@@ -52,13 +52,13 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  */
 public abstract class BranchTargetWithStackChange extends BranchTarget {
 
-    private int valueIndicator;
+    private int valueTypeIndicator;
     private int resultCount;
     private int stackSize;
 
-    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindValueIndicator) {
+    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindValueTypeIndicator) {
         super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
-        this.valueIndicator = unwindValueIndicator;
+        this.valueTypeIndicator = unwindValueTypeIndicator;
     }
 
     /**
@@ -67,11 +67,11 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
      * @param resultCount The number of result values
      * @param stackSize The stack size after the jump
      */
-    public void setStackInfo(int returnValueIndicator, int resultCount, int stackSize) {
-        this.valueIndicator |= returnValueIndicator;
+    public void setStackInfo(int returnValueTypeIndicator, int resultCount, int stackSize) {
+        this.valueTypeIndicator |= returnValueTypeIndicator;
         this.resultCount = resultCount;
         this.stackSize = stackSize;
-        assert ExtraDataUtil.isValidValueIndicator(returnValueIndicator) : "Invalid type indicator";
+        assert ExtraDataUtil.isValidValueTypeIndicator(returnValueTypeIndicator) : "Invalid value type indicator";
         if (ExtraDataUtil.exceedsUnsigned7BitValue(resultCount) || ExtraDataUtil.exceedsUnsigned7BitValue(stackSize)) {
             if (ExtraDataUtil.exceedsPositiveIntValue(resultCount) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
@@ -80,12 +80,12 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
         }
     }
 
-    void updateValueIndicator(int updatedValueIndicator) {
-        this.valueIndicator |= updatedValueIndicator;
+    void updateValueTypeIndicator(int updatedValueTypeIndicator) {
+        this.valueTypeIndicator |= updatedValueTypeIndicator;
     }
 
-    protected int valueIndicator() {
-        return valueIndicator;
+    protected int valueTypeIndicator() {
+        return valueTypeIndicator;
     }
 
     protected int resultCount() {

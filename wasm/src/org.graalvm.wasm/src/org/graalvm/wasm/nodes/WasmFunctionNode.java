@@ -271,7 +271,7 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_LENG
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_PROFILE_OFFSET;
-import static org.graalvm.wasm.util.ExtraDataAccessor.VALUE_TYPE_INDICATOR;
+import static org.graalvm.wasm.util.ExtraDataAccessor.COMBINED_TYPE_INDICATOR;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_TABLE_HEADER_LENGTH;
@@ -557,7 +557,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case REFERENCE_TYPE_INDICATOR:
                             unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
                             break;
-                        case VALUE_TYPE_INDICATOR:
+                        case COMBINED_TYPE_INDICATOR:
                             unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                             break;
                     }
@@ -586,7 +586,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             case REFERENCE_TYPE_INDICATOR:
                                 unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 break;
-                            case VALUE_TYPE_INDICATOR:
+                            case COMBINED_TYPE_INDICATOR:
                                 unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 break;
                         }
@@ -635,7 +635,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             case REFERENCE_TYPE_INDICATOR:
                                 unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 break;
-                            case VALUE_TYPE_INDICATOR:
+                            case COMBINED_TYPE_INDICATOR:
                                 unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 break;
                         }
@@ -666,7 +666,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                     case REFERENCE_TYPE_INDICATOR:
                                         unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                         break;
-                                    case VALUE_TYPE_INDICATOR:
+                                    case COMBINED_TYPE_INDICATOR:
                                         unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                         break;
                                 }
@@ -1564,7 +1564,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I64_EXTEND16_S:
                 case I64_EXTEND32_S:
                 case REF_IS_NULL:
-                    miscOps(frame, stackPointer, opcode);
+                    executeMiscUnaryOp(frame, stackPointer, opcode);
                     break;
                 case REF_NULL:
                     // Consume reference type
@@ -1600,7 +1600,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case I64_TRUNC_SAT_F32_U:
                         case I64_TRUNC_SAT_F64_S:
                         case I64_TRUNC_SAT_F64_U:
-                            truncSatOps(frame, stackPointer, opcode);
+                            executeTruncSatOp(frame, stackPointer, miscOpcode);
                             break;
                         case MEMORY_INIT: {
                             // region Load LEB128 Unsigned32 -> value
@@ -1821,7 +1821,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return Integer.toUnsignedLong(dynamicAddress) + Integer.toUnsignedLong(staticAddressOffset);
     }
 
-    private void miscOps(VirtualFrame frame, int stackPointer, int opcode) {
+    private void executeMiscUnaryOp(VirtualFrame frame, int stackPointer, int opcode) {
         switch (opcode) {
             case I32_CLZ:
                 i32_clz(frame, stackPointer);
@@ -1931,7 +1931,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void truncSatOps(VirtualFrame frame, int stackPointer, int opcode) {
+    private void executeTruncSatOp(VirtualFrame frame, int stackPointer, int opcode) {
         switch (opcode) {
             case I32_TRUNC_SAT_F32_S:
                 i32_trunc_sat_f32_s(frame, stackPointer);

@@ -353,7 +353,7 @@ public class ExtraDataSuite {
     }
 
     @Test
-    public void testMixedTypeStackChangeAndReturn() {
+    public void testCombinedTypeStackChangeAndReturn() {
         ParserState state = new ParserState();
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
         state.enterBlock(VOID_TYPE_ARRAY, new byte[]{WasmType.I32_TYPE});
