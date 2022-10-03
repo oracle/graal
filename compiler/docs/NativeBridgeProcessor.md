@@ -25,7 +25,7 @@ abstract class NativeCalculator extends NativeObject implements Calculator {
 }
 ```
 
-The annotation processor generates class `NativeCalculatorGen` with a static factory method `createHotSpotToNative(NativeIsolate isolate, long handle)`. The method creates an instance of `NativeCalculator` that forwards `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+The annotation processor generates class `NativeCalculatorGen` with a static factory method `createHSToNative(NativeIsolate isolate, long handle)`. The method creates an instance of `NativeCalculator` that forwards `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
 
 To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
@@ -34,7 +34,7 @@ long isolateThreadId = ExampleJNIConfig.createIsolate();
 long isolateId = ExampleJNIConfig.getIsolateId(isolateThreadId);
 long calculatorHandle = ExampleJNIConfig.initializeCalculator(isolateThreadId);
 NativeIsolate isolate = NativeIsolate.forIsolateId(isolateId, ExampleJNIConfig.getInstance());
-NativeCalculator calculator = NativeCalculatorGen.createHotSpotToNative(isolate, calculatorHandle);
+NativeCalculator calculator = NativeCalculatorGen.createHSToNative(isolate, calculatorHandle);
 calculator.add(calculator.sub(41, 2), 1);
 ```
 
@@ -52,7 +52,7 @@ abstract class HSCalculator extends HSObject implements Calculator {
 }
 ```
 
-The annotation processor generates class `HSCalculatorGen` with a static factory method `createNativeToHotSpot(JNIEnv jniEnv, JObject handle)`. The method creates an instance of `HSCalculator` that forwards `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
+The annotation processor generates class `HSCalculatorGen` with a static factory method `createNativeToHS(JNIEnv jniEnv, JObject handle)`. The method creates an instance of `HSCalculator` that forwards `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
 
 ### Bridging a class
 
@@ -80,7 +80,7 @@ abstract class NativeCalculator extends Calculator {
 }
 ```
 
-The annotation processor generates class `NativeCalculatorGen` with a static `createHotSpotToNative(NativeIsolate isolate, long handle)` factory method creating a `NativeCalculator` instance forwarding `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+The annotation processor generates class `NativeCalculatorGen` with a static `createHSToNative(NativeIsolate isolate, long handle)` factory method creating a `NativeCalculator` instance forwarding `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
 
 To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
@@ -89,7 +89,7 @@ long isolateThreadId = ExampleJNIConfig.createIsolate();
 long isolateId = ExampleJNIConfig.getIsolateId(isolateThreadId);
 long calculatorHandle = ExampleJNIConfig.initializeCalculator(isolateThreadId);
 NativeIsolate isolate = NativeIsolate.forIsolateId(isolateId, ExampleJNIConfig.getInstance());
-NativeCalculator calculator = NativeCalculatorGen.createHotSpotToNative(new NativeObject(isolate, calculatorHandle));
+NativeCalculator calculator = NativeCalculatorGen.createHSToNative(new NativeObject(isolate, calculatorHandle));
 calculator.add(calculator.sub(41, 2), 1);
 ```
 
@@ -108,7 +108,7 @@ abstract class HSCalculator extends Calculator {
 }
 ```
 
-The annotation processor generates class `HSCalculatorGen` with a static `createNativeToHotSpot(HSObject delegate, JNIEnv jniEnv)` factory method creating an `HSCalculator` instance forwarding `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
+The annotation processor generates class `HSCalculatorGen` with a static `createNativeToHS(HSObject delegate, JNIEnv jniEnv)` factory method creating an `HSCalculator` instance forwarding `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
 
 ### Bridging a class with a custom dispatch
 
@@ -154,7 +154,7 @@ To generate a bridge from a HotSpot VM to a Native Image, create an abstract bas
 @GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
 abstract class NativeLanguageDispatch extends AbstractLanguageDispatch {
 
-    private static final NativeLanguageDispatch INSTANCE = NativeLanguageDispatchGen.createHotSpotToNative();
+    private static final NativeLanguageDispatch INSTANCE = NativeLanguageDispatchGen.createHSToNative();
 
     @CustomDispatchAccessor
     static AbstractLanguageDispatch getDispatch(Language language) {
@@ -173,7 +173,7 @@ abstract class NativeLanguageDispatch extends AbstractLanguageDispatch {
 }
 ```
 
-The annotation processor generates class `NativeLanguageDispatchGen` with a static `createHotSpotToNative()` factory method creating a `NativeLanguageDispatch` instance forwarding methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+The annotation processor generates class `NativeLanguageDispatchGen` with a static `createHSToNative()` factory method creating a `NativeLanguageDispatch` instance forwarding methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
 
 To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
