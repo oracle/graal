@@ -43,10 +43,11 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class ThrowInstruction extends Instruction {
-    public ThrowInstruction(int id) {
-        super("throw", id, 0);
+    public ThrowInstruction(OperationsContext ctx, int id) {
+        super(ctx, "throw", id, 0);
         addLocal("exception");
     }
 
@@ -71,11 +72,6 @@ public class ThrowInstruction extends Instruction {
     @Override
     public boolean isBranchInstruction() {
         return true;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -68,6 +69,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
@@ -290,6 +292,11 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci));
 
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            b.declaration("short", "primitiveTag", isUncached ? "0" : "(short)((curOpcode >> 13) & 0x0007)");
+            b.startAssign(varCurOpcode).string("(short) (").variable(varCurOpcode).string(" & 0x1fff)").end();
+        }
+
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
         b.startTryBlock();
@@ -344,7 +351,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.caseDefault().startCaseBlock();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-        b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \""));
+        b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
         b.end();
 
         b.end(); // switch block
@@ -404,16 +411,12 @@ public class OperationsBytecodeCodeGenerator {
 
             CustomInstruction cinstr = (CustomInstruction) instr;
 
-            boolean isVariadic = cinstr.getData().getMainProperties().isVariadic;
-            boolean isShortCircuit = cinstr.getData().isShortCircuit();
-            boolean regularReturn = isVariadic || isShortCircuit;
-
             final Set<String> methodNames = new HashSet<>();
             final Set<String> innerTypeNames = new HashSet<>();
 
             final SingleOperationData soData = cinstr.getData();
 
-            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(m, innerTypeNames, methodNames, isVariadic, cinstr, staticConstants, isUncached);
+            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(m, innerTypeNames, methodNames, cinstr, staticConstants, isUncached);
             cinstr.setPlugs(plugs);
 
             NodeCodeGenerator generator = new NodeCodeGenerator();
@@ -427,7 +430,9 @@ public class OperationsBytecodeCodeGenerator {
             plugs.finishUp();
             CodeTypeElement result = resultList.get(0);
 
-            CodeExecutableElement executeMethod = null;
+            List<String> executeNames = m.getOperationsContext().getBoxingKinds().stream().map(
+                            x -> plugs.transformNodeMethodName(x == FrameKind.OBJECT ? "execute" : "execute" + x.getFrameName())).collect(Collectors.toList());
+            CodeExecutableElement[] executeMethods = new CodeExecutableElement[isUncached ? 1 : executeNames.size()];
             List<CodeExecutableElement> execs = new ArrayList<>();
 
             TypeElement target = result;
@@ -447,26 +452,31 @@ public class OperationsBytecodeCodeGenerator {
                     continue;
                 }
 
-                String targetName = isUncached ? "executeUncached" : "execute";
-                String otherTargetName = !isUncached ? "executeUncached" : "execute";
+                String simpleName = ex.getSimpleName().toString();
 
-                if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName(targetName))) {
-                    executeMethod = (CodeExecutableElement) ex;
-                }
-
-                if (ex.getSimpleName().toString().equals(plugs.transformNodeMethodName(otherTargetName))) {
-                    continue;
+                if (isUncached) {
+                    if (simpleName.equals(plugs.transformNodeMethodName("executeUncached"))) {
+                        executeMethods[0] = (CodeExecutableElement) ex;
+                    } else if (executeNames.contains(simpleName)) {
+                        continue;
+                    }
+                } else {
+                    if (simpleName.equals(plugs.transformNodeMethodName("executeUncached"))) {
+                        continue;
+                    } else if (executeNames.contains(simpleName)) {
+                        executeMethods[executeNames.indexOf(simpleName)] = (CodeExecutableElement) ex;
+                    }
                 }
 
                 execs.add((CodeExecutableElement) ex);
                 copiedMethod.add(ex.getSimpleName().toString());
             }
 
-            if (executeMethod == null) {
-                throw new AssertionError(String.format("execute method not found in: %s", result.getSimpleName()));
+            for (CodeExecutableElement el : executeMethods) {
+                if (el != null) {
+                    el.getAnnotationMirrors().removeIf(x -> ElementUtils.typeEquals(x.getAnnotationType(), types.CompilerDirectives_TruffleBoundary));
+                }
             }
-
-            executeMethod.getAnnotationMirrors().removeIf(x -> ElementUtils.typeEquals(x.getAnnotationType(), types.CompilerDirectives_TruffleBoundary));
 
             for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
                 if (!innerTypeNames.contains(te.getSimpleName().toString())) {
@@ -482,7 +492,7 @@ public class OperationsBytecodeCodeGenerator {
                 boolean isBoundary = exToCopy.getAnnotationMirrors().stream().anyMatch(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
 
                 String exName = exToCopy.getSimpleName().toString();
-                boolean isExecute = exName.contains("_execute_") || exName.contains("_executeUncached_");
+                boolean isExecute = executeNames.contains(exName) || exName.contains("_executeUncached_");
                 boolean isExecuteAndSpecialize = exName.endsWith("_executeAndSpecialize_");
                 boolean isFallbackGuard = exName.endsWith("_fallbackGuard__");
 
@@ -505,12 +515,9 @@ public class OperationsBytecodeCodeGenerator {
                     }
                 }
 
-                if (!regularReturn) {
-                    if (isExecute || isExecuteAndSpecialize) {
-                        exToCopy.setReturnType(context.getType(void.class));
-                    }
+                if (cinstr.isVariadic()) {
+                    exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$numVariadics"));
                 }
-
                 exToCopy.getParameters().add(0, new CodeVariableElement(arrayOf(types.Node), "$children"));
                 exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(Object[].class), "$consts"));
                 exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$sp"));
@@ -537,9 +544,9 @@ public class OperationsBytecodeCodeGenerator {
             }
 
             if (isUncached) {
-                cinstr.setUncachedExecuteMethod(executeMethod);
+                cinstr.setUncachedExecuteMethod(executeMethods[0]);
             } else {
-                cinstr.setExecuteMethod(executeMethod);
+                cinstr.setExecuteMethod(executeMethods);
             }
             cinstr.setPrepareAOTMethod(metPrepareForAOT);
 

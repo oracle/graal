@@ -51,11 +51,9 @@ public class ConditionalBranchInstruction extends Instruction {
 
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final DeclaredType typeConditionProfile = context.getDeclaredType("com.oracle.truffle.api.profiles.ConditionProfile");
-    private OperationsContext ctx;
 
     public ConditionalBranchInstruction(OperationsContext ctx, int id) {
-        super("branch.false", id, 0);
-        this.ctx = ctx;
+        super(ctx, "branch.false", id, 0);
         addPopSimple("condition");
         addBranchTarget("target");
         addBranchProfile("profile");
@@ -92,11 +90,6 @@ public class ConditionalBranchInstruction extends Instruction {
         b.end();
 
         return b.build();
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

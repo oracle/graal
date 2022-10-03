@@ -65,7 +65,6 @@ public class SingleOperationData extends Template {
     private final Set<TypeMirror> throwDeclarations = new HashSet<>();
     private final boolean isShortCircuit;
     private boolean shortCircuitContinueWhen;
-    private boolean disableBoxingElimination;
 
     public enum ParameterKind {
         STACK_VALUE,
@@ -231,14 +230,6 @@ public class SingleOperationData extends Template {
 
     public void setShortCircuitContinueWhen(boolean shortCircuitContinueWhen) {
         this.shortCircuitContinueWhen = shortCircuitContinueWhen;
-    }
-
-    public boolean isDisableBoxingElimination() {
-        return disableBoxingElimination;
-    }
-
-    public void setDisableBoxingElimination(boolean disableBoxingElimination) {
-        this.disableBoxingElimination = disableBoxingElimination;
     }
 
 }

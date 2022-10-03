@@ -47,6 +47,7 @@ import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 @SuppressWarnings("unused")
 public class BranchInstruction extends Instruction {
@@ -62,8 +63,8 @@ public class BranchInstruction extends Instruction {
 
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
-    public BranchInstruction(int id) {
-        super("branch", id, 0);
+    public BranchInstruction(OperationsContext ctx, int id) {
+        super(ctx, "branch", id, 0);
         addBranchTarget("target");
     }
 
@@ -170,11 +171,6 @@ public class BranchInstruction extends Instruction {
     @Override
     public boolean isBranchInstruction() {
         return true;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

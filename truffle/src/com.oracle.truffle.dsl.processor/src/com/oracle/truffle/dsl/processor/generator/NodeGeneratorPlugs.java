@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
@@ -89,13 +90,7 @@ public interface NodeGeneratorPlugs {
 
     void initializeFrameState(FrameState frameState, CodeTreeBuilder builder);
 
-    boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder builder, boolean inBoundary, CodeTree[] bindings);
-
     boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call);
-
-    void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments);
-
-    boolean createCallWrapInAMethod(FrameState frameState, CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters);
 
     CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState);
 
@@ -129,7 +124,11 @@ public interface NodeGeneratorPlugs {
 
     CodeTree createSuperInsert(CodeTree value);
 
-    CodeTree createReturnUnexpectedResult(FrameState frameState, ExecutableTypeData forType, boolean needsCast);
-
     void setUseSpecializationClass(Predicate<SpecializationData> useSpecializationClass);
+
+    String createExpectTypeMethodName(TypeSystemData typeSystem, TypeMirror type);
+
+    CodeTree createCallExecute(FrameState frameState, ExecutableElement executableElement, CodeTree[] codeTrees);
+
+    String createExecuteAndSpecializeName(String result);
 }

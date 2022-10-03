@@ -43,18 +43,19 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class InstrumentationExitInstruction extends Instruction {
     private final boolean returnsValue;
 
-    public InstrumentationExitInstruction(int id) {
-        super("instrument.exit.void", id, 0);
+    public InstrumentationExitInstruction(OperationsContext ctx, int id) {
+        super(ctx, "instrument.exit.void", id, 0);
         this.returnsValue = false;
         addInstrument("instrument");
     }
 
-    public InstrumentationExitInstruction(int id, boolean returnsValue) {
-        super("instrument.exit", id, 0);
+    public InstrumentationExitInstruction(OperationsContext ctx, int id, boolean returnsValue) {
+        super(ctx, "instrument.exit", id, 0);
         assert returnsValue;
         this.returnsValue = true;
         addInstrument("instrument");
@@ -92,11 +93,6 @@ public class InstrumentationExitInstruction extends Instruction {
     @Override
     public boolean isInstrumentationOnly() {
         return true;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

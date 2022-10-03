@@ -42,11 +42,12 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class InstrumentationEnterInstruction extends Instruction {
 
-    public InstrumentationEnterInstruction(int id) {
-        super("instrument.enter", id, 0);
+    public InstrumentationEnterInstruction(OperationsContext ctx, int id) {
+        super(ctx, "instrument.enter", id, 0);
         addInstrument("instrument");
     }
 
@@ -75,11 +76,6 @@ public class InstrumentationEnterInstruction extends Instruction {
     @Override
     public boolean isInstrumentationOnly() {
         return true;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

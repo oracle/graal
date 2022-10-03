@@ -67,7 +67,6 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
 
 @GenerateOperations(languageClass = TestLanguage.class, enableYield = true)
-@GenerateUncached
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
 public abstract class TestOperations extends RootNode implements OperationRootNode {

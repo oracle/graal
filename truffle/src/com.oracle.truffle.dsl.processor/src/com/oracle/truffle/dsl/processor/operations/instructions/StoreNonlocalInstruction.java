@@ -2,11 +2,12 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class StoreNonlocalInstruction extends Instruction {
 
-    public StoreNonlocalInstruction(int id) {
-        super("store.nonlocal", id, 0);
+    public StoreNonlocalInstruction(OperationsContext ctx, int id) {
+        super(ctx, "store.nonlocal", id, 0);
         addPopSimple("frame");
         addPopSimple("value");
         addArgument("index");
@@ -31,11 +32,6 @@ public class StoreNonlocalInstruction extends Instruction {
         b.statement("$sp -= 2");
 
         return b.build();
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

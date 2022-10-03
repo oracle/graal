@@ -46,12 +46,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.ShortCircuitOperation;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
@@ -114,10 +113,10 @@ public class OperationsContext {
     }
 
     private void createCommonInstructions() {
-        commonPop = add(new DiscardInstruction("pop", instructionId++));
-        commonBranch = add(new BranchInstruction(instructionId++));
+        commonPop = add(new DiscardInstruction(this, "pop", instructionId++));
+        commonBranch = add(new BranchInstruction(this, instructionId++));
         commonBranchFalse = add(new ConditionalBranchInstruction(this, instructionId++));
-        commonThrow = add(new ThrowInstruction(instructionId++));
+        commonThrow = add(new ThrowInstruction(this, instructionId++));
     }
 
     private void createBuiltinOperations() {
@@ -134,54 +133,27 @@ public class OperationsContext {
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
 
-        createLoadConstant();
-        createLoadArgument();
-        createLoadStoreLocal();
-        createReturn();
+        add(new Operation.Simple(this, "ConstObject", operationId++, 0, add(new LoadConstantInstruction(this, instructionId++))));
+        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, add(new LoadArgumentInstruction(this, instructionId++))));
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(this, instructionId++))));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(this, instructionId++))));
+        add(new Operation.Simple(this, "Return", operationId++, 1, add(new ReturnInstruction(this, instructionId++))));
 
-        add(new Operation.LoadNonlocal(this, operationId++, add(new LoadNonlocalInstruction(instructionId++))));
-        add(new Operation.StoreNonlocal(this, operationId++, add(new StoreNonlocalInstruction(instructionId++))));
+        add(new Operation.LoadNonlocal(this, operationId++, add(new LoadNonlocalInstruction(this, instructionId++))));
+        add(new Operation.StoreNonlocal(this, operationId++, add(new StoreNonlocalInstruction(this, instructionId++))));
 
         if (data.enableYield) {
-            add(new Operation.Simple(this, "Yield", operationId++, 1, add(new YieldInstruction(instructionId++))));
+            add(new Operation.Simple(this, "Yield", operationId++, 1, add(new YieldInstruction(this, instructionId++))));
         }
 
         add(new Operation.Source(this, operationId++));
         add(new Operation.SourceSection(this, operationId++));
 
         add(new Operation.InstrumentTag(this, operationId++,
-                        add(new InstrumentationEnterInstruction(instructionId++)),
-                        add(new InstrumentationExitInstruction(instructionId++)),
-                        add(new InstrumentationExitInstruction(instructionId++, true)),
-                        add(new InstrumentationLeaveInstruction(instructionId++))));
-    }
-
-    private void createLoadStoreLocal() {
-        StoreLocalInstruction storeLocal = add(new StoreLocalInstruction(this, instructionId++));
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, storeLocal));
-
-        LoadLocalInstruction loadLocal = add(new LoadLocalInstruction(this, instructionId++));
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, loadLocal));
-    }
-
-    private void createLoadArgument() {
-        loadArgumentInstructions = new LoadArgumentInstruction[FrameKind.values().length];
-        for (FrameKind kind : data.getFrameKinds()) {
-            loadArgumentInstructions[kind.ordinal()] = add(new LoadArgumentInstruction(this, instructionId++, kind));
-        }
-        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, loadArgumentInstructions[FrameKind.OBJECT.ordinal()]));
-    }
-
-    private void createLoadConstant() {
-        loadConstantInstructions = new LoadConstantInstruction[FrameKind.values().length];
-        loadConstantInstructions[FrameKind.OBJECT.ordinal()] = add(new LoadConstantInstruction(this, instructionId++, FrameKind.OBJECT));
-
-        add(new Operation.LoadConstant(this, operationId++, loadConstantInstructions));
-    }
-
-    private void createReturn() {
-        ReturnInstruction retInit = add(new ReturnInstruction(this, instructionId++));
-        add(new Operation.Simple(this, "Return", operationId++, 1, retInit));
+                        add(new InstrumentationEnterInstruction(this, instructionId++)),
+                        add(new InstrumentationExitInstruction(this, instructionId++)),
+                        add(new InstrumentationExitInstruction(this, instructionId++, true)),
+                        add(new InstrumentationLeaveInstruction(this, instructionId++))));
     }
 
     public <T extends Instruction> T add(T elem) {
@@ -252,5 +224,21 @@ public class OperationsContext {
 
             add(new QuickenedInstruction(this, cinstr, instructionId++, opData, List.of(quicken.specializations)));
         }
+    }
+
+    public boolean hasBoxingElimination() {
+        return data.getBoxingEliminatedTypes().size() > 0;
+    }
+
+    public List<FrameKind> getPrimitiveBoxingKinds() {
+        return data.getBoxingEliminatedTypes().stream().sorted().map(FrameKind::valueOfPrimitive).collect(Collectors.toList());
+    }
+
+    public List<FrameKind> getBoxingKinds() {
+        ArrayList<FrameKind> result = new ArrayList<>();
+        result.add(FrameKind.OBJECT);
+        result.addAll(getPrimitiveBoxingKinds());
+
+        return result;
     }
 }

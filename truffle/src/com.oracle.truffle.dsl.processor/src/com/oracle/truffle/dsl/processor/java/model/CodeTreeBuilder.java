@@ -1020,6 +1020,13 @@ public class CodeTreeBuilder {
         return string(variable.getSimpleName().toString());
     }
 
+    public CodeTreeBuilder variables(List<? extends VariableElement> variables) {
+        for (VariableElement variable : variables) {
+            variable(variable);
+        }
+        return this;
+    }
+
     public CodeTreeBuilder field(String receiver, VariableElement field) {
         if (receiver == null && field.getModifiers().contains(Modifier.STATIC)) {
             return staticReference(field);

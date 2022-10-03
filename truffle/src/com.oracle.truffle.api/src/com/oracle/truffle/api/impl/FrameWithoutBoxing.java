@@ -319,11 +319,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutObject(getIndexedLocals(), getObjectOffset(slot), value, OBJECT_LOCATION);
     }
 
-    void unsafeUncheckedSetObject(int slot, Object value) {
-        assert getIndexedTagChecked(slot) == OBJECT_TAG;
-        unsafePutObject(getIndexedLocals(), getObjectOffset(slot), value, OBJECT_LOCATION);
-    }
-
     @Override
     public byte getByte(int slot) throws FrameSlotTypeException {
         boolean condition = verifyIndexedGet(slot, BYTE_TAG);

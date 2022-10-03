@@ -110,6 +110,8 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
 public abstract class SLOperationRootNode extends SLRootNode implements OperationRootNode {
 
+    static final boolean __magic_LogInvalidations = true;
+
     protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
         super((SLLanguage) language, frameDescriptor.build());
     }

@@ -129,15 +129,15 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
-    static CodeTree expect(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
+    static CodeTree expect(TypeSystemData typeSystem, TypeMirror type, CodeTree content, NodeGeneratorPlugs plugs) {
         if (ElementUtils.isObject(type) || ElementUtils.isVoid(type)) {
             return content;
         }
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         if (typeSystem.hasType(type)) {
-            builder.startStaticCall(createTypeSystemGen(typeSystem), expectTypeMethodName(typeSystem, type)).tree(content).end();
+            builder.startStaticCall(createTypeSystemGen(typeSystem), expectTypeMethodName(typeSystem, type, null)).tree(content).end();
         } else {
-            builder.startCall(expectTypeMethodName(typeSystem, type)).tree(content).end();
+            builder.startCall(expectTypeMethodName(typeSystem, type, plugs)).tree(content).end();
         }
 
         return builder.build();
@@ -150,7 +150,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             return null;
         }
 
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), expectedType, TypeSystemCodeGenerator.expectTypeMethodName(typeSystem, expectedType));
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), expectedType, TypeSystemCodeGenerator.expectTypeMethodName(typeSystem, expectedType, null));
         method.setVisibility(visibility);
         method.addParameter(new CodeVariableElement(sourceType, LOCAL_VALUE));
         method.addThrownType(typeSystem.getContext().getTypes().UnexpectedResultException);
@@ -215,8 +215,12 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return "expectImplicit" + getTypeId(typeSystem, type);
     }
 
-    private static String expectTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "expect" + getTypeId(typeSystem, type);
+    private static String expectTypeMethodName(TypeSystemData typeSystem, TypeMirror type, NodeGeneratorPlugs plugs) {
+        String name = "expect" + getTypeId(typeSystem, type);
+        if (plugs != null) {
+            name = plugs.createExpectTypeMethodName(typeSystem, type);
+        }
+        return name;
     }
 
     static String typeName(TypeSystemData typeSystem) {

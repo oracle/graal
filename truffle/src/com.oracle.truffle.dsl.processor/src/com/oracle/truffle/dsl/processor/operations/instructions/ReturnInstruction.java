@@ -47,11 +47,8 @@ import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class ReturnInstruction extends Instruction {
 
-    private final OperationsContext ctx;
-
     public ReturnInstruction(OperationsContext ctx, int id) {
-        super("return", id, 0);
-        this.ctx = ctx;
+        super(ctx, "return", id, 0);
         addPopSimple("value");
     }
 
@@ -102,11 +99,6 @@ public class ReturnInstruction extends Instruction {
         b.end(2);
 
         return b.build();
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

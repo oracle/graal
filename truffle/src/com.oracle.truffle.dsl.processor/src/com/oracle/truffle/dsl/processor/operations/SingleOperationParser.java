@@ -73,6 +73,7 @@ import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
@@ -165,7 +166,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
 
             data = new SingleOperationData(context, te, null, parentData, name, false);
-            data.setDisableBoxingElimination((boolean) valDBE.getValue());
         }
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
@@ -217,10 +217,20 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         MethodProperties props = processMethod(data, operationFunctions.get(0));
         boolean isVariadic = props.isVariadic;
 
+        boolean[] canPossiblyReturn = new boolean[FrameKind.values().length];
+        canPossiblyReturn[FrameKind.OBJECT.ordinal()] = true;
+
         for (ExecutableElement fun : operationFunctions) {
             MethodProperties props2 = processMethod(data, fun);
             props2.checkMatches(data, props);
             data.getThrowDeclarations().addAll(fun.getThrownTypes());
+            if (ElementUtils.isObject(fun.getReturnType())) {
+                for (int i = 0; i < canPossiblyReturn.length; i++) {
+                    canPossiblyReturn[i] = true;
+                }
+            } else {
+                canPossiblyReturn[FrameKind.valueOfWithBoxing(fun.getReturnType().getKind()).ordinal()] = true;
+            }
         }
 
         if (isShortCircuit && (props.numStackValues != 1 || props.isVariadic || !props.returnsValue)) {
@@ -249,16 +259,24 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             clonedType.setSuperClass(types.Node);
         }
 
-        if (!isVariadic) {
-            addBoxingEliminationNodeChildAnnotations(data, props, clonedType);
-        }
+        addBoxingEliminationNodeChildAnnotations(data, props, clonedType);
 
         if (parentData.isGenerateUncached()) {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateUncached));
             clonedType.add(createExecuteUncachedMethod(props));
         }
 
-        clonedType.add(createExecuteMethod(props, isVariadic));
+        if (isShortCircuit) {
+            clonedType.add(createExecuteMethod(props, "execute", context.getType(boolean.class), false));
+        } else if (!props.returnsValue) {
+            clonedType.add(createExecuteMethod(props, "execute", context.getType(void.class), false));
+        } else {
+            for (FrameKind kind : parentData.getFrameKinds()) {
+                if (canPossiblyReturn[kind.ordinal()]) {
+                    clonedType.add(createExecuteMethod(props, kind == FrameKind.OBJECT ? "execute" : "execute" + kind.getFrameName(), kind.getType(), kind != FrameKind.OBJECT));
+                }
+            }
+        }
 
         NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
 
@@ -288,67 +306,52 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     private void addBoxingEliminationNodeChildAnnotations(SingleOperationData data, MethodProperties props, CodeTypeElement ct) {
         int i = 0;
         int localI = 0;
-        CodeTypeElement childType = createRegularNodeChild(!data.isDisableBoxingElimination());
+        CodeTypeElement childType = createRegularNodeChild();
         CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
         List<CodeAnnotationValue> anns = new ArrayList<>();
         for (ParameterKind param : props.parameters) {
             CodeAnnotationMirror ann = new CodeAnnotationMirror(types.NodeChild);
-            if (param == ParameterKind.STACK_VALUE) {
-                ann.setElementValue("value", new CodeAnnotationValue("$child" + i));
-                ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(childType)));
-                anns.add(new CodeAnnotationValue(ann));
-                i++;
-            } else if (param == ParameterKind.LOCAL_SETTER) {
-                ann.setElementValue("value", new CodeAnnotationValue("$localRef" + localI));
-                ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterNodeChild())));
-                anns.add(new CodeAnnotationValue(ann));
-                localI++;
-            } else if (param == ParameterKind.LOCAL_SETTER_ARRAY) {
-                ann.setElementValue("value", new CodeAnnotationValue("$localRefArray"));
-                ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterArrayNodeChild())));
-                anns.add(new CodeAnnotationValue(ann));
+            switch (param) {
+                case STACK_VALUE:
+                    ann.setElementValue("value", new CodeAnnotationValue("$child" + i));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(childType)));
+                    anns.add(new CodeAnnotationValue(ann));
+                    i++;
+                    break;
+                case LOCAL_SETTER:
+                    ann.setElementValue("value", new CodeAnnotationValue("$localRef" + localI));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterNodeChild())));
+                    anns.add(new CodeAnnotationValue(ann));
+                    localI++;
+                    break;
+                case LOCAL_SETTER_ARRAY:
+                    ann.setElementValue("value", new CodeAnnotationValue("$localRefArray"));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterArrayNodeChild())));
+                    anns.add(new CodeAnnotationValue(ann));
+                    break;
+                case VARIADIC:
+                    ann.setElementValue("value", new CodeAnnotationValue("$variadicChild"));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createVariadicNodeChild())));
+                    anns.add(new CodeAnnotationValue(ann));
+                    break;
+                case VIRTUAL_FRAME:
+                    break;
+                default:
+                    throw new IllegalArgumentException("" + param);
             }
         }
         repAnnotation.setElementValue("value", new CodeAnnotationValue(anns));
         ct.addAnnotationMirror(repAnnotation);
     }
 
-    private CodeExecutableElement createExecuteMethod(MethodProperties props, boolean isVariadic) {
-
-        Class<?> resType;
-        if (isShortCircuit) {
-            resType = boolean.class;
-        } else if (props.returnsValue) {
-            resType = Object.class;
-        } else {
-            resType = void.class;
-        }
-        CodeExecutableElement metExecute = new CodeExecutableElement(
-                        Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
-                        context.getType(resType), "execute");
-
+    private CodeExecutableElement createExecuteMethod(MethodProperties props, String name, TypeMirror resType, boolean hasUre) {
+        CodeExecutableElement metExecute = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), resType, name);
         metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
 
-        if (isVariadic) {
-            int i = 0;
-            for (ParameterKind param : props.parameters) {
-                switch (param) {
-                    case STACK_VALUE:
-                        metExecute.addParameter(new CodeVariableElement(context.getType(Object.class), "arg" + i));
-                        break;
-                    case VARIADIC:
-                        metExecute.addParameter(new CodeVariableElement(context.getType(Object[].class), "arg" + i));
-                        break;
-                    case LOCAL_SETTER:
-                    case LOCAL_SETTER_ARRAY:
-                    case VIRTUAL_FRAME:
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("" + param);
-                }
-                i++;
-            }
+        if (hasUre) {
+            metExecute.addThrownType(types.UnexpectedResultException);
         }
+
         return metExecute;
     }
 
@@ -460,18 +463,26 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private static final String GENERIC_EXECUTE_NAME = "Generic";
 
-    private CodeTypeElement createRegularNodeChild(boolean withBoxingElimination) {
+    private CodeTypeElement createRegularNodeChild() {
 
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
         result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object.class)));
 
-        if (withBoxingElimination) {
-            for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
-                result.add(createChildExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
-            }
+        for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
+            result.add(createChildExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
         }
+
+        return result;
+    }
+
+    private CodeTypeElement createVariadicNodeChild() {
+
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        result.setSuperClass(types.Node);
+
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object[].class)));
 
         return result;
     }

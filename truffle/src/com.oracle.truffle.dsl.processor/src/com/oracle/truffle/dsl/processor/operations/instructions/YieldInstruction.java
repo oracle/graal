@@ -2,14 +2,15 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 
 public class YieldInstruction extends Instruction {
 
     private static final String CONTINUATION_POINT = "continuation-point";
 
-    public YieldInstruction(int id) {
-        super("yield", id, 1);
+    public YieldInstruction(OperationsContext ctx, int id) {
+        super(ctx, "yield", id, 1);
         addPopSimple("value");
         addConstant(CONTINUATION_POINT, null);
     }
@@ -60,11 +61,6 @@ public class YieldInstruction extends Instruction {
     @Override
     public boolean isBranchInstruction() {
         return true;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

@@ -43,8 +43,10 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -55,6 +57,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public abstract class Instruction {
 
@@ -83,15 +86,10 @@ public abstract class Instruction {
         public CodeTree[] arguments;
     }
 
-    public enum BoxingEliminationBehaviour {
-        DO_NOTHING,
-        SET_BIT,
-        REPLACE
-    }
-
     protected final ProcessorContext context = ProcessorContext.getInstance();
     protected final TruffleTypes types = context.getTypes();
 
+    protected final OperationsContext ctx;
     public final String name;
     public final int id;
     public final int numPushedValues;
@@ -166,8 +164,8 @@ public abstract class Instruction {
     }
 
     public int addPopIndexed(Object marker) {
-        if (isVariadic) {
-            throw new AssertionError("variadic cannot have indexed pops in variadic");
+        if (!ctx.hasBoxingElimination()) {
+            return addPopSimple(marker);
         }
         if (!popSimple.isEmpty()) {
             throw new AssertionError("cannot mix simple and indexed pops");
@@ -183,10 +181,6 @@ public abstract class Instruction {
     }
 
     public void setVariadic() {
-        if (!popIndexed.isEmpty()) {
-            throw new AssertionError("variadic cannot have indexed pops in variadic");
-        }
-
         isVariadic = true;
     }
 
@@ -231,15 +225,11 @@ public abstract class Instruction {
     }
 
     private int getVariadicOffset() {
-        return getPopIndexedOffset(); // they are always same since we can never have both
+        return getPopIndexedOffset() + (popIndexed.size() + 1) / 2;
     }
 
     private int getBranchTargetsOffset() {
-        if (isVariadic) {
-            return getVariadicOffset() + 1;
-        } else {
-            return getPopIndexedOffset() + ((popIndexed.size() + 1) / 2);
-        }
+        return getVariadicOffset() + (isVariadic ? 1 : 0);
     }
 
     private int getBranchProfileOffset() {
@@ -313,6 +303,10 @@ public abstract class Instruction {
     }
 
     public CodeTree createPopIndexedIndex(ExecutionVariables vars, int index, boolean write) {
+        if (!ctx.hasBoxingElimination()) {
+            throw new AssertionError("there is no boxing elimination");
+            // return CodeTreeBuilder.singleString("0 /* XXXXXXXXXXX */");
+        }
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startParantheses();
@@ -386,7 +380,8 @@ public abstract class Instruction {
         this.opcodeIdField = opcodeIdField;
     }
 
-    Instruction(String name, int id, int numPushedValues) {
+    Instruction(OperationsContext ctx, String name, int id, int numPushedValues) {
+        this.ctx = ctx;
         this.name = name;
         this.id = id;
         this.internalName = OperationGeneratorUtils.toScreamCase(name);
@@ -583,44 +578,12 @@ public abstract class Instruction {
         printList(sb, branchProfiles, "Branch Profiles");
         printList(sb, stateBits, "State Bitsets");
 
-        sb.append("  Boxing Elimination: ");
-        switch (boxingEliminationBehaviour()) {
-            case DO_NOTHING:
-                sb.append("Do Nothing\n");
-                break;
-            case REPLACE:
-                sb.append("Replace\n");
-                for (FrameKind kind : FrameKind.values()) {
-                    try {
-                        String el = boxingEliminationReplacement(kind).getName();
-                        sb.append("    ").append(kind).append(" -> ").append(el).append("\n");
-                    } catch (Exception ex) {
-                    }
-                }
-                break;
-            case SET_BIT:
-                sb.append("Bit Mask\n");
-                break;
-            default:
-                throw new AssertionError();
-        }
-
         return sb.toString();
     }
 
-    public abstract BoxingEliminationBehaviour boxingEliminationBehaviour();
-
     @SuppressWarnings("unused")
     public CodeVariableElement boxingEliminationReplacement(FrameKind kind) {
-        throw new AssertionError();
-    }
-
-    public CodeTree boxingEliminationBitOffset() {
-        throw new AssertionError();
-    }
-
-    public int boxingEliminationBitMask() {
-        throw new AssertionError();
+        return null;
     }
 
     public abstract CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root);

@@ -350,6 +350,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             genCtor.getModifiers().add(Modifier.PRIVATE);
         }
 
+        boolean doHookTti = ElementFilter.fieldsIn(m.getTemplateType().getEnclosedElements()).stream().anyMatch(x -> x.getSimpleName().toString().equals("__magic_LogInvalidations"));
+
+        if (doHookTti) {
+            GeneratorUtils.setHookTransferToInterpreter(true);
+            typOperationNodeImpl.add(createHookTransferToInterpreterAndInvalidate());
+        }
+
         typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getDeclaredType("com.oracle.truffle.api.impl.UnsafeFrameAccess"), "UFA = UnsafeFrameAccess.lookup()"));
 
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME), "nodes")));
@@ -479,7 +486,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typOperationNodeImpl.addAll(instr.createInstructionFields());
         }
 
-        typOperationNodeImpl.add(createBoxingDescriptors());
         typOperationNodeImpl.add(createSetResultUnboxed());
         typOperationNodeImpl.add(createLoadVariadicArguments());
         typOperationNodeImpl.add(createSetResultBoxedImpl());
@@ -496,7 +502,39 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createDeserializeMethod());
         typOperationNodeImpl.add(createSerializeMethod(typBuilderImpl, typBuilderImpl));
 
+        if (doHookTti) {
+            GeneratorUtils.setHookTransferToInterpreter(false);
+        }
+
         return typOperationNodeImpl;
+    }
+
+    private CodeExecutableElement createHookTransferToInterpreterAndInvalidate() {
+        CodeExecutableElement el = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "hook_transferToInterpreterAndInvalidate");
+
+        CodeTreeBuilder b = el.createBuilder();
+
+        TypeMirror swType = context.getType(StackWalker.class);
+
+        b.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreterAndInvalidate").end(2);
+
+        for (VariableElement field : ElementFilter.fieldsIn(m.getTemplateType().getEnclosedElements())) {
+            if (field.getSimpleName().toString().equals("__magic_CountInvalidations")) {
+                b.startStatement().staticReference(field).string(" += 1").end();
+            }
+        }
+
+        b.startIf().string("__magic_LogInvalidations").end().startBlock();
+        b.startStatement().startCall("System.err", "printf");
+        b.doubleQuote("[ INV ] %s%s%n");
+        b.doubleQuote("");
+        b.startStaticCall(swType, "getInstance().walk");
+        b.string("s -> s.skip(1).findFirst().get().toStackTraceElement().toString()");
+        b.end();
+        b.end(2);
+        b.end();
+
+        return el;
     }
 
     private CodeExecutableElement createLoadVariadicArguments() {
@@ -2144,7 +2182,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.variable(varBc);
         b.string("startBci - bciOffset");
         b.variable(varTargetType);
-        b.startGroup().string("BOXING_DESCRIPTORS[").variable(varTargetType).string("]").end();
         b.end(2);
         // }
         b.end();
@@ -2256,51 +2293,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         return mPublish;
 
-    }
-
-    private CodeVariableElement createBoxingDescriptors() {
-        CodeVariableElement fldBoxingDescriptors = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, arrayOf(arrayOf(context.getType(short.class))), "BOXING_DESCRIPTORS");
-
-        CodeTreeBuilder b = fldBoxingDescriptors.createInitBuilder();
-
-        b.string("{").startCommaGroup();
-        for (FrameKind kind : FrameKind.values()) {
-            b.startGroup().newLine();
-            b.lineComment("" + kind);
-            if (m.getFrameKinds().contains(kind)) {
-                b.string("{").startCommaGroup();
-                b.string("-1");
-                for (Instruction instr : m.getInstructions()) {
-                    switch (instr.boxingEliminationBehaviour()) {
-                        case DO_NOTHING:
-                            b.string("0");
-                            break;
-                        case REPLACE:
-                            b.variable(instr.boxingEliminationReplacement(kind));
-                            break;
-                        case SET_BIT: {
-                            b.startGroup();
-                            b.cast(context.getType(short.class));
-                            b.startParantheses();
-                            b.string("0x8000 | ");
-                            b.startParantheses().startParantheses().tree(instr.boxingEliminationBitOffset()).end().string(" << 8").end();
-                            b.string(" | ");
-                            b.string("" + instr.boxingEliminationBitMask());
-                            b.end(2);
-                            break;
-                        }
-                        default:
-                            throw new UnsupportedOperationException("unknown boxing behaviour: " + instr.boxingEliminationBehaviour());
-                    }
-
-                }
-                b.end().string("}").end();
-            } else {
-                b.string("null").end();
-            }
-        }
-        b.end().string("}");
-        return fldBoxingDescriptors;
     }
 
     private CodeExecutableElement createAfterChild(BuilderVariables vars) {
@@ -2457,18 +2449,27 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         mExpectObject.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         mExpectObject.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
 
+        if (hasAnyBoxingElimination) {
+            mExpectObject.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+            mExpectObject.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
+            mExpectObject.addParameter(new CodeVariableElement(context.getType(int.class), "bciOffset"));
+        }
+
         CodeTreeBuilder b = mExpectObject.createBuilder();
 
         if (hasAnyBoxingElimination) {
-            b.startIf().string("UFA.unsafeIsObject(frame, slot)").end().startBlock(); // if {
+            b.startIf().string("bciOffset == 0 || UFA.unsafeIsObject(frame, slot)").end().startBlock();
         }
 
         b.startReturn().string("UFA.unsafeUncheckedGetObject(frame, slot)").end();
 
         if (hasAnyBoxingElimination) {
             b.end().startElseBlock(); // } else {
+
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.startStatement().startCall("setResultBoxedImpl").string("bc").string("bci - bciOffset").string("0").end(2);
             b.startReturn().string("frame.getValue(slot)").end();
+
             b.end(); // }
         }
 
@@ -2479,35 +2480,60 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement mExpectPrimitive = new CodeExecutableElement(MOD_PROTECTED_STATIC, kind.getType(), "expect" + kind.getFrameName());
         mExpectPrimitive.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         mExpectPrimitive.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
+        mExpectPrimitive.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+        mExpectPrimitive.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
+        mExpectPrimitive.addParameter(new CodeVariableElement(context.getType(int.class), "bciOffset"));
 
         mExpectPrimitive.addThrownType(types.UnexpectedResultException);
 
         CodeTreeBuilder b = mExpectPrimitive.createBuilder();
 
         if (OperationGeneratorFlags.LOG_STACK_READS) {
-            b.statement("System.out.println(\" [SR] stack read @ \" + slot + \" : \" + frame.getValue(slot) + \"\")");
+            b.statement("System.err.println(\"[ SRD ] stack read @ \" + slot + \" : \" + frame.getValue(slot) + \" as \" + frame.getTag(slot))");
         }
 
-        b.startSwitch().string("UFA.unsafeGetTag(frame, slot)").end().startBlock(); // switch {
+        b.startIf().string("bciOffset == 0").end().startBlock();
 
-        b.startCase().string(kind.ordinal() + " /* " + kind + " */").end().startCaseBlock(); // {
-        b.startReturn().string("UFA.unsafeUncheckedGet" + kind.getFrameName() + "(frame, slot)").end();
-        b.end(); // }
+        b.startAssign("Object value").startCall("UFA", "unsafeUncheckedGetObject");
+        b.string("frame");
+        b.string("slot");
+        b.end(2);
 
-        b.startCase().string(FrameKind.OBJECT.ordinal() + " /* OBJECT */").end().startCaseBlock(); // {
+        b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
+        b.startReturn().string("(", kind.getTypeName(), ") value").end();
+        b.end().startElseBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.startThrow().startNew(types.UnexpectedResultException).string("value").end(2);
+        b.end();
+
+        b.end().startElseBlock();
+
+        b.startSwitch().startCall("UFA", "unsafeGetTag").string("frame").string("slot").end(2).startBlock();
+
+        b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
+        b.startReturn().startCall("UFA", "unsafeUncheckedGet" + kind.getFrameName()).string("frame").string("slot").end(2);
+        b.end();
+
+        b.startCase().string(FrameKind.OBJECT.toOrdinal()).end().startCaseBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.declaration("Object", "value", "UFA.unsafeUncheckedGetObject(frame, slot)");
 
         b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
-        b.startReturn().string("(" + kind.getTypeName() + ") value").end();
-        b.end();
+        b.startStatement().startCall("setResultBoxedImpl").string("bc").string("bci - bciOffset").string(kind.toOrdinal()).end(2);
+        b.startReturn().string("(", kind.getTypeName(), ") value").end();
+        b.end(); // if
 
         b.statement("break");
-        b.end(); // }
+        b.end(); // case
 
-        b.end(); // }
+        b.end();// switch
 
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+
+        b.startStatement().startCall("setResultBoxedImpl").string("bc").string("bci - bciOffset").string("0").end(2);
         b.startThrow().startNew(types.UnexpectedResultException).string("frame.getValue(slot)").end(2);
+
+        b.end();// else
 
         return mExpectPrimitive;
     }
@@ -2570,28 +2596,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         mSetResultBoxedImpl.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
         mSetResultBoxedImpl.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
         mSetResultBoxedImpl.addParameter(new CodeVariableElement(context.getType(int.class), "targetType"));
-        mSetResultBoxedImpl.addParameter(new CodeVariableElement(context.getType(short[].class), "descriptor"));
 
         CodeTreeBuilder b = mSetResultBoxedImpl.createBuilder();
-        b.declaration("int", "op", "bc[bci] & 0xffff");
-        b.declaration("short", "todo", "descriptor[op]");
 
-        b.startIf().string("todo > 0").end().startBlock();
-
-        b.statement("bc[bci] = todo");
-
-        b.end().startElseBlock();
-
-        b.declaration("int", "offset", "(todo >> 8) & 0x7f");
-        b.declaration("int", "bit", "todo & 0xff");
-
-        b.startIf().string("targetType == 0 /* OBJECT */").end().startBlock();
-        b.statement("bc[bci + offset] &= ~bit");
-        b.end().startElseBlock();
-        b.statement("bc[bci + offset] |= bit");
-        b.end();
-
-        b.end();
+        b.statement("bc[bci] = (short) ((targetType << 13) | (bc[bci] & 0x1fff))");
 
         return mSetResultBoxedImpl;
     }

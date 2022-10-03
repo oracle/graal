@@ -58,17 +58,17 @@ import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.test.example.BoxingOperations.ObjectProducer;
 
 public class BoxingOperationsTest {
 
-    // todo: all of these tests should somehow check that e&s is not called more times
-    // than it needs to
-
     private static final BoxingLanguage LANGUAGE = null;
+
+    private static final int NUM_ITERATIONS = 10_000;
+    private static final int MAX_INVALIDATIONS = 20;
 
     private static RootCallTarget parse(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationRootNode node = parseNode(parser);
@@ -79,6 +79,16 @@ public class BoxingOperationsTest {
         OperationNodes nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
         OperationRootNode node = nodes.getNodes().get(0);
         return node;
+    }
+
+    private static void testInvalidations(Runnable r) {
+        int startInvalidations = BoxingOperations.__magic_CountInvalidations;
+
+        r.run();
+
+        int totalInval = BoxingOperations.__magic_CountInvalidations - startInvalidations;
+
+        Assert.assertTrue("too many invalidations: " + totalInval, totalInval <= MAX_INVALIDATIONS);
     }
 
     @Test
@@ -95,9 +105,11 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call());
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call());
+            }
+        });
     }
 
     @Test
@@ -114,9 +126,11 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call());
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call());
+            }
+        });
     }
 
     @Test
@@ -133,9 +147,11 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call());
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call());
+            }
+        });
     }
 
     @Test
@@ -152,9 +168,11 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call());
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call());
+            }
+        });
     }
 
     @Test
@@ -173,19 +191,19 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_INT));
-        }
-
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_REF_B));
-        }
-
-        try {
-            root.call(ObjectProducer.PRODUCE_BOOLEAN);
-            Assert.fail();
-        } catch (UnsupportedSpecializationException e) {
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_INT));
+            }
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_REF_B));
+            }
+            try {
+                root.call(ObjectProducer.PRODUCE_BOOLEAN);
+                Assert.fail();
+            } catch (UnsupportedSpecializationException e) {
+            }
+        });
     }
 
     @Test
@@ -204,19 +222,21 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_BOOLEAN));
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_BOOLEAN));
+            }
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_REF_A));
-        }
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_REF_A));
+            }
 
-        try {
-            root.call(ObjectProducer.PRODUCE_INT);
-            Assert.fail();
-        } catch (UnsupportedSpecializationException e) {
-        }
+            try {
+                root.call(ObjectProducer.PRODUCE_INT);
+                Assert.fail();
+            } catch (UnsupportedSpecializationException e) {
+            }
+        });
     }
 
     @Test
@@ -235,19 +255,21 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_INT));
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_INT));
+            }
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_REF_B));
-        }
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_REF_B));
+            }
 
-        try {
-            root.call(ObjectProducer.PRODUCE_BOOLEAN);
-            Assert.fail();
-        } catch (UnsupportedSpecializationException e) {
-        }
+            try {
+                root.call(ObjectProducer.PRODUCE_BOOLEAN);
+                Assert.fail();
+            } catch (UnsupportedSpecializationException e) {
+            }
+        });
     }
 
     @Test
@@ -266,19 +288,19 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_BOOLEAN));
-        }
-
-        for (int i = 0; i < 3; i++) {
-            Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_REF_A));
-        }
-
-        try {
-            root.call(ObjectProducer.PRODUCE_INT);
-            Assert.fail();
-        } catch (UnsupportedSpecializationException e) {
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_BOOLEAN));
+            }
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_REF_A));
+            }
+            try {
+                root.call(ObjectProducer.PRODUCE_INT);
+                Assert.fail();
+            } catch (UnsupportedSpecializationException e) {
+            }
+        });
     }
 
     @Test
@@ -305,9 +327,11 @@ public class BoxingOperationsTest {
 
         RootCallTarget root = ((RootNode) node).getCallTarget();
 
-        for (int i = 0; i < 100; i++) {
-            Assert.assertEquals(1L, root.call());
-        }
+        testInvalidations(() -> {
+            for (int i = 0; i < NUM_ITERATIONS; i++) {
+                Assert.assertEquals(1L, root.call());
+            }
+        });
     }
 }
 
@@ -361,9 +385,14 @@ class BoxingTypeSystem {
     }
 }
 
-@GenerateOperations(languageClass = BoxingLanguage.class, boxingEliminationTypes = {boolean.class, int.class, long.class})
+@GenerateOperations(//
+                languageClass = BoxingLanguage.class, //
+                boxingEliminationTypes = {boolean.class, int.class, long.class})
 @SuppressWarnings("unused")
 abstract class BoxingOperations extends RootNode implements OperationRootNode {
+
+    static final boolean __magic_LogInvalidations = false;
+    static int __magic_CountInvalidations = 0;
 
     protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
         super(language, frameDescriptor.build());

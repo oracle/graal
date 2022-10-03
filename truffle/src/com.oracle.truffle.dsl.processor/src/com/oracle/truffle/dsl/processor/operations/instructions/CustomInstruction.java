@@ -42,15 +42,21 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.VariableElement;
 
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
@@ -59,16 +65,13 @@ import com.oracle.truffle.dsl.processor.operations.SingleOperationData.Parameter
 
 public class CustomInstruction extends Instruction {
 
-    protected final OperationsContext ctx;
     private final SingleOperationData data;
-    protected ExecutableElement executeMethod;
+    protected ExecutableElement[] executeMethods;
     protected ExecutableElement uncachedExecuteMethod;
     private OperationsBytecodeNodeGeneratorPlugs plugs;
     private CodeExecutableElement prepareAOTMethod;
     private CodeExecutableElement getSpecializationBits;
     private final List<QuickenedInstruction> quickenedVariants = new ArrayList<>();
-    private CodeTree boxingEliminationBitOffset;
-    private int boxingEliminationBitMask;
 
     public SingleOperationData getData() {
         return data;
@@ -86,13 +89,12 @@ public class CustomInstruction extends Instruction {
         return result;
     }
 
-    public void setExecuteMethod(ExecutableElement executeMethod) {
-        this.executeMethod = executeMethod;
+    public void setExecuteMethod(ExecutableElement[] executeMethods) {
+        this.executeMethods = executeMethods;
     }
 
     public CustomInstruction(OperationsContext ctx, String name, int id, SingleOperationData data) {
-        super(name, id, data.getMainProperties().returnsValue ? 1 : 0);
-        this.ctx = ctx;
+        super(ctx, name, id, data.getMainProperties().returnsValue ? 1 : 0);
         this.data = data;
         initializePops();
     }
@@ -108,7 +110,7 @@ public class CustomInstruction extends Instruction {
         if (props.isVariadic) {
             setVariadic();
             for (int i = 0; i < props.numStackValues - 1; i++) {
-                addPopSimple("arg" + i);
+                addPopIndexed("arg" + i);
             }
         } else {
             for (int i = 0; i < props.numStackValues; i++) {
@@ -128,8 +130,7 @@ public class CustomInstruction extends Instruction {
     }
 
     protected CustomInstruction(OperationsContext ctx, String name, int id, SingleOperationData data, int pushCount) {
-        super(name, id, pushCount);
-        this.ctx = ctx;
+        super(ctx, name, id, pushCount);
         this.data = data;
     }
 
@@ -154,104 +155,168 @@ public class CustomInstruction extends Instruction {
     }
 
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
+
+        String exName = getUniqueName() + "_entryPoint" + (uncached ? "_uncached" : "");
+        OperationGeneratorUtils.createHelperMethod(ctx.outerType, exName, () -> {
+            CodeExecutableElement el = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), exName);
+            el.getParameters().addAll(executeMethods[0].getParameters());
+
+            if (!uncached && ctx.hasBoxingElimination()) {
+                el.addParameter(new CodeVariableElement(context.getType(int.class), "primitiveTag"));
+            }
+
+            CodeTreeBuilder b = el.createBuilder();
+
+            if (numPushedValues > 0) {
+
+                if (isVariadic()) {
+                    b.declaration("int", "destSlot", "$sp - " + (data.getMainProperties().numStackValues - 1) + " - $numVariadics");
+                } else {
+                    b.declaration("int", "destSlot", "$sp - " + data.getMainProperties().numStackValues);
+                }
+
+                if (!uncached && ctx.hasBoxingElimination()) {
+                    boolean needsUnexpectedResult = false;
+                    for (ExecutableElement exm : executeMethods) {
+                        if (exm != null && exm.getThrownTypes().size() > 0) {
+                            needsUnexpectedResult = true;
+                            break;
+                        }
+                    }
+
+                    if (needsUnexpectedResult) {
+                        b.startTryBlock();
+                    }
+
+                    b.startSwitch().string("primitiveTag").end().startBlock();
+
+                    int i = 0;
+                    for (FrameKind kind : ctx.getBoxingKinds()) {
+                        if (executeMethods[i] != null) {
+                            b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
+
+                            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+
+                            b.variable(vars.stackFrame);
+                            b.string("destSlot");
+
+                            b.startStaticCall(executeMethods[i]);
+                            b.variables(executeMethods[i].getParameters());
+                            b.end();
+
+                            b.end(2);
+
+                            b.returnStatement();
+                            b.end();
+                        }
+
+                        i++;
+                    }
+
+                    b.caseDefault().startCaseBlock();
+                    b.tree(GeneratorUtils.createShouldNotReachHere());
+                    b.end();
+
+                    b.end();
+
+                    if (needsUnexpectedResult) {
+                        b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+
+                        b.startStatement().startCall("UFA", "unsafeSetObject");
+                        b.variable(vars.stackFrame);
+                        b.string("destSlot");
+                        b.string("ex.getResult()");
+
+                        b.end(2);
+
+                        b.end();
+                    }
+
+                } else {
+                    ExecutableElement target = uncached ? uncachedExecuteMethod : executeMethods[0];
+
+                    b.startStatement().startCall("UFA", "unsafeSetObject");
+
+                    b.variable(vars.stackFrame);
+                    b.string("destSlot");
+
+                    b.startStaticCall(target);
+                    b.variables(el.getParameters());
+
+                    if (uncached) {
+                        for (int i = 0; i < numPopStatic(); i++) {
+                            int offset = numPopStatic() - i;
+                            b.startCall("UFA", "unsafeUncheckedGetObject");
+                            b.variable(vars.stackFrame);
+                            if (isVariadic()) {
+                                b.string("$sp - " + offset + " - $numVariadics");
+                            } else {
+                                b.string("$sp - " + offset);
+                            }
+                            b.end();
+                        }
+
+                        if (isVariadic()) {
+                            b.startCall("do_loadVariadicArguments");
+                            b.variable(vars.stackFrame);
+                            b.variable(vars.sp);
+                            b.string("$numVariadics");
+                            b.end();
+                        }
+
+                        addLocalRefs(b, vars);
+                    }
+
+                    b.end();
+
+                    b.end(2);
+                }
+            } else {
+
+                b.startStatement().startStaticCall(executeMethods[0]);
+                b.variables(executeMethods[0].getParameters());
+                b.end(2);
+            }
+
+            return el;
+        });
+
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         createTracerCode(vars, b);
 
-        ExecutableElement method = uncached ? uncachedExecuteMethod : executeMethod;
-
-        if (data.getMainProperties().isVariadic) {
-
-            b.declaration("int", "numVariadics", createVariadicIndex(vars, false));
-
-            int additionalInputs = data.getMainProperties().numStackValues - 1;
-
-            int inputIndex = 0;
-            CodeTree[] inputTrees = new CodeTree[data.getMainProperties().parameters.size()];
-            for (ParameterKind kind : data.getMainProperties().parameters) {
-                String inputName = "input_" + inputIndex;
-                switch (kind) {
-                    case STACK_VALUE:
-                        // safety: use unchecked since we never BE variadic functions
-                        b.declaration("Object", inputName, "UFA.unsafeUncheckedGetObject(" + vars.stackFrame.getName() + ", $sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
-                        inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
-                        break;
-                    case VARIADIC:
-                        b.startAssign("Object[] " + inputName).startCall("do_loadVariadicArguments");
-                        b.variable(vars.stackFrame);
-                        b.variable(vars.sp);
-                        b.string("numVariadics");
-                        b.end(2);
-                        inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
-                        break;
-                    case VIRTUAL_FRAME:
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unexpected value: " + kind);
-                }
-            }
-
-            if (numPushedValues > 0) {
-                b.startAssign("Object result");
-            } else {
-                b.startStatement();
-            }
-
-            b.startStaticCall(method);
-            b.variable(vars.stackFrame);
-            if (ctx.getData().enableYield) {
-                b.variable(vars.localFrame);
-            }
-            b.string("$this");
-            b.variable(vars.bc);
-            b.variable(vars.bci);
-            b.variable(vars.sp);
-            b.variable(vars.consts);
-            b.variable(vars.children);
-            b.trees(inputTrees);
-
-            if (uncached) {
-                addLocalRefs(b, vars);
-            }
-
-            b.end(2);
-
-            b.startAssign(vars.sp).variable(vars.sp).string(" - " + additionalInputs + " - numVariadics + " + numPushedValues).end();
-
-            if (numPushedValues > 0) {
-                b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.variable(vars.stackFrame);
-                b.string("$sp - 1");
-                b.string("result");
-                b.end(2);
-            }
-
-        } else {
-            b.startStatement();
-            b.startStaticCall(method);
-            b.variable(vars.stackFrame);
-            if (ctx.getData().enableYield) {
-                b.variable(vars.localFrame);
-            }
-            b.string("$this");
-            b.variable(vars.bc);
-            b.variable(vars.bci);
-            b.variable(vars.sp);
-            b.variable(vars.consts);
-            b.variable(vars.children);
-
-            if (uncached) {
-                for (int i = numPopStatic(); i > 0; i--) {
-                    b.string("UFA.unsafeGetObject(" + vars.stackFrame.getName() + ", $sp - " + i + ")");
-                }
-
-                addLocalRefs(b, vars);
-            }
-
-            b.end(2);
-
-            b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues).end();
+        if (isVariadic()) {
+            b.startAssign("int numVariadics").tree(createVariadicIndex(vars, false)).end();
         }
+
+        b.startStatement();
+        b.startCall(exName);
+        b.variable(vars.stackFrame);
+        if (ctx.getData().enableYield) {
+            b.variable(vars.localFrame);
+        }
+        b.string("$this");
+        b.variable(vars.bc);
+        b.variable(vars.bci);
+        b.variable(vars.sp);
+        b.variable(vars.consts);
+        b.variable(vars.children);
+
+        if (isVariadic()) {
+            b.string("numVariadics");
+        }
+
+        if (!uncached && ctx.hasBoxingElimination()) {
+            b.string("primitiveTag");
+        }
+
+        b.end(2);
+
+        b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues);
+        if (isVariadic()) {
+            b.string(" - numVariadics + 1");
+        }
+        b.end();
 
         return b.build();
     }
@@ -292,26 +357,6 @@ public class CustomInstruction extends Instruction {
         this.getSpecializationBits = getSpecializationBits;
     }
 
-    public void setBoxingEliminationData(CodeTree boxingEliminationBitOffset, int boxingEliminationBitMask) {
-        this.boxingEliminationBitOffset = boxingEliminationBitOffset;
-        this.boxingEliminationBitMask = boxingEliminationBitMask;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return numPushedValues > 0 ? BoxingEliminationBehaviour.SET_BIT : BoxingEliminationBehaviour.DO_NOTHING;
-    }
-
-    @Override
-    public CodeTree boxingEliminationBitOffset() {
-        return boxingEliminationBitOffset == null ? CodeTreeBuilder.singleString("0") : boxingEliminationBitOffset;
-    }
-
-    @Override
-    public int boxingEliminationBitMask() {
-        return boxingEliminationBitMask;
-    }
-
     public OperationsBytecodeNodeGeneratorPlugs getPlugs() {
         return plugs;
     }
@@ -338,6 +383,9 @@ public class CustomInstruction extends Instruction {
         b.string("-1");
         b.string("$consts");
         b.string("$children");
+        if (isVariadic()) {
+            b.tree(createVariadicIndex(vars, false));
+        }
         b.tree(language);
         b.tree(root);
         b.end(2);

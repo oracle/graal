@@ -2,11 +2,12 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadNonlocalInstruction extends Instruction {
 
-    public LoadNonlocalInstruction(int id) {
-        super("load.nonlocal", id, 1);
+    public LoadNonlocalInstruction(OperationsContext ctx, int id) {
+        super(ctx, "load.nonlocal", id, 1);
         addPopSimple("frame");
         addArgument("index");
     }
@@ -31,11 +32,6 @@ public class LoadNonlocalInstruction extends Instruction {
         b.end(2);
 
         return b.build();
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

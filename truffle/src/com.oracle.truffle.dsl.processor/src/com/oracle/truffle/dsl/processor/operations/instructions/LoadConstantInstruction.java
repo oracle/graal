@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import javax.lang.model.element.Modifier;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -53,20 +54,16 @@ import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadConstantInstruction extends Instruction {
-    private final FrameKind kind;
-    private final OperationsContext ctx;
 
-    public LoadConstantInstruction(OperationsContext ctx, int id, FrameKind kind) {
-        super("load.constant." + kind.toString().toLowerCase(), id, 1);
-        this.ctx = ctx;
-        this.kind = kind;
+    public LoadConstantInstruction(OperationsContext ctx, int id) {
+        super(ctx, "load.constant", id, 1);
         addConstant("constant", ProcessorContext.getInstance().getType(Object.class));
     }
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
 
-        if (!ctx.outerType.getEnclosedElements().stream().anyMatch(x -> x.getSimpleName().toString().equals("do_loadConstantObject"))) {
+        OperationGeneratorUtils.createHelperMethod(ctx.outerType, "do_loadConstantObject", () -> {
             CodeExecutableElement metImpl = new CodeExecutableElement(
                             EnumSet.of(Modifier.PRIVATE, Modifier.STATIC),
                             context.getType(void.class),
@@ -77,17 +74,43 @@ public class LoadConstantInstruction extends Instruction {
             metImpl.addParameter(vars.bci);
             metImpl.addParameter(vars.sp);
             metImpl.addParameter(vars.consts);
+            if (ctx.hasBoxingElimination()) {
+                metImpl.addParameter(new CodeVariableElement(context.getType(int.class), "primitiveTag"));
+            }
 
             CodeTreeBuilder b = metImpl.getBuilder();
 
-            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-            b.variable(vars.stackFrame);
-            b.variable(vars.sp);
-            b.tree(createGetArgument(vars));
-            b.end(2);
+            if (ctx.hasBoxingElimination()) {
+                b.startSwitch().string("primitiveTag").end().startBlock();
 
-            ctx.outerType.add(metImpl);
-        }
+                for (FrameKind kind : ctx.getBoxingKinds()) {
+                    b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
+
+                    b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+                    b.variable(vars.stackFrame);
+                    b.variable(vars.sp);
+                    b.tree(createGetArgument(vars, kind));
+                    b.end(2);
+
+                    b.statement("break");
+                    b.end();
+                }
+
+                b.caseDefault().startCaseBlock();
+                b.tree(GeneratorUtils.createShouldNotReachHere());
+                b.end();
+
+                b.end();
+            } else {
+                b.startStatement().startCall("UFA", "unsafeSetObject");
+                b.variable(vars.stackFrame);
+                b.variable(vars.sp);
+                b.tree(createGetArgument(vars, FrameKind.OBJECT));
+                b.end(2);
+            }
+
+            return metImpl;
+        });
 
         CodeTreeBuilder bOuter = CodeTreeBuilder.createBuilder();
         bOuter.startStatement().startCall("do_loadConstantObject");
@@ -96,6 +119,9 @@ public class LoadConstantInstruction extends Instruction {
         bOuter.variable(vars.bci);
         bOuter.variable(vars.sp);
         bOuter.variable(vars.consts);
+        if (ctx.hasBoxingElimination()) {
+            bOuter.string("primitiveTag");
+        }
         bOuter.end(2);
 
         bOuter.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
@@ -104,7 +130,7 @@ public class LoadConstantInstruction extends Instruction {
 
     }
 
-    private CodeTree createGetArgument(ExecutionVariables vars) {
+    private CodeTree createGetArgument(ExecutionVariables vars, FrameKind kind) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (kind != FrameKind.OBJECT) {
@@ -114,38 +140,12 @@ public class LoadConstantInstruction extends Instruction {
         b.variable(vars.consts);
         b.tree(createConstantIndex(vars, 0));
         b.end();
+
         return b.build();
     }
 
     @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
-    }
-
-    @Override
-    public CodeVariableElement boxingEliminationReplacement(FrameKind targetKind) {
-        if (kind == FrameKind.OBJECT) {
-            return ctx.loadConstantInstructions[targetKind.ordinal()].opcodeIdField;
-        } else {
-            if (targetKind == FrameKind.OBJECT) {
-                return ctx.loadConstantInstructions[targetKind.ordinal()].opcodeIdField;
-            } else {
-                return opcodeIdField;
-            }
-        }
-    }
-
-    @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
-        if (kind == FrameKind.OBJECT) {
-            return null;
-        }
-
-        return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField);
-    }
-
-    @Override
-    public boolean neverInUncached() {
-        return kind != FrameKind.OBJECT;
+        return null;
     }
 }

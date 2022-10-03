@@ -55,7 +55,4 @@ public class OperationGeneratorFlags {
     public static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
 
     public static final boolean ENABLE_SERIALIZATION = true;
-
-    public static final boolean USE_UNSAFE = false;
-
 }

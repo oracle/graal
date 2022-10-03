@@ -54,11 +54,6 @@ public class ShortCircuitInstruction extends CustomInstruction {
     }
 
     @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
-    }
-
-    @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
@@ -69,7 +64,7 @@ public class ShortCircuitInstruction extends CustomInstruction {
             b.string("!");
         }
 
-        b.startStaticCall(executeMethod);
+        b.startStaticCall(executeMethods[0]);
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
             b.variable(vars.localFrame);

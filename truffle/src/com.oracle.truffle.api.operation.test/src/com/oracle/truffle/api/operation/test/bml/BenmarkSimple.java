@@ -76,6 +76,7 @@ public class BenmarkSimple extends BaseBenchmark {
     private static final String NAME_TEST_LOOP_QUICKEN = "simple:test-loop-quicken";
     private static final String NAME_MANUAL = "simple:manual";
     private static final String NAME_MANUAL_NO_BE = "simple:manual-no-be";
+    private static final String NAME_MANUAL_UNSAFE = "simple:manual-unsafe";
     private static final String NAME_AST = "simple:ast";
 
     private static final Source SOURCE_TEST_LOOP = Source.create("bm", NAME_TEST_LOOP);
@@ -83,6 +84,7 @@ public class BenmarkSimple extends BaseBenchmark {
     private static final Source SOURCE_TEST_LOOP_QUICKEN = Source.create("bm", NAME_TEST_LOOP_QUICKEN);
     private static final Source SOURCE_MANUAL = Source.create("bm", NAME_MANUAL);
     private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
+    private static final Source SOURCE_MANUAL_UNSAFE = Source.create("bm", NAME_MANUAL_UNSAFE);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
     private static final int LOC_I = 4;
@@ -229,6 +231,12 @@ public class BenmarkSimple extends BaseBenchmark {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
             ManualBytecodeNodeNBE node = new ManualBytecodeNodeNBE(lang, b.build(), BYTECODE);
+            return node.getCallTarget();
+        });
+        BenchmarkLanguage.registerName2(NAME_MANUAL_UNSAFE, lang -> {
+            FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
+            b.addSlots(8, FrameSlotKind.Illegal);
+            ManualUnsafeBytecodeNode node = new ManualUnsafeBytecodeNode(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName2(NAME_AST, lang -> {
@@ -486,6 +494,11 @@ public class BenmarkSimple extends BaseBenchmark {
     }
 
     @Benchmark
+    public void manualUnsafe() {
+        doEval(SOURCE_MANUAL_UNSAFE);
+    }
+
+    @Benchmark
     public void ast() {
         doEval(SOURCE_AST);
     }
@@ -496,7 +509,7 @@ public class BenmarkSimple extends BaseBenchmark {
 @Fork(BaseBenchmark.FORKS)
 class BaseBenchmark {
     public static final int MEASUREMENT_ITERATIONS = 10;
-    public static final int WARMUP_ITERATIONS = 10;
+    public static final int WARMUP_ITERATIONS = 20;
     public static final int ITERATION_TIME = 1;
     public static final int FORKS = 1;
 }

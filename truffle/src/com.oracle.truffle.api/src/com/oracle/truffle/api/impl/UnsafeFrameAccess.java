@@ -87,8 +87,6 @@ public abstract class UnsafeFrameAccess {
 
     public abstract void unsafeSetObject(Frame frame, int slot, Object value);
 
-    public abstract void unsafeUncheckedSetObject(Frame frame, int slot, Object value);
-
     public abstract void unsafeSetBoolean(Frame frame, int slot, boolean value);
 
     public abstract void unsafeSetInt(Frame frame, int slot, int value);
@@ -208,11 +206,6 @@ public abstract class UnsafeFrameAccess {
         @Override
         public void unsafeSetObject(Frame frame, int slot, Object value) {
             castFrame(frame).unsafeSetObject(slot, value);
-        }
-
-        @Override
-        public void unsafeUncheckedSetObject(Frame frame, int slot, Object value) {
-            castFrame(frame).unsafeUncheckedSetObject(slot, value);
         }
 
         @Override

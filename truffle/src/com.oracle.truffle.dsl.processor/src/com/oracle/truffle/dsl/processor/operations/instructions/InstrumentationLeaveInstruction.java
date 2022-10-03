@@ -42,10 +42,11 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class InstrumentationLeaveInstruction extends Instruction {
-    public InstrumentationLeaveInstruction(int id) {
-        super("instrument.leave", id, 0);
+    public InstrumentationLeaveInstruction(OperationsContext ctx, int id) {
+        super(ctx, "instrument.leave", id, 0);
         addInstrument("instrument");
         addBranchTarget("startBranch");
         addBranchTarget("endBranch");
@@ -99,11 +100,6 @@ public class InstrumentationLeaveInstruction extends Instruction {
     @Override
     public boolean isInstrumentationOnly() {
         return true;
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

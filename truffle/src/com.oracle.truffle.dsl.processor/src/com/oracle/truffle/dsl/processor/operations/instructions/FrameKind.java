@@ -112,6 +112,10 @@ public enum FrameKind {
         }
     }
 
+    public String toOrdinal() {
+        return "" + this.ordinal() + " /* " + this + " */";
+    }
+
     public static FrameKind valueOfPrimitive(TypeKind typeKind) {
         switch (typeKind) {
             case BOOLEAN:
@@ -128,6 +132,25 @@ public enum FrameKind {
                 return LONG;
             default:
                 throw new UnsupportedOperationException();
+        }
+    }
+
+    public static FrameKind valueOfWithBoxing(TypeKind typeKind) {
+        switch (typeKind) {
+            case BOOLEAN:
+                return BOOLEAN;
+            case BYTE:
+                return BYTE;
+            case DOUBLE:
+                return DOUBLE;
+            case FLOAT:
+                return FLOAT;
+            case INT:
+                return INT;
+            case LONG:
+                return LONG;
+            default:
+                return OBJECT;
         }
     }
 }

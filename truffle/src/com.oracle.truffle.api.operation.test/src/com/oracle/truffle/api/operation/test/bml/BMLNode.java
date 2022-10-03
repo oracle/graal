@@ -11,6 +11,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public abstract class BMLNode extends Node {
 
@@ -18,9 +19,15 @@ public abstract class BMLNode extends Node {
 
     public abstract Object execute(VirtualFrame frame);
 
-    // public abstract int executeInt(VirtualFrame frame) throws UnexpectedResultException;
+    @SuppressWarnings("unused")
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        throw new AssertionError();
+    }
 
-    // public abstract boolean executeBool(VirtualFrame frame) throws UnexpectedResultException;
+    @SuppressWarnings("unused")
+    public boolean executeBool(VirtualFrame frame) throws UnexpectedResultException {
+        throw new AssertionError();
+    }
 }
 
 @SuppressWarnings("serial")

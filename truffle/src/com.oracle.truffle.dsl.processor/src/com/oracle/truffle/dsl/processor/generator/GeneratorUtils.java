@@ -94,10 +94,22 @@ public class GeneratorUtils {
         builder.startStatement().string("encapsulating_.set(prev_)").end();
     }
 
+    private static ThreadLocal<Boolean> hookTransferToInterpreter = ThreadLocal.withInitial(() -> false);
+
+    public static void setHookTransferToInterpreter(boolean value) {
+        hookTransferToInterpreter.set(value);
+    }
+
     public static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
+        builder.startStatement();
+        if (hookTransferToInterpreter.get()) {
+            builder.startCall("hook_transferToInterpreterAndInvalidate").end();
+        } else {
+            builder.startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end();
+        }
+        builder.end();
         return builder.build();
     }
 
@@ -109,6 +121,13 @@ public class GeneratorUtils {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "partialEvaluationConstant").string(variable).end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createNeverPartOfCompilation() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "neverPartOfCompilation").end(2);
         return builder.build();
     }
 

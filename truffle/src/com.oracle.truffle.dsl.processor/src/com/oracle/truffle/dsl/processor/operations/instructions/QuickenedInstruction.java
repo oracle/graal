@@ -134,21 +134,6 @@ public class QuickenedInstruction extends CustomInstruction {
     }
 
     @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.SET_BIT;
-    }
-
-    @Override
-    public CodeTree boxingEliminationBitOffset() {
-        return orig.boxingEliminationBitOffset();
-    }
-
-    @Override
-    public int boxingEliminationBitMask() {
-        return orig.boxingEliminationBitMask();
-    }
-
-    @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return orig.createPrepareAOT(vars, language, root);
     }

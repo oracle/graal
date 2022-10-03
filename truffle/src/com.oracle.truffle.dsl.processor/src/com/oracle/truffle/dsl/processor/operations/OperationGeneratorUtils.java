@@ -45,12 +45,15 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -124,6 +127,13 @@ public class OperationGeneratorUtils {
                         CodeTreeBuilder.singleVariable(bc),
                         CodeTreeBuilder.singleVariable(bci),
                         CodeTreeBuilder.singleVariable(value));
+    }
+
+    public static CodeTree createWriteOpcode(CodeVariableElement bc, CodeVariableElement bci, String value) {
+        return createWriteOpcode(
+                        CodeTreeBuilder.singleVariable(bc),
+                        CodeTreeBuilder.singleVariable(bci),
+                        CodeTreeBuilder.singleString(value));
     }
 
     public static CodeTree createWriteOpcode(CodeVariableElement bc, String bci, CodeVariableElement value) {
@@ -202,7 +212,7 @@ public class OperationGeneratorUtils {
 
         }
 
-        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).end().startBlock();
+        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).string(" & 0x1fff").end().startBlock();
         for (int i = 0; i < trees.size(); i++) {
             if (treeInstructions.get(i) == null) {
                 b.caseDefault();
@@ -238,6 +248,16 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree toFrameTypeConstant(FrameKind kind) {
-        return CodeTreeBuilder.singleString(kind.ordinal() + " /* " + kind + " */");
+        return CodeTreeBuilder.singleString(kind.toOrdinal());
+    }
+
+    public static void createHelperMethod(CodeTypeElement element, String name, Supplier<CodeExecutableElement> e) {
+        if (!element.getEnclosedElements().stream().anyMatch(x -> x.getSimpleName().toString().equals(name))) {
+            CodeExecutableElement ex = e.get();
+            if (!ex.getSimpleName().toString().equals(name)) {
+                throw new IllegalArgumentException("names do not match");
+            }
+            element.add(ex);
+        }
     }
 }

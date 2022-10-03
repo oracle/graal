@@ -50,6 +50,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
@@ -59,6 +61,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
@@ -67,6 +70,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ReportPolym
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.StateBitSet;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
+import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -89,13 +93,11 @@ import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final Set<String> innerTypeNames;
     private final Set<String> methodNames;
-    private final boolean isVariadic;
     private final CustomInstruction cinstr;
     private final StaticConstants staticConstants;
 
     private final ProcessorContext context;
     private final TruffleTypes types;
-    private final Object resultUnboxedState;
     private List<Object> specializationStates;
 
     private MultiStateBitSet multiState;
@@ -114,28 +116,16 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         types = context.getTypes();
     }
 
-    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, Set<String> innerTypeNames, Set<String> methodNames, boolean isVariadic, CustomInstruction cinstr, StaticConstants staticConstants,
+    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, Set<String> innerTypeNames, Set<String> methodNames, CustomInstruction cinstr, StaticConstants staticConstants,
                     boolean uncached) {
         this.m = m;
         OperationsBytecodeCodeGenerator.populateVariables(dummyVariables, m);
         this.innerTypeNames = innerTypeNames;
         this.methodNames = methodNames;
-        this.isVariadic = isVariadic;
         this.cinstr = cinstr;
         this.staticConstants = staticConstants;
 
         this.data = cinstr.getData();
-
-        if (cinstr.numPushedValues == 0 || data.isShortCircuit()) {
-            resultUnboxedState = null;
-        } else {
-            resultUnboxedState = new Object() {
-                @Override
-                public String toString() {
-                    return "RESULT-UNBOXED";
-                }
-            };
-        }
 
         this.uncached = uncached;
     }
@@ -155,12 +145,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void addAdditionalStateBits(List<Object> stateObjects) {
-        if (!stateObjects.isEmpty()) {
-            throw new AssertionError("stateObjects must be empty");
-        }
-        if (resultUnboxedState != null) {
-            stateObjects.add(resultUnboxedState);
-        }
     }
 
     @Override
@@ -217,6 +201,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         builder.string("$sp");
         builder.string("$consts");
         builder.string("$children");
+
+        if (cinstr.isVariadic()) {
+            builder.string("$numVariadics");
+        }
 
         for (int i = 0; i < m.getNumTosSlots(); i++) {
             builder.string("$tos_" + i);
@@ -436,15 +424,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public CodeTree[] createThrowUnsupportedValues(FrameState frameState, List<CodeTree> values, CodeTreeBuilder parent, CodeTreeBuilder builder) {
-        if (regularReturn()) {
-            return values.toArray(new CodeTree[values.size()]);
-        }
-        CodeTree[] result = new CodeTree[values.size()];
-        for (int i = 0; i < values.size(); i++) {
-            result[i] = CodeTreeBuilder.singleString((m.enableYield ? "$stackFrame" : "$frame") + ".getValue($sp - " + (cinstr.numPopStatic() - i) + ")");
-        }
-
-        return result;
+        return values.toArray(new CodeTree[values.size()]);
     }
 
     @Override
@@ -454,113 +434,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         builder.declaration("int", CHILD_OFFSET_NAME, (CodeTree) null);
         builder.declaration("int", CONST_OFFSET_NAME, (CodeTree) null);
         frameState.setBoolean("definedOffsets", true);
-    }
-
-    private void createPushResult(FrameState frameState, CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {
-        if (cinstr.numPushedValues == 0) {
-            b.statement(specializationCall);
-            b.returnStatement();
-            return;
-        }
-
-        if (data.isShortCircuit()) {
-            b.startReturn();
-            b.tree(specializationCall);
-            b.end();
-            return;
-        }
-
-        assert cinstr.numPushedValues == 1;
-
-        int destOffset = cinstr.numPopStatic();
-
-        CodeTree value;
-        String typeName;
-        if (retType.getKind() == TypeKind.VOID) {
-            // we need to push something, lets just push a `null`.
-            // maybe this should be an error? DSL just returns default value
-
-            b.statement(specializationCall);
-            value = CodeTreeBuilder.singleString("null");
-            typeName = "Object";
-        } else {
-            value = specializationCall;
-            typeName = getFrameType(retType.getKind()).getFrameName();
-        }
-
-        CodeTree isResultBoxed = multiState.createNotContains(frameState, new Object[]{resultUnboxedState});
-
-        if (uncached || data.isDisableBoxingElimination() || typeName.equals("Object")) {
-            b.startStatement();
-            if (m.getBoxingEliminatedTypes().size() == 0) {
-                b.startCall("UFA", "unsafeUncheckedSetObject");
-            } else {
-                b.startCall("UFA", "unsafeSetObject");
-            }
-            b.string(m.enableYield ? "$stackFrame" : "$frame");
-            b.string("$sp - " + destOffset);
-            b.tree(value);
-            b.end(2);
-        } else {
-            b.declaration(retType, "value", value);
-            b.startIf().tree(isResultBoxed).end().startBlock();
-            // {
-            b.startStatement();
-            b.startCall("UFA", "unsafeSetObject");
-            b.string(m.enableYield ? "$stackFrame" : "$frame");
-            b.string("$sp - " + destOffset);
-            b.string("value");
-            b.end(2);
-            // }
-            b.end().startElseBlock();
-            // {
-            b.startStatement();
-            b.startCall("UFA", "unsafeSet" + typeName);
-            b.string(m.enableYield ? "$stackFrame" : "$frame");
-            b.string("$sp - " + destOffset);
-            b.string("value");
-            b.end(2);
-            // }
-            b.end();
-        }
-
-        b.returnStatement();
-
-    }
-
-    @Override
-    public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary, CodeTree[] bindings) {
-
-        // if (m.isTracing()) {
-        // b.startStatement().startCall("tracer", "traceSpecialization");
-        // b.string("$bci");
-        // b.variable(cinstr.opcodeIdField);
-        // b.string("" + specialization.getIntrospectionIndex());
-        // for (int i = 0; i < bindings.length; i++) {
-        // Parameter parameter = specialization.getParameters().get(i);
-        // if (parameter.getSpecification().isSignature()) {
-        // b.tree(bindings[i]);
-        // }
-        // }
-        // b.end(2);
-        // }
-
-        if (inBoundary || regularReturn()) {
-            if (ElementUtils.isVoid(specialization.getMethod().getReturnType())) {
-                b.statement(specializationCall);
-                b.returnStatement();
-            } else {
-                b.startReturn().tree(specializationCall).end();
-            }
-        } else {
-            createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
-        }
-
-        return true;
-    }
-
-    private boolean regularReturn() {
-        return isVariadic || data.isShortCircuit();
     }
 
     private int ensCall = 0;
@@ -583,66 +456,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             builder.end(3);
         }
 
-        if (regularReturn()) {
-            builder.startReturn();
-        } else {
-            builder.startStatement();
-        }
-
-        builder.startCall(easName);
-        addNodeCallParameters(builder, false, false);
-        frameState.addReferencesTo(builder);
-        builder.end(2);
-
-        if (!regularReturn()) {
-            builder.returnStatement();
-        }
-
-        return true;
-    }
-
-    @Override
-    public void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments) {
-        if (regularReturn()) {
-            builder.startReturn().startCall(boundaryMethod.getSimpleName().toString());
-            addNodeCallParameters(builder, true, false);
-            addArguments.accept(builder);
-            builder.end(2);
-            return;
-        }
-
-        CodeTreeBuilder callBuilder = builder.create();
-
-        callBuilder.startCall(boundaryMethod.getSimpleName().toString());
-        addNodeCallParameters(callBuilder, true, false);
-        addArguments.accept(callBuilder);
-        callBuilder.end();
-
-        createPushResult(frameState, builder, callBuilder.build(), boundaryMethod.getReturnType());
-    }
-
-    @Override
-    public boolean createCallWrapInAMethod(FrameState frameState, CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters) {
-        boolean needsReturn;
-        if (regularReturn() && method.getReturnType().getKind() != TypeKind.VOID) {
-            parentBuilder.startReturn();
-            needsReturn = false;
-        } else {
-            parentBuilder.startStatement();
-            needsReturn = true;
-        }
-
-        parentBuilder.startCall(method.getSimpleName().toString());
-        addNodeCallParameters(parentBuilder, false, false);
-        addStateParameters.run();
-        frameState.addReferencesTo(parentBuilder);
-        parentBuilder.end(2);
-
-        if (needsReturn) {
-            parentBuilder.returnStatement();
-        }
-
-        return true;
+        return false;
     }
 
     private FrameKind getFrameType(TypeKind type) {
@@ -663,16 +477,34 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REF_PREFIX + execution.getName().substring(9), true, types.LocalSetter, false, false);
         }
 
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (execution.getName().equals("$variadicChild")) {
+            b.startCall("do_loadVariadicArguments");
+            b.string(m.enableYield ? "$stackFrame" : "$frame");
+            b.string("$sp");
+            b.string("$numVariadics");
+            b.end();
+            return b.build();
+        }
+
         int childIndex = execution.getIndex();
         int offset = cinstr.numPopStatic() - childIndex;
-
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         FrameKind resultKind = getFrameType(method.getReturnType().getKind());
 
         b.startCall("expect" + resultKind.getFrameName());
         b.string(m.enableYield ? "$stackFrame" : "$frame");
-        b.string("$sp - " + offset);
+        if (cinstr.isVariadic()) {
+            b.string("$sp - " + offset + " - $numVariadics");
+        } else {
+            b.string("$sp - " + offset);
+        }
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            b.string("$bc");
+            b.string("$bci");
+            b.tree(cinstr.createPopIndexedIndex(dummyVariables, childIndex, false));
+        }
         b.end();
 
         return b.build();
@@ -690,6 +522,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             List<QuickenedInstruction> quickened = cinstr.getQuickenedVariants();
 
             if (!quickened.isEmpty()) {
+
+                b.startAssign("short primitiveTagBits").string("(short) (").tree(OperationGeneratorUtils.createReadOpcode(dummyVariables.bc, dummyVariables.bci)).string(" & 0xe000)").end();
+
                 // only quicken/unquicken for instructions that have quickened versions
                 boolean elseIf = false;
                 for (QuickenedInstruction qinstr : quickened) {
@@ -698,7 +533,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                         b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
                         b.end().startBlock();
                         // {
-                        b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, qinstr.opcodeIdField));
+                        b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, "(short) (" + qinstr.opcodeIdField.getName() + " | primitiveTagBits)"));
                         // }
                         b.end();
                     }
@@ -709,138 +544,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 }
 
                 // quicken to generic
-                b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, cinstr.opcodeIdField));
+                b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, "(short) (" + cinstr.opcodeIdField.getName() + " | primitiveTagBits)"));
 
                 if (elseIf) {
                     b.end();
                 }
             }
         }
-
-        // boxing elimination
-        if (!regularReturn() && cinstr.numPopStatic() > 0) {
-            boolean elseIf = false;
-            boolean[] needsElse = new boolean[]{true};
-
-            for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.declaration("int", "type" + i, (CodeTree) null);
-            }
-
-            if (boxingSplits != null && !boxingSplits.isEmpty()) {
-                for (BoxingSplit split : boxingSplits) {
-                    elseIf = createBoxingSplitUnboxingThing(b, frameState, elseIf, specialization, split.getGroup().collectSpecializations(), split.getPrimitiveSignature(), needsElse);
-                }
-            } else {
-                TypeMirror[] primMirrors = new TypeMirror[cinstr.numPopStatic()];
-                List<SpecializationData> specs = cinstr.getData().getNodeData().getSpecializations();
-                for (SpecializationData spec : specs) {
-                    if (spec.isFallback()) {
-                        continue;
-                    }
-                    for (int i = 0; i < primMirrors.length; i++) {
-                        TypeMirror paramType = spec.getParameters().get(i).getType();
-                        if (primMirrors[i] == null) {
-                            primMirrors[i] = paramType;
-                        } else if (!ElementUtils.typeEquals(primMirrors[i], paramType)) {
-                            // we only care about primitive types, so we do not care about type
-                            // compatibility
-                            primMirrors[i] = ProcessorContext.getInstance().getType(Object.class);
-                        }
-                    }
-                }
-
-                elseIf = createBoxingSplitUnboxingThing(b, frameState, elseIf, specialization, specs, primMirrors, needsElse);
-            }
-
-            if (needsElse[0]) {
-                if (elseIf) {
-                    b.startElseBlock();
-                }
-
-                for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                    b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(FrameKind.OBJECT)).end();
-                }
-
-                if (elseIf) {
-                    b.end();
-                }
-            }
-
-            for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.tree(OperationGeneratorUtils.callSetResultBoxed(cinstr.createPopIndexedIndex(dummyVariables, i, false), CodeTreeBuilder.singleString("type" + i)));
-            }
-        }
-
-    }
-
-    // creates the if / else cascade for determining the type required for doSetResultBoxed
-    private boolean createBoxingSplitUnboxingThing(CodeTreeBuilder b, FrameState frameState, boolean elseIf, SpecializationData specialization, List<SpecializationData> specializations,
-                    TypeMirror[] primitiveMirrors, boolean[] needsElse) {
-        if (!specializations.contains(specialization)) {
-            return elseIf;
-        }
-
-        CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), specializationStates.toArray());
-        if (!tree.isEmpty()) {
-            b.startIf(elseIf);
-            b.tree(tree).end().startBlock();
-        } else {
-            needsElse[0] = false;
-        }
-
-        TypeSystemData tsData = cinstr.getData().getNodeData().getTypeSystem();
-        for (int i = 0; i < cinstr.numPopStatic(); i++) {
-            TypeMirror targetType = i < primitiveMirrors.length ? primitiveMirrors[i] : context.getType(Object.class);
-            if (!tsData.hasImplicitSourceTypes(targetType)) {
-                FrameKind frameType = getFrameType(targetType.getKind());
-                b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
-            } else {
-                boolean elseIf2 = false;
-                List<TypeMirror> originalSourceTypes = new ArrayList<>(tsData.lookupSourceTypes(targetType));
-                for (TypeMirror sourceType : originalSourceTypes) {
-                    FrameKind frameType = getFrameType(sourceType.getKind());
-                    if (frameType == FrameKind.OBJECT) {
-                        continue;
-                    }
-
-                    TypeGuard typeGuard = new TypeGuard(targetType, i);
-
-                    elseIf2 = b.startIf(elseIf2);
-
-                    b.tree(multiState.createContainsOnly(frameState, originalSourceTypes.indexOf(sourceType), 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
-
-                    b.end().startBlock();
-                    // {
-                    b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
-                    // }
-                    b.end();
-                }
-
-                if (elseIf2) {
-                    b.startElseBlock();
-                }
-                b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(FrameKind.OBJECT)).end();
-                if (elseIf2) {
-                    b.end();
-                }
-            }
-        }
-
-        if (!tree.isEmpty()) {
-            b.end();
-        }
-
-        return true;
-    }
-
-    public CodeTree createSetResultBoxed(CodeVariableElement varUnboxed) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startIf().variable(varUnboxed).end().startBlock();
-        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{resultUnboxedState}, true, true));
-        b.end().startElseBlock();
-        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{resultUnboxedState}, false, true));
-        b.end();
-        return b.build();
     }
 
     @SuppressWarnings("unchecked")
@@ -899,25 +609,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     public void finishUp() {
-        if (data.isShortCircuit()) {
-            cinstr.setBoxingEliminationData(CodeTreeBuilder.singleString("0"), 0);
-        } else if (cinstr.numPushedValues > 0) {
-            int offset = -1;
-            BitSet targetSet = null;
-            for (StateBitSet set : multiState.getSets()) {
-                if (set.contains(resultUnboxedState)) {
-                    targetSet = set;
-                    offset = Arrays.asList(set.getObjects()).indexOf(resultUnboxedState);
-                    break;
-                }
-            }
-
-            if (offset < 0 || targetSet == null) {
-                throw new AssertionError();
-            }
-
-            cinstr.setBoxingEliminationData(cinstr.createStateBitsOffset(cinstr.addStateBits(targetSet)), 1 << offset);
-        }
     }
 
     public StaticConstants createConstants() {
@@ -935,12 +626,49 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     @Override
-    public CodeTree createReturnUnexpectedResult(FrameState frameState, ExecutableTypeData forType, boolean needsCast) {
+    public String createExpectTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
+        String name = "result_expect" + ElementUtils.getTypeId(ElementUtils.boxType(type));
+        OperationGeneratorUtils.createHelperMethod(m.getOperationsContext().outerType, name, () -> {
+            CodeExecutableElement el = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), type, name);
+
+            el.addParameter(new CodeVariableElement(context.getType(Object.class), "value"));
+            el.addThrownType(types.UnexpectedResultException);
+
+            CodeTreeBuilder b = el.createBuilder();
+
+            b.startIf().string("value").instanceOf(ElementUtils.boxType(type)).end().startBlock();
+            b.startReturn().cast(type).string("value").end();
+            b.end().startElseBlock();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.startThrow().startNew(types.UnexpectedResultException).string("value").end(2);
+            b.end();
+
+            return el;
+        });
+
+        return name;
+    }
+
+    public CodeTree createCallExecute(FrameState frameState, ExecutableElement executableElement, CodeTree[] codeTrees) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        TypeMirror retType = context.getType(Object.class);
-        createPushResult(frameState, b, CodeTreeBuilder.singleString((needsCast ? "((UnexpectedResultException) ex)" : "ex") + ".getResult()"), retType);
+        if (codeTrees.length > 1) {
+            throw new AssertionError(Arrays.toString(codeTrees));
+        }
+
+        b.startCall(transformNodeMethodName(executableElement.getSimpleName().toString()));
+        addNodeCallParameters(b, false, false);
+        b.end();
 
         return b.build();
+    }
+
+    public String createExecuteAndSpecializeName(String result) {
+        CustomInstruction instr = cinstr;
+        if (cinstr instanceof QuickenedInstruction) {
+            instr = ((QuickenedInstruction) cinstr).getOrig();
+        }
+
+        return instr.getUniqueName() + "_executeAndSpecialize_";
     }
 }

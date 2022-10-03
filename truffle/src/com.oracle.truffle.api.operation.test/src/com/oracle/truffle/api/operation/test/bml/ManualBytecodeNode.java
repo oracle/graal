@@ -44,10 +44,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.UnsafeFrameAccess;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -155,7 +157,114 @@ public class ManualBytecodeNode extends BaseBytecodeNode {
             }
         }
     }
+}
 
+@GeneratedBy(ManualUnsafeBytecodeNode.class) // needed for UFA
+class ManualUnsafeBytecodeNode extends BaseBytecodeNode {
+    protected ManualUnsafeBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+        super(language, frameDescriptor, bc);
+    }
+
+    private static final UnsafeFrameAccess UFA = UnsafeFrameAccess.lookup();
+
+    @Override
+    @BytecodeInterpreterSwitch
+    @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+    protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
+        short[] localBc = bc;
+        int bci = startBci;
+        int sp = startSp;
+
+        Counter loopCounter = new Counter();
+
+        frame.getArguments();
+
+        loop: while (true) {
+            short opcode = UFA.unsafeShortArrayRead(localBc, bci);
+            CompilerAsserts.partialEvaluationConstant(opcode);
+            switch (opcode) {
+                // ( -- )
+                case OP_JUMP: {
+                    int nextBci = UFA.unsafeShortArrayRead(localBc, bci + 1);
+                    CompilerAsserts.partialEvaluationConstant(nextBci);
+                    if (nextBci <= bci) {
+                        Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                    bci = nextBci;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_ADD: {
+                    int lhs = UFA.unsafeGetInt(frame, sp - 2);
+                    int rhs = UFA.unsafeGetInt(frame, sp - 1);
+                    UFA.unsafeSetInt(frame, sp - 2, lhs + rhs);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_MOD: {
+                    int lhs = UFA.unsafeGetInt(frame, sp - 2);
+                    int rhs = UFA.unsafeGetInt(frame, sp - 1);
+                    UFA.unsafeSetInt(frame, sp - 2, lhs % rhs);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // ( -- i)
+                case OP_CONST: {
+                    UFA.unsafeSetInt(frame, sp, (UFA.unsafeShortArrayRead(localBc, bci + 2) << 16) | (UFA.unsafeShortArrayRead(localBc, bci + 1) & 0xffff));
+                    sp += 1;
+                    bci += 3;
+                    continue loop;
+                }
+                // (b -- )
+                case OP_JUMP_FALSE: {
+                    boolean cond = UFA.unsafeGetBoolean(frame, sp - 1);
+                    sp -= 1;
+                    if (!cond) {
+                        bci = UFA.unsafeShortArrayRead(localBc, bci + 1);
+                        continue loop;
+                    } else {
+                        bci += 2;
+                        continue loop;
+                    }
+                }
+                // (i1 i2 -- b)
+                case OP_LESS: {
+                    int lhs = UFA.unsafeGetInt(frame, sp - 2);
+                    int rhs = UFA.unsafeGetInt(frame, sp - 1);
+                    UFA.unsafeSetBoolean(frame, sp - 2, lhs < rhs);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i -- )
+                case OP_RETURN: {
+                    return UFA.unsafeGetInt(frame, sp - 1);
+                }
+                // (i -- )
+                case OP_ST_LOC: {
+                    UFA.unsafeCopyPrimitive(frame, sp - 1, UFA.unsafeShortArrayRead(localBc, bci + 1));
+                    sp -= 1;
+                    bci += 2;
+                    continue loop;
+                }
+                // ( -- i)
+                case OP_LD_LOC: {
+                    UFA.unsafeCopyPrimitive(frame, UFA.unsafeShortArrayRead(localBc, bci + 1), sp);
+                    sp += 1;
+                    bci += 2;
+                    continue loop;
+                }
+                default:
+                    CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
 }
 
 abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
@@ -177,6 +286,7 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
     static final short OP_LD_LOC = 8;
     static final short OP_MOD = 9;
 
+    @CompilerDirectives.ValueType
     protected static class Counter {
         int count;
     }

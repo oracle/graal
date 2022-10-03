@@ -43,18 +43,12 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadArgumentInstruction extends Instruction {
 
-    private FrameKind kind;
-    private OperationsContext ctx;
-
-    public LoadArgumentInstruction(OperationsContext ctx, int id, FrameKind kind) {
-        super("load.argument." + kind.getTypeName().toLowerCase(), id, 1);
-        this.ctx = ctx;
-        this.kind = kind;
+    public LoadArgumentInstruction(OperationsContext ctx, int id) {
+        super(ctx, "load.argument", id, 1);
         addArgument("argument");
     }
 
@@ -75,30 +69,46 @@ public class LoadArgumentInstruction extends Instruction {
 
         b.declaration("Object", "value", createGetValue(vars));
 
-        if (kind == FrameKind.OBJECT) {
-            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-            b.variable(vars.localFrame);
-            b.variable(vars.sp);
-            b.string("value");
-            b.end(2);
-        } else {
-            b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
-            // {
-            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-            b.variable(vars.localFrame);
-            b.variable(vars.sp);
-            b.string("(", kind.getTypeName(), ") value");
-            b.end(2);
-            // }
-            b.end().startElseBlock();
-            // {
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.startStatement().startCall(vars.localFrame, "setObject");
-            b.variable(vars.sp);
-            b.string("value");
-            b.end(2);
-            // }
+        if (ctx.hasBoxingElimination()) {
+            b.startSwitch().string("primitiveTag").end().startBlock();
+            for (FrameKind kind : ctx.getBoxingKinds()) {
+                b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
+                if (kind == FrameKind.OBJECT) {
+                    b.startStatement().startCall("UFA", "unsafeSetObject");
+                    b.variable(vars.stackFrame);
+                    b.variable(vars.sp);
+                    b.string("value");
+                    b.end(2);
+                } else {
+                    b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
+                    // {
+                    b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+                    b.variable(vars.stackFrame);
+                    b.variable(vars.sp);
+                    b.string("(", kind.getTypeName(), ") value");
+                    b.end(2);
+                    // }
+                    b.end().startElseBlock();
+                    // {
+                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                    b.startStatement().startCall("UFA", "unsafeSetObject");
+                    b.variable(vars.stackFrame);
+                    b.variable(vars.sp);
+                    b.string("value");
+                    b.end(2);
+                    // }
+                    b.end();
+                }
+                b.statement("break");
+                b.end();
+            }
             b.end();
+        } else {
+            b.startStatement().startCall("UFA", "unsafeSetObject");
+            b.variable(vars.stackFrame);
+            b.variable(vars.sp);
+            b.string("value");
+            b.end(2);
         }
 
         b.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
@@ -107,30 +117,7 @@ public class LoadArgumentInstruction extends Instruction {
     }
 
     @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.REPLACE;
-    }
-
-    @Override
-    public CodeVariableElement boxingEliminationReplacement(FrameKind targetKind) {
-        if (kind == FrameKind.OBJECT) {
-            return ctx.loadArgumentInstructions[targetKind.ordinal()].opcodeIdField;
-        } else {
-            if (targetKind == FrameKind.OBJECT) {
-                return ctx.loadArgumentInstructions[targetKind.ordinal()].opcodeIdField;
-            } else {
-                return opcodeIdField;
-            }
-        }
-    }
-
-    @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
-    }
-
-    @Override
-    public boolean neverInUncached() {
-        return kind != FrameKind.OBJECT;
     }
 }

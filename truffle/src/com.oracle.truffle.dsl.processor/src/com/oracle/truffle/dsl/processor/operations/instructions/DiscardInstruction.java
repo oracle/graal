@@ -42,10 +42,11 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class DiscardInstruction extends Instruction {
-    public DiscardInstruction(String name, int id) {
-        super(name, id, 0);
+    public DiscardInstruction(OperationsContext ctx, String name, int id) {
+        super(ctx, name, id, 0);
         addPopSimple("value");
     }
 
@@ -60,11 +61,6 @@ public class DiscardInstruction extends Instruction {
         b.end(2);
 
         return b.build();
-    }
-
-    @Override
-    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
-        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override
