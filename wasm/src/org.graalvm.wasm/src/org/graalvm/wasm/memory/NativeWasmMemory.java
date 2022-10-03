@@ -53,7 +53,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
-class NativeWasmMemory extends UnsafeWasmMemory {
+class NativeWasmMemory extends WasmMemory {
     private static final Unsafe unsafe = initUnsafe();
 
     private long startAddress;

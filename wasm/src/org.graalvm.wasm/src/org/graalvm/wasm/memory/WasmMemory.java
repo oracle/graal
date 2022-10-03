@@ -636,4 +636,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void close();
 
     public abstract ByteBuffer asByteBuffer();
+
+    public boolean freed() {
+        return true;
+    }
 }

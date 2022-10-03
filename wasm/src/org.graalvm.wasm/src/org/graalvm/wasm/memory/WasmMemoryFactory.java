@@ -44,13 +44,17 @@ import org.graalvm.wasm.constants.Sizes;
 
 public class WasmMemoryFactory {
     public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean unsafeMemory) {
-        if (!unsafeMemory) {
-            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
-        } else {
+        if (unsafeMemory) {
             if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
                 return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
             } else {
-                return new ByteBufferWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            }
+        } else {
+            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
+                return new MultiByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            } else {
+                return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
             }
         }
     }
