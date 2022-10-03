@@ -65,7 +65,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 @AddExports("java.base/java.lang")
@@ -75,13 +77,15 @@ public class NativeImageResourceFileSystemProviderTest {
 
     private static final int TIME_SPAN = 1_000_000;
 
-    private static FileSystem createNewFileSystem() {
+    private FileSystem fileSystem;
+
+    @Before
+    public void createNewFileSystem() {
         URI resource = resourceNameToURI(RESOURCE_FILE_1, true);
 
         Map<String, String> env = new HashMap<>();
         env.put("create", "true");
 
-        FileSystem fileSystem = null;
         boolean exceptionThrown = false;
         try {
             // Try to get file system. This should raise exception.
@@ -98,11 +102,10 @@ public class NativeImageResourceFileSystemProviderTest {
 
         Assert.assertTrue("File system is already created!", exceptionThrown);
         Assert.assertNotNull("File system is not created!", fileSystem);
-
-        return fileSystem;
     }
 
-    private static void closeFileSystem(FileSystem fileSystem) {
+    @After
+    public void closeFileSystem() {
         try {
             fileSystem.close();
         } catch (IOException e) {
@@ -111,35 +114,12 @@ public class NativeImageResourceFileSystemProviderTest {
     }
 
     /**
-     * <p>
      * Query the empty path. Test inspired by issues:
      * <a href="https://github.com/oracle/graal/issues/5081">5081</a>
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Querying empty path</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void githubIssue5081() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
-        // 2. Querying an empty path.
-        try {
-            fileSystem.getPath("").resolve(RESOURCE_FILE_1);
-        } catch (Exception e) {
-            Assert.fail("Querying the empty path throws an exception!");
-        }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
-
+        fileSystem.getPath("").resolve(RESOURCE_FILE_1);
     }
 
     /**
@@ -151,24 +131,19 @@ public class NativeImageResourceFileSystemProviderTest {
      * <p>
      * <b>Description: </b> We are doing next operations: </br>
      * <ol>
-     * <li>Create new file system</li>
      * <li>Check if the root is proper.</li>
      * <li>Iterating through all folders in file system starting for the root.</li>
-     * <li>Closing file system</li>
      * </ol>
      * </p>
      */
     @Test
     public void githubIssue5020() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
-        // 2. Check if the root is proper.
+        // 1. Check if the root is proper.
         for (Path rootDirectory : fileSystem.getRootDirectories()) {
             Assert.assertEquals("The root directory is not equals to " + ROOT_DIRECTORY + "!", ROOT_DIRECTORY, rootDirectory.toString());
         }
 
-        // 3. Iterating through all resources in file system starting for the root.
+        // 2. Iterating through all resources in file system starting for the root.
         Path rootPath = fileSystem.getPath(ROOT_DIRECTORY);
         try (Stream<Path> files = Files.walk(rootPath)) {
             files.forEach(path -> {
@@ -176,32 +151,14 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the root!");
         }
-
-        // 4. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
-     * <p>
      * Query the path with trailing slash and iterate though all its sub-folders. Test inspired by
      * issues: <a href="https://github.com/oracle/graal/issues/5080">5080</a>
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Iterating through all folders in file system starting for the given path.</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void githubIssue5080() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
-        // 2. Iterating through all folders in file system starting for the given path.
         Path path = fileSystem.getPath(RESOURCE_DIR + "/");
         try (Stream<Path> files = Files.walk(path)) {
             files.forEach(p -> {
@@ -209,34 +166,16 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the path: " + path + "!");
         }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
-     * <p>
      * Reading from file using {@link java.nio.channels.ByteChannel}.
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Reading from file</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void readingFileByteChannel() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
         Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
-        // 2. Reading from file.
         try (SeekableByteChannel channel = Files.newByteChannel(resourceDirectory, StandardOpenOption.READ)) {
             ByteBuffer byteBuffer = ByteBuffer.allocate((int) channel.size());
             channel.read(byteBuffer);
@@ -252,34 +191,16 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException ioException) {
             Assert.fail("Exception occurs during reading from file!");
         }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
-     * <p>
      * Writing into file using {@link java.nio.channels.ByteChannel}.
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Writing into file</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void writingFileByteChannel() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
         Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
-        // 2. Writing into file.
         try {
             Files.newByteChannel(resourceDirectory, StandardOpenOption.WRITE);
             Assert.fail("Trying to write into directory as a file!");
@@ -304,34 +225,16 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException ioException) {
             Assert.fail("Exception occurs during writing into file!");
         }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
-     * <p>
      * Reading from file using {@link java.nio.channels.FileChannel}.
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Reading from file</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void readingFileFileChannel() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
         Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
-        // 2. Reading from file.
         Set<StandardOpenOption> permissions = Collections.singleton(StandardOpenOption.READ);
         try (SeekableByteChannel channel = fileSystem.provider().newFileChannel(resourceDirectory, permissions)) {
             ByteBuffer byteBuffer = ByteBuffer.allocate((int) channel.size());
@@ -348,29 +251,13 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException ioException) {
             Assert.fail("Exception occurs during reading from file!");
         }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
-     * <p>
      * Writing into file using {@link java.nio.channels.FileChannel}.
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Writing into file</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void writingFileFileChannel() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
         FileSystemProvider provider = fileSystem.provider();
 
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
@@ -382,7 +269,6 @@ public class NativeImageResourceFileSystemProviderTest {
         readWritePermissions.addAll(readPermissions);
         readWritePermissions.addAll(writePermissions);
 
-        // 2. Writing into file.
         try {
             provider.newFileChannel(resourceDirectory, writePermissions);
             Assert.fail("Trying to write into directory as a file!");
@@ -407,9 +293,6 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException ioException) {
             Assert.fail("Exception occurs during writing into file!");
         }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
@@ -420,25 +303,20 @@ public class NativeImageResourceFileSystemProviderTest {
      * <p>
      * <b>Description: </b> We are doing next operations: </br>
      * <ol>
-     * <li>Create new file system</li>
      * <li>Creating new directory</li>
      * <li>Copy file to newly create directory</li>
      * <li>Moving file to newly create directory</li>
      * <li>Listing newly create directory</li>
      * <li>Deleting file from newly created directory</li>
-     * <li>Closing file system</li>
      * </ol>
      * </p>
      */
     @Test
     public void fileSystemOperations() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
         Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
         Path resourceFile2 = resourceNameToPath(RESOURCE_FILE_2, true);
 
-        // 2. Creating new directory.
+        // 1. Creating new directory.
         Path newDirectory = fileSystem.getPath(NEW_DIRECTORY);
         try {
             Files.createDirectory(newDirectory);
@@ -446,7 +324,7 @@ public class NativeImageResourceFileSystemProviderTest {
             Assert.fail("Exception occurs during creating new directory!");
         }
 
-        // 3. Copy file to newly create directory.
+        // 2. Copy file to newly create directory.
         Path destination = fileSystem.getPath(newDirectory.toString(),
                         resourceFile1.getName(resourceFile1.getNameCount() - 1).toString());
         try {
@@ -461,7 +339,7 @@ public class NativeImageResourceFileSystemProviderTest {
             Assert.fail("Exception occurs during copying file into new directory!");
         }
 
-        // 4. Moving file to newly create directory.
+        // 3. Moving file to newly create directory.
         destination = fileSystem.getPath(newDirectory.toString(),
                         resourceFile2.getName(resourceFile2.getNameCount() - 1).toString());
         try {
@@ -482,7 +360,7 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException ignored) {
         }
 
-        // 5. Listing newly create directory.
+        // 4. Listing newly create directory.
         try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(newDirectory)) {
             Iterator<Path> iterator = directoryStream.iterator();
             boolean anyEntry = false;
@@ -496,7 +374,7 @@ public class NativeImageResourceFileSystemProviderTest {
             Assert.fail("Exception occurs during listing new directory!");
         }
 
-        // 6. Deleting file from newly created directory.
+        // 5. Deleting file from newly created directory.
         Path target = fileSystem.getPath(newDirectory.toString(),
                         resourceFile1.getName(resourceFile1.getNameCount() - 1).toString());
         try {
@@ -509,9 +387,6 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException ignored) {
             Assert.fail("Exception occurs during file deletion!");
         }
-
-        // 7. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
@@ -522,23 +397,18 @@ public class NativeImageResourceFileSystemProviderTest {
      * <p>
      * <b>Description: </b> We are doing next operations: </br>
      * <ol>
-     * <li>Create new file system</li>
      * <li>Reading file attributes</li>
      * <li>Reading directory attributes</li>
-     * <li>Closing file system</li>
      * </ol>
      * </p>
      */
     @Test
     public void readingFileAttributes() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
-
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
         Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         try {
-            // 2. Reading file attributes.
+            // 1. Reading file attributes.
             BasicFileAttributes fileAttributes = Files.readAttributes(resourceFile1,
                             BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
             Assert.assertNotNull("fileAttributes.lastAccessTime is null!", fileAttributes.lastAccessTime());
@@ -550,7 +420,7 @@ public class NativeImageResourceFileSystemProviderTest {
             Assert.assertFalse("fileAttributes.isSymbolicLink is true!", fileAttributes.isSymbolicLink());
             Assert.assertNull("fileAttributes.fileKey is not null!", fileAttributes.fileKey());
 
-            // 3. Reading directory attributes.
+            // 2. Reading directory attributes.
             BasicFileAttributes directoryAttributes = Files.readAttributes(resourceDirectory,
                             BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
             Assert.assertNotNull("directoryAttributes.lastAccessTime is null!", directoryAttributes.lastAccessTime());
@@ -564,29 +434,13 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("Exception occurs during attributes operations!");
         }
-
-        // 4. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     /**
-     * <p>
      * Writing file attributes.
-     * </p>
-     *
-     * <p>
-     * <b>Description: </b> We are doing next operations: </br>
-     * <ol>
-     * <li>Create new file system</li>
-     * <li>Writing file attributes</li>
-     * <li>Closing file system</li>
-     * </ol>
-     * </p>
      */
     @Test
     public void writingFileAttributes() {
-        // 1. Creating new file system.
-        FileSystem fileSystem = createNewFileSystem();
         Path resourceFile1 = resourceNameToPath(RESOURCE_FILE_1, true);
 
         try {
@@ -600,9 +454,6 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("Exception occurs during attributes operations!");
         }
-
-        // 3. Closing file system.
-        closeFileSystem(fileSystem);
     }
 
     @Test
