@@ -121,7 +121,6 @@ public class ParallelGCImpl extends ParallelGC {
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 debugLog().string("WW start ").unsigned(n).newline();
 
-                getStats().install();
                 while (true) {
                     try {
                         do {
@@ -203,10 +202,6 @@ public class ParallelGCImpl extends ParallelGC {
 
     private GreyToBlackObjectVisitor getVisitor() {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
-    }
-
-    public static Stats getStats() {
-        return Stats.stats();
     }
 
     private static Log verboseGCLog() {
