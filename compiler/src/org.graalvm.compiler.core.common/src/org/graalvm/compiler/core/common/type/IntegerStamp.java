@@ -198,27 +198,19 @@ public final class IntegerStamp extends PrimitiveStamp {
             final long boundedUpMask;
             long defaultMask = CodeUtil.mask(bits);
             if (lowerBoundTmp == upperBoundTmp) {
+                // For constants the masks are just the value
                 boundedDownMask = lowerBoundTmp;
                 boundedUpMask = lowerBoundTmp;
-            } else if (lowerBoundTmp >= 0) {
-                int upperBoundLeadingZeros = Long.numberOfLeadingZeros(upperBoundTmp);
-                long differentBits = lowerBoundTmp ^ upperBoundTmp;
-                int sameBitCount = Long.numberOfLeadingZeros(differentBits << upperBoundLeadingZeros);
-
-                boundedUpMask = upperBoundTmp | -1L >>> (upperBoundLeadingZeros + sameBitCount);
-                boundedDownMask = upperBoundTmp & ~(-1L >>> (upperBoundLeadingZeros + sameBitCount));
             } else {
-                if (upperBoundTmp >= 0) {
-                    boundedUpMask = defaultMask;
-                    boundedDownMask = 0;
-                } else {
-                    int lowerBoundLeadingOnes = Long.numberOfLeadingZeros(~lowerBoundTmp);
-                    long differentBits = lowerBoundTmp ^ upperBoundTmp;
-                    int sameBitCount = Long.numberOfLeadingZeros(differentBits << lowerBoundLeadingOnes);
-
-                    boundedUpMask = lowerBoundTmp | -1L >>> (lowerBoundLeadingOnes + sameBitCount) | ~(-1L >>> lowerBoundLeadingOnes);
-                    boundedDownMask = lowerBoundTmp & ~(-1L >>> (lowerBoundLeadingOnes + sameBitCount)) | ~(-1L >>> lowerBoundLeadingOnes);
-                }
+                /*
+                 * Any high bits that are the same between the upper and lower bound can be used to
+                 * refine the upMask and downMask. xor'ing the bounds produces leading zeros for
+                 * these bits.
+                 */
+                int sameBitCount = Long.numberOfLeadingZeros(lowerBoundTmp ^ upperBoundTmp);
+                long sameBitMask = -1L >>> sameBitCount;
+                boundedUpMask = lowerBoundTmp | sameBitMask;
+                boundedDownMask = lowerBoundTmp & ~sameBitMask;
             }
 
             long downMaskTmp = defaultMask & (downMaskCurrent | boundedDownMask);
@@ -293,7 +285,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     /**
      * Compute the upper bounds by starting from an initial value derived the downMask and then
-     * setting optional bits until a value which less than or equal to the current upper bound is
+     * setting optional bits until a value which is less than or equal to the current upper bound is
      * found.
      */
     private static long computeUpperBound(int bits, long upperBound, long downMask, long upMask, boolean canBeZero) {

@@ -28,7 +28,6 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -44,13 +43,6 @@ public class IntegerStampMaskTest extends GraalTest {
     private static final int VALUE_LIMIT = 8;
 
     public IntegerStampMaskTest() {
-    }
-
-    @Ignore
-    @Test
-    public void testSingle() {
-        // Placeholder for manual testing of individual values
-        // testValues(32, 2147483655L, 2147483654L, -8, -8);
     }
 
     @Test
