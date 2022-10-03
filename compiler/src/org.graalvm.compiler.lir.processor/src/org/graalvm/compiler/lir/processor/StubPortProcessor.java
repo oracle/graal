@@ -56,7 +56,6 @@ import org.graalvm.compiler.processor.AbstractProcessor;
 public class StubPortProcessor extends AbstractProcessor {
 
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
-    static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
     static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
     static final String JDK_COMMIT = "https://raw.githubusercontent.com/openjdk/jdk/";
 
@@ -79,17 +78,22 @@ public class StubPortProcessor extends AbstractProcessor {
         String commit = getAnnotationValue(annotationMirror, "commit", String.class);
         String sha1 = getAnnotationValue(annotationMirror, "sha1", String.class);
 
+        String urlHumanSuffix = path + "#L" + lineStart + "-L" + lineEnd;
         String url = JDK_LATEST + path;
         String sha1Latest;
         try {
             sha1Latest = digest(proxy, md, url, lineStart, lineEnd);
         } catch (FileNotFoundException e) {
-            env().getMessager().printMessage(Diagnostic.Kind.ERROR, String.format("File not found in the latest commit: %s", url));
+            env().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match : " +
+                                            "File not found in the latest commit.",
+                                            commit,
+                                            urlHumanSuffix,
+                                            element.toString()));
             return;
         }
 
         if (!sha1.equals(sha1Latest)) {
-            String urlHuman = JDK_LATEST_HUMAN + path + "#L" + lineStart + "-L" + lineEnd;
             String urlOld = JDK_COMMIT + commit + '/' + path;
             String sha1Old = digest(proxy, md, urlOld, lineStart, lineEnd);
 
@@ -123,16 +127,14 @@ public class StubPortProcessor extends AbstractProcessor {
             }
 
             env().getMessager().printMessage(Diagnostic.Kind.ERROR,
-                            String.format("Sha1 digest of %s[%d:%d] (ported by %s) does not match %s : expected %s but was %s. See diff of %s and %s. %s",
-                                            path,
-                                            lineStart,
-                                            lineEnd,
+                            String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match " +
+                                            "https://github.com/openjdk/jdk/blob/master/%s : expected %s but was %s. %s",
+                                            commit,
+                                            urlHumanSuffix,
                                             element.toString(),
-                                            urlHuman,
+                                            urlHumanSuffix,
                                             sha1,
                                             sha1Latest,
-                                            urlOld,
-                                            url,
                                             extraMessage));
         }
     }

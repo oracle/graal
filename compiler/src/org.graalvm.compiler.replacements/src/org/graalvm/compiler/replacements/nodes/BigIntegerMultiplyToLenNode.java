@@ -50,7 +50,7 @@ public class BigIntegerMultiplyToLenNode extends MemoryKillStubIntrinsicNode {
 
     public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("multiplyToLen",
                     void.class,
-                    new Class[]{Pointer.class, int.class, Pointer.class, int.class, Pointer.class, int.class},
+                    new Class<?>[]{Pointer.class, int.class, Pointer.class, int.class, Pointer.class, int.class},
                     false,
                     KILLED_LOCATIONS,
                     false,
