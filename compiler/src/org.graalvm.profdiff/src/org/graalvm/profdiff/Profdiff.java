@@ -24,6 +24,7 @@
  */
 package org.graalvm.profdiff;
 
+import org.graalvm.profdiff.command.HelpCommand;
 import org.graalvm.profdiff.command.JITAOTCommand;
 import org.graalvm.profdiff.command.JITJITCommand;
 import org.graalvm.profdiff.command.ReportCommand;
@@ -56,7 +57,7 @@ public class Profdiff {
         ProgramArguments() {
             argumentParser = new ProgramArgumentParser(
                             "mx profdiff",
-                            "Compares the optimization log of hot compilation units of two experiments.");
+                            "compares the optimization log of hot compilation units of two experiments");
             hotMinArgument = argumentParser.addIntegerArgument(
                             "--hot-min-limit", 1,
                             "the minimum number of compilation units to mark as hot");
@@ -77,7 +78,7 @@ public class Profdiff {
                 argumentParser.parse(args);
             } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
                 System.err.println(e.getMessage());
-                System.err.println(argumentParser.createUsage());
+                System.err.println(argumentParser.formatHelp());
                 System.exit(1);
             }
 
@@ -100,6 +101,10 @@ public class Profdiff {
             return verbosityLevelArgument.getValue();
         }
 
+        public ProgramArgumentParser getArgumentParser() {
+            return argumentParser;
+        }
+
         public HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
             HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
             hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
@@ -112,12 +117,10 @@ public class Profdiff {
     public static void main(String[] args) {
         ProgramArguments programArguments = new ProgramArguments();
         CommandGroup commandGroup = programArguments.getCommandGroup();
-        ReportCommand reportCommand = new ReportCommand();
-        commandGroup.addCommand(reportCommand);
-        JITJITCommand jitJitCommand = new JITJITCommand();
-        commandGroup.addCommand(jitJitCommand);
-        JITAOTCommand jitAotCommand = new JITAOTCommand();
-        commandGroup.addCommand(jitAotCommand);
+        commandGroup.addCommand(new ReportCommand());
+        commandGroup.addCommand(new JITJITCommand());
+        commandGroup.addCommand(new JITAOTCommand());
+        commandGroup.addCommand(new HelpCommand(programArguments.getArgumentParser()));
 
         programArguments.parseOrExit(args);
 

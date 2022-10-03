@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.parser.args;
 
+import org.graalvm.profdiff.command.Command;
+
 /**
  * Assembles and parses program arguments. This is the root parser of the program.
  */
@@ -50,25 +52,73 @@ public class ProgramArgumentParser extends ArgumentParser {
     }
 
     /**
-     * Creates a usage string describing the program arguments.
-     *
-     * @return the usage string
+     * Gets the name of the program.
      */
-    public String createUsage() {
+    public String getProg() {
+        return prog;
+    }
+
+    /**
+     * Formats a help message for the program. Includes a usage string, the description of the
+     * program, and a listing of option/positional/command arguments.
+     *
+     * @return a help message for the program
+     */
+    public String formatHelp() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage: ").append(prog);
-        if (!optionArguments.values().isEmpty()) {
-            sb.append(" [options]");
+        sb.append("usage: ").append(prog);
+        if (!optionArguments.isEmpty()) {
+            sb.append(' ').append(formatOptionUsage());
         }
-        for (Argument argument : positionalArguments) {
-            sb.append(' ').append(argument.getName());
+        if (!positionalArguments.isEmpty()) {
+            sb.append(' ').append(formatPositionalUsage());
         }
-        sb.append("\n\n").append(description).append("\n\nOptions:\n");
-        for (Argument argument : optionArguments.values()) {
-            sb.append(String.format("  %-20s ", argument.getName())).append(argument.getHelp()).append('\n');
+        sb.append("\n\n").append(description).append('\n');
+        if (!optionArguments.isEmpty()) {
+            sb.append('\n').append(formatOptionHelp());
+        }
+        if (!positionalArguments.isEmpty()) {
+            sb.append('\n').append(formatPositionalHelp());
         }
         if (getCommandGroup().isPresent()) {
-            sb.append("\n\n").append(getCommandGroup().get().createUsage());
+            sb.append('\n').append(getCommandGroup().get().formatCommandsHelp());
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Formats a help message for a given command of the program. Includes a usage string, the
+     * description of the command, and a listing of option/positional/command arguments for the
+     * given command.
+     *
+     * @param command the command for which the help message is formatted
+     * @return a help message for the command
+     */
+    public String formatHelp(Command command) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("usage: ").append(prog);
+        if (!optionArguments.isEmpty()) {
+            sb.append(' ').append(formatOptionUsage());
+        }
+        if (!positionalArguments.isEmpty()) {
+            sb.append(' ').append(formatPositionalUsage(command));
+        }
+        ArgumentParser commandParser = command.getArgumentParser();
+        if (!commandParser.getOptionArguments().isEmpty()) {
+            sb.append(' ').append(command.getArgumentParser().formatOptionUsage());
+        }
+        if (!commandParser.getPositionalArguments().isEmpty()) {
+            sb.append(' ').append(commandParser.formatPositionalUsage());
+        }
+        sb.append("\n\n").append(command.getDescription()).append('\n');
+        if (!commandParser.getOptionArguments().isEmpty()) {
+            sb.append('\n').append(commandParser.formatOptionHelp());
+        }
+        if (!commandParser.getPositionalArguments().isEmpty()) {
+            sb.append('\n').append(commandParser.formatPositionalHelp());
+        }
+        if (commandParser.getCommandGroup().isPresent()) {
+            sb.append('\n').append(commandParser.getCommandGroup().get().formatCommandsHelp());
         }
         return sb.toString();
     }

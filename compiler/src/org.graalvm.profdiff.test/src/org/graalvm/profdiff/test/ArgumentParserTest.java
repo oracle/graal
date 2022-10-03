@@ -61,7 +61,7 @@ public class ArgumentParserTest {
         }
 
         @Override
-        public String getHelp() {
+        public String getDescription() {
             return "Command foo.";
         }
 
@@ -96,7 +96,7 @@ public class ArgumentParserTest {
         }
 
         @Override
-        public String getHelp() {
+        public String getDescription() {
             return "Command foo.";
         }
 

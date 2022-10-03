@@ -52,9 +52,9 @@ public abstract class Argument {
     private final boolean required;
 
     /**
-     * The help message to be displayed in the program usage string.
+     * A description to be displayed in the program usage string.
      */
-    private final String help;
+    private final String description;
 
     /**
      * Was the argument's value already set to the default value or parsed from the program
@@ -67,18 +67,18 @@ public abstract class Argument {
      *
      * @param name the name of the argument
      * @param required is the argument required
-     * @param help the help message
+     * @param description a description of the argument
      */
-    Argument(String name, boolean required, String help) {
+    Argument(String name, boolean required, String description) {
         this.name = name;
         this.required = required;
-        this.help = help;
+        this.description = description;
     }
 
     /**
      * Gets whether this argument is required.
      *
-     * @return true iff this argument is required
+     * @return {@code true} iff this argument is required
      */
     public boolean isRequired() {
         return required;
@@ -88,25 +88,21 @@ public abstract class Argument {
      * Gets whether the argument was set. The argument is set when it is constructed with a default
      * value or its value is parsed from the program arguments.
      *
-     * @return true iff the argument was set
+     * @return {@code true} iff the argument was set
      */
     public boolean isSet() {
         return set;
     }
 
     /**
-     * Gets the help message.
-     *
-     * @return the help message
+     * Gets the description of the argument.
      */
-    public String getHelp() {
-        return help;
+    public String getDescription() {
+        return description;
     }
 
     /**
      * Gets the argument name.
-     *
-     * @return the argument name
      */
     public String getName() {
         return name;
@@ -130,7 +126,7 @@ public abstract class Argument {
     /**
      * Finds out whether this argument is an option argument by looking at its prefix.
      *
-     * @return true iff this argument is an option argument
+     * @return {@code true} iff this argument is an option argument
      */
     public boolean isOptionArgument() {
         return name.startsWith(OPTION_PREFIX);

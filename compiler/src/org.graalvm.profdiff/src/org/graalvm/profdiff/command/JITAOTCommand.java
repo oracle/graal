@@ -66,7 +66,7 @@ public class JITAOTCommand implements Command {
     }
 
     @Override
-    public String getHelp() {
+    public String getDescription() {
         return "compare a JIT experiment with an AOT compilation";
     }
 

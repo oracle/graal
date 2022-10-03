@@ -25,10 +25,11 @@
 package org.graalvm.profdiff.parser.args;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.profdiff.command.Command;
 
 /**
  * Assembles and parses arguments.
@@ -38,7 +39,7 @@ public class ArgumentParser {
      * The map of argument names to option arguments. Option argument names start with the "--"
      * prefix. They may be required or optional.
      */
-    protected final Map<String, Argument> optionArguments = new LinkedHashMap<>();
+    protected final EconomicMap<String, Argument> optionArguments = EconomicMap.create();
 
     /**
      * The list of positional arguments. The argument names do not start with a prefix and are
@@ -77,7 +78,7 @@ public class ArgumentParser {
             }
             index = argument.parse(args, index);
         }
-        for (Argument argument : optionArguments.values()) {
+        for (Argument argument : optionArguments.getValues()) {
             if (!argument.isSet() && argument.isRequired()) {
                 throw new MissingArgumentException(argument.getName());
             }
@@ -90,7 +91,7 @@ public class ArgumentParser {
     /**
      * Gets {@link CommandGroup the command group} argument if this parser contains a command group.
      */
-    protected Optional<CommandGroup> getCommandGroup() {
+    public Optional<CommandGroup> getCommandGroup() {
         if (positionalArguments.isEmpty()) {
             return Optional.empty();
         }
@@ -99,6 +100,105 @@ public class ArgumentParser {
             return Optional.of((CommandGroup) last);
         }
         return Optional.empty();
+    }
+
+    /**
+     * Gets options argument mapped by argument name.
+     */
+    public EconomicMap<String, Argument> getOptionArguments() {
+        return optionArguments;
+    }
+
+    /**
+     * Gets the list of positional arguments.
+     */
+    public List<Argument> getPositionalArguments() {
+        return positionalArguments;
+    }
+
+    /**
+     * Formats a usage string for the option arguments.
+     */
+    public String formatOptionUsage() {
+        StringBuilder sb = new StringBuilder();
+        boolean isEmpty = true;
+        for (Argument argument : optionArguments.getValues()) {
+            if (!isEmpty) {
+                sb.append(' ');
+            }
+            if (!argument.isRequired()) {
+                sb.append('[');
+            }
+            String dummyValue = argument.getName().substring(Argument.OPTION_PREFIX.length()).toUpperCase();
+            sb.append(argument.getName()).append(' ').append(dummyValue);
+            if (!argument.isRequired()) {
+                sb.append(']');
+            }
+            isEmpty = false;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Formats a usage string for the positional arguments.
+     */
+    public String formatPositionalUsage() {
+        StringBuilder sb = new StringBuilder();
+        boolean isEmpty = true;
+        for (Argument argument : positionalArguments) {
+            if (!isEmpty) {
+                sb.append(' ');
+            }
+            sb.append(argument.getName().toUpperCase());
+            isEmpty = false;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Formats a usage string for the positional arguments, selecting a given command for the
+     * command group of this parser.
+     *
+     * @param command the selected command
+     * @return a usage string with a selected command
+     */
+    public String formatPositionalUsage(Command command) {
+        StringBuilder sb = new StringBuilder();
+        boolean isEmpty = true;
+        for (Argument argument : positionalArguments) {
+            if (!isEmpty) {
+                sb.append(' ');
+            }
+            if (argument instanceof CommandGroup) {
+                sb.append(command.getName());
+            } else {
+                sb.append(argument.getName().toUpperCase());
+            }
+            isEmpty = false;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Formats a help string for the option arguments, listing their names and descriptions.
+     */
+    public String formatOptionHelp() {
+        StringBuilder sb = new StringBuilder("options:\n");
+        for (Argument argument : optionArguments.getValues()) {
+            sb.append(String.format("  %-20s ", argument.getName())).append(argument.getDescription()).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Formats a help string for the positional arguments, listing their names and descriptions.
+     */
+    public String formatPositionalHelp() {
+        StringBuilder sb = new StringBuilder("positional arguments:\n");
+        for (Argument argument : positionalArguments) {
+            sb.append(String.format("  %-20s ", argument.getName())).append(argument.getDescription()).append('\n');
+        }
+        return sb.toString();
     }
 
     /**

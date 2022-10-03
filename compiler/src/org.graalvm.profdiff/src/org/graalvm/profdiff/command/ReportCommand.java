@@ -64,7 +64,7 @@ public class ReportCommand implements Command {
     }
 
     @Override
-    public String getHelp() {
+    public String getDescription() {
         return "dump the optimization log of an experiment";
     }
 

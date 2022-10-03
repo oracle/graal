@@ -75,14 +75,24 @@ public class CommandGroup extends Argument {
     }
 
     /**
+     * Returns the command with the given name, or {@code null} if there is no such command.
+     *
+     * @param commandName the name of the command
+     * @return the command with the given name or {@code null}
+     */
+    public Command getCommandByName(String commandName) {
+        return commands.get(commandName);
+    }
+
+    /**
      * Creates a usage string listing the commands of this group and their help strings.
      *
      * @return the usage string listing the commands
      */
-    public String createUsage() {
-        StringBuilder sb = new StringBuilder("Commands:\n");
+    public String formatCommandsHelp() {
+        StringBuilder sb = new StringBuilder("available commands:\n");
         for (Command command : commands.getValues()) {
-            sb.append(String.format("  %-20s ", command.getName())).append(command.getHelp()).append('\n');
+            sb.append(String.format("  %-20s ", command.getName())).append(command.getDescription()).append('\n');
         }
         return sb.toString();
     }

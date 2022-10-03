@@ -42,7 +42,7 @@ public interface Command {
     /**
      * Gets the help message describing the purpose of the command.
      */
-    String getHelp();
+    String getDescription();
 
     /**
      * Gets the argument parser of the command, which parses the arguments that come just after the

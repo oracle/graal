@@ -66,7 +66,7 @@ public class JITJITCommand implements Command {
     }
 
     @Override
-    public String getHelp() {
+    public String getDescription() {
         return "compare two JIT-compiled experiments";
     }
 
