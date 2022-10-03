@@ -99,9 +99,9 @@ def test():
     checker.check(exec_string)
 
     # set a break point at hello.Hello::main
-    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 77."
+    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 244."
     exec_string = execute("break hello.Hello::main")
-    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 77\."%address_pattern
+    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 244\."%address_pattern
     checker = Checker('break main', rexp)
     checker.check(exec_string)
 
@@ -110,16 +110,16 @@ def test():
     execute("delete breakpoints")
 
     # list the line at the breakpoint
-    # expect "77	        Greeter greeter = Greeter.greeter(args);"
+    # expect "244	        Greeter greeter = Greeter.greeter(args);"
     exec_string = execute("list")
-    checker = Checker(r"list bp 1", "77%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
+    checker = Checker(r"list bp 1", "244%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
     checker.check(exec_string, skip_fails=False)
 
     # run a backtrace
-    # expect "#0  hello.Hello.main(java.lang.String[] *).* at hello.Hello.java:77"
+    # expect "#0  hello.Hello.main(java.lang.String[] *).* at hello.Hello.java:244"
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
-    stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:77"%(spaces_pattern, param_types_pattern, arg_values_pattern),
+    stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:244"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#2%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
@@ -372,7 +372,7 @@ def test():
     # run a backtrace
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:38"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-                       r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:77"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+                       r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:244"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
@@ -797,9 +797,9 @@ def test():
     execute("delete breakpoints");
 
     ### Now check foreign debug type info
-    
+
     # check type information is reported correctly
-    
+
     exec_string=execute("info types com.oracle.svm.test.debug.CStructTests\$")
     rexp = [r"%stypedef composite_struct \* com\.oracle\.svm\.test\.debug\.CStructTests\$CompositeStruct;"%spaces_pattern,
             r"%stypedef int32_t \* com\.oracle\.svm\.test\.debug\.CStructTests\$MyCIntPointer;"%spaces_pattern,
@@ -853,7 +853,7 @@ def test():
 
 
     # check foreign data is printed correctly if we can
-    
+
     if can_print_data:
         # set a break point at com.oracle.svm.test.debug.CStructTests::free
         exec_string = execute("break com.oracle.svm.test.debug.CStructTests::free")
