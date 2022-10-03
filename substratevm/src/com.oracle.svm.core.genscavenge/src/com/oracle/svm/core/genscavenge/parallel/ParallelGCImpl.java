@@ -60,7 +60,7 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public static boolean isInParallelPhase() {
-        return isSupported() && singleton().inParallelPhase;
+        return singleton().inParallelPhase;
     }
 
     public static void waitForIdle() {
