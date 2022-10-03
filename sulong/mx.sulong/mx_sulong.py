@@ -73,6 +73,12 @@ _testDir = join(_suite.dir, "tests")
 
 toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
 
+# TODO: [GR-41902] use mx.add_lib_suffix
+def _lib_suffix(name):
+    if mx.is_windows():
+        return name + ".dll"
+    else:
+        return name + ".so"
 
 def _lib_versioned(arg):
     name, version = arg.split('.')
@@ -359,6 +365,9 @@ def _exe_sub(program):
 
 def _cmd_sub(program):
     return mx_subst.path_substitutions.substitute("<cmd:{}>".format(program))
+
+def _lib_sub(program):
+    return mx_subst.path_substitutions.substitute("<lib:{}>".format(program))
 
 class ToolchainConfig(object):
     # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).

@@ -137,7 +137,8 @@ class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
                 if self.buildRef:
                     self.results.append(os.path.join(t, mx.exe_suffix('ref.out')))
                 for v in self.getVariants():
-                    result_file = v + '.so' if self.buildSharedObject else v + '.bc'
+                    # TODO: [GR-41902] use mx.add_lib_suffix
+                    result_file = mx_sulong._lib_suffix(v) if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
         return super(SulongTestSuiteMixin, self).getResults(replaceVar=replaceVar)
 

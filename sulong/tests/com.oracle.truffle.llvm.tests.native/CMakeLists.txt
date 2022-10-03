@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,29 +27,10 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-QUIETLY$(MX_VERBOSE)  = @
 
-CLANG?=clang
-CLANGXX?=clang++
-LLVM_AS?=llvm-as
-OPT?=opt
-FC?=gfortran
+cmake_minimum_required(VERSION 3.15)
+project(com.oracle.truffle.llvm.tests.native)
 
-CFLAGS+= $(SUITE_CFLAGS)
-CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
-CPPFLAGS+= $(SUITE_CPPFLAGS)
-LDFLAGS+= $(SUITE_LDFLAGS)
+add_library(sulongtest SHARED src/caller.c src/callbackLibrary.c)
 
-.PHONY: default
-default:
-
-ifeq ($(OS), darwin)
-SO_EXT=.dylib
-ORIGIN_TOKEN='@loader_path'
-SO_LDFLAGS=-Wl,-install_name,@rpath/$(notdir $@) -Wl,-undefined,suppress -Wl,-flat_namespace
-else
-SO_EXT=.so
-ORIGIN_TOKEN='$$ORIGIN'
-endif
-
-include $(SRC_DIR)/*/Makefile
+add_custom_target(default DEPENDS sulongtest)
