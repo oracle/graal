@@ -677,7 +677,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String loaderName() {
 
-            return UniqueShortNameProvider.singleton().uniqueShortName(hostedType.getJavaClass().getClassLoader());
+            return UniqueShortNameProvider.singleton().uniqueShortLoaderName(hostedType.getJavaClass().getClassLoader());
         }
 
         @Override

@@ -207,7 +207,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Details of each specific DIE contents are as follows:
          *
-         * A single instance of the level 0 <code>buitin_unit</code> compile unit provides details
+         * A single instance of the level 0 <code>builtin_unit</code> compile unit provides details
          * of all Java primitive types and of the struct type which describes the layout of object
          * headers, including array headers.
          *
@@ -697,7 +697,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * Array Structure: Each array_unit DIE contains four level 1 DIEs. The first one describes
          * the array layout. It has only one child, a super_reference DIE (see above) that
-         * references the appropriate array header type for an object arary or primitive array of
+         * references the appropriate array header type for an object array or primitive array of
          * the relevant primitive type). The size of the array layout is the same as the size of the
          * array header.
          *

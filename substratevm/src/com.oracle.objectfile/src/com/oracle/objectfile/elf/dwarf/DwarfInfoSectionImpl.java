@@ -500,6 +500,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeNameSpace(DebugContext context, String id, byte[] buffer, int p) {
         int pos = p;
         String name = uniqueDebugString(id);
+        assert !id.isEmpty();
         log(context, "  [0x%08x] namespace %s", pos, name);
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_namespace;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
