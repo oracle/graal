@@ -88,5 +88,5 @@ public class WasmOptions {
     public static final OptionKey<Boolean> MultiValue = new OptionKey<>(true);
 
     @Option(help = "Enable bulk-memory operations and support for reference types", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
-    public static final OptionKey<Boolean> BulkMemoryAndRefTypes = new OptionKey<>(true);
+    public static final OptionKey<Boolean> BulkMemoryAndRefTypes = new OptionKey<>(false);
 }

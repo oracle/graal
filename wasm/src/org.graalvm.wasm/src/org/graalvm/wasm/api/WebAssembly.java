@@ -405,7 +405,11 @@ public class WebAssembly extends Dictionary {
     }
 
     private Object tableAlloc(Object[] args) {
-        checkArgumentCount(args, 1);
+        if (refTypes) {
+            checkArgumentCount(args, 2);
+        } else {
+            checkArgumentCount(args, 1);
+        }
 
         final int initialSize;
         int maximumSize = -1;
@@ -420,12 +424,16 @@ public class WebAssembly extends Dictionary {
         }
         int state;
         if (args.length == 1) {
+            // Only the initial size is provided
             state = -1;
         } else if (lib.fitsInInt(args[1])) {
+            // The second parameter represents the maximum size
             state = 0;
         } else if (args.length >= 3) {
+            // The second parameter represents the element kind
             state = 1;
         } else {
+            // The second parameter represents the initial value
             state = 2;
         }
         Object value;
@@ -438,9 +446,14 @@ public class WebAssembly extends Dictionary {
                     } catch (UnsupportedMessageException e) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Maximum size must be convertible to int");
                     }
-                    if (args.length >= 4) {
+                    if (args.length == 2) {
+                        // Only the initial and maximum size are provided
+                        state = -1;
+                    } else if (args.length >= 4) {
+                        // The third parameter represents the element kind
                         state = 1;
                     } else {
+                        // The third parameter represents the initial value
                         state = 2;
                     }
                     break;
@@ -451,11 +464,13 @@ public class WebAssembly extends Dictionary {
                     } catch (UnsupportedMessageException e) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element kind must be one of externref or anyfunc");
                     }
+                    // An initial value is expected
                     state = 2;
                     break;
                 }
                 case 2: {
                     initialValue = value;
+                    // All values were read
                     state = -1;
                     break;
                 }

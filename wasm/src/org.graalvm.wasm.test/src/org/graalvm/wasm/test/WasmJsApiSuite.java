@@ -1404,7 +1404,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testTableAlloc1Param() throws IOException {
-        runTest(context -> {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
