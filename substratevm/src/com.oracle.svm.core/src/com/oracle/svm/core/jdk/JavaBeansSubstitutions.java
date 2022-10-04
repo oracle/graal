@@ -41,8 +41,10 @@ public final class JavaBeansSubstitutions {
     @TargetClass(className = "java.beans.Introspector")
     static final class Target_java_beans_Introspector {
 
-        // Do not load java.awt.Component and java.beans.Customizer classes
-        // when they are not used
+        /**
+         * Do not load java.awt.Component and java.beans.Customizer classes
+         * when they are not used
+         */
         @Substitute
         private static Class<?> findCustomizerClass(Class<?> type) {
             String name = type.getName() + "Customizer";
