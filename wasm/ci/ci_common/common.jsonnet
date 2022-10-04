@@ -106,7 +106,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   nodejs: {
     downloads+: {
-      NODE: {name: 'node', version: 'v14.15.3', platformspecific: true},
+      NODE: {name: 'node', version: 'v16.13.2', platformspecific: true},
     },
     environment+: {
       NODE_DIR: '${NODE}/bin',
