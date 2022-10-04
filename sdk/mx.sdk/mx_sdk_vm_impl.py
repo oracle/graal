@@ -3682,6 +3682,22 @@ def _has_skipped_libraries(component):
             return True
     return False
 
+def _get_libgraal_component():
+    """
+    Returns the LibGraal component, if any, that is part of the final GraalVM distribution.
+    :rtype:GraalVmJreComponent
+    """
+    if mx.suite('substratevm', fatalIfMissing=False) is not None:
+        try:
+            import mx_substratevm
+        except ModuleNotFoundError:
+            return None
+        # Use `short_name` rather than `name` since the code that follows
+        # should be executed also when "LibGraal Enterprise" is registered
+        libgraal_component = get_component(mx_substratevm.libgraal.short_name, fatalIfMissing=False, stage1=False)
+        if libgraal_component is not None and not _has_skipped_libraries(libgraal_component):
+            return libgraal_component
+    return None
 
 def _sources_arg():
     return _parse_cmd_arg('sources', default_value=str(True))
