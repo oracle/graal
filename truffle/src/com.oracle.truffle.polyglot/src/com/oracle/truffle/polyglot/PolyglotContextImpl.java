@@ -906,7 +906,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         initializeThreadLocals(threadInfo);
                     }
 
-                    prev = threadInfo.enterInternal();
+                    prev = threadInfo.enterInternal(engine);
                     if (leaveAndEnter) {
                         threadInfo.setLeaveAndEnterInterrupter(null);
                         notifyAll();
@@ -918,7 +918,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         try {
                             threadInfo.notifyEnter(engine, this);
                         } catch (Throwable t) {
-                            threadInfo.leaveInternal(prev);
+                            threadInfo.leaveInternal(engine, prev);
                             throw t;
                         }
                     }
@@ -1145,7 +1145,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         threadInfo.notifyLeave(engine, this);
                     }
                 } finally {
-                    threadInfo.leaveInternal(prev);
+                    threadInfo.leaveInternal(engine, prev);
                 }
             }
             if (threadInfo.getEnteredCount() == 0) {

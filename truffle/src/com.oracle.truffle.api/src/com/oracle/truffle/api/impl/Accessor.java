@@ -387,6 +387,10 @@ public abstract class Accessor {
 
         public abstract TruffleContext getCurrentCreatorTruffleContext();
 
+        public abstract void assertReturnParityEnter(Node probe, Object polyglotEngine);
+
+        public abstract void assertReturnParityLeave(Node probe, Object polyglotEngine);
+
         public abstract Object toGuestValue(Node node, Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);

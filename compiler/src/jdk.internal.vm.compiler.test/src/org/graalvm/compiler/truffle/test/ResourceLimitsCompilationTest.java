@@ -56,7 +56,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                         statementLimit(5000, null).//
                         build();
 
-        try (Context context = Context.newBuilder().resourceLimits(limits).build();) {
+        try (Context context = createContextBuilder().resourceLimits(limits).build();) {
             OptimizedCallTarget target = evalTestScript(context);
             StructuredGraph graph = partialEval(target, new Object[0]);
             Assert.assertEquals(0, countNodes(graph, MethodCallTargetNode.TYPE));
@@ -76,7 +76,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
                         build();
-        try (Engine engine = Engine.create();) {
+        try (Engine engine = createEngine();) {
             try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
                 assertLimitCheckFastPath(context);
             }
@@ -92,7 +92,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
         ResourceLimits limits1 = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
                         build();
-        try (Engine engine = Engine.create();) {
+        try (Engine engine = createEngine();) {
             try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits0).build()) {
                 assertLimitCheckFastPath(context);
             }
@@ -111,7 +111,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
         ResourceLimits limits1 = ResourceLimits.newBuilder().//
                         statementLimit(5000 - 1, null).//
                         build();
-        try (Engine engine = Engine.create();) {
+        try (Engine engine = createEngine();) {
             try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits0).build()) {
                 assertLimitCheckFastPath(context);
             }
@@ -160,7 +160,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//
                         build();
-        try (Engine engine = Engine.create();) {
+        try (Engine engine = createEngine();) {
 
             try (Context context0 = Context.newBuilder().engine(engine).resourceLimits(limits).build();
                             Context context1 = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
@@ -189,7 +189,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                         statementLimit(5000, null).//
                         build();
 
-        try (Engine engine = Engine.create();) {
+        try (Engine engine = createEngine();) {
             try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
                 forceContextMultiThreading(context);
 
@@ -202,6 +202,16 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                 Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }
+    }
+
+    public static Engine createEngine() {
+        // ProbeNode assertions have an effect on compilation. We turn them off.
+        return Engine.newBuilder().option("engine.AssertProbes", "false").allowExperimentalOptions(true).useSystemProperties(false).build();
+    }
+
+    public static Context.Builder createContextBuilder() {
+        // ProbeNode assertions have an effect on compilation. We turn them off.
+        return Context.newBuilder().option("engine.AssertProbes", "false").allowExperimentalOptions(true);
     }
 
     /**

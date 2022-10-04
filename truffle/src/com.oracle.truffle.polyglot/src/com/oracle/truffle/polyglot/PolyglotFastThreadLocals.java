@@ -201,6 +201,22 @@ final class PolyglotFastThreadLocals {
         return IMPL.fastGet(ENCAPSULATING_NODE_REFERENCE_INDEX, EncapsulatingNodeReference.class, invalidateOnNull, false);
     }
 
+    static PolyglotThreadInfo getCurrentThread(Node node) {
+        if (CompilerDirectives.inCompiledCode() && node != null) {
+            PolyglotSharingLayer layer = resolveLayer(node);
+            if (layer != null) {
+                PolyglotContextImpl singleContext = layer.getSingleConstantContext();
+                if (singleContext != null && CompilerDirectives.isPartialEvaluationConstant(singleContext)) {
+                    PolyglotThreadInfo constantThread = singleContext.singleThreadValue.getConstant();
+                    if (constantThread != null) {
+                        return constantThread;
+                    }
+                }
+            }
+        }
+        return IMPL.fastGet(THREAD_INDEX, PolyglotThreadInfo.class, true, true);
+    }
+
     public static Object[] getCurrentThreadContextThreadLocals(PolyglotSharingLayer layer) {
         if (CompilerDirectives.inCompiledCode() && layer != null) {
             PolyglotContextImpl singleContext = layer.getSingleConstantContext();

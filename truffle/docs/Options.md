@@ -90,6 +90,7 @@ They are useful to users and language and tool implementers.
 These are internal options for debugging language implementations and tools.
 
 <!-- BEGIN: internal-engine-options -->
+- `--engine.AssertProbes=true|false` : Asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect. (default: false)
 - `--engine.DisableCodeSharing` : Option to force disable code sharing for this engine, even if the context was created with an explicit engine. This option is intended for testing purposes only.
 - `--engine.ForceCodeSharing` : Option to force enable code sharing for this engine, even if the context was created with a bound engine. This option is intended for testing purposes only.
 - `--engine.InstrumentExceptionsAreThrown=true|false` : Propagates exceptions thrown by instruments. (default: true)
