@@ -32,10 +32,12 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -44,6 +46,7 @@ import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -53,14 +56,19 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -305,15 +313,141 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         };
 
+        EconomicSet<PhiNode> phiPostProcessingWorkList = null;
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
             for (Node n : tool.workList) {
                 processNode(n, tool);
                 ++sum;
+                if (tool.allUsagesAvailable() && n.isAlive() && n instanceof PhiNode && ((PhiNode) n).isLoopPhi()) {
+                    if (phiPostProcessingWorkList == null) {
+                        phiPostProcessingWorkList = EconomicSet.create();
+                    }
+                    phiPostProcessingWorkList.add((PhiNode) n);
+                }
             }
         }
 
+        if (tool.allUsagesAvailable() && phiPostProcessingWorkList != null) {
+            for (PhiNode phi : phiPostProcessingWorkList) {
+                if (!phi.isAlive()) {
+                    continue;
+                }
+                NodeFlood nf = graph.createNodeFlood();
+                if (isDeadLoopPhiCycle(phi, nf)) {
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Found dead phi cycle %s keeps alive -> %s", phi, nf.getVisited());
+                    for (Node visitedNode : nf.getVisited()) {
+                        /**
+                         * Inside the visited usages there can be other phis which themselves are
+                         * dead (and so on). In order to clean them up in a proper way we need to
+                         * visit all of them individually.
+                         */
+                        if (visitedNode instanceof PhiNode) {
+                            PhiNode visitedPhi = (PhiNode) visitedNode;
+                            /*
+                             * Ideally we would just replace the phi with null at all usages and
+                             * kill with floating inputs, however incremental canonicalization does
+                             * not guarantee that all floating nodes that are dead themselves
+                             * hanging off the phi are deleted already. Thus, we have to first kill
+                             * them and process the rest as usual.
+                             */
+                            for (Node visited : nf.getVisited()) {
+                                if (visited.isAlive() && visited.hasNoUsages()) {
+                                    GraphUtil.tryKillUnused(visited);
+                                }
+                            }
+                            if (visitedPhi.isAlive()) {
+                                visitedPhi.replaceAtUsages(null);
+                                GraphUtil.killWithUnusedFloatingInputs(visitedPhi, true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return sum;
+
     }
+
+    /**
+     * Determine if the given {@link PhiNode} is the root of a dead (no real usages outside the
+     * cycle) phi cycle. Loop phis ({@link PhiNode#isLoopPhi()}) often form cyclic chains of
+     * floating nodes due to heavy usage of {@link InductionVariable} in loop code.
+     *
+     * Dead phi cycles are often the result of inlining, conditional elimination and partial escape
+     * analysis.
+     *
+     * Cycle detection is a best-effort operation: we do not want to spend a lot of compile time
+     * cleaning up extremely complex or long dead cycles (they will be handled by the scheduling
+     * phase).
+     *
+     * Consider the following intended complex example
+     *
+     * <pre>
+     * int phi = 0;
+     * while (true) {
+     *     if (sth) {
+     *         code();
+     *         phi = 12; // constant
+     *     } else if (sthElse) {
+     *         moreCode();
+     *         phi = phi - 125; // sub node usage
+     *     } else {
+     *         evenMoreCode();
+     *         phi = phi + 127; // add node usage
+     *     }
+     * }
+     * </pre>
+     *
+     * The cycle detection will start by processing the node associated with {@code phi} and process
+     * its usages. Note that the phi itself has multiple usages even though it is still dead. The
+     * detection will follow all usages of marked nodes which means at the end the nodes visited
+     * will be {@code phi, constant(12), sub, constant(125), add, constant(127)}. Since no node
+     * visited in between has other usages except one (so no outside usages) and no fixed node
+     * usages we can conclude we found a dead phi cycle that can be removed.
+     */
+    private static boolean isDeadLoopPhiCycle(PhiNode thisPhi, NodeFlood nf) {
+        GraalError.guarantee(thisPhi.isLoopPhi(), "Must only process loop phis");
+        nf.add(thisPhi);
+        int steps = 0;
+        for (Node flooded : nf) {
+            // constants are always marked as visited but we never visit their usages, they are leaf
+            // nodes and can appear everywhere
+            if (flooded instanceof ConstantNode) {
+                continue;
+            }
+            if (steps++ >= DEAD_PHI_CYCLE_STEPS) {
+                // too much effort, abort
+                return false;
+            }
+            for (Node usage : flooded.usages()) {
+                if (usage instanceof GuardNode) {
+                    // guards are the only floating nodes that are not removed if their usages drop
+                    // to 0
+                    return false;
+                }
+                if (!GraphUtil.isFloatingNode(usage)) {
+                    // Fixed node usage: can never have a dead cycle
+                    return false;
+                }
+                if (usage instanceof VirtualState || usage instanceof ProxyNode) {
+                    // usages that still require the (potential) dead cycle to be alive
+                    return false;
+                }
+                if (!nf.isMarked(usage)) {
+                    nf.add(usage);
+                }
+            }
+        }
+        // we managed to find a dead cycle
+        return true;
+    }
+
+    /**
+     * Number of loop iterations to perform in dead phi cycle detection before giving up for compile
+     * time reasons (the scheduler will consider the rest). This is a very high upper bound that
+     * should never be reached.
+     */
+    private static final int DEAD_PHI_CYCLE_STEPS = 128;
 
     /**
      * @return true if the graph was changed.
