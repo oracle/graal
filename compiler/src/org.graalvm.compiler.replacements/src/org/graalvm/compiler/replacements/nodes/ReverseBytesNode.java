@@ -65,14 +65,14 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
                 }
                 case 16: {
                     long mask = CodeUtil.mask(16);
-                    return IntegerStamp.stampForMask(16, Short.reverseBytes((short) valueStamp.downMask()) & mask, Short.reverseBytes((short) valueStamp.upMask()) & mask);
+                    return IntegerStamp.stampForMask(16, Short.reverseBytes((short) valueStamp.mustBeSet()) & mask, Short.reverseBytes((short) valueStamp.mayBeSet()) & mask);
                 }
                 case 32: {
                     long mask = CodeUtil.mask(32);
-                    return IntegerStamp.stampForMask(32, Integer.reverseBytes((int) valueStamp.downMask()) & mask, Integer.reverseBytes((int) valueStamp.upMask()) & mask);
+                    return IntegerStamp.stampForMask(32, Integer.reverseBytes((int) valueStamp.mustBeSet()) & mask, Integer.reverseBytes((int) valueStamp.mayBeSet()) & mask);
                 }
                 case 64: {
-                    return IntegerStamp.stampForMask(64, Long.reverseBytes(valueStamp.downMask()), Long.reverseBytes(valueStamp.upMask()));
+                    return IntegerStamp.stampForMask(64, Long.reverseBytes(valueStamp.mustBeSet()), Long.reverseBytes(valueStamp.mayBeSet()));
                 }
                 default:
                     throw GraalError.unimplemented("Unsupported bit size " + valueStamp.getBits()); // ExcludeFromJacocoGeneratedReport

@@ -166,7 +166,7 @@ public class ReinterpretUtils {
         long negativeInfinity = CodeUtil.signExtend(signBit | positiveInfinity, bits);
         long negativeZero = CodeUtil.signExtend(signBit | 0, bits);
 
-        if ((stamp.downMask() & exponentMask) == exponentMask && (stamp.downMask() & significandMask) != 0) {
+        if ((stamp.mustBeSet() & exponentMask) == exponentMask && (stamp.mustBeSet() & significandMask) != 0) {
             // if all exponent bits and at least one significand bit are set, the result is NaN
             return new FloatStamp(bits, Double.NaN, Double.NaN, false);
         }
@@ -210,7 +210,7 @@ public class ReinterpretUtils {
         }
 
         boolean nonNaN;
-        if ((stamp.upMask() & exponentMask) != exponentMask) {
+        if ((stamp.mayBeSet() & exponentMask) != exponentMask) {
             // NaN has all exponent bits set
             nonNaN = true;
         } else {

@@ -35,11 +35,11 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -121,7 +121,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
 
         if (forValue.stamp(view) instanceof IntegerStamp) {
             IntegerStamp inputStamp = (IntegerStamp) forValue.stamp(view);
-            if ((inputStamp.upMask() & (1L << (inputBits - 1))) == 0L) {
+            if ((inputStamp.mayBeSet() & (1L << (inputBits - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
                 return ZeroExtendNode.create(forValue, inputBits, resultBits, view, true);

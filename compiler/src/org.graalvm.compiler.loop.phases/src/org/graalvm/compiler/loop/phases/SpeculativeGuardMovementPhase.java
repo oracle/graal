@@ -731,7 +731,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private static boolean fitsIn32Bit(IntegerStamp stamp) {
-            return NumUtil.isUInt(stamp.upMask());
+            return NumUtil.isUInt(stamp.mayBeSet());
         }
 
         private Loop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {

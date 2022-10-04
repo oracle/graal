@@ -87,8 +87,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /**
      * A {@link GuardingNode} protecting an unsigned inverted counted loop. {@link IntegerStamp}
      * does not record information about the sign of a stamp, i.e., it cannot represent
-     * {@link IntegerStamp#upMask()}} and {@link IntegerStamp#downMask()} in relation with unsigned
-     * stamps. Thus, if we have such a guard we set it explicitly to a loop.
+     * {@link IntegerStamp#mayBeSet()}} and {@link IntegerStamp#mustBeSet()} in relation with
+     * unsigned stamps. Thus, if we have such a guard we set it explicitly to a loop.
      *
      * An example for such a loop would be
      *

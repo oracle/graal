@@ -115,16 +115,16 @@ public class StampTool {
         // Don't count zeros from the mask in the result.
         int adjust = Long.numberOfLeadingZeros(mask);
         assert adjust == 0 || adjust == 32;
-        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask) - adjust;
-        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask) - adjust;
+        int min = Long.numberOfLeadingZeros(valueStamp.mayBeSet() & mask) - adjust;
+        int max = Long.numberOfLeadingZeros(valueStamp.mustBeSet() & mask) - adjust;
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
     public static Stamp stampForTrailingZeros(IntegerStamp valueStamp) {
         int bits = valueStamp.getBits();
         long mask = CodeUtil.mask(bits);
-        int min = Math.min(Long.numberOfTrailingZeros(valueStamp.upMask() & mask), bits);
-        int max = Math.min(Long.numberOfTrailingZeros(valueStamp.downMask() & mask), bits);
+        int min = Math.min(Long.numberOfTrailingZeros(valueStamp.mayBeSet() & mask), bits);
+        int max = Math.min(Long.numberOfTrailingZeros(valueStamp.mustBeSet() & mask), bits);
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 

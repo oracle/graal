@@ -36,11 +36,11 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -141,7 +141,7 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
                 IntegerStamp istamp = (IntegerStamp) inputStamp;
                 long mask = CodeUtil.mask(PrimitiveStamp.getBits(narrow.stamp(view)));
 
-                if ((istamp.upMask() & ~mask) == 0) {
+                if ((istamp.mayBeSet() & ~mask) == 0) {
                     // The original value cannot change because of the narrow and zero extend.
 
                     if (istamp.getBits() < resultBits) {

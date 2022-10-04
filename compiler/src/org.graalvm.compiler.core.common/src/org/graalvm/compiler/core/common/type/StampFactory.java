@@ -140,8 +140,8 @@ public class StampFactory {
         return emptyStampCache[kind.ordinal()];
     }
 
-    public static IntegerStamp forInteger(JavaKind kind, long lowerBound, long upperBound, long downMask, long upMask) {
-        return IntegerStamp.create(kind.getBitCount(), lowerBound, upperBound, downMask, upMask);
+    public static IntegerStamp forInteger(JavaKind kind, long lowerBound, long upperBound, long mustBeSet, long mayBeSet) {
+        return IntegerStamp.create(kind.getBitCount(), lowerBound, upperBound, mustBeSet, mayBeSet);
     }
 
     public static IntegerStamp forInteger(JavaKind kind, long lowerBound, long upperBound) {
@@ -150,7 +150,7 @@ public class StampFactory {
 
     public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, long newDownMask, long newUpMask) {
         IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
-        return IntegerStamp.create(bits, newLowerBound, newUpperBound, limit.downMask() | newDownMask, limit.upMask() & newUpMask);
+        return IntegerStamp.create(bits, newLowerBound, newUpperBound, limit.mustBeSet() | newDownMask, limit.mayBeSet() & newUpMask);
     }
 
     public static IntegerStamp forInteger(int bits) {
@@ -165,7 +165,7 @@ public class StampFactory {
         return forUnsignedInteger(bits, unsignedLowerBound, unsignedUpperBound, 0, CodeUtil.mask(bits));
     }
 
-    public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long downMask, long upMask) {
+    public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long mustBeSet, long mayBeSet) {
         if (Long.compareUnsigned(unsignedLowerBound, unsignedUpperBound) > 0) {
             return IntegerStamp.createEmptyStamp(bits);
         }
@@ -176,7 +176,7 @@ public class StampFactory {
             upperBound = CodeUtil.maxValue(bits);
         }
         long mask = CodeUtil.mask(bits);
-        return IntegerStamp.create(bits, lowerBound, upperBound, downMask & mask, upMask & mask);
+        return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet & mask, mayBeSet & mask);
     }
 
     public static IntegerStamp forInteger(int bits, long lowerBound, long upperBound) {
