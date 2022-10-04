@@ -74,5 +74,5 @@ public interface UniqueShortNameProvider {
      * @param classLoader the loader whose unique short name is desired
      * @return a unique short name for the loader or an empty string
      */
-    String uniqueShortName(ClassLoader classLoader);
+    String uniqueShortLoaderName(ClassLoader classLoader);
 }

@@ -24,15 +24,13 @@
  */
 package com.oracle.svm.hosted.image;
 
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
+import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -44,7 +42,7 @@ import java.util.List;
 class NativeImageDebugInfoFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+        if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
             if (!ImageSingletons.contains(UniqueShortNameProvider.class)) {
                 // configure a BFD mangler to provide unique short names for method and field
                 // symbols
@@ -59,11 +57,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 // the app and image loader should both have the same parent
                 assert imageLoaderParent == appLoader.getParent();
                 // ensure the mangle ignores prefix generation for Graal loaders
-                List<ClassLoader> ignored = new ArrayList<>();
-                ignored.add(systemLoader);
-                ignored.add(imageLoaderParent);
-                ignored.add(appLoader);
-                ignored.add(imageLoader);
+                List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
                 ImageSingletons.add(UniqueShortNameProvider.class, new NativeImageBFDNameProvider(ignored));
             }
         }
