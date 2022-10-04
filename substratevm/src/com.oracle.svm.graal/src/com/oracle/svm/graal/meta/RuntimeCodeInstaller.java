@@ -293,12 +293,12 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         }
 
         @Override
-        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
             return true;
         }
 
         @Override
-        protected boolean isDeoptEntry(ResolvedJavaMethod method, Infopoint infopoint) {
+        protected boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint) {
             return false;
         }
     }

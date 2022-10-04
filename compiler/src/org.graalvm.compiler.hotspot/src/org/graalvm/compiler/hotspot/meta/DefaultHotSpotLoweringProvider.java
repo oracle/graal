@@ -945,6 +945,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assert descriptor.getArgumentTypes().length == arguments.size();
         ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
         /*
+         * If a deoptimization is necessary then the stub itself will initiate the deoptimization
+         * for this frame. See CreateExceptionStub#handleExceptionReturn.
+         */
+        foreignCallNode.setValidateDeoptFrameStates(false);
+        /*
          * The original BytecodeExceptionNode has a rethrowException FrameState which isn't suitable
          * for deopt because the exception to be thrown come from this call so it's not available in
          * the debug info. The foreign call needs a stateDuring instead so it can deopt with a

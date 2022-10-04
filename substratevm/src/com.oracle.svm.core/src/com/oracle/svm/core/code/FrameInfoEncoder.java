@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
@@ -85,6 +86,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class FrameInfoEncoder {
 
     public abstract static class Customization {
+
+        /**
+         * Hook for when a frame is registered for encoding.
+         */
+        @SuppressWarnings("unused")
+        protected void recordFrame(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
+
+        }
+
         /**
          * Returns true if the method's deoptimization target should be saved within the debugInfo.
          */
@@ -95,17 +105,19 @@ public class FrameInfoEncoder {
          *
          * @param method The method that contains the debugInfo.
          * @param infopoint The infopoint whose debugInfo that is considered for inclusion.
+         * @param isDeoptEntry whether this infopoint is tied to a deoptimization entrypoint.
          */
-        protected abstract boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint);
+        protected abstract boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry);
 
         /**
          * Returns true if the given debugInfo is a valid entry point for deoptimization (and not
          * just frame information for the purpose of debugging).
          *
          * @param method The method that contains the debugInfo.
+         * @param compilation method compilation this infopoint is within.
          * @param infopoint The infopoint whose debugInfo that is considered for inclusion.
          */
-        protected abstract boolean isDeoptEntry(ResolvedJavaMethod method, Infopoint infopoint);
+        protected abstract boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint);
 
         /**
          * Fills the FrameInfoQueryResult.source* fields.
@@ -450,8 +462,10 @@ public class FrameInfoEncoder {
         this.frameMetadata = new CompressedFrameInfoEncodingMetadata();
     }
 
-    protected FrameData addDebugInfo(ResolvedJavaMethod method, Infopoint infopoint, int totalFrameSize) {
-        final boolean includeLocalValues = customization.includeLocalValues(method, infopoint);
+    protected FrameData addDebugInfo(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint, int totalFrameSize) {
+        final boolean isDeoptEntry = customization.isDeoptEntry(method, compilation, infopoint);
+        customization.recordFrame(method, infopoint, isDeoptEntry);
+        final boolean includeLocalValues = customization.includeLocalValues(method, infopoint, isDeoptEntry);
         final boolean encodeSourceReferences = FrameInfoDecoder.encodeSourceReferences();
         final boolean useCompressedEncoding = SubstrateOptions.UseCompressedFrameEncodings.getValue() && !includeLocalValues;
         if (!includeLocalValues && !encodeSourceReferences) {
@@ -463,7 +477,7 @@ public class FrameInfoEncoder {
         data.debugInfo = debugInfo;
         data.totalFrameSize = totalFrameSize;
         data.virtualObjects = new ValueInfo[countVirtualObjects(debugInfo)][];
-        data.frame = addFrame(data, debugInfo.frame(), customization.isDeoptEntry(method, infopoint), includeLocalValues);
+        data.frame = addFrame(data, debugInfo.frame(), isDeoptEntry, includeLocalValues);
 
         if (encodeSourceReferences) {
             List<CompressedFrameData> frameSlice = useCompressedEncoding ? new ArrayList<>() : null;

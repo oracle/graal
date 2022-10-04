@@ -795,7 +795,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     public LIRFrameState stateForWithExceptionEdge(NodeWithState deopt, FrameState state, LabelRef exceptionEdge) {
         if (gen.needOnlyOopMaps()) {
-            return new LIRFrameState(null, null, null);
+            return new LIRFrameState(null, null, null, false);
         }
         JavaConstant deoptReasonAndAction = null;
         JavaConstant deoptSpeculation = null;

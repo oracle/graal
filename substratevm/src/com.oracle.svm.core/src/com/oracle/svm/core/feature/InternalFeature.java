@@ -80,6 +80,7 @@ public interface InternalFeature extends Feature {
      * @param providers Providers that the lowering can use.
      * @param lowerings The lowering provider registry to add to.
      * @param hosted True if registering for ahead-of-time compilation, false if registering for
+     *            runtime compilation.
      */
     default void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
@@ -93,6 +94,7 @@ public interface InternalFeature extends Feature {
      * @param snippetReflection Snippet reflection providers.
      * @param suites The Graal compilation suites to add to.
      * @param hosted True if registering for ahead-of-time compilation, false if registering for
+     *            runtime compilation.
      */
     default void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
     }
