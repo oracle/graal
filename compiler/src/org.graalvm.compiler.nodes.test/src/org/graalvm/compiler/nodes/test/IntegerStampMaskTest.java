@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.test;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.test.GraalTest;
-import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -105,16 +104,16 @@ public class IntegerStampMaskTest extends GraalTest {
 
     private static void testValue(long v, IntegerStamp joined, IntegerStamp meetOfAB, IntegerStamp bounds) {
         if (bounds.contains(v) && meetOfAB.contains(v)) {
-            Assert.assertTrue(String.format("%s does not contain %s", joined, v), joined.contains(v));
+            assertTrue(joined.contains(v), "%s does not contain %s", joined, v);
         }
         if (!bounds.contains(v) && !meetOfAB.contains(v)) {
-            Assert.assertTrue(String.format("%s contains %s but %s and %s do not", joined, v, bounds, meetOfAB), !joined.contains(v));
+            assertTrue(!joined.contains(v), "%s contains %s but %s and %s do not", joined, v, bounds, meetOfAB);
         }
     }
 
     private static void checkBounds(IntegerStamp stamp, IntegerStamp stampA, IntegerStamp stampB, boolean expectEmpty) {
         if (stamp.isEmpty()) {
-            Assert.assertTrue("unexpected empty stamp encountered", expectEmpty);
+            assertTrue("unexpected empty stamp encountered", expectEmpty);
             return;
         }
         long maxIterations = 100000;
@@ -151,9 +150,9 @@ public class IntegerStampMaskTest extends GraalTest {
             return;
         }
 
-        Assert.assertFalse(String.format("expected empty stamp but got [%s - %s]", actualLowerBound, actualUpperBound), expectEmpty);
+        assertFalse(expectEmpty, "expected empty stamp but got [%s - %s]", actualLowerBound, actualUpperBound);
 
-        Assert.assertTrue(String.format("join of %s and %s stamp %s is actually empty", stampA, stampB, stamp), upperExact != null && lowerExact != null);
+        assertTrue(upperExact != null && lowerExact != null, "join of %s and %s stamp %s is actually empty", stampA, stampB, stamp);
 
         String boundsMessage = null;
         if (actualUpperBound != stamp.upperBound()) {
@@ -166,7 +165,7 @@ public class IntegerStampMaskTest extends GraalTest {
                 boundsMessage = "lower";
             }
         }
-        Assert.fail(String.format("stamp %s has %s %s bounds of [%s - %s]", stamp, (upperExact && lowerExact) ? "exact" : "inexact", boundsMessage,
-                        actualLowerBound, actualUpperBound));
+        fail("stamp %s has %s %s bounds of [%s - %s]", stamp, (upperExact && lowerExact) ? "exact" : "inexact", boundsMessage,
+                        actualLowerBound, actualUpperBound);
     }
 }
