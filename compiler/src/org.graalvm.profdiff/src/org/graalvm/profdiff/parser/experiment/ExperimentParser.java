@@ -26,14 +26,11 @@ package org.graalvm.profdiff.parser.experiment;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.profdiff.core.CompilationUnitBuilder;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.InliningTreeNode;
@@ -47,6 +44,26 @@ import org.graalvm.util.json.JSONParserException;
  * Parses an experiment from its files.
  */
 public class ExperimentParser {
+    private static final class PartialCompilationUnit {
+        String compilationId;
+
+        String methodName;
+
+        InliningTreeNode inliningTreeRoot;
+
+        OptimizationPhase rootPhase;
+
+        long period;
+    }
+
+    private static class ProftoolLog {
+        String executionId;
+
+        long totalPeriod;
+
+        List<ProftoolMethod> methods = new ArrayList<>();
+    }
+
     private final ExperimentFiles experimentFiles;
 
     /**
@@ -74,11 +91,10 @@ public class ExperimentParser {
      * @throws ExperimentParserTypeError the experiment files had an in incorrect format
      */
     public Experiment parse() throws IOException, ExperimentParserError {
-        // parse optimization logs to ExecutedMethodsBuilders
-        Map<String, CompilationUnitBuilder> methodByCompilationId = new HashMap<>();
+        EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = EconomicMap.create();
         for (ExperimentFiles.NamedReader reader : experimentFiles.getOptimizationLogs()) {
-            CompilationUnitBuilder method = parseCompiledMethod(reader);
-            methodByCompilationId.put(method.getCompilationId(), method);
+            PartialCompilationUnit parseCompilationUnit = parseCompilationUnit(reader);
+            partialCompilationUnits.put(parseCompilationUnit.compilationId, parseCompilationUnit);
         }
 
         Experiment experiment;
@@ -90,11 +106,11 @@ public class ExperimentParser {
                 if (method.getLevel() == null || method.getLevel() != GRAAL_COMPILER_LEVEL) {
                     continue;
                 }
-                CompilationUnitBuilder builder = methodByCompilationId.get(method.getCompilationId());
-                if (builder == null) {
+                PartialCompilationUnit unit = partialCompilationUnits.get(method.getCompilationId());
+                if (unit == null) {
                     System.out.println("Warning: Compilation ID " + method.getCompilationId() + " not found in the optimization log");
                 } else {
-                    builder.setPeriod(method.getPeriod());
+                    unit.period = method.getPeriod();
                 }
             }
 
@@ -107,25 +123,24 @@ public class ExperimentParser {
         } else {
             experiment = new Experiment(experimentFiles.getExperimentId(), experimentFiles.getCompilationKind());
         }
-        for (CompilationUnitBuilder builder : methodByCompilationId.values()) {
-            builder.setExperiment(experiment);
-            experiment.addCompilationUnit(builder.build());
+        for (PartialCompilationUnit unit : partialCompilationUnits.getValues()) {
+            experiment.addCompilationUnit(unit.methodName, unit.compilationId, unit.inliningTreeRoot, unit.rootPhase, unit.period);
         }
         return experiment;
     }
 
-    private CompilationUnitBuilder parseCompiledMethod(ExperimentFiles.NamedReader reader) throws IOException, ExperimentParserError {
+    private PartialCompilationUnit parseCompilationUnit(ExperimentFiles.NamedReader reader) throws IOException, ExperimentParserError {
         currentResourceName = reader.getName();
         try {
             JSONParser parser = new JSONParser(reader.getReader());
             EconomicMap<String, Object> log = expectMap(parser.parse(), "the root of a compiled method", false);
-            CompilationUnitBuilder builder = new CompilationUnitBuilder();
-            builder.setCompilationId(expectString(log, "compilationId", false));
-            builder.setCompilationMethodName(expectString(log, "compilationMethodName", false));
-            builder.setInliningTreeRoot(parseInliningTreeNode(log.get("inliningTreeRoot")));
+            PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
+            compilationUnit.compilationId = expectString(log, "compilationId", false);
+            compilationUnit.methodName = expectString(log, "compilationMethodName", false);
+            compilationUnit.inliningTreeRoot = parseInliningTreeNode(log.get("inliningTreeRoot"));
             EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "the root phase of a method", false);
-            builder.setRootPhase(parseOptimizationPhase(rootPhase));
-            return builder;
+            compilationUnit.rootPhase = parseOptimizationPhase(rootPhase);
+            return compilationUnit;
         } catch (JSONParserException parserException) {
             throw new ExperimentParserError(experimentFiles.getExperimentId(), currentResourceName, parserException.getMessage());
         }
@@ -190,12 +205,6 @@ public class ExperimentParser {
         optimization.removeKey("position");
         EconomicMap<String, Object> properties = optimization.isEmpty() ? null : optimization;
         return new Optimization(optimizationName, eventName, position, properties);
-    }
-
-    private static class ProftoolLog {
-        String executionId;
-        long totalPeriod;
-        List<ProftoolMethod> methods = new ArrayList<>();
     }
 
     private ProftoolLog parseProftoolLog(ExperimentFiles.NamedReader profOutput) throws IOException, ExperimentParserError {

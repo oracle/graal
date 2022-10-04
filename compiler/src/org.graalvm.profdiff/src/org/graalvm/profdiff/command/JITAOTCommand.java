@@ -24,12 +24,11 @@
  */
 package org.graalvm.profdiff.command;
 
-import java.util.List;
-
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
+import org.graalvm.profdiff.core.pair.ExperimentPair;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
@@ -90,13 +89,10 @@ public class JITAOTCommand implements Command {
             if (!jitUnit.isHot()) {
                 continue;
             }
-            List<CompilationUnit> aotUnits = aot.getCompilationUnitsByName().get(jitUnit.getCompilationMethodName());
-            if (aotUnits != null) {
-                aotUnits.forEach(aotUnit -> aotUnit.setHot(true));
-            }
+            aot.getMethodOrCreate(jitUnit.getMethod().getMethodName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
         }
 
-        ExperimentDiffer differ = new ExperimentDiffer(writer);
-        differ.diff(jit, aot);
+        ExperimentMatcher matcher = new ExperimentMatcher(writer);
+        matcher.match(new ExperimentPair(jit, aot));
     }
 }

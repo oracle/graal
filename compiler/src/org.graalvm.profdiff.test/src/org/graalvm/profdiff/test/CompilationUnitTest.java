@@ -106,7 +106,7 @@ public class CompilationUnitTest {
             inliningTreeRoot.addChild(method3);
             inliningTreeRoot.addChild(method2);
 
-            compilationUnit = new CompilationUnit("1234", "MockCompilationUnit", inliningTreeRoot, rootPhase, 0, null);
+            compilationUnit = new CompilationUnit(null, "1234", inliningTreeRoot, rootPhase, 0);
             optimizationTreePreorderAfterSort = List.of(rootPhase, controlPhase, controlPhaseChild2, controlPhaseChild1,
                             unorderedDetailedPhase, optimization1, optimization2, optimization3, optimization4, optimization5,
                             optimization6, subphase1, subphase2);

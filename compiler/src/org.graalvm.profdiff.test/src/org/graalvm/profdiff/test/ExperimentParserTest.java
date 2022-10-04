@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
@@ -84,7 +85,7 @@ public class ExperimentParserTest {
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles);
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());
-        assertEquals(2, experiment.getCompilationUnits().size());
+        assertEquals(2, StreamSupport.stream(experiment.getCompilationUnits().spliterator(), false).count());
         assertEquals(263869257616L, experiment.getTotalPeriod());
         assertEquals(264224374L + 158328120602L, experiment.getGraalPeriod());
 
@@ -92,8 +93,8 @@ public class ExperimentParserTest {
             switch (compilationUnit.getCompilationId()) {
                 case "1": {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
-                                    compilationUnit.getCompilationMethodName());
-                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getCompilationMethodName(), -1, true, null);
+                                    compilationUnit.getMethod().getMethodName());
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null);
                     inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined")));
                     assertEquals(inliningTreeRoot, compilationUnit.getInliningTreeRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
@@ -109,7 +110,7 @@ public class ExperimentParserTest {
                 }
                 case "2": {
                     assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
-                                    compilationUnit.getCompilationMethodName());
+                                    compilationUnit.getMethod().getMethodName());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",

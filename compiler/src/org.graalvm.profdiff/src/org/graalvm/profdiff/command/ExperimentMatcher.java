@@ -30,11 +30,9 @@ import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.InliningTreeNode;
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.profdiff.matching.method.GreedyMethodMatcher;
-import org.graalvm.profdiff.matching.method.MatchedCompilationUnit;
-import org.graalvm.profdiff.matching.method.MatchedMethod;
-import org.graalvm.profdiff.matching.method.MethodMatcher;
-import org.graalvm.profdiff.matching.method.MethodMatching;
+import org.graalvm.profdiff.core.pair.CompilationUnitPair;
+import org.graalvm.profdiff.core.pair.ExperimentPair;
+import org.graalvm.profdiff.core.pair.MethodPair;
 import org.graalvm.profdiff.matching.tree.DeltaTree;
 import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
@@ -47,12 +45,7 @@ import org.graalvm.profdiff.util.Writer;
  * Matches and compares the methods and compilations of two experiments, writing the results
  * according to the given verbosity level to a {@link Writer}.
  */
-public class ExperimentDiffer {
-    /**
-     * Matches methods and compilation units of two experiments.
-     */
-    private final MethodMatcher matcher = new GreedyMethodMatcher();
-
+public class ExperimentMatcher {
     /**
      * Matches optimization trees of two compilation units.
      */
@@ -68,7 +61,7 @@ public class ExperimentDiffer {
      */
     private final Writer writer;
 
-    public ExperimentDiffer(Writer writer) {
+    public ExperimentMatcher(Writer writer) {
         this.writer = writer;
     }
 
@@ -85,13 +78,12 @@ public class ExperimentDiffer {
      * similarly listed, possibly including the optimization/inlining trees of their hot compilation
      * units.
      *
-     * @param experiment1 the first experiment to be diffed
-     * @param experiment2 the second experiment to be diffed
+     * @param experimentPair the pair of experiments to be matched
      */
-    public void diff(Experiment experiment1, Experiment experiment2) {
+    public void match(ExperimentPair experimentPair) {
         VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
 
-        for (Experiment experiment : List.of(experiment1, experiment2)) {
+        for (Experiment experiment : List.of(experimentPair.getExperiment1(), experimentPair.getExperiment2())) {
             experiment.preprocessCompilationUnits(verbosityLevel);
             experiment.writeExperimentSummary(writer);
             writer.writeln();
@@ -100,55 +92,66 @@ public class ExperimentDiffer {
         ExplanationWriter explanationWriter = new ExplanationWriter(writer);
         explanationWriter.explain();
 
-        MethodMatching matching = matcher.match(experiment1, experiment2);
-
-        for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
+        for (MethodPair methodPair : experimentPair.getHotMethodPairsByDescendingPeriod()) {
             writer.writeln();
-            matchedMethod.writeHeaderAndCompilationUnits(writer, experiment1, experiment2);
+            methodPair.writeHeaderAndCompilationList(writer);
             writer.increaseIndent();
             if (verbosityLevel.shouldPrintOptimizationTree()) {
-                matchedMethod.getFirstHotCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
-                matchedMethod.getSecondHotCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+                methodPair.getMethod1().getCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+                methodPair.getMethod2().getCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
             }
-            if (verbosityLevel.shouldDiffCompilations()) {
-                for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {
-                    matchedCompilationUnit.writeHeader(writer);
-                    writer.increaseIndent();
-                    InliningTreeNode inliningTreeRoot1 = matchedCompilationUnit.getFirstCompilationUnit().getInliningTreeRoot();
-                    InliningTreeNode inliningTreeRoot2 = matchedCompilationUnit.getSecondCompilationUnit().getInliningTreeRoot();
-                    if (inliningTreeRoot1 != null && inliningTreeRoot2 != null) {
-                        writer.writeln("Inlining tree matching");
-                        EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
-                        DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
-                        if (verbosityLevel.shouldShowOnlyDiff()) {
-                            inliningDeltaTree.pruneIdentities();
-                        }
-                        InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
-                        inliningDeltaTree.accept(inliningDeltaTreeWriter);
-                    } else {
-                        writer.writeln("Inlining trees are not available");
-                    }
-                    writer.writeln("Optimization tree matching");
-                    EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(
-                                    matchedCompilationUnit.getFirstCompilationUnit().getRootPhase(),
-                                    matchedCompilationUnit.getSecondCompilationUnit().getRootPhase());
-                    if (verbosityLevel.shouldShowOnlyDiff()) {
-                        DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
-                        optimizationDeltaTree.pruneIdentities();
-                        optimizationTreeMatching = optimizationDeltaTree.asEditScript();
-                    }
-                    optimizationTreeMatching.write(writer);
-                    writer.decreaseIndent();
+            for (CompilationUnitPair compilationUnitPair : methodPair.getHotCompilationUnitPairsByDescendingPeriod()) {
+                writer.writeln(compilationUnitPair.formatHeaderForHotCompilations());
+                writer.increaseIndent();
+                if (compilationUnitPair.bothHot()) {
+                    matchInliningTrees(compilationUnitPair);
+                    matchOptimizationTrees(compilationUnitPair);
+                } else if (!verbosityLevel.shouldShowOnlyDiff()) {
+                    compilationUnitPair.firstNonNull().write(writer);
                 }
-                if (!verbosityLevel.shouldShowOnlyDiff()) {
-                    matchedMethod.getUnmatchedCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
-                }
+                writer.decreaseIndent();
             }
             writer.decreaseIndent();
         }
-        matching.getUnmatchedMethods().forEach(unmatchedMethod -> {
-            writer.writeln();
-            unmatchedMethod.write(writer, experiment1, experiment2);
-        });
+    }
+
+    /**
+     * Matches the inlining trees of the compilation units and writes the result.
+     *
+     * @param compilationUnitPair the pair of compilations to be matched
+     */
+    private void matchInliningTrees(CompilationUnitPair compilationUnitPair) {
+        InliningTreeNode inliningTreeRoot1 = compilationUnitPair.getCompilationUnit1().getInliningTreeRoot();
+        InliningTreeNode inliningTreeRoot2 = compilationUnitPair.getCompilationUnit2().getInliningTreeRoot();
+        if (inliningTreeRoot1 != null && inliningTreeRoot2 != null) {
+            writer.writeln("Inlining tree matching");
+            EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
+            DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
+            if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+                inliningDeltaTree.pruneIdentities();
+            }
+            InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
+            inliningDeltaTree.accept(inliningDeltaTreeWriter);
+        } else {
+            writer.writeln("Inlining trees are not available");
+        }
+    }
+
+    /**
+     * Matches the optimization trees of the compilation units and writes the result.
+     *
+     * @param compilationUnitPair the pair of compilations to be matched
+     */
+    private void matchOptimizationTrees(CompilationUnitPair compilationUnitPair) {
+        writer.writeln("Optimization tree matching");
+        EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(
+                        compilationUnitPair.getCompilationUnit1().getRootPhase(),
+                        compilationUnitPair.getCompilationUnit2().getRootPhase());
+        if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+            DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
+            optimizationDeltaTree.pruneIdentities();
+            optimizationTreeMatching = optimizationDeltaTree.asEditScript();
+        }
+        optimizationTreeMatching.write(writer);
     }
 }

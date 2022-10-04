@@ -27,6 +27,7 @@ package org.graalvm.profdiff.command;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
+import org.graalvm.profdiff.core.pair.ExperimentPair;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
@@ -86,7 +87,7 @@ public class JITJITCommand implements Command {
         hotCompilationUnitPolicy.markHotCompilationUnits(jit1);
         Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
         hotCompilationUnitPolicy.markHotCompilationUnits(jit2);
-        ExperimentDiffer differ = new ExperimentDiffer(writer);
-        differ.diff(jit1, jit2);
+        ExperimentMatcher matcher = new ExperimentMatcher(writer);
+        matcher.match(new ExperimentPair(jit1, jit2));
     }
 }

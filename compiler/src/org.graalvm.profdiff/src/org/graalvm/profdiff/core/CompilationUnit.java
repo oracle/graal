@@ -33,16 +33,15 @@ import org.graalvm.profdiff.util.Writer;
  */
 public class CompilationUnit {
     /**
+     * The root method of this compilation unit.
+     */
+    private final Method method;
+
+    /**
      * The compilation ID of this compilation unit as reported in the optimization log. Matches
      * {@code compileId} in the proftool output.
      */
     private final String compilationId;
-
-    /**
-     * The full signature of the compiled root method including parameter types as reported in the
-     * optimization log.
-     */
-    private final String compilationMethodName;
 
     /**
      * The root of the inlining tree if it is available. The root method in the inlining tree
@@ -62,34 +61,26 @@ public class CompilationUnit {
     private final long period;
 
     /**
-     * The experiment to which compilation unit belongs.
-     */
-    private final Experiment experiment;
-
-    /**
      * The hot flag of this compilation unit.
      */
     private boolean hot;
 
-    public CompilationUnit(String compilationId,
-                    String compilationMethodName,
+    public CompilationUnit(Method method, String compilationId,
                     InliningTreeNode inliningTreeRoot,
                     OptimizationPhase rootPhase,
-                    long period,
-                    Experiment experiment) {
+                    long period) {
+        this.method = method;
         this.compilationId = compilationId;
-        this.compilationMethodName = compilationMethodName;
         this.inliningTreeRoot = inliningTreeRoot;
         this.period = period;
         this.rootPhase = rootPhase;
-        this.experiment = experiment;
     }
 
     /**
-     * Gets the experiment to which this compilation unit belongs.
+     * Gets the root method of this compilation unit.
      */
-    public Experiment getExperiment() {
-        return experiment;
+    public Method getMethod() {
+        return method;
     }
 
     /**
@@ -107,9 +98,9 @@ public class CompilationUnit {
      * @return a summary of the relative execution time
      */
     public String createExecutionSummary() {
-        assert experiment.isProfileAvailable();
-        String graalPercent = String.format("%.2f", (double) period / experiment.getGraalPeriod() * 100);
-        String totalPercent = String.format("%.2f", (double) period / experiment.getTotalPeriod() * 100);
+        assert method.getExperiment().isProfileAvailable();
+        String graalPercent = String.format("%.2f", (double) period / method.getExperiment().getGraalPeriod() * 100);
+        String totalPercent = String.format("%.2f", (double) period / method.getExperiment().getTotalPeriod() * 100);
         return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
     }
 
@@ -121,24 +112,6 @@ public class CompilationUnit {
      */
     public String getCompilationId() {
         return compilationId;
-    }
-
-    /**
-     * Gets the full signature of the root method of this compilation unit including parameter types
-     * as reported in the optimization log. Multiple compilation units may share the same
-     * compilation method name, because a method may get compiled several times. It can be used to
-     * identify a group of compilations of a single Java method.
-     *
-     * Example of a returned string:
-     *
-     * <pre>
-     * java.lang.Math.max(int, int)
-     * </pre>
-     *
-     * @return the compilation method name
-     */
-    public String getCompilationMethodName() {
-        return compilationMethodName;
     }
 
     /**
@@ -200,10 +173,10 @@ public class CompilationUnit {
      */
     public void write(Writer writer) {
         writer.write("Compilation " + compilationId);
-        if (experiment.isProfileAvailable()) {
+        if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");
         }
-        writer.writeln(" in experiment " + experiment.getExperimentId());
+        writer.writeln(" in experiment " + method.getExperiment().getExperimentId());
         writer.increaseIndent();
         if (inliningTreeRoot == null) {
             writer.writeln("Inlining tree not available");

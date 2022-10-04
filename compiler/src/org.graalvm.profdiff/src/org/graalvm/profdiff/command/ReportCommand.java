@@ -24,14 +24,11 @@
  */
 package org.graalvm.profdiff.command;
 
-import java.util.List;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
+import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
@@ -90,22 +87,25 @@ public class ReportCommand implements Command {
         ExplanationWriter explanationWriter = new ExplanationWriter(writer);
         explanationWriter.explain();
 
-        EconomicMap<String, List<CompilationUnit>> methods = experiment.getCompilationUnitsByName();
-        if (proftoolArgument.getValue() != null) {
-            methods = experiment.groupHotCompilationUnitsByMethod();
-        }
-        MapCursor<String, List<CompilationUnit>> methodCursor = methods.getEntries();
-        while (methodCursor.advance()) {
+        for (Method method : experiment.getMethodsByDescendingPeriod()) {
+            if (proftoolArgument.getValue() != null && !method.isHot()) {
+                continue;
+            }
             writer.writeln();
-            writer.writeln("Method " + methodCursor.getKey());
+            writer.writeln("Method " + method.getMethodName());
             writer.increaseIndent();
-            experiment.writeCompilationUnits(writer, methodCursor.getKey());
+            method.writeCompilationList(writer);
+            writer.increaseIndent();
             if ((verbosity.shouldPrintOptimizationTree() || verbosity.shouldDiffCompilations()) && !verbosity.shouldShowOnlyDiff()) {
-                for (CompilationUnit compilationUnit : methodCursor.getValue()) {
+                Iterable<CompilationUnit> compilationUnits = method.getCompilationUnits();
+                if (proftoolArgument.getValue() != null) {
+                    compilationUnits = method.getHotCompilationUnits();
+                }
+                for (CompilationUnit compilationUnit : compilationUnits) {
                     compilationUnit.write(writer);
                 }
             }
-            writer.decreaseIndent();
+            writer.decreaseIndent(2);
         }
     }
 }
