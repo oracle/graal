@@ -385,11 +385,11 @@ public class ParserState {
             frame = getFrame(otherBranchLabel);
             byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
-            popAll(otherBranchLabelReturnTypes);
+            byte[] returnTypes = popAll(otherBranchLabelReturnTypes);
             byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
             frame.addBranchTarget(branchTable.updateItemValueTypeIndicator(i, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
             pushAll(unwindTypes);
-            pushAll(otherBranchLabelReturnTypes);
+            pushAll(returnTypes);
         }
         popAll(branchLabelReturnTypes);
     }

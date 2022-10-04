@@ -1375,32 +1375,13 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testTableGrow2Args() throws IOException {
-        runTest(context -> {
-            final WebAssembly wasm = new WebAssembly(context);
-            final InteropLibrary lib = InteropLibrary.getUncached();
-            final WasmTable table = wasm.tableAlloc(1, 2, TableKind.anyfunc, WasmConstant.NULL);
-            try {
-                final Object tableGrow = wasm.readMember("table_grow");
-                lib.execute(tableGrow, table, 1);
-                Assert.fail("Should have failed - invalid number of arguments");
-            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw new RuntimeException(e);
-            } catch (WasmJsApiException e) {
-                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
-            }
-        });
-    }
-
-    @Test
     public void testTableInitAnyfunc() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                final Object tableType = InteropArray.create(new Object[]{1, 1, "anyfunc"});
-                lib.execute(tableAlloc, tableType, WasmConstant.NULL);
+                lib.execute(tableAlloc, 1, 1, "anyfunc", WasmConstant.NULL);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -1414,8 +1395,7 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                final Object tableType = InteropArray.create(new Object[]{1, 1, "externref"});
-                lib.execute(tableAlloc, tableType, WasmConstant.NULL);
+                lib.execute(tableAlloc, 1, 1, "externref", WasmConstant.NULL);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -1423,14 +1403,16 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testTableInitRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+    public void testTableAlloc1Param() throws IOException {
+        runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                final Object tableType = InteropArray.create(new Object[]{1, 1});
-                lib.execute(tableAlloc, tableType, WasmConstant.NULL);
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -1438,18 +1420,103 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testTableInit3ArgsRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+    public void testTableAlloc2Params() throws IOException {
+        runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
-                lib.execute(tableAlloc, "anyfunc", 1, 1);
-                Assert.fail("Should have failed - 3 arguments, 2 allowed");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc3ParamsMaxSize() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, 1, WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc3ParamsElementKind() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, "anyfunc", WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc4Params() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, 1, "anyfunc", WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAllocInvalidInitialSize() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, "a", 1, "anyfunc", WasmConstant.NULL);
+                Assert.fail("Should have thrown");
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableAllocArgumentPriority() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableRead = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, "anyfunc", "anyfunc", WasmConstant.NULL);
+                final Object value = lib.execute(tableRead, table, 0);
+                Assert.assertEquals("Element should be anyfunc", "anyfunc", value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
             }
         });
     }

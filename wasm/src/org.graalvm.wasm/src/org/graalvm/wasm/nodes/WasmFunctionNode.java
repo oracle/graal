@@ -924,13 +924,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case SELECT_T: {
-                    // Skip vector length and value
+                    // Skip constant vector length and value
                     offset += 2;
                     if (popBoolean(frame, stackPointer - 1)) {
                         drop(frame, stackPointer - 2);
                     } else {
-                        WasmFrame.copyPrimitive(frame, stackPointer - 2, stackPointer - 3);
-                        dropPrimitive(frame, stackPointer - 2);
+                        WasmFrame.copy(frame, stackPointer - 2, stackPointer - 3);
+                        drop(frame, stackPointer - 2);
                     }
                     stackPointer -= 2;
                     break;
@@ -1931,7 +1931,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void executeTruncSatOp(VirtualFrame frame, int stackPointer, int opcode) {
+    private static void executeTruncSatOp(VirtualFrame frame, int stackPointer, int opcode) {
         switch (opcode) {
             case I32_TRUNC_SAT_F32_S:
                 i32_trunc_sat_f32_s(frame, stackPointer);
@@ -3487,7 +3487,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     /**
      * Extracts the multi value from the multi-value stack of the context or an external source. The
      * result values are put onto the value stack.
-     * 
+     *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.
      * @param result The result of the function call.
