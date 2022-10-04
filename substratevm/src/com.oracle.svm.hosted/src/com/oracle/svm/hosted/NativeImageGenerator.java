@@ -325,7 +325,6 @@ public class NativeImageGenerator {
     protected final HostedOptionProvider optionProvider;
     private final ProgressReporter reporter;
 
-    private DeadlockWatchdog watchdog;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
     private Inflation bb;
@@ -532,13 +531,11 @@ public class NativeImageGenerator {
             ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
             ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
             ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-            watchdog = new DeadlockWatchdog();
             try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
                 ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
                 doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
             } finally {
                 reporter.ensureCreationStageEndCompleted();
-                watchdog.close();
             }
         } finally {
             analysisExecutor.shutdownNow();
@@ -881,7 +878,7 @@ public class NativeImageGenerator {
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
-                bb = createBigBang(options, target, aUniverse, analysisExecutor, watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
+                bb = createBigBang(options, target, aUniverse, analysisExecutor, loader.watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
                                 annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders);
                 aUniverse.setBigBang(bb);
 

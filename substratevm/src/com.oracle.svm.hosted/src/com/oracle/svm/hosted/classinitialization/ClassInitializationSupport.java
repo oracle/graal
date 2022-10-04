@@ -170,6 +170,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         try {
             Unsafe.getUnsafe().ensureClassInitialized(clazz);
+            loader.watchdog.recordActivity();
             return InitKind.BUILD_TIME;
         } catch (NoClassDefFoundError ex) {
             if (allowErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
