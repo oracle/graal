@@ -352,27 +352,27 @@ public class CompilationResultBuilder {
     /**
      * Helper to mark invalid deoptimization state as needed.
      */
-    private void recordIfInvalidForDeoptimization(LIRFrameState info, Call infopoint) {
+    private void recordIfCallInvalidForDeoptimization(LIRFrameState info, Call call) {
         if (info != null && !info.validForDeoptimization && info.hasDebugInfo()) {
             DebugInfo debugInfo = info.debugInfo();
             assert debugInfo != null;
             if (debugInfo.hasFrame()) {
-                compilationResult.recordInvalidForDeoptimization(infopoint);
+                compilationResult.recordCallInvalidForDeoptimization(call);
             }
         }
     }
 
     public Call recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        Call infopoint = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
-        recordIfInvalidForDeoptimization(info, infopoint);
-        return infopoint;
+        Call call = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        recordIfCallInvalidForDeoptimization(info, call);
+        return call;
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         Call infopoint = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
-        recordIfInvalidForDeoptimization(info, infopoint);
+        recordIfCallInvalidForDeoptimization(info, infopoint);
     }
 
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {

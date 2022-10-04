@@ -638,7 +638,7 @@ public abstract class NativeImageCodeCache {
                      * During call entrypoints must always be linked to a call.
                      */
                     VMError.guarantee(infopoint instanceof Call, String.format("Unexpected infopoint type: %s\nFrame: %s", infopoint, topFrame));
-                    return compilation.isValidDeoptimizationState(infopoint);
+                    return compilation.isValidCallDeoptimizationState((Call) infopoint);
                 } else {
                     /*
                      * Other deoptimization entrypoints correspond to an DeoptEntryOp.
