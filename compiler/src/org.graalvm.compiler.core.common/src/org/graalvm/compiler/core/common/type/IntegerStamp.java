@@ -139,7 +139,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         assert (mustBeSet & CodeUtil.mask(bits)) == mustBeSet : this;
         assert (mayBeSet & CodeUtil.mask(bits)) == mayBeSet : this;
         // Check for valid masks or the empty encoding
-        assert (mustBeSet & ~mayBeSet) == 0 || (mayBeSet == 0 && mustBeSet == CodeUtil.mask(bits)) : String.format("\u21ca: %016x \u21c8: %016x", mustBeSet, mayBeSet);
+        assert (mustBeSet & ~mayBeSet) == 0 || (mayBeSet == 0 && mustBeSet == CodeUtil.mask(bits)) : String.format("must: %016x may: %016x", mustBeSet, mayBeSet);
         // use ctor param because canBeZero is not set yet
         this.canBeZero = contains(0, canBeZero);
         assert !this.canBeZero || contains(0) : " Stamp " + this + " either has canBeZero set to false or needs to contain 0";
@@ -175,7 +175,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             return createEmptyStamp(bits);
         }
 
-        assert (mustBeSetInput & ~mayBeSetInput) == 0 : String.format("\u21ca: %016x \u21c8: %016x", mustBeSetInput, mayBeSetInput);
+        assert (mustBeSetInput & ~mayBeSetInput) == 0 : String.format("must: %016x may: %016x", mustBeSetInput, mayBeSetInput);
 
         long lowerBoundCurrent = lowerBoundInput;
         long upperBoundCurrent = upperBoundInput;
@@ -264,7 +264,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     private static long minValueForMasks(int bits, long mustBeSet, long mayBeSet) {
         if (significantBit(bits, mayBeSet) == 0) {
             // Value is always positive. Minimum value always positive.
-            assert significantBit(bits, mustBeSet) == 0 : String.format("\u21ca: %016x \u21c8: %016x", mustBeSet, mayBeSet);
+            assert significantBit(bits, mustBeSet) == 0 : String.format("must: %016x may: %016x", mustBeSet, mayBeSet);
             return mustBeSet;
         } else {
             // Value can be positive or negative. Minimum value always negative.
@@ -608,11 +608,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                 str.append(upperBound).append(']');
             }
             if (mustBeSet != 0) {
-                str.append(" \u21ca");
+                str.append(" must:");
                 new Formatter(str).format("%016x", mustBeSet);
             }
             if (mayBeSet != CodeUtil.mask(getBits())) {
-                str.append(" \u21c8");
+                str.append(" may:");
                 new Formatter(str).format("%016x", mayBeSet);
             }
             if (!canBeZero && contains(0, true)) {
