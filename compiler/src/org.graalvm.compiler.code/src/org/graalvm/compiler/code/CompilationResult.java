@@ -218,7 +218,7 @@ public class CompilationResult {
 
     private final DataSection dataSection = new DataSection();
 
-    private final EconomicSet<Infopoint> invalidDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+    private final EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     private final List<Infopoint> infopoints = new ArrayList<>();
     private final List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
@@ -318,7 +318,7 @@ public class CompilationResult {
                 Objects.equals(this.dataSection, that.dataSection) &&
                 Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
                 Objects.equals(this.dataPatches, that.dataPatches) &&
-                Objects.equals(this.invalidDeoptimizationStates, that.invalidDeoptimizationStates) &&
+                Objects.equals(this.invalidCallDeoptimizationStates, that.invalidCallDeoptimizationStates) &&
                 Objects.equals(this.infopoints, that.infopoints) &&
                 Objects.equals(this.marks,  that.marks) &&
                 Arrays.equals(this.assumptions, that.assumptions) &&
@@ -605,14 +605,14 @@ public class CompilationResult {
     }
 
     /**
-     * Mark that the provided infopoint cannot be used as a deoptimization entrypoint.
+     * Mark that the provided call infopoint cannot be used as a deoptimization entrypoint.
      *
      * This distinction is necessary as native-image, in addition to deoptimization support, uses
-     * infopoints for stack traces and debugging information.
+     * call infopoints for stack traces and debugging information.
      */
-    public void recordInvalidForDeoptimization(Infopoint infopoint) {
+    public void recordCallInvalidForDeoptimization(Call call) {
         checkOpen();
-        invalidDeoptimizationStates.add(infopoint);
+        invalidCallDeoptimizationStates.add(call);
     }
 
     public void recordSourceMapping(int startOffset, int endOffset, NodeSourcePosition sourcePosition) {
@@ -684,8 +684,8 @@ public class CompilationResult {
         annotations.add(annotation);
     }
 
-    public boolean isValidDeoptimizationState(Infopoint infopoint) {
-        return infopoint != null && !invalidDeoptimizationStates.contains(infopoint);
+    public boolean isValidCallDeoptimizationState(Call call) {
+        return call != null && !invalidCallDeoptimizationStates.contains(call);
     }
 
     /**
