@@ -86,15 +86,19 @@ public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvid
     }
 
     @Override
-    public String uniqueShortName(ClassLoader classLoader) {
+    public String uniqueShortLoaderName(ClassLoader classLoader) {
         return SubstrateUtil.classLoaderNameAndId(classLoader);
     }
 
     public static class UseDefault implements BooleanSupplier {
 
+        public static boolean useDefaultProvider() {
+            return !(OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0);
+        }
+
         @Override
         public boolean getAsBoolean() {
-            return !(OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0);
+            return useDefaultProvider();
         }
     }
 }
