@@ -179,13 +179,13 @@ The support is not available by default, but you can quickly add it to GraalVM w
 gu install python
 ```
 
-It installs the `graalpython` launcher. Check the version, and you can already run Python programs:
+It installs the `graalpy` launcher. Check the version, and you can already run Python programs:
 ```shell
-$GRAALVM_HOME/bin/graalpython --version
+$GRAALVM_HOME/bin/graalpy --version
 ```
 
 ```shell
-$GRAALVM_HOME/bin/graalpython
+$GRAALVM_HOME/bin/graalpy
 ...
 >>> 1 + 2
 3
@@ -294,7 +294,6 @@ gu install native-image
 
 The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
 ```java
-// HelloWorld.java
 public class HelloWorld {
   public static void main(String[] args) {
     System.out.println("Hello, World!");

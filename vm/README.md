@@ -81,7 +81,7 @@ Note that the suites listed in:
 Installable components for the Graal Updater (`gu`) are built alongside the GraalVM for languages other than JS.
 For example:
 ```bash
-$ env FASTR_RELEASE=true mx --dynamicimports fastr,truffleruby,graalpython,/substratevm build
+$ env FASTR_RELEASE=true mx --dynamicimports fastr,truffleruby,graalpy,/substratevm build
 ```
 creates:
 - a GraalVM image which includes the base CE components plus FastR, TruffleRuby, and Graal.Python
