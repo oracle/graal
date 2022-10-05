@@ -70,39 +70,33 @@ public class LoadArgumentInstruction extends Instruction {
         b.declaration("Object", "value", createGetValue(vars));
 
         if (ctx.hasBoxingElimination()) {
-            b.startSwitch().string("primitiveTag").end().startBlock();
-            for (FrameKind kind : ctx.getBoxingKinds()) {
-                b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
-                if (kind == FrameKind.OBJECT) {
-                    b.startStatement().startCall("UFA", "unsafeSetObject");
-                    b.variable(vars.stackFrame);
-                    b.variable(vars.sp);
-                    b.string("value");
-                    b.end(2);
-                } else {
-                    b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
-                    // {
-                    b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-                    b.variable(vars.stackFrame);
-                    b.variable(vars.sp);
-                    b.string("(", kind.getTypeName(), ") value");
-                    b.end(2);
-                    // }
-                    b.end().startElseBlock();
-                    // {
-                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                    b.startStatement().startCall("UFA", "unsafeSetObject");
-                    b.variable(vars.stackFrame);
-                    b.variable(vars.sp);
-                    b.string("value");
-                    b.end(2);
-                    // }
-                    b.end();
-                }
-                b.statement("break");
+            FrameKind kind = vars.specializedKind;
+            if (kind == FrameKind.OBJECT) {
+                b.startStatement().startCall("UFA", "unsafeSetObject");
+                b.variable(vars.stackFrame);
+                b.variable(vars.sp);
+                b.string("value");
+                b.end(2);
+            } else {
+                b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
+                // {
+                b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+                b.variable(vars.stackFrame);
+                b.variable(vars.sp);
+                b.string("(", kind.getTypeName(), ") value");
+                b.end(2);
+                // }
+                b.end().startElseBlock();
+                // {
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.startStatement().startCall("UFA", "unsafeSetObject");
+                b.variable(vars.stackFrame);
+                b.variable(vars.sp);
+                b.string("value");
+                b.end(2);
+                // }
                 b.end();
             }
-            b.end();
         } else {
             b.startStatement().startCall("UFA", "unsafeSetObject");
             b.variable(vars.stackFrame);
@@ -119,5 +113,10 @@ public class LoadArgumentInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public boolean splitOnBoxingElimination() {
+        return true;
     }
 }

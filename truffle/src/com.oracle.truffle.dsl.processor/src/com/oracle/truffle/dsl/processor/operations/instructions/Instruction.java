@@ -74,6 +74,8 @@ public abstract class Instruction {
 
         public CodeVariableElement probeNodes;
         public CodeVariableElement tracer;
+
+        public FrameKind specializedKind;
     }
 
     public static class EmitArguments {
@@ -126,7 +128,6 @@ public abstract class Instruction {
 
     private static int addInstructionArgument(List<Object> holder, Object marker) {
         int index = -1;
-
         if (marker != null) {
             index = holder.indexOf(marker);
         }
@@ -372,6 +373,14 @@ public abstract class Instruction {
 
     public int numBranchTargets() {
         return branchTargets.size();
+    }
+
+    public boolean splitOnBoxingElimination() {
+        return false;
+    }
+
+    public boolean hasGeneric() {
+        return false;
     }
 
     public CodeVariableElement opcodeIdField;

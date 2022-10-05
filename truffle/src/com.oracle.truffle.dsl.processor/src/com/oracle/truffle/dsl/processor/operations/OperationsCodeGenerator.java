@@ -363,6 +363,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(short[].class), "_bc")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(Object[].class), "_consts")));
         typOperationNodeImpl.add(children(new CodeVariableElement(arrayOf(types.Node), "_children")));
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(byte[].class), "_localTags")));
+        }
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(arrayOf(typExceptionHandler.asType()), "_handlers")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int[].class), "_conditionProfiles")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxLocals")));
@@ -716,6 +719,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("result._bc = Arrays.copyOf(_bc, _bc.length)");
         b.statement("result._consts = Arrays.copyOf(_consts, _consts.length)");
         b.statement("result._children = Arrays.copyOf(_children, _children.length)");
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            b.statement("result._localTags = Arrays.copyOf(_localTags, _localTags.length)");
+        }
         b.statement("result._handlers = _handlers");
         b.statement("result._conditionProfiles = Arrays.copyOf(_conditionProfiles, _conditionProfiles.length)");
         b.statement("result._maxLocals = _maxLocals");
@@ -749,6 +755,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("result._bc = _bc");
         b.statement("result._consts = _consts");
         b.statement("result._children = _children");
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            b.statement("result._localTags = _localTags");
+        }
         b.statement("result._handlers = _handlers");
         b.statement("result._conditionProfiles = _conditionProfiles");
         b.statement("result._maxLocals = _maxLocals");
@@ -791,6 +800,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.string("(result >> 16) & 0xffff");
         b.string("_consts");
         b.string("_children");
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            b.string("_localTags");
+        }
         b.string("_handlers");
         b.string("_conditionProfiles");
         b.string("_maxLocals");
@@ -1759,6 +1771,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(Object[].class), "$consts"));
         loopMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "$children"));
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            loopMethod.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+        }
         loopMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "maxLocals"));
@@ -2224,6 +2239,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("result._bc = Arrays.copyOf(bc, bci)");
         b.statement("result._consts = constPool.toArray()");
         b.statement("result._children = new Node[numChildNodes]");
+        if (m.getOperationsContext().hasBoxingElimination()) {
+            b.statement("result._localTags = new byte[numLocals]");
+        }
         b.statement("result._handlers = exceptionHandlers.toArray(new ExceptionHandler[0])");
         b.statement("result._conditionProfiles = new int[numConditionProfiles]");
         b.statement("result._maxLocals = numLocals");

@@ -47,6 +47,7 @@ import java.util.Set;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -101,8 +102,10 @@ public class CustomInstruction extends Instruction {
 
     public static final String MARKER_LOCAL_REFS = "LocalSetterRange";
     public static final String MARKER_LOCAL_REF_PREFIX = "LocalSetter_";
+    public static final String MARKER_IMMEDIATEE_PREFIX = "Immediate_";
 
     private int[] localRefs = null;
+    private int[] immediates = null;
 
     protected void initializePops() {
         MethodProperties props = data.getMainProperties();
@@ -125,6 +128,13 @@ public class CustomInstruction extends Instruction {
             localRefs = new int[props.numLocalReferences];
             for (int i = 0; i < props.numLocalReferences; i++) {
                 localRefs[i] = addConstant(MARKER_LOCAL_REF_PREFIX + i, types.OperationLocal);
+            }
+        }
+
+        if (props.immediateTypes.size() > 0) {
+            immediates = new int[props.immediateTypes.size()];
+            for (int i = 0; i < props.immediateTypes.size(); i++) {
+                immediates[i] = addConstant(MARKER_IMMEDIATEE_PREFIX + i, props.immediateTypes.get(i));
             }
         }
     }
@@ -154,16 +164,17 @@ public class CustomInstruction extends Instruction {
         }
     }
 
+    @Override
+    public boolean splitOnBoxingElimination() {
+        return data.getMainProperties().returnsValue;
+    }
+
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
 
-        String exName = getUniqueName() + "_entryPoint" + (uncached ? "_uncached" : "");
+        String exName = getUniqueName() + "_entryPoint_" + (uncached ? "uncached" : ctx.hasBoxingElimination() ? vars.specializedKind : "");
         OperationGeneratorUtils.createHelperMethod(ctx.outerType, exName, () -> {
             CodeExecutableElement el = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), exName);
             el.getParameters().addAll(executeMethods[0].getParameters());
-
-            if (!uncached && ctx.hasBoxingElimination()) {
-                el.addParameter(new CodeVariableElement(context.getType(int.class), "primitiveTag"));
-            }
 
             CodeTreeBuilder b = el.createBuilder();
 
@@ -176,46 +187,30 @@ public class CustomInstruction extends Instruction {
                 }
 
                 if (!uncached && ctx.hasBoxingElimination()) {
-                    boolean needsUnexpectedResult = false;
-                    for (ExecutableElement exm : executeMethods) {
-                        if (exm != null && exm.getThrownTypes().size() > 0) {
-                            needsUnexpectedResult = true;
-                            break;
-                        }
-                    }
+                    int i = ctx.getBoxingKinds().indexOf(vars.specializedKind);
+
+                    boolean needsUnexpectedResult = executeMethods[i] != null && executeMethods[i].getThrownTypes().size() > 0;
 
                     if (needsUnexpectedResult) {
                         b.startTryBlock();
                     }
 
-                    b.startSwitch().string("primitiveTag").end().startBlock();
+                    if (executeMethods[i] != null) {
+                        b.startStatement().startCall("UFA", "unsafeSet" + vars.specializedKind.getFrameName());
 
-                    int i = 0;
-                    for (FrameKind kind : ctx.getBoxingKinds()) {
-                        if (executeMethods[i] != null) {
-                            b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
+                        b.variable(vars.stackFrame);
+                        b.string("destSlot");
 
-                            b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+                        b.startStaticCall(executeMethods[i]);
+                        b.variables(executeMethods[i].getParameters());
+                        b.end();
 
-                            b.variable(vars.stackFrame);
-                            b.string("destSlot");
+                        b.end(2);
 
-                            b.startStaticCall(executeMethods[i]);
-                            b.variables(executeMethods[i].getParameters());
-                            b.end();
-
-                            b.end(2);
-
-                            b.returnStatement();
-                            b.end();
-                        }
-
-                        i++;
+                        b.returnStatement();
+                    } else {
+                        b.tree(GeneratorUtils.createShouldNotReachHere());
                     }
-
-                    b.caseDefault().startCaseBlock();
-                    b.tree(GeneratorUtils.createShouldNotReachHere());
-                    b.end();
 
                     b.end();
 
@@ -305,11 +300,6 @@ public class CustomInstruction extends Instruction {
         if (isVariadic()) {
             b.string("numVariadics");
         }
-
-        if (!uncached && ctx.hasBoxingElimination()) {
-            b.string("primitiveTag");
-        }
-
         b.end(2);
 
         b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues);

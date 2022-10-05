@@ -43,7 +43,7 @@ package com.oracle.truffle.dsl.processor.operations;
 public class OperationGeneratorFlags {
 
     public static final boolean LOG_LOCAL_STORES = false;
-    public static final boolean LOG_LOCAL_STORES_SPEC = false;
+    public static final boolean LOG_LOCAL_STORES_SPEC = true;
     public static final boolean LOG_LOCAL_LOADS = LOG_LOCAL_STORES;
     public static final boolean LOG_LOCAL_LOADS_SPEC = LOG_LOCAL_STORES_SPEC;
 

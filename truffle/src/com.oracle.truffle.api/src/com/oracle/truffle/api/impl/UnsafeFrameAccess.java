@@ -57,6 +57,10 @@ public abstract class UnsafeFrameAccess {
 
     public abstract void unsafeShortArrayWrite(short[] arr, int index, short value);
 
+    public abstract byte unsafeByteArrayRead(byte[] arr, int index);
+
+    public abstract void unsafeByteArrayWrite(byte[] arr, int index, byte value);
+
     public abstract int unsafeIntArrayRead(int[] arr, int index);
 
     public abstract void unsafeIntArrayWrite(int[] arr, int index, int value);
@@ -116,6 +120,196 @@ public abstract class UnsafeFrameAccess {
     UnsafeFrameAccess() {
     }
 
+    private static final class ImplSafe extends UnsafeFrameAccess {
+
+        @Override
+        public short unsafeShortArrayRead(short[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public void unsafeShortArrayWrite(short[] arr, int index, short value) {
+            arr[index] = value;
+        }
+
+        @Override
+        public byte unsafeByteArrayRead(byte[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public void unsafeByteArrayWrite(byte[] arr, int index, byte value) {
+            arr[index] = value;
+        }
+
+        @Override
+        public int unsafeIntArrayRead(int[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public void unsafeIntArrayWrite(int[] arr, int index, int value) {
+            arr[index] = value;
+        }
+
+        @Override
+        public <T> T unsafeObjectArrayRead(T[] arr, int index) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        @Override
+        public byte unsafeGetTag(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public Object unsafeGetObject(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        @Override
+        public boolean unsafeGetBoolean(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public int unsafeGetInt(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public long unsafeGetLong(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public double unsafeGetDouble(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public Object unsafeUncheckedGetObject(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        @Override
+        public boolean unsafeUncheckedGetBoolean(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public int unsafeUncheckedGetInt(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public long unsafeUncheckedGetLong(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public double unsafeUncheckedGetDouble(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public void unsafeSetObject(Frame frame, int slot, Object value) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeSetBoolean(Frame frame, int slot, boolean value) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeSetInt(Frame frame, int slot, int value) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeSetLong(Frame frame, int slot, long value) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeSetDouble(Frame frame, int slot, double value) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public boolean unsafeIsObject(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean unsafeIsBoolean(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean unsafeIsInt(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean unsafeIsLong(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public boolean unsafeIsDouble(Frame frame, int slot) {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public void unsafeCopy(Frame frame, int srcSlot, int dstSlot) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeCopyTo(Frame srcFrame, int srcOffset, Frame dstFrame, int dstOffset, int length) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeCopyObject(Frame frame, int srcSlot, int dstSlot) {
+            // TODO Auto-generated method stub
+
+        }
+
+        @Override
+        public void unsafeCopyPrimitive(Frame frame, int srcSlot, int dstSlot) {
+            // TODO Auto-generated method stub
+
+        }
+
+    }
+
     private static final class Impl extends UnsafeFrameAccess {
 
         @Override
@@ -126,6 +320,16 @@ public abstract class UnsafeFrameAccess {
         @Override
         public void unsafeShortArrayWrite(short[] arr, int index, short value) {
             FrameWithoutBoxing.UNSAFE.putShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE, value);
+        }
+
+        @Override
+        public byte unsafeByteArrayRead(byte[] arr, int index) {
+            return FrameWithoutBoxing.UNSAFE.getByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        }
+
+        @Override
+        public void unsafeByteArrayWrite(byte[] arr, int index, byte value) {
+            FrameWithoutBoxing.UNSAFE.putShort(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
         }
 
         @Override
@@ -272,7 +476,6 @@ public abstract class UnsafeFrameAccess {
         public void unsafeCopyPrimitive(Frame frame, int srcSlot, int dstSlot) {
             castFrame(frame).unsafeCopyPrimitive(srcSlot, dstSlot);
         }
-
     }
 
 }

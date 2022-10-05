@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -52,7 +53,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -69,26 +70,10 @@ public class SingleOperationData extends Template {
     public enum ParameterKind {
         STACK_VALUE,
         VARIADIC,
+        IMMEDIATE,
         VIRTUAL_FRAME,
         LOCAL_SETTER,
         LOCAL_SETTER_ARRAY;
-
-        public TypeMirror getParameterType(ProcessorContext context) {
-            switch (this) {
-                case STACK_VALUE:
-                    return context.getType(Object.class);
-                case VARIADIC:
-                    return new ArrayCodeTypeMirror(context.getType(Object.class));
-                case VIRTUAL_FRAME:
-                    return context.getTypes().VirtualFrame;
-                case LOCAL_SETTER:
-                    return context.getTypes().LocalSetter;
-                case LOCAL_SETTER_ARRAY:
-                    return new ArrayCodeTypeMirror(context.getTypes().LocalSetter);
-                default:
-                    throw new IllegalArgumentException("" + this);
-            }
-        }
 
         public boolean isStackValue() {
             switch (this) {
@@ -96,6 +81,7 @@ public class SingleOperationData extends Template {
                 case VARIADIC:
                     return true;
                 case VIRTUAL_FRAME:
+                case IMMEDIATE:
                 case LOCAL_SETTER:
                 case LOCAL_SETTER_ARRAY:
                     return false;
@@ -112,10 +98,12 @@ public class SingleOperationData extends Template {
         public final boolean returnsValue;
         public final int numStackValues;
         public final int numLocalReferences;
+        public final List<TypeMirror> immediateTypes;
 
-        public MethodProperties(ExecutableElement element, List<ParameterKind> parameters, boolean isVariadic, boolean returnsValue, int numLocalReferences) {
+        public MethodProperties(ExecutableElement element, List<ParameterKind> parameters, List<TypeMirror> immediateTypes, boolean isVariadic, boolean returnsValue, int numLocalReferences) {
             this.element = element;
             this.parameters = parameters;
+            this.immediateTypes = immediateTypes;
             int stackValues = 0;
             for (ParameterKind param : parameters) {
                 if (param.isStackValue()) {
@@ -135,6 +123,18 @@ public class SingleOperationData extends Template {
 
             if (other.isVariadic != isVariadic) {
                 data.addError(element, "All methods must (not) be variadic");
+            }
+
+            if (other.immediateTypes.size() != immediateTypes.size()) {
+                data.addError(element, "All methods must have same number of immediate arguments");
+            } else {
+                for (int i = 0; i < immediateTypes.size(); i++) {
+                    TypeMirror type1 = other.immediateTypes.get(i);
+                    TypeMirror type2 = immediateTypes.get(i);
+                    if (!ElementUtils.typeEquals(type1, type2)) {
+                        data.addError(element, "Immediate arguments %d have differing types: %s and %s", type1, type2);
+                    }
+                }
             }
 
             if (other.returnsValue != returnsValue) {

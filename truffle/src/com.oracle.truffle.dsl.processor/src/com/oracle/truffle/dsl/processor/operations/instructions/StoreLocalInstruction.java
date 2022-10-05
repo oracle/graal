@@ -49,6 +49,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
@@ -74,8 +75,8 @@ public class StoreLocalInstruction extends Instruction {
                 ex.addParameter(vars.bc);
                 ex.addParameter(vars.bci);
                 ex.addParameter(vars.sp);
-                ex.addParameter(new CodeVariableElement(types.FrameDescriptor, "fd"));
                 if (ctx.hasBoxingElimination()) {
+                    ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localTags"));
                     ex.addParameter(new CodeVariableElement(context.getType(int.class), "primitiveTag"));
                 }
                 ex.addParameter(new CodeVariableElement(context.getType(int.class), "localIdx"));
@@ -89,7 +90,7 @@ public class StoreLocalInstruction extends Instruction {
                 b.string("sourceSlot");
                 b.end(2);
 
-                b.declaration(types.FrameSlotKind, "curKind", "fd.getSlotKind(localIdx)");
+                b.declaration("byte", "curKind", "UFA.unsafeByteArrayRead(localTags, localIdx)");
 
                 b.statement("// System.err.printf(\"primitiveTag=%d value=%s %s curKind=%s tag=%s%n\", primitiveTag, value.getClass(), value, curKind, $frame.getTag(sourceSlot))");
 
@@ -98,12 +99,16 @@ public class StoreLocalInstruction extends Instruction {
 
                     b.startIf();
                     b.string("(primitiveTag == 0 || primitiveTag == " + primKind.toOrdinal() + ")");
-                    b.string(" && (curKind == FrameSlotKind.Illegal || curKind == FrameSlotKind." + primKind.getFrameName() + ")");
+                    b.string(" && (curKind == 0 || curKind == " + primKind.toOrdinal() + ")");
                     b.end().startBlock();
 
                     b.startIf().string("value instanceof ", primKind.getTypeNameBoxed()).end().startBlock();
 
-                    createSetFrameDescriptorKind(vars, b, primKind.getFrameName());
+                    if (OperationGeneratorFlags.LOG_LOCAL_STORES_SPEC) {
+                        b.statement("System.err.printf(\" [store-spec] local=%d value=%s kind=%d->" + primKind + "%n\", localIdx, $frame.getValue(sourceSlot), curKind)");
+                    }
+
+                    createSetFrameDescriptorKind(vars, b, primKind.toOrdinal());
                     createSetPrimitiveTag(vars, b, primKind.toOrdinal());
                     createBoxingEliminateChild(vars, b, primKind.toOrdinal());
 
@@ -120,7 +125,11 @@ public class StoreLocalInstruction extends Instruction {
                     b.end();
                 }
 
-                createSetFrameDescriptorKind(vars, b, "Object");
+                if (OperationGeneratorFlags.LOG_LOCAL_STORES_SPEC) {
+                    b.statement("System.err.printf(\" [store-spec] local=%d value=%s kind=%d->OBJECT%n\", localIdx, $frame.getValue(sourceSlot), curKind)");
+                }
+
+                createSetFrameDescriptorKind(vars, b, "7 /* generic */");
                 createSetPrimitiveTag(vars, b, "7 /* generic */");
                 createBoxingEliminateChild(vars, b, "0 /* OBJECT */");
 
@@ -134,8 +143,9 @@ public class StoreLocalInstruction extends Instruction {
             });
         }
 
-        OperationGeneratorUtils.createHelperMethod(ctx.outerType, "do_storeLocal", () -> {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(void.class), "do_storeLocal");
+        String helperName = ctx.hasBoxingElimination() ? "do_storeLocal_" + vars.specializedKind : "do_storeLocal";
+        OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(void.class), helperName);
 
             ex.addParameter(vars.stackFrame);
             if (ctx.getData().enableYield) {
@@ -145,7 +155,7 @@ public class StoreLocalInstruction extends Instruction {
             ex.addParameter(vars.bci);
             ex.addParameter(vars.sp);
             if (ctx.hasBoxingElimination()) {
-                ex.addParameter(new CodeVariableElement(context.getType(int.class), "primitiveTag"));
+                ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localTags"));
             }
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "localIdx"));
 
@@ -156,81 +166,71 @@ public class StoreLocalInstruction extends Instruction {
             if (!ctx.hasBoxingElimination()) {
                 createCopyObject(vars, b);
             } else {
-                // if Frame ever supports an 8th primitive type, we will need more bits here
-                b.declaration(types.FrameDescriptor, "fd", vars.localFrame.getName() + ".getFrameDescriptor()");
-                b.declaration(types.FrameSlotKind, "curKind", "fd.getSlotKind(localIdx)");
-                b.startSwitch().string("primitiveTag").end().startBlock();
-                for (FrameKind kind : ctx.getBoxingKinds()) {
-                    b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
+                b.declaration("byte", "curKind", "UFA.unsafeByteArrayRead(localTags, localIdx)");
+                FrameKind kind = vars.specializedKind;
+                if (kind == FrameKind.OBJECT) {
+                    // this is the uninitialized case
+                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                    createCallSpecialize(vars, b, FrameKind.OBJECT);
+                } else if (kind != null) {
+                    // primitive case
 
-                    if (kind == FrameKind.OBJECT) {
-                        // this is the uninitialized case
-                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                        createCallSpecialize(vars, b);
-                    } else {
-                        // primitive case
+                    b.startIf().string("curKind == " + kind.toOrdinal()).end().startBlock();
 
-                        b.startIf().string("curKind == FrameSlotKind." + kind.getFrameName()).end().startBlock();
+                    b.startTryBlock();
 
-                        b.startTryBlock();
+                    b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
+                    b.variable(vars.localFrame);
+                    b.string("localIdx");
+                    b.startCall("UFA", "unsafeGet" + kind.getFrameName());
+                    b.variable(vars.stackFrame);
+                    b.string("sourceSlot");
+                    b.end();
+                    b.end(2);
 
-                        b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-                        b.variable(vars.localFrame);
-                        b.string("localIdx");
-                        b.startCall("UFA", "unsafeGet" + kind.getFrameName());
-                        b.variable(vars.stackFrame);
-                        b.string("sourceSlot");
-                        b.end();
-                        b.end(2);
-
-                        b.returnStatement();
-
-                        b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
-                        b.end(); // try catch
-
-                        b.end(); // if
-
-                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                        createCallSpecialize(vars, b);
+                    if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
+                        b.statement("System.err.printf(\" [store] loacl=%d value=%s kind=" + kind + "%n\", localIdx, $frame.getValue(sourceSlot))");
                     }
 
-                    b.statement("break");
+                    b.returnStatement();
+
+                    b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
+                    b.end(); // try catch
+
+                    b.end(); // if
+
+                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                    createCallSpecialize(vars, b, kind);
+                } else {
+                    // generic case
+                    b.startTryBlock();
+
+                    b.startStatement().startCall("UFA", "unsafeSetObject");
+                    b.variable(vars.localFrame);
+                    b.string("localIdx");
+                    b.startCall("UFA", "unsafeGetObject");
+                    b.variable(vars.stackFrame);
+                    b.string("sourceSlot");
+                    b.end();
+                    b.end(2);
+
+                    if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
+                        b.statement("System.err.printf(\" [store] loacl=%d value=%s kind=OBJECT%n\", localIdx, $frame.getValue(sourceSlot))");
+                    }
+
+                    b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
+
+                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                    b.startStatement().startCall("UFA", "unsafeSetObject");
+                    b.variable(vars.localFrame);
+                    b.string("localIdx");
+                    b.startCall(vars.stackFrame, "getValue");
+                    b.string("sourceSlot");
+                    b.end();
+                    b.end(2);
+
                     b.end();
                 }
-
-                b.startCase().string("7 /* generic */").end().startCaseBlock();
-
-                b.startTryBlock();
-
-                b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.variable(vars.localFrame);
-                b.string("localIdx");
-                b.startCall("UFA", "unsafeGetObject");
-                b.variable(vars.stackFrame);
-                b.string("sourceSlot");
-                b.end();
-                b.end(2);
-
-                b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
-
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.variable(vars.localFrame);
-                b.string("localIdx");
-                b.startCall(vars.stackFrame, "getValue");
-                b.string("sourceSlot");
-                b.end();
-                b.end(2);
-
-                b.end();
-                b.statement("break");
-                b.end();
-
-                b.caseDefault().startCaseBlock();
-                b.tree(GeneratorUtils.createShouldNotReachHere());
-                b.end();
-
-                b.end();
             }
 
             return ex;
@@ -240,7 +240,7 @@ public class StoreLocalInstruction extends Instruction {
 
         b.startAssign("int localIdx").tree(createLocalIndex(vars, 0, false)).end();
 
-        b.startStatement().startCall("do_storeLocal");
+        b.startStatement().startCall(helperName);
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
             b.variable(vars.localFrame);
@@ -249,7 +249,7 @@ public class StoreLocalInstruction extends Instruction {
         b.variable(vars.bci);
         b.variable(vars.sp);
         if (ctx.hasBoxingElimination()) {
-            b.string("primitiveTag");
+            b.string("$localTags");
         }
         b.string("localIdx");
         b.end(2);
@@ -278,7 +278,7 @@ public class StoreLocalInstruction extends Instruction {
         b.end(2);
     }
 
-    private void createCallSpecialize(ExecutionVariables vars, CodeTreeBuilder b) {
+    private void createCallSpecialize(ExecutionVariables vars, CodeTreeBuilder b, FrameKind kind) {
         b.startStatement().startCall("do_storeLocalSpecialize");
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
@@ -287,9 +287,9 @@ public class StoreLocalInstruction extends Instruction {
         b.variable(vars.bc);
         b.variable(vars.bci);
         b.variable(vars.sp);
-        b.string("fd");
+        b.string("localTags");
         if (ctx.hasBoxingElimination()) {
-            b.string("primitiveTag");
+            b.string(kind.toOrdinal());
         }
         b.string("localIdx");
         b.string("sourceSlot");
@@ -297,10 +297,11 @@ public class StoreLocalInstruction extends Instruction {
     }
 
     @SuppressWarnings("unused")
-    private void createSetFrameDescriptorKind(ExecutionVariables vars, CodeTreeBuilder b, String kind) {
-        b.startStatement().startCall("fd", "setSlotKind");
+    private static void createSetFrameDescriptorKind(ExecutionVariables vars, CodeTreeBuilder b, String kind) {
+        b.startStatement().startCall("UFA", "unsafeByteArrayWrite");
+        b.string("localTags");
         b.string("localIdx");
-        b.staticReference(types.FrameSlotKind, kind);
+        b.string("(byte) " + kind);
         b.end(2);
     }
 
@@ -320,5 +321,15 @@ public class StoreLocalInstruction extends Instruction {
     @Override
     public boolean neverInUncached() {
         return false;
+    }
+
+    @Override
+    public boolean splitOnBoxingElimination() {
+        return true;
+    }
+
+    @Override
+    public boolean hasGeneric() {
+        return true;
     }
 }

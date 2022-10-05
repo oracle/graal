@@ -63,43 +63,28 @@ public class LoadConstantInstruction extends Instruction {
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
 
-        OperationGeneratorUtils.createHelperMethod(ctx.outerType, "do_loadConstantObject", () -> {
+        String helperName = "do_loadConstant_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
+
+        OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
             CodeExecutableElement metImpl = new CodeExecutableElement(
                             EnumSet.of(Modifier.PRIVATE, Modifier.STATIC),
                             context.getType(void.class),
-                            "do_loadConstantObject");
+                            helperName);
 
             metImpl.addParameter(vars.stackFrame);
             metImpl.addParameter(vars.bc);
             metImpl.addParameter(vars.bci);
             metImpl.addParameter(vars.sp);
             metImpl.addParameter(vars.consts);
-            if (ctx.hasBoxingElimination()) {
-                metImpl.addParameter(new CodeVariableElement(context.getType(int.class), "primitiveTag"));
-            }
 
             CodeTreeBuilder b = metImpl.getBuilder();
 
             if (ctx.hasBoxingElimination()) {
-                b.startSwitch().string("primitiveTag").end().startBlock();
-
-                for (FrameKind kind : ctx.getBoxingKinds()) {
-                    b.startCase().string(kind.toOrdinal()).end().startCaseBlock();
-
-                    b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-                    b.variable(vars.stackFrame);
-                    b.variable(vars.sp);
-                    b.tree(createGetArgument(vars, kind));
-                    b.end(2);
-
-                    b.statement("break");
-                    b.end();
-                }
-
-                b.caseDefault().startCaseBlock();
-                b.tree(GeneratorUtils.createShouldNotReachHere());
-                b.end();
-
+                b.startStatement().startCall("UFA", "unsafeSet" + vars.specializedKind.getFrameName());
+                b.variable(vars.stackFrame);
+                b.variable(vars.sp);
+                b.tree(createGetArgument(vars, vars.specializedKind));
+                b.end(2);
                 b.end();
             } else {
                 b.startStatement().startCall("UFA", "unsafeSetObject");
@@ -113,15 +98,12 @@ public class LoadConstantInstruction extends Instruction {
         });
 
         CodeTreeBuilder bOuter = CodeTreeBuilder.createBuilder();
-        bOuter.startStatement().startCall("do_loadConstantObject");
+        bOuter.startStatement().startCall(helperName);
         bOuter.variable(vars.stackFrame);
         bOuter.variable(vars.bc);
         bOuter.variable(vars.bci);
         bOuter.variable(vars.sp);
         bOuter.variable(vars.consts);
-        if (ctx.hasBoxingElimination()) {
-            bOuter.string("primitiveTag");
-        }
         bOuter.end(2);
 
         bOuter.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
@@ -147,5 +129,10 @@ public class LoadConstantInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public boolean splitOnBoxingElimination() {
+        return true;
     }
 }

@@ -477,6 +477,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             return createArrayReference(frameState, CustomInstruction.MARKER_LOCAL_REF_PREFIX + execution.getName().substring(9), true, types.LocalSetter, false, false);
         }
 
+        if (execution.getName().startsWith("$immediate")) {
+            int index = Integer.parseInt(execution.getName().substring(10));
+            return createArrayReference(frameState, CustomInstruction.MARKER_IMMEDIATEE_PREFIX + index, true, data.getMainProperties().immediateTypes.get(index), false, false);
+        }
+
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (execution.getName().equals("$variadicChild")) {

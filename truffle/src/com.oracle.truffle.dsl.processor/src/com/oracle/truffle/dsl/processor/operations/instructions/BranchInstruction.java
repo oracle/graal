@@ -110,28 +110,28 @@ public class BranchInstruction extends Instruction {
 
                 b.statement("loopCounter.count = 0");
 
-                b.end(); // }
-            }
+                if (TRY_OSR) {
+                    b.startIf();
+                    b.tree(GeneratorUtils.createInInterpreter());
+                    b.string(" && ");
+                    b.startStaticCall(typeBytecodeOsrNode, "pollOSRBackEdge").string("$this").end();
+                    b.end().startBlock(); // {
+                    b.startAssign("Object osrResult").startStaticCall(typeBytecodeOsrNode, "tryOSR");
+                    b.string("$this");
+                    b.string("($sp << 16) | targetBci");
+                    b.variable(vars.localFrame);
+                    b.string("null");
+                    b.variable(vars.stackFrame);
+                    b.end(2);
 
-            if (TRY_OSR) {
-                b.startIf();
-                b.tree(GeneratorUtils.createInInterpreter());
-                b.string(" && ");
-                b.startStaticCall(typeBytecodeOsrNode, "pollOSRBackEdge").string("$this").end();
-                b.end().startBlock(); // {
-                b.startAssign("Object osrResult").startStaticCall(typeBytecodeOsrNode, "tryOSR");
-                b.string("$this");
-                b.string("($sp << 16) | targetBci");
-                b.variable(vars.localFrame);
-                b.string("null");
-                b.variable(vars.stackFrame);
-                b.end(2);
+                    b.startIf().string("osrResult != null").end().startBlock(); // {
+                    // todo: check if this will overwrite a local in reused frames
+                    b.startStatement().variable(vars.stackFrame).string(".setObject(0, osrResult)").end();
+                    b.startReturn().string("0x0000ffff").end();
+                    b.end(); // }
 
-                b.startIf().string("osrResult != null").end().startBlock(); // {
-                // todo: check if this will overwrite a local in reused frames
-                b.startStatement().variable(vars.stackFrame).string(".setObject(0, osrResult)").end();
-                b.startReturn().string("0x0000ffff").end();
-                b.end(); // }
+                    b.end(); // }
+                }
 
                 b.end(); // }
             }

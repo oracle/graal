@@ -71,6 +71,8 @@ import com.oracle.truffle.api.operation.test.bml.BMOperationRootNodeGen.Builder;
 @State(Scope.Benchmark)
 public class BenmarkSimple extends BaseBenchmark {
 
+    private static final int TOTAL_ITERATIONS = 5000;
+
     private static final String NAME_TEST_LOOP = "simple:test-loop";
     private static final String NAME_TEST_LOOP_NO_BE = "simple:test-loop-no-be";
     private static final String NAME_TEST_LOOP_QUICKEN = "simple:test-loop-quicken";
@@ -104,7 +106,7 @@ public class BenmarkSimple extends BaseBenchmark {
                     // while (i < 5000) {
                     /* while_0_start: */
                     /* 10 */ OP_LD_LOC, LOC_I,
-                    /* 12 */ OP_CONST, 0, 5000,
+                    /* 12 */ OP_CONST, 0, TOTAL_ITERATIONS,
                     /* 15 */ OP_LESS,
                     /* 16 */ OP_JUMP_FALSE, 83, // while_0_end
 
@@ -247,7 +249,7 @@ public class BenmarkSimple extends BaseBenchmark {
                             // sum = 0
                             StoreLocalNodeGen.create(sumLoc, ConstNodeGen.create(0)),
                             // while (i < 5000) {
-                            WhileNode.create(LessNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(5000)), BlockNode.create(
+                            WhileNode.create(LessNodeGen.create(LoadLocalNodeGen.create(iLoc), ConstNodeGen.create(TOTAL_ITERATIONS)), BlockNode.create(
                                             // j = 0
                                             StoreLocalNodeGen.create(jLoc, ConstNodeGen.create(0)),
                                             // while (j < i) {
@@ -354,11 +356,11 @@ public class BenmarkSimple extends BaseBenchmark {
         b.emitConstObject(0);
         b.endStoreLocal();
 
-        // while (i < 5000) {
+        // while (i < TOTAL_ITERATIONS) {
         b.beginWhile();
         b.beginLess();
         b.emitLoadLocal(iLoc);
-        b.emitConstObject(5000);
+        b.emitConstObject(TOTAL_ITERATIONS);
         b.endLess();
         b.beginBlock();
 
@@ -509,7 +511,7 @@ public class BenmarkSimple extends BaseBenchmark {
 @Fork(BaseBenchmark.FORKS)
 class BaseBenchmark {
     public static final int MEASUREMENT_ITERATIONS = 10;
-    public static final int WARMUP_ITERATIONS = 20;
+    public static final int WARMUP_ITERATIONS = 10;
     public static final int ITERATION_TIME = 1;
     public static final int FORKS = 1;
 }

@@ -245,6 +245,8 @@ public class OperationsBytecodeCodeGenerator {
         CodeExecutableElement mContinueAt = GeneratorUtils.overrideImplement(baseType, "continueAt");
         createExplodeLoop(mContinueAt);
 
+        var ctx = m.getOperationsContext();
+
         ExecutionVariables vars = new ExecutionVariables();
         populateVariables(vars, m);
 
@@ -292,11 +294,6 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci));
 
-        if (m.getOperationsContext().hasBoxingElimination()) {
-            b.declaration("short", "primitiveTag", isUncached ? "0" : "(short)((curOpcode >> 13) & 0x0007)");
-            b.startAssign(varCurOpcode).string("(short) (").variable(varCurOpcode).string(" & 0x1fff)").end();
-        }
-
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
         b.startTryBlock();
@@ -322,28 +319,67 @@ public class OperationsBytecodeCodeGenerator {
                 b.lineComment(line);
             }
 
-            b.startCase().variable(op.opcodeIdField).end();
-            b.startBlock();
+            Runnable createBody = () -> {
+                if (m.isTracing()) {
+                    b.startStatement().startCall(varTracer, "traceInstruction");
+                    b.variable(vars.bci);
+                    b.variable(op.opcodeIdField);
+                    b.end(2);
+                }
 
-            if (m.isTracing()) {
-                b.startStatement().startCall(varTracer, "traceInstruction");
-                b.variable(vars.bci);
-                b.variable(op.opcodeIdField);
-                b.end(2);
-            }
+                if (isUncached) {
+                    b.tree(op.createExecuteUncachedCode(vars));
+                } else {
+                    b.tree(op.createExecuteCode(vars));
+                }
 
-            if (isUncached) {
-                b.tree(op.createExecuteUncachedCode(vars));
+                if (!op.isBranchInstruction()) {
+                    b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
+                    b.statement("continue loop");
+                }
+            };
+
+            if (ctx.hasBoxingElimination() && !isUncached) {
+                if (op.splitOnBoxingElimination()) {
+                    for (FrameKind kind : ctx.getBoxingKinds()) {
+                        b.startCase().variable(op.opcodeIdField).string(" | (short) (", kind.toOrdinal(), " << 13)").end();
+                        b.startBlock();
+                        vars.specializedKind = kind;
+                        createBody.run();
+                        vars.specializedKind = null;
+                        b.end();
+                    }
+                    if (op.hasGeneric()) {
+                        b.startCase().variable(op.opcodeIdField).string(" | (short) (7 << 13)").end();
+                        b.startBlock();
+                        createBody.run();
+                        b.end();
+                    }
+                } else if (op.numPushedValues == 0) {
+                    b.startCase().variable(op.opcodeIdField).end();
+                    b.startBlock();
+                    createBody.run();
+                    b.end();
+                } else {
+                    for (FrameKind kind : ctx.getBoxingKinds()) {
+                        b.startCase().variable(op.opcodeIdField).string(" | (short) (", kind.toOrdinal(), " << 13)").end();
+                    }
+
+                    b.startBlock();
+                    b.declaration("short", "primitiveTag", "(short) ((curOpcode >> 13) & 0x0007)");
+                    createBody.run();
+                    b.end();
+                }
             } else {
-                b.tree(op.createExecuteCode(vars));
+                b.startCase().variable(op.opcodeIdField).end();
+                b.startBlock();
+                if (ctx.hasBoxingElimination()) {
+                    vars.specializedKind = FrameKind.OBJECT;
+                }
+                createBody.run();
+                vars.specializedKind = null;
+                b.end();
             }
-
-            if (!op.isBranchInstruction()) {
-                b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
-                b.statement("continue loop");
-            }
-
-            b.end();
 
             vars.inputs = null;
             vars.results = null;

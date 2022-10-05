@@ -306,6 +306,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     private void addBoxingEliminationNodeChildAnnotations(SingleOperationData data, MethodProperties props, CodeTypeElement ct) {
         int i = 0;
         int localI = 0;
+        int immediateI = 0;
         CodeTypeElement childType = createRegularNodeChild();
         CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
         List<CodeAnnotationValue> anns = new ArrayList<>();
@@ -320,13 +321,19 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     break;
                 case LOCAL_SETTER:
                     ann.setElementValue("value", new CodeAnnotationValue("$localRef" + localI));
-                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterNodeChild())));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createConstantNodeChild(types.LocalSetter))));
                     anns.add(new CodeAnnotationValue(ann));
                     localI++;
                     break;
+                case IMMEDIATE:
+                    ann.setElementValue("value", new CodeAnnotationValue("$immediate" + immediateI));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createConstantNodeChild(props.immediateTypes.get(immediateI)))));
+                    anns.add(new CodeAnnotationValue(ann));
+                    immediateI++;
+                    break;
                 case LOCAL_SETTER_ARRAY:
                     ann.setElementValue("value", new CodeAnnotationValue("$localRefArray"));
-                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterArrayNodeChild())));
+                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createConstantNodeChild(types.LocalSetterRange))));
                     anns.add(new CodeAnnotationValue(ann));
                     break;
                 case VARIADIC:
@@ -407,6 +414,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         boolean isVariadic = false;
         int numLocalSetters = 0;
         List<ParameterKind> parameters = new ArrayList<>();
+        List<TypeMirror> immediateTypes = new ArrayList<>();
 
         for (VariableElement param : method.getParameters()) {
             if (isVariadicParameter(param)) {
@@ -444,7 +452,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         boolean returnsValue = method.getReturnType().getKind() != TypeKind.VOID;
 
-        MethodProperties props = new MethodProperties(method, parameters, isVariadic, returnsValue, numLocalSetters);
+        MethodProperties props = new MethodProperties(method, parameters, immediateTypes, isVariadic, returnsValue, numLocalSetters);
 
         return props;
     }
@@ -487,20 +495,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return result;
     }
 
-    private CodeTypeElement createLocalSetterNodeChild() {
+    private CodeTypeElement createConstantNodeChild(TypeMirror returnType) {
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
-        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetter));
-
-        return result;
-    }
-
-    private CodeTypeElement createLocalSetterArrayNodeChild() {
-        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
-        result.setSuperClass(types.Node);
-
-        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetterRange));
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, returnType));
 
         return result;
     }
