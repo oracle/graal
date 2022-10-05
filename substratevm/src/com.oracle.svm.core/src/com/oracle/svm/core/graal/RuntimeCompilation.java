@@ -28,14 +28,19 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+
 public final class RuntimeCompilation {
     /**
      * Returns whether the image supports runtime compilation using Graal. This method can be called
-     * as early as during {@link Feature#afterRegistration}.
+     * as early as during {@link Feature#afterRegistration}. {@code true} means that deoptimization
+     * is also enabled, so that {@link DeoptimizationSupport#enabled} would return {@code true}.
      */
     @Fold
     public static boolean isEnabled() {
-        return ImageSingletons.contains(RuntimeCompilationCanaryFeature.class);
+        boolean enabled = ImageSingletons.contains(RuntimeCompilationCanaryFeature.class);
+        assert !enabled || DeoptimizationSupport.enabled();
+        return enabled;
     }
 
     private RuntimeCompilation() {

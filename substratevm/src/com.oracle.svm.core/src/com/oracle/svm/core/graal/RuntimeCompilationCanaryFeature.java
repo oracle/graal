@@ -27,12 +27,15 @@ package com.oracle.svm.core.graal;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.deopt.DeoptimizationCanaryFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
 /**
  * The purpose of this feature is to indicate whether JIT compilation is enabled in an image. It is
  * registered as a dependency of {@code RuntimeCompilationFeature} and so its object will be added
- * to {@link ImageSingletons} even before {@link Feature#afterRegistration}.
+ * to {@link ImageSingletons} even before {@link Feature#afterRegistration}. Support for JIT
+ * compilation implies that {@linkplain DeoptimizationCanaryFeature deoptimization} is also
+ * supported.
  *
  * @see RuntimeCompilation#isEnabled()
  */
