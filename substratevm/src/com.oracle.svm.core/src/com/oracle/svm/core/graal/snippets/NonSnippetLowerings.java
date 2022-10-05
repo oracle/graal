@@ -116,13 +116,16 @@ public abstract class NonSnippetLowerings {
 
     @SuppressWarnings("unused")
     protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
-                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         this.runtimeConfig = runtimeConfig;
         this.knownOffsets = KnownOffsets.singleton();
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
-        lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
-        lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
+        if (hosted) {
+            // These nodes create a FrameState which cannot be deoptimized from
+            lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
+            lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
+        }
         lowerings.put(GetClassNode.class, new GetClassLowering());
         lowerings.put(InvokeNode.class, new InvokeLowering());
         lowerings.put(InvokeWithExceptionNode.class, new InvokeLowering());
@@ -218,7 +221,10 @@ public abstract class NonSnippetLowerings {
                             getCachedExceptionDescriptors, createExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
-            foreignCallNode.setStateAfter(node.createStateDuring());
+            // this lowering is not present in deoptimizable code
+            foreignCallNode.setValidateDeoptFrameStates(false);
+            foreignCallNode.setStateDuring(node.createStateDuring());
+            foreignCallNode.setStateAfter(node.stateAfter());
             graph.replaceFixedWithFixed(node, foreignCallNode);
         }
     }
@@ -236,6 +242,8 @@ public abstract class NonSnippetLowerings {
                             throwCachedExceptionDescriptors, throwNewExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            // this lowering is not present in deoptimizable code
+            foreignCallNode.setValidateDeoptFrameStates(false);
             foreignCallNode.setStateDuring(node.stateBefore());
             node.replaceAndDelete(foreignCallNode);
 

@@ -56,7 +56,7 @@ class AArch64SnippetsFeature implements InternalFeature {
         }
 
         AArch64ArithmeticSnippets.registerLowerings(options, providers, lowerings);
-        AArch64NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+        AArch64NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
         PosixAArch64VaListSnippets.registerLowerings(options, providers, lowerings);
     }
 }
