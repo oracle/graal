@@ -43,7 +43,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.MULTIPLY_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MUL_ADD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
@@ -109,6 +108,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
 import org.graalvm.compiler.hotspot.stubs.ArrayStoreExceptionStub;
@@ -123,6 +123,7 @@ import org.graalvm.compiler.hotspot.stubs.LongExactOverflowExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.NegativeArraySizeExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.NullPointerExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.OutOfBoundsExceptionStub;
+import org.graalvm.compiler.hotspot.stubs.SnippetStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
@@ -132,8 +133,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
+import org.graalvm.compiler.replacements.StringLatin1InflateNode;
+import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
+import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -504,10 +509,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(createDescriptor(GENERIC_ARRAYCOPY, LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.any()), c.genericArraycopy, NativeCall);
         registerForeignCall(createDescriptor(UNSAFE_ARRAYCOPY, LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.any()), c.unsafeArraycopy, NativeCall);
 
-        if (c.useMultiplyToLenIntrinsic()) {
-            registerForeignCall(MULTIPLY_TO_LEN, c.multiplyToLen, NativeCall);
-        }
-
         if (c.md5ImplCompress != 0L) {
             registerForeignCall(MD5_IMPL_COMPRESS, c.md5ImplCompress, NativeCall);
         }
@@ -591,16 +592,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         TargetDescription target = providers.getCodeCache().getTarget();
 
         if (AESCryptPlugin.isSupported(target.arch)) {
-            for (ForeignCallDescriptor stub : CryptoForeignCalls.AES_STUBS) {
-                link(new IntrinsicStubsGen(options, providers, registerStubCall(stub.getSignature(), LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
-            }
+            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CryptoForeignCalls.AES_STUBS);
         }
 
         if (GHASHPlugin.isSupported(target.arch)) {
-            link(new IntrinsicStubsGen(options, providers, registerStubCall(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getSignature(),
-                            LEAF, NOT_REEXECUTABLE, COMPUTES_REGISTERS_KILLED, CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS.getKilledLocations())));
+            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS);
         }
 
+        registerSnippetStubs(providers, options);
         registerStubCallFunctions(options, providers, runtime.getVMConfig());
     }
 
@@ -613,5 +612,24 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(createDescriptor(LOG.foreignCallSignature, LEAF, REEXECUTABLE, NO_LOCATIONS), hotSpotVMConfig.arithmeticLogAddress, NativeCall);
         registerForeignCall(createDescriptor(LOG10.foreignCallSignature, LEAF, REEXECUTABLE, NO_LOCATIONS), hotSpotVMConfig.arithmeticLog10Address, NativeCall);
         registerForeignCall(createDescriptor(POW.foreignCallSignature, LEAF, REEXECUTABLE, NO_LOCATIONS), hotSpotVMConfig.arithmeticPowAddress, NativeCall);
+    }
+
+    private void registerSnippetStubs(HotSpotProviders providers, OptionValues options) {
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringLatin1InflateNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringUTF16CompressNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, EncodeArrayNode.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMultiplyToLenNode.STUB);
+    }
+
+    @FunctionalInterface
+    protected interface SnippetStubConstructor<A extends SnippetStub> {
+        A apply(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage);
+    }
+
+    protected <A extends SnippetStub> void linkSnippetStubs(HotSpotProviders providers, OptionValues options, SnippetStubConstructor<A> constructor, ForeignCallDescriptor... stubs) {
+        for (ForeignCallDescriptor stub : stubs) {
+            HotSpotForeignCallDescriptor.Reexecutability reexecutability = stub.isReexecutable() ? REEXECUTABLE : NOT_REEXECUTABLE;
+            link(constructor.apply(options, providers, registerStubCall(stub.getSignature(), LEAF, reexecutability, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
+        }
     }
 }

@@ -641,7 +641,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
     def _build_task(self, target_arch, args):
         mx.nyi("_build_task", self)
 
-    def generate_manifest(self, path, extra_cmake_config=None):
+    def generate_manifest(self, output_dir, filename, extra_cmake_config=None):
         if not self.current_variant:
             self.abort("current_variant not set")
         _extra_cmake_config = extra_cmake_config or []
@@ -653,7 +653,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         except StopIteration:
             # no variant specific config
             pass
-        super(SulongCMakeTestSuite, self).generate_manifest(path, extra_cmake_config=_extra_cmake_config)
+        super(SulongCMakeTestSuite, self).generate_manifest(output_dir, filename, extra_cmake_config=_extra_cmake_config)
 
     def _get_vpath(self):
         return self.source_dirs()[0]

@@ -99,8 +99,8 @@ public abstract class ThreadLocalHandshake {
         }
     }
 
-    public void setChangeAllowActions(TruffleSafepoint safepoint, boolean enabled) {
-        ((TruffleSafepointImpl) safepoint).setChangeAllowActions(enabled);
+    public boolean setChangeAllowActions(TruffleSafepoint safepoint, boolean enabled) {
+        return ((TruffleSafepointImpl) safepoint).setChangeAllowActions(enabled);
     }
 
     public boolean isAllowActions(TruffleSafepoint safepoint) {
@@ -681,8 +681,10 @@ public abstract class ThreadLocalHandshake {
             return false;
         }
 
-        void setChangeAllowActions(boolean changeAllowActionsAllowed) {
+        boolean setChangeAllowActions(boolean changeAllowActionsAllowed) {
+            boolean prevChangeAllowActionsAllowed = this.changeAllowActionsAllowed;
             this.changeAllowActionsAllowed = changeAllowActionsAllowed;
+            return prevChangeAllowActionsAllowed;
         }
 
         boolean isAllowActions() {

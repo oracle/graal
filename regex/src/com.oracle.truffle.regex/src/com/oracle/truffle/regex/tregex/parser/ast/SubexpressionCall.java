@@ -89,7 +89,7 @@ public class SubexpressionCall extends QuantifiableTerm {
 
     @Override
     public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
-        return obj instanceof SubexpressionCall && ((SubexpressionCall) obj).groupNr == groupNr && (ignoreQuantifier || quantifierEquals((BackReference) obj));
+        return obj instanceof SubexpressionCall && ((SubexpressionCall) obj).groupNr == groupNr && (ignoreQuantifier || quantifierEquals((SubexpressionCall) obj));
     }
 
     @CompilerDirectives.TruffleBoundary

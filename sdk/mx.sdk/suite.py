@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "6.7.0",
   "name" : "sdk",
-  "version" : "22.3.0",
+  "version" : "23.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -314,6 +314,9 @@ suite = {
       "requires" : [
         "java.logging",
       ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.module"],
+      },
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",

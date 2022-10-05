@@ -55,6 +55,7 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -88,7 +89,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
     @Override
     protected boolean doStartThread(Thread thread, long stackSize) {
-        pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
+        pthread_attr_t attributes = UnsafeStackValue.get(pthread_attr_t.class);
         if (Pthread.pthread_attr_init(attributes) != 0) {
             return false;
         }
@@ -112,7 +113,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
             ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
 
-            Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
+            Pthread.pthread_tPointer newThread = UnsafeStackValue.get(Pthread.pthread_tPointer.class);
             if (Pthread.pthread_create(newThread, attributes, PosixPlatformThreads.pthreadStartRoutine.getFunctionPointer(), startData) != 0) {
                 undoPrepareStartOnError(thread, startData);
                 return false;
@@ -337,7 +338,7 @@ class PosixParkEvent extends ParkEvent {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             /* Encode the delay as a deadline in a Time.timespec. */
-            Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
+            Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
             PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
 
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");

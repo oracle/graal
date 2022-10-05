@@ -2,6 +2,11 @@
 
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
+## Version 23.0.0
+* (GR-31578): Novel Optimization Log: Unified interface to log and dump (e.g. via JSON) optimization decisions.
+Optimization phases should use the `OptimizationLog` to log transformations. Read more in `OptimizationLog.md` and read
+`Profdiff.md` to learn how to compare performed optimizations in hot compilations of 2 experiments.
+
 ## Version 22.3.0
 * (GR-32382): Added a dedicated Native Image GC policy for libgraal that will adjust the eden space aggressively to
 minimize RSS memory usage.

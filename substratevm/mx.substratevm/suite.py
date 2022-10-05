@@ -2,7 +2,7 @@
 suite = {
     "mxversion" : "6.5.5",
     "name": "substratevm",
-    "version" : "22.3.0",
+    "version" : "23.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -505,6 +505,32 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+        },
+
+        "com.oracle.graal.pointsto.standalone.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "STANDALONE_POINTSTO"
+            ],
+            "requires": [
+                "jdk.unsupported",
+                "java.compiler",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
+            },
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "11+",
+            "spotbugs": "false",
         },
 
         "com.oracle.graal.reachability": {
@@ -1132,6 +1158,12 @@ suite = {
             "dependencies": [
                 "JVMTI_AGENT_BASE",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.loader",
+                    "jdk.internal.org.objectweb.asm",
+                ],
+            },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -1193,9 +1225,6 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
             ],
-            "manifestEntries" : {
-                "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",
-            },
             "distDependencies": [
                 "sdk:GRAAL_SDK",
                 "OBJECTFILE",
@@ -1207,7 +1236,6 @@ suite = {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
-                    "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
                     "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset",
                 ],
@@ -1235,7 +1263,6 @@ suite = {
                     "org.graalvm.compiler.options.OptionDescriptors",
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-                    "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
@@ -1636,6 +1663,20 @@ suite = {
                     ]
                 }
             },
+        },
+
+        "STANDALONE_POINTSTO_TESTS" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.graal.pointsto.standalone.test",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "STANDALONE_POINTSTO",
+            ],
+            "testDistribution" : True,
         },
 
         "SVM_TESTS" : {

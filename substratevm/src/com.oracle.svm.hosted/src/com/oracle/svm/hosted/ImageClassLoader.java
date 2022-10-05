@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,6 +49,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,6 +73,7 @@ public final class ImageClassLoader {
 
     public final Platform platform;
     public final NativeImageClassLoaderSupport classLoaderSupport;
+    public final DeadlockWatchdog watchdog;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
@@ -83,16 +83,28 @@ public final class ImageClassLoader {
     ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
+
+        int watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue(classLoaderSupport.getParsedHostedOptions());
+        boolean watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue(classLoaderSupport.getParsedHostedOptions());
+        this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
-    public void initAllClasses() {
-        final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-        classLoaderSupport.initAllClasses(executor, this);
-        boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
-        if (!completed) {
-            throw shouldNotReachHere("timed out while initializing classes");
+    public void loadAllClasses() throws InterruptedException {
+        ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
+            @Override
+            public void execute(Runnable task) {
+                super.execute(() -> {
+                    task.run();
+                    watchdog.recordActivity();
+                });
+            }
+        };
+        try {
+            classLoaderSupport.loadAllClasses(executor, this);
+        } finally {
+            executor.shutdown();
+            executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         }
-        executor.shutdownNow();
     }
 
     private void findSystemElements(Class<?> systemClass) {
@@ -296,7 +308,7 @@ public final class ImageClassLoader {
         return Class.forName(className, initialize, classLoaderSupport.getClassLoader());
     }
 
-    public Class<?> forName(String className, Object module) throws ClassNotFoundException {
+    public Class<?> forName(String className, Module module) throws ClassNotFoundException {
         if (module == null) {
             return forName(className);
         }

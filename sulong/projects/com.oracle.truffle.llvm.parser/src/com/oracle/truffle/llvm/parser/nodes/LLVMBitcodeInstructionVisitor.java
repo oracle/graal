@@ -1054,13 +1054,16 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             successors[i] = catchSwitch.getSuccessor(i).getBlockIndex();
         }
         LLVMExpressionNode getStack = nodeFactory.createGetStackFromFrame();
-        LLVMControlFlowNode node = nodeFactory.createCatchSwitch(exceptionSlot, successors, getStack, getPhiWriteNodes(catchSwitch));
+        LLVMControlFlowNode node = catchSwitch.hasUnwindBlock()
+                        ? nodeFactory.createCatchSwitch(exceptionSlot, successors, catchSwitch.getUnwindBlock().getBlockIndex(), getStack, getPhiWriteNodes(catchSwitch))
+                        : nodeFactory.createCatchSwitch(exceptionSlot, successors, getStack, getPhiWriteNodes(catchSwitch));
         setControlFlowNode(node, catchSwitch);
     }
 
     @Override
     public void visit(CatchRetInstruction catchRet) {
-        LLVMControlFlowNode node = catchRet.getSuccessorCount() > 0 ? nodeFactory.createUnconditionalBranch(catchRet.getSuccessor(0).getBlockIndex(), getPhiWriteNodes(catchRet)[0])
+        LLVMExpressionNode getStack = nodeFactory.createGetStackFromFrame();
+        LLVMControlFlowNode node = catchRet.getSuccessorCount() > 0 ? nodeFactory.createCatchReturn(catchRet.getSuccessor(0).getBlockIndex(), getStack, getPhiWriteNodes(catchRet)[0])
                         : nodeFactory.createResumeInstruction(exceptionSlot);
 
         setControlFlowNode(node, catchRet);
@@ -1071,7 +1074,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         assert catchPad.getClauseSymbols().length == 3;
 
         LLVMExpressionNode clauseNode = symbols.resolve(catchPad.getClauseSymbols()[0]);
-        long attributes = getIntegerConstant(catchPad.getClauseSymbols()[1]);
+        int attributes = (int) getIntegerConstant(catchPad.getClauseSymbols()[1]);
         Type exceptionType = catchPad.getClauseSymbols()[2].getType();
         LLVMExpressionNode getExceptionSlot = symbols.resolve(catchPad.getClauseSymbols()[2]);
 
@@ -1095,7 +1098,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public void visit(CleanupRetInstruction cleanupRet) {
         // TODO([GR-40899]): Reset the stack pointer to the unwound value
         // TODO([GR-40900]): Call exception object destructor
-        LLVMControlFlowNode node = cleanupRet.getSuccessorCount() > 0 ? nodeFactory.createUnconditionalBranch(cleanupRet.getSuccessor(0).getBlockIndex(), getPhiWriteNodes(cleanupRet)[0])
+        LLVMExpressionNode getStack = nodeFactory.createGetStackFromFrame();
+        LLVMControlFlowNode node = cleanupRet.getSuccessorCount() > 0 ? nodeFactory.createCatchReturn(cleanupRet.getSuccessor(0).getBlockIndex(), getStack, getPhiWriteNodes(cleanupRet)[0])
                         : nodeFactory.createResumeInstruction(exceptionSlot);
 
         setControlFlowNode(node, cleanupRet);

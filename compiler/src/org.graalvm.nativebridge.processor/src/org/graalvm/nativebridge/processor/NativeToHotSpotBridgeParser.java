@@ -73,10 +73,10 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
             this.jNIEntryPoint = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIEntryPoint");
             this.jNIExceptionHandler = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler");
             this.jNIExceptionHandlerContext = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext");
-            this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls");
+            this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.JNICalls");
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.jNIClassCache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIClassCache");
-            this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls.JNIMethod");
+            this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.JNICalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
         }

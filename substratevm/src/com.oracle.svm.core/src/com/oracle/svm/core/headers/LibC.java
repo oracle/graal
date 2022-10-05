@@ -53,6 +53,11 @@ public class LibC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n) {
+        return libc().memcmp(s1, s2, n);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T memmove(T dest, PointerBase src, UnsignedWord n) {
         return libc().memmove(dest, src, n);
     }

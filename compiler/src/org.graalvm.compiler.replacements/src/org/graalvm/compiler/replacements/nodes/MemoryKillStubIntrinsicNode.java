@@ -53,7 +53,7 @@ public abstract class MemoryKillStubIntrinsicNode extends AbstractMemoryCheckpoi
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    protected MemoryKillStubIntrinsicNode(NodeClass<? extends AbstractMemoryCheckpoint> c,
+    protected MemoryKillStubIntrinsicNode(NodeClass<? extends MemoryKillStubIntrinsicNode> c,
                     Stamp stamp,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {

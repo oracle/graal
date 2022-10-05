@@ -25,25 +25,15 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.util.VMError;
 
 public final class LoomSupport {
-    private static final boolean isEnabled;
-    static {
-        boolean enabled = false;
-        if (JavaVersionUtil.JAVA_SPEC == 19) {
-            try {
-                enabled = (Boolean) Class.forName("jdk.internal.misc.PreviewFeatures")
-                                .getDeclaredMethod("isEnabled").invoke(null);
-            } catch (ReflectiveOperationException ignored) {
-            }
-        }
-        isEnabled = enabled;
-    }
-
     @Fold
     public static boolean isEnabled() {
-        return isEnabled;
+        VMError.guarantee(ImageSingletons.lookup(ContinuationsFeature.class).hasFinishedRegistration());
+        return ImageSingletons.contains(LoomVirtualThreads.class);
     }
 
     // See JDK native enum freeze_result

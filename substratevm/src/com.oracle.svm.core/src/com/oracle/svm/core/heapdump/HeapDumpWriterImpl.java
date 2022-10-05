@@ -528,9 +528,12 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
             out.writeInt(0);
         }
 
-        /* Flush buffer stream and throw it away. */
+        /* Flush buffer stream and throw fields away. */
         out.flush();
         out = null;
+        heapDumpUtils = null;
+        fieldsMap = null;
+        classDataCache = null;
     }
 
     private void writeHeapRecordPrologue() throws IOException {

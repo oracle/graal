@@ -35,7 +35,7 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 @ServiceProvider(CompilerConfigurationFactory.class)
 public class TruffleCommunityCompilerConfigurationFactory extends CommunityCompilerConfigurationFactory {
 
-    public static final int AUTO_SELECTION_PRIORITY = 3;
+    public static final int AUTO_SELECTION_PRIORITY = 4;
 
     public TruffleCommunityCompilerConfigurationFactory() {
         super(AUTO_SELECTION_PRIORITY);

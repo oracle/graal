@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -108,11 +107,6 @@ public class JfrFeature implements InternalFeature {
     }
 
     public static boolean isInConfiguration(boolean allowPrinting) {
-        boolean javaVersionSupported = JavaVersionUtil.JAVA_SPEC < 19;
-        if (HOSTED_ENABLED && !javaVersionSupported) {
-            // [GR-39564] [GR-39642]
-            throw UserError.abort("FlightRecorder is currently not supported in JDK 19.");
-        }
         boolean systemSupported = osSupported();
         if (HOSTED_ENABLED && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
@@ -126,7 +120,7 @@ public class JfrFeature implements InternalFeature {
             }
             runtimeEnabled = true;
         }
-        return javaVersionSupported && runtimeEnabled && systemSupported;
+        return runtimeEnabled && systemSupported;
     }
 
     private static boolean osSupported() {

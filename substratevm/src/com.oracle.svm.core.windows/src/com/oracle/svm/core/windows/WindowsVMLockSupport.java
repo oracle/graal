@@ -49,6 +49,7 @@ import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -59,8 +60,8 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
- * implemented via Windows locking primitives.
+ * Support of {@link VMMutex}, {@link VMCondition} and {@link VMSemaphore} in multithreaded
+ * environments. Locking is implemented via Windows locking primitives.
  */
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.WINDOWS.class)
@@ -80,6 +81,13 @@ final class WindowsVMLockFeature implements InternalFeature {
         }
     };
 
+    private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
+        @Override
+        protected VMSemaphore createReplacement(VMSemaphore source) {
+            return new WindowsVMSemaphore();
+        }
+    };
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.MultiThreaded.getValue();
@@ -90,6 +98,7 @@ final class WindowsVMLockFeature implements InternalFeature {
         ImageSingletons.add(VMLockSupport.class, new WindowsVMLockSupport());
         access.registerObjectReplacer(mutexReplacer);
         access.registerObjectReplacer(conditionReplacer);
+        access.registerObjectReplacer(semaphoreReplacer);
     }
 
     @Override
@@ -114,6 +123,7 @@ final class WindowsVMLockFeature implements InternalFeature {
         WindowsVMLockSupport lockSupport = WindowsVMLockSupport.singleton();
         lockSupport.mutexes = mutexes;
         lockSupport.conditions = conditions;
+        lockSupport.semaphores = semaphoreReplacer.getReplacements().toArray(new WindowsVMSemaphore[0]);
         lockSupport.syncStructs = new byte[nextIndex];
     }
 }
@@ -126,6 +136,10 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     /** All conditions, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = WindowsVMCondition[].class)//
     WindowsVMCondition[] conditions;
+
+    /** All semaphores, so that we can initialize them at run time when the VM starts. */
+    @UnknownObjectField(types = WindowsVMSemaphore[].class)//
+    WindowsVMSemaphore[] semaphores;
 
     /**
      * Raw memory for the Condition Variable structures. Since we know that native image objects are
@@ -148,11 +162,14 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     public static void initialize() {
         WindowsVMLockSupport support = WindowsVMLockSupport.singleton();
         for (WindowsVMMutex mutex : support.mutexes) {
-            // critical sections on windows always support recursive locking
+            // critical sections on Windows always support recursive locking
             Process.NoTransitions.InitializeCriticalSection(mutex.getStructPointer());
         }
         for (WindowsVMCondition condition : support.conditions) {
             Process.NoTransitions.InitializeConditionVariable(condition.getStructPointer());
+        }
+        for (WindowsVMSemaphore semaphore : support.semaphores) {
+            semaphore.init();
         }
     }
 
@@ -182,6 +199,11 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     public VMCondition[] getConditions() {
         return conditions;
     }
+
+    @Override
+    public VMSemaphore[] getSemaphores() {
+        return semaphores;
+    }
 }
 
 final class WindowsVMMutex extends VMMutex {
@@ -189,7 +211,7 @@ final class WindowsVMMutex extends VMMutex {
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WindowsVMMutex(String name) {
+    WindowsVMMutex(String name) {
         super(name);
     }
 
@@ -337,5 +359,34 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void broadcast() {
         Process.NoTransitions.WakeAllConditionVariable(getStructPointer());
+    }
+}
+
+final class WindowsVMSemaphore extends VMSemaphore {
+
+    private WinBase.HANDLE hSemaphore;
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected int init() {
+        hSemaphore = WinBase.CreateSemaphoreA(WordFactory.nullPointer(), 0, Integer.MAX_VALUE, WordFactory.nullPointer());
+        return hSemaphore.isNonNull() ? 0 : 1;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void destroy() {
+        WinBase.CloseHandle(hSemaphore);
+    }
+
+    @Override
+    public void await() {
+        WindowsVMLockSupport.checkResult(SynchAPI.WaitForSingleObject(hSemaphore, SynchAPI.INFINITE()), "WaitForSingleObject");
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void signal() {
+        WindowsVMLockSupport.checkResult(SynchAPI.NoTransitions.ReleaseSemaphore(hSemaphore, 1, WordFactory.nullPointer()), "ReleaseSemaphore");
     }
 }

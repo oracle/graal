@@ -741,7 +741,7 @@ public final class TruffleContext implements AutoCloseable {
 
         /**
          * Specifies whether the creating language context should be initialized in the new context.
-         * By default the creating language will get initialized.
+         * By default the creating language won't get initialized.
          *
          * @since 21.3
          */

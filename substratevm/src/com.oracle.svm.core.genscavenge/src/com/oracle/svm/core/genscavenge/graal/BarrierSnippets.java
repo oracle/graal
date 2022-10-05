@@ -54,17 +54,18 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class BarrierSnippets extends SubstrateTemplates implements Snippets {
@@ -76,12 +77,16 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         return ImageSingletons.lookup(BarrierSnippetCounters.class);
     }
 
+    private final SnippetInfo postWriteBarrierSnippet;
+
     BarrierSnippets(OptionValues options, Providers providers) {
         super(options, providers);
+
+        this.postWriteBarrierSnippet = snippet(providers, BarrierSnippets.class, "postWriteBarrierSnippet", CARD_REMEMBERED_SET_LOCATION);
     }
 
-    public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        PostWriteBarrierLowering lowering = new PostWriteBarrierLowering(providers);
+    public void registerLowerings(MetaAccessProvider metaAccess, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        PostWriteBarrierLowering lowering = new PostWriteBarrierLowering(metaAccess);
         lowerings.put(SerialWriteBarrier.class, lowering);
         // write barriers are currently always imprecise
         lowerings.put(SerialArrayRangeWriteBarrier.class, lowering);
@@ -132,11 +137,10 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     }
 
     private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {
-        private final SnippetInfo postWriteBarrierSnippet = snippet(BarrierSnippets.class, "postWriteBarrierSnippet", CARD_REMEMBERED_SET_LOCATION);
         private final ResolvedJavaType storedContinuationType;
 
-        PostWriteBarrierLowering(Providers providers) {
-            storedContinuationType = providers.getMetaAccess().lookupJavaType(StoredContinuation.class);
+        PostWriteBarrierLowering(MetaAccessProvider metaAccess) {
+            storedContinuationType = metaAccess.lookupJavaType(StoredContinuation.class);
         }
 
         @Override
@@ -160,7 +164,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             args.addConst("alwaysAlignedChunk", alwaysAlignedChunk);
             args.addConst("verifyOnly", getVerifyOnly(barrier));
 
-            template(barrier, args).instantiate(providers.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         private boolean getVerifyOnly(WriteBarrier barrier) {

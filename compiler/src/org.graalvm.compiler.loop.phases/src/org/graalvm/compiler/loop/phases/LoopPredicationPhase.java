@@ -235,6 +235,7 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
 
         final GuardingNode combinedGuard = MultiGuardNode.combine(lowerGuard, upperGuard);
         guard.replaceAtUsagesAndDelete(combinedGuard.asNode());
+        graph.getOptimizationLog().report(LoopPredicationPhase.class, "GuardReplacement", guard);
     }
 
     @Override

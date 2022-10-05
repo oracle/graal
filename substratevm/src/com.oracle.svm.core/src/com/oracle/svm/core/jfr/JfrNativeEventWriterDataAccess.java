@@ -31,6 +31,9 @@ import com.oracle.svm.core.Uninterruptible;
  */
 public final class JfrNativeEventWriterDataAccess {
 
+    private JfrNativeEventWriterDataAccess() {
+    }
+
     /**
      * Initialize the {@link JfrNativeEventWriterData data} so that it uses the given buffer.
      */

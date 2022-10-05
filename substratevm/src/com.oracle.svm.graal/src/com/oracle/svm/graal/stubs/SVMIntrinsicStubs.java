@@ -25,6 +25,8 @@
 package com.oracle.svm.graal.stubs;
 
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
+import org.graalvm.compiler.replacements.StringLatin1InflateNode;
+import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
@@ -34,7 +36,10 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
+import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
@@ -45,12 +50,17 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 ArrayCompareToNode.class,
                 ArrayRegionCompareToNode.class,
                 ArrayCopyWithConversionsNode.class,
+                StringUTF16CompressNode.class,
+                StringLatin1InflateNode.class,
+                HasNegativesNode.class,
+                EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
                 AMD64ArrayRegionEqualsWithMaskNode.class,
                 AMD64CalcStringAttributesNode.class,
                 AESNode.class,
                 CounterModeAESNode.class,
                 GHASHProcessBlocksNode.class,
+                BigIntegerMultiplyToLenNode.class,
 })
 public final class SVMIntrinsicStubs {
 }

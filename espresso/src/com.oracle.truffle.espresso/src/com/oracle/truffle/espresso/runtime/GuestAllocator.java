@@ -77,6 +77,10 @@ public final class GuestAllocator implements LanguageAccess {
         this.language = language;
         this.allocationReporter = allocationReporter;
         if (allocationReporter != null) {
+            // Can be already active, in which case the active value change notification is missed.
+            if (allocationReporter.isActive()) {
+                getLanguage().invalidateAllocationTrackingDisabled();
+            }
             allocationReporter.addActiveListener((isActive) -> {
                 if (isActive) {
                     getLanguage().invalidateAllocationTrackingDisabled();

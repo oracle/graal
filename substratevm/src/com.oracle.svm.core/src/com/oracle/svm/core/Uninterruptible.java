@@ -29,16 +29,21 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Executable;
+import java.util.Objects;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import com.oracle.svm.util.DirectAnnotationAccess;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Any method with this annotation must not have a safepoint in it.
@@ -54,6 +59,14 @@ import com.oracle.svm.core.thread.VMOperation;
  * <li>Methods from {@link KnownIntrinsics}.</li>
  * <li>Operations on {@link WordBase}.</li>
  * </ul>
+ * <p>
+ * When a method overrides an uninterruptible method, it must be annotated with
+ * {@link Uninterruptible} too. This ensures that virtual calls do not violate uninterruptible
+ * semantics. Covariant return types are not allowed when overriding a method, i.e., the base method
+ * and the override must have the exact same declared return type. Covariant return types require a
+ * synthetic bridge method that is generated automatically by the Java compiler, and not all Java
+ * compilers put the {@link Uninterruptible} annotation on the bridge metod too (for example ECJ).
+ * For consistency reasons, synthetic methods are therefore never treated as uninterruptible.
  * <p>
  * Annotated methods give a terse {@link #reason} why they are annotated. Often the reason is that
  * the method is called from some other method annotated with {@link Uninterruptible}.
@@ -117,18 +130,53 @@ public @interface Uninterruptible {
     boolean mayBeInlined() default false;
 
     class Utils {
+        private static final int SYNTHETIC = 0x00001000;
+
         /**
-         * Returns whether the method is {@link Uninterruptible}, either by explicit annotation of
-         * the method or implicitly due to other annotations.
+         * Defines the {@link Uninterruptible} annotation returned for C function calls with
+         * NO_TRANSITION.
          */
-        public static boolean isUninterruptible(AnnotatedElement method) {
-            if (DirectAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class)) {
-                /* Explicit annotated method, so definitely uninterruptible. */
-                return true;
+        @Uninterruptible(reason = "@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION")
+        @SuppressWarnings("unused")
+        private static void noTransitionHolder() {
+        }
+
+        private static final Uninterruptible NO_TRANSITION = Objects.requireNonNull(getAnnotation(ReflectionUtil.lookupMethod(Utils.class, "noTransitionHolder")));
+
+        /**
+         * Returns the {@link Uninterruptible} annotation of the method. Note that there are certain
+         * methods where the {@link Uninterruptible} annotation is injected due to other conditions,
+         * and there are certain methods where the {@link Uninterruptible} is filtered out because
+         * the method must not be uninterruptible. So always use this method and never look up the
+         * annotation directly on a method.
+         */
+        public static Uninterruptible getAnnotation(AnnotatedElement method) {
+            boolean isSynthetic;
+            if (method instanceof Executable) {
+                isSynthetic = (((Executable) method).getModifiers() & SYNTHETIC) != 0;
+            } else if (method instanceof ResolvedJavaMethod) {
+                isSynthetic = ((ResolvedJavaMethod) method).isSynthetic();
+            } else {
+                throw VMError.shouldNotReachHere("Unexpected method implementation class: " + method.getClass().getTypeName());
+            }
+            if (isSynthetic) {
+                /*
+                 * Java compilers differ how annotations are inherited for synthetic methods: javac
+                 * annotates synthetic bridge methods for covariant return types, but ECJ does not.
+                 * To get a consistent handling across Java compilers, we treat all synthetic
+                 * methods as not uninterruptible.
+                 */
+                return null;
             }
 
-            CFunction cFunctionAnnotation = DirectAnnotationAccess.getAnnotation(method, CFunction.class);
-            InvokeCFunctionPointer cFunctionPointerAnnotation = DirectAnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class);
+            Uninterruptible annotation = AnnotationAccess.getAnnotation(method, Uninterruptible.class);
+            if (annotation != null) {
+                /* Explicit annotated method. */
+                return annotation;
+            }
+
+            CFunction cFunctionAnnotation = AnnotationAccess.getAnnotation(method, CFunction.class);
+            InvokeCFunctionPointer cFunctionPointerAnnotation = AnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class);
             if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                             (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
                 /*
@@ -136,10 +184,19 @@ public @interface Uninterruptible {
                  * treated as uninterruptible. This avoids annotating many methods with multiple
                  * annotations.
                  */
-                return true;
+                return NO_TRANSITION;
             }
 
-            return false;
+            /* No relevant annotation found, so not uninterruptible. */
+            return null;
+        }
+
+        /**
+         * Returns whether the method is {@link Uninterruptible}, either by explicit annotation of
+         * the method or implicitly due to other annotations.
+         */
+        public static boolean isUninterruptible(AnnotatedElement method) {
+            return getAnnotation(method) != null;
         }
 
         public static boolean inliningAllowed(AnnotatedElement caller, AnnotatedElement callee) {
@@ -162,7 +219,7 @@ public @interface Uninterruptible {
                 if (!calleeUninterruptible) {
                     return true;
                 }
-                Uninterruptible calleeUninterruptibleAnnotation = GuardedAnnotationAccess.getAnnotation(callee, Uninterruptible.class);
+                Uninterruptible calleeUninterruptibleAnnotation = AnnotationAccess.getAnnotation(callee, Uninterruptible.class);
                 if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                     return true;
                 }

@@ -25,35 +25,52 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.locks.VMSemaphore;
+import com.oracle.svm.core.sampler.SamplerBuffer;
+import com.oracle.svm.core.sampler.SamplerBuffersAccess;
+import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * A daemon thread that is created during JFR startup and torn down by
- * {@link SubstrateJVM#destroyJFR}. It is used for persisting the {@link JfrGlobalMemory} buffers to
- * a file.
+ * {@link SubstrateJVM#destroyJFR}.
+ *
+ * It is used for persisting the {@link JfrGlobalMemory} buffers to a file and for processing the
+ * pool of {@link SamplerBuffer}s collected in signal handler (see {@link SubstrateSigprofHandler}).
+ * With that in mind, the thread is using {@link VMSemaphore} for a synchronization between threads
+ * as it is async signal safe.
  */
 public class JfrRecorderThread extends Thread {
     private static final int BUFFER_FULL_ENOUGH_PERCENTAGE = 50;
 
     private final JfrGlobalMemory globalMemory;
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
+
+    private final VMSemaphore semaphore;
+    private final UninterruptibleUtils.AtomicBoolean atomicNotify;
+
     private final VMMutex mutex;
     private final VMCondition condition;
-
     private volatile boolean notified;
     private volatile boolean stopped;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public JfrRecorderThread(JfrGlobalMemory globalMemory, JfrUnlockedChunkWriter unlockedChunkWriter) {
         super("JFR recorder");
         this.globalMemory = globalMemory;
         this.unlockedChunkWriter = unlockedChunkWriter;
         this.mutex = new VMMutex("jfrRecorder");
         this.condition = new VMCondition(mutex);
+        this.semaphore = new VMSemaphore();
+        this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);
     }
 
@@ -65,15 +82,8 @@ public class JfrRecorderThread extends Thread {
     public void run() {
         try {
             while (!stopped) {
-                waitForNotification();
-
-                JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
-                try {
-                    if (chunkWriter.hasOpenFile()) {
-                        persistBuffers(chunkWriter);
-                    }
-                } finally {
-                    chunkWriter.unlock();
+                if (await()) {
+                    run0();
                 }
             }
         } catch (Throwable e) {
@@ -81,15 +91,38 @@ public class JfrRecorderThread extends Thread {
         }
     }
 
-    private void waitForNotification() {
-        mutex.lock();
-        try {
-            while (!notified) {
-                condition.block();
+    private boolean await() {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            /*
+             * DARWIN is not supporting unnamed semaphores, therefore we must use VMLock and
+             * VMConditional for synchronization.
+             */
+            mutex.lock();
+            try {
+                while (!notified) {
+                    condition.block();
+                }
+                notified = false;
+            } finally {
+                mutex.unlock();
             }
-            notified = false;
+            return true;
+        } else {
+            semaphore.await();
+            return atomicNotify.compareAndSet(true, false);
+        }
+    }
+
+    private void run0() {
+        /* Process all unprocessed sampler buffers. */
+        SamplerBuffersAccess.processSamplerBuffers();
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            if (chunkWriter.hasOpenFile()) {
+                persistBuffers(chunkWriter);
+            }
         } finally {
-            mutex.unlock();
+            chunkWriter.unlock();
         }
     }
 
@@ -129,8 +162,17 @@ public class JfrRecorderThread extends Thread {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
-        notified = true;
-        condition.broadcast();
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            /*
+             * DARWIN is not supporting unnamed semaphores, therefore we must use VMConditional for
+             * signaling.
+             */
+            notified = true;
+            condition.broadcast();
+        } else {
+            atomicNotify.set(true);
+            semaphore.signal();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

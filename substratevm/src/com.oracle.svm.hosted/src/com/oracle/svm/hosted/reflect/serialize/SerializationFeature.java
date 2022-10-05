@@ -425,7 +425,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
         if (conditionClass == null) {
             return;
         }
@@ -457,7 +457,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, String targetClassName, String customTargetConstructorClassName) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
         if (conditionClass == null) {
             return;
         }
@@ -482,7 +482,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
         if (conditionClass == null) {
             return;
         }

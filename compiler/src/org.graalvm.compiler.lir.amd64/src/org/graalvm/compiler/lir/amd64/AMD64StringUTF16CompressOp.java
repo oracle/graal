@@ -34,6 +34,8 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -76,8 +78,9 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value vtmp4;
     @Temp({REG}) private Value rtmp5;
 
-    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
-        super(TYPE, tool, null, supportsAVX512VLBW(tool.target(), null) && supports(tool.target(), null, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
+    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures,
+                        supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;

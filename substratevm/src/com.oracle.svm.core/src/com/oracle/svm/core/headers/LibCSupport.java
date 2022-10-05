@@ -43,6 +43,9 @@ public interface LibCSupport {
     <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T memmove(T dest, PointerBase src, UnsignedWord n);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

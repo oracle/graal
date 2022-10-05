@@ -28,8 +28,8 @@ package com.oracle.svm.configure.trace;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
 import java.util.List;
-import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -45,7 +45,7 @@ public class SerializationProcessor extends AbstractProcessor {
 
     @Override
     @SuppressWarnings("unchecked")
-    void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
+    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {

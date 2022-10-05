@@ -67,10 +67,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsifiedNativeMethodNode;
-import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
@@ -2078,7 +2075,7 @@ public final class JniEnv extends NativeEnv {
         if (factory == null) {
             NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
             final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
-            factory = createJniRootNodeFactory(() -> new NativeMethodNode(boundNative, targetMethod.getMethodVersion()), targetMethod);
+            factory = createJniRootNodeFactory(() -> EspressoRootNode.createNative(targetMethod.getMethodVersion(), boundNative), targetMethod);
         }
 
         Symbol<Type> classType = clazz.getMirrorKlass(getMeta()).getType();
@@ -2091,7 +2088,7 @@ public final class JniEnv extends NativeEnv {
             long jvmMethodAddress = InteropLibrary.getUncached().asPointer(closure);
             CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(jvmMethodAddress);
             if (knownVmMethod != null) {
-                if (!IntrinsifiedNativeMethodNode.validParameterCount(knownVmMethod, targetMethod)) {
+                if (!CallableFromNative.validParameterCount(knownVmMethod, targetMethod.getMethodVersion())) {
                     getLogger().warning("Implicit intrinsification of VM method does not have matching parameter counts:");
                     getLogger().warning("VM method " + knownVmMethod.methodName() + " has " + knownVmMethod.parameterCount() + " parameters,");
                     getLogger().warning(
@@ -2099,7 +2096,7 @@ public final class JniEnv extends NativeEnv {
                                                     " parameters");
                     return null;
                 }
-                return createJniRootNodeFactory(() -> new IntrinsifiedNativeMethodNode(knownVmMethod, targetMethod, getVM()), targetMethod);
+                return createJniRootNodeFactory(() -> EspressoRootNode.createIntrinsifiedNative(targetMethod.getMethodVersion(), knownVmMethod, getVM()), targetMethod);
             }
         } catch (UnsupportedMessageException e) {
             // ignore
@@ -2107,13 +2104,13 @@ public final class JniEnv extends NativeEnv {
         return null;
     }
 
-    private static Substitutions.EspressoRootNodeFactory createJniRootNodeFactory(Supplier<EspressoMethodNode> methodNodeSupplier, Method targetMethod) {
+    private static Substitutions.EspressoRootNodeFactory createJniRootNodeFactory(Supplier<EspressoRootNode> methodRootNodeSupplier, Method targetMethod) {
         return new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
                 if (forceValid || methodToSubstitute == targetMethod) {
                     // Runtime substitutions apply only to the given method.
-                    return EspressoRootNode.create(null, methodNodeSupplier.get());
+                    return methodRootNodeSupplier.get();
                 }
 
                 Substitutions.getLogger().warning(new Supplier<String>() {

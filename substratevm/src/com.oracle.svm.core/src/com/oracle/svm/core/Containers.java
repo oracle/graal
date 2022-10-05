@@ -35,11 +35,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -154,6 +154,17 @@ public class Containers {
         }
 
         return Math.min(cpuCount, limitCount);
+    }
+
+    /**
+     * Returns {@code true} if containerized execution was detected.
+     */
+    public static boolean isContainerized() {
+        if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
+            ContainerInfo info = new ContainerInfo();
+            return info.isContainerized();
+        }
+        return false;
     }
 
     /**

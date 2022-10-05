@@ -64,6 +64,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -72,7 +73,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -367,6 +367,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return value ? flagMask : 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isFlagSet(byte flags, int flagBit) {
         int flagMask = 1 << flagBit;
         return (flags & flagMask) != 0;
@@ -516,6 +517,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return metaType;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceFileName() {
         return sourceFileName;
     }
@@ -762,6 +764,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isHidden() {
         return isFlagSet(flags, IS_HIDDEN_FLAG_BIT);
     }
@@ -1098,6 +1101,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
+        if (name == null) {
+            throw new NullPointerException();
+        }
         Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
         if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
             result = loader.loadClass(name); // may throw
@@ -1509,6 +1515,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
         return filtered.toArray(new Method[0]);
+    }
+
+    public void setJrfEventConfiguration(Object configuration) {
+        companion.setJfrEventConfiguration(configuration);
+    }
+
+    public Object getJfrEventConfiguration() {
+        return companion.getJfrEventConfiguration();
     }
 
     private static class ReflectionDataAccessors {

@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
@@ -85,6 +86,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class FrameInfoEncoder {
 
     public abstract static class Customization {
+
+        /**
+         * Hook for when a frame is registered for encoding.
+         */
+        @SuppressWarnings("unused")
+        protected void recordFrame(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
+
+        }
+
         /**
          * Returns true if the method's deoptimization target should be saved within the debugInfo.
          */
@@ -95,17 +105,19 @@ public class FrameInfoEncoder {
          *
          * @param method The method that contains the debugInfo.
          * @param infopoint The infopoint whose debugInfo that is considered for inclusion.
+         * @param isDeoptEntry whether this infopoint is tied to a deoptimization entrypoint.
          */
-        protected abstract boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint);
+        protected abstract boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry);
 
         /**
          * Returns true if the given debugInfo is a valid entry point for deoptimization (and not
          * just frame information for the purpose of debugging).
          *
          * @param method The method that contains the debugInfo.
+         * @param compilation method compilation this infopoint is within.
          * @param infopoint The infopoint whose debugInfo that is considered for inclusion.
          */
-        protected abstract boolean isDeoptEntry(ResolvedJavaMethod method, Infopoint infopoint);
+        protected abstract boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint);
 
         /**
          * Fills the FrameInfoQueryResult.source* fields.
@@ -129,6 +141,7 @@ public class FrameInfoEncoder {
              */
             resultFrameInfo.sourceMethodName = stringTable.deduplicate(source.getMethodName(), true);
             resultFrameInfo.sourceLineNumber = source.getLineNumber();
+            resultFrameInfo.methodId = ImageSingletons.lookup(FrameInfoMethodData.class).getMethodId(method);
         }
 
         protected abstract Class<?> getDeclaringJavaClass(ResolvedJavaMethod method);
@@ -147,6 +160,7 @@ public class FrameInfoEncoder {
                     resultFrameInfo.sourceClass = targetFrameInfo.sourceClass;
                     resultFrameInfo.sourceMethodName = targetFrameInfo.sourceMethodName;
                     resultFrameInfo.sourceLineNumber = targetFrameInfo.sourceLineNumber;
+                    resultFrameInfo.methodId = targetFrameInfo.methodId;
                 }
             }
         }
@@ -167,12 +181,14 @@ public class FrameInfoEncoder {
         final Class<?> sourceClass;
         final String sourceMethodName;
         final int sourceLineNumber;
+        final int methodId;
         final boolean isSliceEnd;
 
-        CompressedFrameData(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, boolean isSliceEnd) {
+        CompressedFrameData(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int methodId, boolean isSliceEnd) {
             this.sourceClass = sourceClass;
             this.sourceMethodName = sourceMethodName;
             this.sourceLineNumber = sourceLineNumber;
+            this.methodId = methodId;
             this.isSliceEnd = isSliceEnd;
         }
 
@@ -185,12 +201,13 @@ public class FrameInfoEncoder {
                 return false;
             }
             CompressedFrameData that = (CompressedFrameData) o;
-            return sourceLineNumber == that.sourceLineNumber && isSliceEnd == that.isSliceEnd && sourceClass.equals(that.sourceClass) && sourceMethodName.equals(that.sourceMethodName);
+            return sourceLineNumber == that.sourceLineNumber && methodId == that.methodId && isSliceEnd == that.isSliceEnd && sourceClass.equals(that.sourceClass) &&
+                            sourceMethodName.equals(that.sourceMethodName);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(sourceClass, sourceMethodName, sourceLineNumber, isSliceEnd);
+            return Objects.hash(sourceClass, sourceMethodName, sourceLineNumber, methodId, isSliceEnd);
         }
     }
 
@@ -396,6 +413,7 @@ public class FrameInfoEncoder {
             boolean encodeUniqueSuccessor = uniqueSuccessorIndex != NO_SUCCESSOR_INDEX_MARKER;
             encodingBuffer.putSV(encodeCompressedMethodIndex(methodIndex, encodeUniqueSuccessor));
             encodingBuffer.putSV(encodeCompressedSourceLineNumber(frame.sourceLineNumber, frame.isSliceEnd));
+            encodingBuffer.putSV(frame.methodId);
             if (encodeUniqueSuccessor) {
                 encodingBuffer.putSV(uniqueSuccessorIndex);
             }
@@ -422,7 +440,7 @@ public class FrameInfoEncoder {
                 cur.sourceClassIndex = encoders.sourceClasses.getIndex(cur.sourceClass);
                 cur.sourceMethodNameIndex = encoders.sourceMethodNames.getIndex(cur.sourceMethodName);
                 boolean isSliceEnd = cur.caller == null;
-                CompressedFrameData frame = new CompressedFrameData(cur.sourceClass, cur.sourceMethodName, cur.sourceLineNumber, isSliceEnd);
+                CompressedFrameData frame = new CompressedFrameData(cur.sourceClass, cur.sourceMethodName, cur.sourceLineNumber, cur.methodId, isSliceEnd);
                 assert frame.equals(slice.get(curIdx));
                 curIdx++;
             }
@@ -444,8 +462,10 @@ public class FrameInfoEncoder {
         this.frameMetadata = new CompressedFrameInfoEncodingMetadata();
     }
 
-    protected FrameData addDebugInfo(ResolvedJavaMethod method, Infopoint infopoint, int totalFrameSize) {
-        final boolean includeLocalValues = customization.includeLocalValues(method, infopoint);
+    protected FrameData addDebugInfo(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint, int totalFrameSize) {
+        final boolean isDeoptEntry = customization.isDeoptEntry(method, compilation, infopoint);
+        customization.recordFrame(method, infopoint, isDeoptEntry);
+        final boolean includeLocalValues = customization.includeLocalValues(method, infopoint, isDeoptEntry);
         final boolean encodeSourceReferences = FrameInfoDecoder.encodeSourceReferences();
         final boolean useCompressedEncoding = SubstrateOptions.UseCompressedFrameEncodings.getValue() && !includeLocalValues;
         if (!includeLocalValues && !encodeSourceReferences) {
@@ -457,7 +477,7 @@ public class FrameInfoEncoder {
         data.debugInfo = debugInfo;
         data.totalFrameSize = totalFrameSize;
         data.virtualObjects = new ValueInfo[countVirtualObjects(debugInfo)][];
-        data.frame = addFrame(data, debugInfo.frame(), customization.isDeoptEntry(method, infopoint), includeLocalValues);
+        data.frame = addFrame(data, debugInfo.frame(), isDeoptEntry, includeLocalValues);
 
         if (encodeSourceReferences) {
             List<CompressedFrameData> frameSlice = useCompressedEncoding ? new ArrayList<>() : null;
@@ -477,7 +497,8 @@ public class FrameInfoEncoder {
                     assert !resultFrame.hasLocalValueInfo();
                     final boolean isSliceEnd = resultFrame.caller == null;
                     final int sourceLineNumber = resultFrame.sourceLineNumber;
-                    CompressedFrameData frame = new CompressedFrameData(sourceClass, sourceMethodName, sourceLineNumber, isSliceEnd);
+                    final int methodId = resultFrame.methodId;
+                    CompressedFrameData frame = new CompressedFrameData(sourceClass, sourceMethodName, sourceLineNumber, methodId, isSliceEnd);
                     frameSlice.add(frame);
                 }
 
@@ -531,8 +552,8 @@ public class FrameInfoEncoder {
         if (needLocalValues) {
             SharedMethod method = (SharedMethod) frame.getMethod();
             if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
-                result.methodID = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
-                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodID);
+                result.methodId = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
+                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodId);
             }
 
             if (customization.storeDeoptTargetMethod()) {
@@ -915,7 +936,7 @@ public class FrameInfoEncoder {
                 encodingBuffer.putSV(classIndex);
                 encodingBuffer.putSV(methodIndex);
                 encodingBuffer.putSV(cur.sourceLineNumber);
-                encodingBuffer.putUV(cur.methodID);
+                encodingBuffer.putUV(cur.methodId);
             }
         }
         encodingBuffer.putSV(FrameInfoDecoder.NO_CALLER_BCI);
@@ -1005,9 +1026,7 @@ public class FrameInfoEncoder {
 
     void verifyEncoding(CodeInfo info) {
         for (FrameData expectedData : allDebugInfos) {
-            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry,
-                            new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), expectedData.encodedFrameInfoIndex),
-                            info, FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator);
+            FrameInfoQueryResult actualFrame = FrameInfoDecoder.HeapBasedFrameInfoQueryResultLoader.load(info, expectedData.frame.isDeoptEntry, expectedData.encodedFrameInfoIndex);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }
     }
@@ -1038,6 +1057,7 @@ class FrameInfoVerifier {
             assert Objects.equals(expectedFrame.sourceClass, actualFrame.sourceClass);
             assert Objects.equals(expectedFrame.sourceMethodName, actualFrame.sourceMethodName);
             assert expectedFrame.sourceLineNumber == actualFrame.sourceLineNumber;
+            assert expectedFrame.methodId == actualFrame.methodId;
 
             assert expectedFrame.sourceClassIndex == actualFrame.sourceClassIndex;
             assert expectedFrame.sourceMethodNameIndex == actualFrame.sourceMethodNameIndex;

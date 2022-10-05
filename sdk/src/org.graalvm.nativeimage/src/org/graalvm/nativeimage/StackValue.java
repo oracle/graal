@@ -49,6 +49,9 @@ import org.graalvm.word.PointerBase;
 /**
  * Contains static methods for memory allocation in the stack frame.
  *
+ * Stack allocation is not permitted in virtual threads because the returned pointers would become
+ * invalid when a virtual thread migrates to a different carrier thread.
+ *
  * @since 19.0
  */
 public final class StackValue {
@@ -70,6 +73,7 @@ public final class StackValue {
      * @param <T> the type, annotated by {@link CStruct} annotation
      * @param structType the requested structure class - must be a compile time constant
      * @return pointer to on-stack allocated location for the requested structure
+     * @throws IllegalThreadStateException when called in a virtual thread.
      *
      * @since 19.0
      */
@@ -92,6 +96,7 @@ public final class StackValue {
      * @param numberOfElements number of array elements to allocate
      * @param structType the requested structure class - must be a compile time constant
      * @return pointer to on-stack allocated location for the requested structure
+     * @throws IllegalThreadStateException when called in a virtual thread.
      *
      * @since 19.0
      */
@@ -110,6 +115,7 @@ public final class StackValue {
      * that is reserved in the stack frame when the method starts execution. The memory is not
      * initialized. Two distinct calls of this method return different pointers.
      *
+     * @throws IllegalThreadStateException when called in a virtual thread.
      * @since 19.0
      */
     @SuppressWarnings("unused")

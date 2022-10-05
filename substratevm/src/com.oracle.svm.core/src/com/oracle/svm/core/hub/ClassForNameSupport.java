@@ -51,6 +51,9 @@ public final class ClassForNameSupport {
     }
 
     public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
+        if (className == null) {
+            return null;
+        }
         Class<?> result = singleton().knownClasses.get(className);
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);

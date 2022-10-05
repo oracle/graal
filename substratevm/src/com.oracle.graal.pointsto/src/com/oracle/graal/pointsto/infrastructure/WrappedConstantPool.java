@@ -83,7 +83,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
      * {@code jdk.vm.ci.meta.ConstantPool.lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller)}
      * was introduced in JVMCI 22.3.
      */
-    private static final Method hsLookupMethodWithCaller;
+    private static final Method lookupMethodWithCaller;
 
     /**
      * The interface jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation was introduced in JVMCI
@@ -119,13 +119,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         }
         hsLookupBootstrapMethodInvocation = lookupBootstrapMethodInvocation;
 
-        Method lookupMethodWithCaller = null;
-        try {
-            Class<?> hsConstantPool = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool");
-            lookupMethodWithCaller = ReflectionUtil.lookupMethod(hsConstantPool, "lookupMethodInvocation", int.class, int.class, ResolvedJavaMethod.class);
-        } catch (ClassNotFoundException | ReflectionUtilError ex) {
-        }
-        hsLookupMethodWithCaller = lookupMethodWithCaller;
+        lookupMethodWithCaller = ReflectionUtil.lookupMethod(true, ConstantPool.class, "lookupMethod", int.class, int.class, ResolvedJavaMethod.class);
 
         Method getMethod = null;
         Method isInvokeDynamic = null;
@@ -186,14 +180,20 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode));
     }
 
-    public static JavaMethod lookupMethodWithCaller(ConstantPool cp, int cpi, int opcode, ResolvedJavaMethod caller) {
-        ConstantPool root = cp;
-        while (root instanceof WrappedConstantPool) {
-            root = ((WrappedConstantPool) root).wrapped;
+    @Override
+    public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
+        if (lookupMethodWithCaller == null) {
+            /* Resort to version without caller. */
+            return lookupMethod(cpi, opcode);
         }
-
         try {
-            return (JavaMethod) hsLookupMethodWithCaller.invoke(root, cpi, opcode, caller);
+            /* Unwrap the caller method. */
+            ResolvedJavaMethod substCaller = universe.resolveSubstitution(((WrappedJavaMethod) caller).getWrapped());
+            /*
+             * Delegate to the lookup with caller method of the wrapped constant pool (via
+             * reflection).
+             */
+            return universe.lookupAllowUnresolved((JavaMethod) lookupMethodWithCaller.invoke(wrapped, cpi, opcode, substCaller));
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (ex instanceof InvocationTargetException && ex.getCause() != null) {
@@ -203,17 +203,6 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
             }
             throw new UnresolvedElementException("Error loading a referenced type: " + cause.toString(), cause);
         }
-    }
-
-    @Override
-    public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
-        if (wrapped instanceof WrappedConstantPool) {
-            return universe.lookupAllowUnresolved(((WrappedConstantPool) wrapped).lookupMethod(cpi, opcode, caller));
-        }
-        if (hsLookupMethodWithCaller == null) {
-            return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode));
-        }
-        return universe.lookupAllowUnresolved(lookupMethodWithCaller(this, cpi, opcode, caller));
     }
 
     /**

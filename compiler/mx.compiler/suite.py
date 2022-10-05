@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "22.3.0",
+  "version" : "23.0.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -1658,6 +1658,25 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.compiler.truffle.test.jdk19" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": [
+        "org.graalvm.compiler.truffle.test",
+      ],
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+      ],
+      "overlayTarget" : "org.graalvm.compiler.truffle.test",
+      "multiReleaseJarVersion" : "19",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "19+",
+      "javaPreviewNeeded": "19",
+      "checkPackagePrefix" : "false",
+      "workingSets" : "Graal,HotSpot",
+      "testProject" : True,
+    },
+
     "org.graalvm.compiler.truffle.common.hotspot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1852,7 +1871,25 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.profdiff" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.util"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+    },
 
+    "org.graalvm.profdiff.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.profdiff",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,Test",
+    },
   },
 
   "distributions" : {
@@ -2004,6 +2041,7 @@ suite = {
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
+          "org.graalvm.util.json                       to org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -2150,6 +2188,34 @@ suite = {
           },
         },
       },
+    },
+
+    "GRAAL_PROFDIFF": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.profdiff",
+      ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+      ],
+      "overlaps" : [
+        "GRAAL",
+      ],
+      "maven" : False,
+    },
+
+    "GRAAL_PROFDIFF_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.profdiff.test",
+      ],
+      "distDependencies" : [
+        "GRAAL_PROFDIFF",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "maven": False,
     },
   },
 }

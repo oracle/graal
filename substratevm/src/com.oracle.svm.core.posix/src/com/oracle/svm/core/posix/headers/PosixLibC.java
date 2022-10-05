@@ -48,6 +48,9 @@ public class PosixLibC {
     public static native <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native <T extends PointerBase> T memmove(T dest, PointerBase src, UnsignedWord n);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

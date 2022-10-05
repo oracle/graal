@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.isolated;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.nativeimage.PinnedObject;
@@ -86,6 +87,11 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
             cachedName = IsolatedCompileContext.get().unhand(getName0(IsolatedCompileContext.get().getClient(), handle));
         }
         return cachedName;
+    }
+
+    @Override
+    public boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
+        throw GraalError.shouldNotReachHere("Should not be reachable for SVM.");
     }
 
     @Override
@@ -270,4 +276,5 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
         return compilable.isTrivial();
     }
+
 }

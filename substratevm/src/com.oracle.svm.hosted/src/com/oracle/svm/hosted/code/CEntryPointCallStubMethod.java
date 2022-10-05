@@ -402,7 +402,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private static InvokeWithExceptionNode generatePrologueOrEpilogueInvoke(SubstrateGraphKit kit, ResolvedJavaMethod method, ValueNode... args) {
-        VMError.guarantee(method.isAnnotationPresent(Uninterruptible.class), "The method " + method + " must be uninterruptible as it is used for a prologue or epilogue.");
+        VMError.guarantee(Uninterruptible.Utils.isUninterruptible(method), "The method " + method + " must be uninterruptible as it is used for a prologue or epilogue.");
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(method, InvokeKind.Static, kit.getFrameState(), kit.bci(), args);
         kit.exceptionPart();
         kit.append(new DeadEndNode());

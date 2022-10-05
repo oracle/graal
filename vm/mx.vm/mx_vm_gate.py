@@ -102,6 +102,19 @@ def _test_libgraal_basic(extra_vm_arguments):
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
     """
+
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    graalvm_jdk = mx.JDKConfig(graalvm_home)
+    jres = [graalvm_home]
+
+    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk) and mx_sdk_vm.jlink_has_copy_files(graalvm_jdk):
+        # Create a minimal image that should contain libgraal
+        libgraal_jre = abspath('libgraal-jre')
+        if exists(libgraal_jre):
+            mx.rmtree(libgraal_jre)
+        mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
+        jres.append(libgraal_jre)
+
     expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from[ \w]* JVMCI native library"
     compiler_log_file = abspath('graal-compiler.log')
     args = ['-Dgraal.ShowConfiguration=info',
@@ -109,10 +122,11 @@ def _test_libgraal_basic(extra_vm_arguments):
             '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
-    try:
-        mx.run([join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java')] + args)
-    finally:
-        _check_compiler_log(compiler_log_file, expect)
+    for jre in jres:
+        try:
+            mx.run([join(jre, 'bin', 'java')] + args)
+        finally:
+            _check_compiler_log(compiler_log_file, expect)
 
     # Verify execution via `mx vm`.
     import mx_compiler

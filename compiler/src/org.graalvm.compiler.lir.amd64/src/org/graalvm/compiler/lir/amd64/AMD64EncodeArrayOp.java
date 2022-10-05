@@ -34,13 +34,15 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AVXKind;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StubPort;
@@ -56,9 +58,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 5890,
-          lineEnd   = 6048,
-          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
+          lineStart = 5926,
+          lineEnd   = 6084,
+          commit    = "ce85cac947158b4e1f554c55f726c923a49b1a41",
           sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
@@ -83,8 +85,8 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
     private final CharsetName charset;
 
-    public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
-        super(TYPE, tool, null, YMM);
+    public AMD64EncodeArrayOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value src, Value dst, Value length, CharsetName charset) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
 
         this.resultValue = result;
         this.originSrcValue = src;

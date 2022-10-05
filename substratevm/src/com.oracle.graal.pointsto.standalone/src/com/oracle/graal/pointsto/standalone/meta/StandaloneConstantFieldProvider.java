@@ -38,7 +38,8 @@ public class StandaloneConstantFieldProvider extends JavaConstantFieldProvider {
 
     /**
      * In standalone mode, all classes are runtime initialized. We take all fields as not final, so
-     * that it doesn't read field value from current environment.
+     * that it doesn't read field value from current environment. Test
+     * com.oracle.graal.pointsto.test.ConstantFieldTest verifies this method.
      **/
     @Override
     public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {

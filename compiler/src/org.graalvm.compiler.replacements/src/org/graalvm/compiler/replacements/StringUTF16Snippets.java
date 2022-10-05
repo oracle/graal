@@ -52,12 +52,15 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class StringUTF16Snippets implements Snippets {
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
+        public final SnippetTemplate.SnippetInfo indexOfLatin1Unsafe;
+        public final SnippetTemplate.SnippetInfo indexOfUnsafe;
+
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
-        }
 
-        public final SnippetTemplate.SnippetInfo indexOfLatin1Unsafe = snippet(StringUTF16Snippets.class, "indexOfLatin1Unsafe");
-        public final SnippetTemplate.SnippetInfo indexOfUnsafe = snippet(StringUTF16Snippets.class, "indexOfUnsafe");
+            this.indexOfLatin1Unsafe = snippet(providers, StringUTF16Snippets.class, "indexOfLatin1Unsafe");
+            this.indexOfUnsafe = snippet(providers, StringUTF16Snippets.class, "indexOfUnsafe");
+        }
     }
 
     /**

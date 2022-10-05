@@ -41,7 +41,7 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
     /**
      * Must be greater than {@link EconomyCompilerConfigurationFactory#AUTO_SELECTION_PRIORITY}.
      */
-    public static final int AUTO_SELECTION_PRIORITY = 2;
+    public static final int AUTO_SELECTION_PRIORITY = 3;
 
     public CommunityCompilerConfigurationFactory() {
         this(AUTO_SELECTION_PRIORITY);

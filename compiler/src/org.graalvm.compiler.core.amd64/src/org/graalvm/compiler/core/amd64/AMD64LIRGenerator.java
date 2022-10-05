@@ -77,6 +77,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayCopyWithConversionsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
+import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
@@ -290,18 +291,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
-        Variable result = newVariable(kind);
+    public Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
+        Variable result = newVariable(toRegisterKind(accessKind));
         AMD64AddressValue addressValue = asAddressValue(address);
-        append(new AMD64Move.AtomicReadAndAddOp((AMD64Kind) kind.getPlatformKind(), result, addressValue, asAllocatable(delta)));
+        append(new AMD64Move.AtomicReadAndAddOp((AMD64Kind) accessKind.getPlatformKind(), result, addressValue, asAllocatable(delta)));
         return result;
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(Value address, ValueKind<?> kind, Value newValue) {
-        Variable result = newVariable(kind);
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
+        Variable result = newVariable(toRegisterKind(accessKind));
         AMD64AddressValue addressValue = asAddressValue(address);
-        append(new AMD64Move.AtomicReadAndWriteOp((AMD64Kind) kind.getPlatformKind(), result, addressValue, asAllocatable(newValue)));
+        append(new AMD64Move.AtomicReadAndWriteOp((AMD64Kind) accessKind.getPlatformKind(), result, addressValue, asAllocatable(newValue)));
         return result;
     }
 
@@ -739,17 +740,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+    public Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
+        append(new AMD64EncodeArrayOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Variable emitHasNegatives(Value array, Value length) {
+    public Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
+        append(new AMD64HasNegativesOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, asAllocatable(array), asAllocatable(length)));
         return result;
     }
 
@@ -781,6 +784,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
         append(new AMD64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
+    }
+
+    @Override
+    public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        RegisterValue rX = AMD64.rdi.asValue(x.getValueKind());
+        RegisterValue rXlen = AMD64.rax.asValue(xlen.getValueKind());
+        RegisterValue rY = AMD64.rsi.asValue(y.getValueKind());
+        RegisterValue rYlen = AMD64.rcx.asValue(ylen.getValueKind());
+        RegisterValue rZ = AMD64.r8.asValue(z.getValueKind());
+        RegisterValue rZlen = AMD64.r11.asValue(zlen.getValueKind());
+
+        emitMove(rX, x);
+        emitMove(rXlen, xlen);
+        emitMove(rY, y);
+        emitMove(rYlen, ylen);
+        emitMove(rZ, z);
+        emitMove(rZlen, zlen);
+
+        append(new AMD64BigIntegerMultiplyToLenOp(rX, rXlen, rY, rYlen, rZ, rZlen, getHeapBaseRegister()));
     }
 
     @SuppressWarnings("unchecked")
@@ -821,8 +843,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void emitStringLatin1Inflate(Value src, Value dst, Value len) {
+    public void emitStringLatin1Inflate(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         RegisterValue rsrc = AMD64.rsi.asValue(src.getValueKind());
         RegisterValue rdst = AMD64.rdi.asValue(dst.getValueKind());
         RegisterValue rlen = AMD64.rdx.asValue(len.getValueKind());
@@ -831,11 +854,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rdst, dst);
         emitMove(rlen, len);
 
-        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), rsrc, rdst, rlen));
+        append(new AMD64StringLatin1InflateOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, getAVX3Threshold(), rsrc, rdst, rlen));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
+    public Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         RegisterValue rsrc = AMD64.rsi.asValue(src.getValueKind());
         RegisterValue rdst = AMD64.rdi.asValue(dst.getValueKind());
         RegisterValue rlen = AMD64.rdx.asValue(len.getValueKind());
@@ -847,7 +871,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         LIRKind reskind = LIRKind.value(AMD64Kind.DWORD);
         RegisterValue rres = AMD64.rax.asValue(reskind);
 
-        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), rres, rsrc, rdst, rlen));
+        append(new AMD64StringUTF16CompressOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, getAVX3Threshold(), rres, rsrc, rdst, rlen));
 
         Variable res = newVariable(reskind);
         emitMove(res, rres);

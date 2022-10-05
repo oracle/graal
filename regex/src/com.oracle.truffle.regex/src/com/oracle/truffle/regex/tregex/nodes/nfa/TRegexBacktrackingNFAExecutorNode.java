@@ -41,6 +41,10 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
+import static com.oracle.truffle.api.CompilerDirectives.FASTPATH_PROBABILITY;
+import static com.oracle.truffle.api.CompilerDirectives.LIKELY_PROBABILITY;
+import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
+
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -299,7 +303,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         if (innerLiteral != null) {
             locals.setIndex(locals.getFromIndex());
             int innerLiteralIndex = findInnerLiteral(locals, tString);
-            if (innerLiteralIndex < 0) {
+            if (injectBranchProbability(EXIT_PROBABILITY, innerLiteralIndex < 0)) {
                 return null;
             }
             locals.setLastInnerLiteralIndex(innerLiteralIndex);
@@ -343,7 +347,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                     continue;
                 }
             } else if (ip == IP_BACKTRACK) {
-                if (locals.canPopResult()) {
+                if (injectBranchProbability(EXIT_PROBABILITY, locals.canPopResult())) {
                     // there is a result on the stack, break and return it.
                     break;
                 } else if (!locals.canPop()) {
@@ -354,7 +358,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                          */
                         assert isForward();
                         locals.setIndex(locals.getLastInitialStateIndex());
-                        if (!inputHasNext(locals)) {
+                        if (injectBranchProbability(EXIT_PROBABILITY, !inputHasNext(locals))) {
                             // break if we are at the end of the string.
                             break;
                         }
@@ -364,7 +368,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                             // offsets between the last inner literal match and maxPrefixSize.
                             if (locals.getLastInitialStateIndex() == locals.getLastInnerLiteralIndex()) {
                                 int innerLiteralIndex = findInnerLiteral(locals, tString);
-                                if (innerLiteralIndex < 0) {
+                                if (injectBranchProbability(EXIT_PROBABILITY, innerLiteralIndex < 0)) {
                                     break;
                                 } else {
                                     locals.setLastInnerLiteralIndex(innerLiteralIndex);
@@ -376,8 +380,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                             // find the next character that matches any of the initial state's
                             // successors.
                             assert isForward();
-                            while (inputHasNext(locals)) {
-                                if (loopbackInitialStateMatcher.match(inputReadAndDecode(locals))) {
+                            while (injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
+                                if (injectBranchProbability(EXIT_PROBABILITY, loopbackInitialStateMatcher.match(inputReadAndDecode(locals)))) {
                                     break;
                                 }
                                 inputAdvance(locals);
@@ -441,7 +445,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @ExplodeLoop
     private int runState(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString, PureNFAState curState) {
         CompilerAsserts.partialEvaluationConstant(curState);
-        if (isAcceptableFinalState(curState, locals)) {
+        if (injectBranchProbability(EXIT_PROBABILITY, isAcceptableFinalState(curState, locals))) {
             locals.setResult();
             locals.pushResult();
             return IP_END;
@@ -454,7 +458,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         if (curState.isSubMatcher() && !canInlineLookAroundIntoTransition(curState)) {
             TRegexBacktrackingNFAExecutorLocals subLocals = locals.createSubNFALocals(subExecutorReturnsFirstGroup(curState));
             int[] subMatchResult = runSubMatcher(subLocals, codeRange, tString, curState);
-            if (subMatchFailed(curState, subMatchResult)) {
+            if (injectBranchProbability(EXIT_PROBABILITY, subMatchFailed(curState, subMatchResult))) {
                 return IP_BACKTRACK;
             } else {
                 if (!curState.isSubMatcherNegated() && getSubExecutor(curState).writesCaptureGroups()) {
@@ -468,7 +472,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         }
         if (curState.isBackReference() && !canInlineBackReferenceIntoTransition()) {
             int backrefResult = matchBackReferenceGeneric(locals, locals.getCaptureGroupStart(curState.getBackRefNumber()), locals.getCaptureGroupEnd(curState.getBackRefNumber()));
-            if (backrefResult < 0) {
+            if (injectBranchProbability(EXIT_PROBABILITY, backrefResult < 0)) {
                 return IP_BACKTRACK;
             } else {
                 locals.setIndex(backrefResult);
@@ -617,7 +621,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             for (int iBS = 0; iBS < bitSetWords; iBS++) {
                 nMatched += Long.bitCount(transitionBitSet[iBS]);
             }
-            if (nMatched > 0) {
+            if (injectBranchProbability(LIKELY_PROBABILITY, nMatched > 0)) {
                 locals.dupFrame(nMatched);
             }
             // Update the new stack frames.
@@ -1049,27 +1053,27 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         int inputLength = locals.getMaxIndex();
         int iBR = isForward() ? backrefStart : backrefEnd;
         int i = index;
-        while (inputBoundsCheck(iBR, backrefStart, backrefEnd)) {
-            if (!inputBoundsCheck(i, 0, inputLength)) {
+        while (injectBranchProbability(CONTINUE_PROBABILITY, inputBoundsCheck(iBR, backrefStart, backrefEnd))) {
+            if (injectBranchProbability(EXIT_PROBABILITY, !inputBoundsCheck(i, 0, inputLength))) {
                 return -1;
             }
             int codePointBR = inputReadRaw(locals, iBR);
-            if (isUTF16() && isUnicode() && inputUTF16IsHighSurrogate(codePointBR) && inputBoundsCheck(inputIncRaw(iBR), backrefStart, backrefEnd)) {
+            if (injectBranchProbability(ASTRAL_PROBABILITY, isUTF16() && isUnicode() && inputUTF16IsHighSurrogate(codePointBR) && inputBoundsCheck(inputIncRaw(iBR), backrefStart, backrefEnd))) {
                 int lowSurrogate = inputReadRaw(locals, inputIncRaw(iBR));
-                if (inputUTF16IsLowSurrogate(lowSurrogate)) {
+                if (injectBranchProbability(FASTPATH_PROBABILITY, inputUTF16IsLowSurrogate(lowSurrogate))) {
                     codePointBR = inputUTF16ToCodePoint(codePointBR, lowSurrogate);
                     iBR = inputIncRaw(iBR);
                 }
             }
             int codePointI = inputReadRaw(locals, i);
-            if (isUTF16() && isUnicode() && inputUTF16IsHighSurrogate(codePointI) && inputBoundsCheck(inputIncRaw(i), 0, inputLength)) {
+            if (injectBranchProbability(ASTRAL_PROBABILITY, isUTF16() && isUnicode() && inputUTF16IsHighSurrogate(codePointI) && inputBoundsCheck(inputIncRaw(i), 0, inputLength))) {
                 int lowSurrogate = inputReadRaw(locals, inputIncRaw(i));
-                if (inputUTF16IsLowSurrogate(lowSurrogate)) {
+                if (injectBranchProbability(FASTPATH_PROBABILITY, inputUTF16IsLowSurrogate(lowSurrogate))) {
                     codePointI = inputUTF16ToCodePoint(codePointI, lowSurrogate);
                     i = inputIncRaw(i);
                 }
             }
-            if (!(isIgnoreCase() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI)) {
+            if (injectBranchProbability(EXIT_PROBABILITY, !(isIgnoreCase() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI))) {
                 return -1;
             }
             iBR = inputIncRaw(iBR);

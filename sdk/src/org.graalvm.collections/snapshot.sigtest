@@ -91,11 +91,19 @@ meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> or
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.Equivalence,org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> emptyMap()
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> of({%%0},{%%1})
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> of({%%0},{%%1},{%%0},{%%1})
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> wrapMap(java.util.Map<{%%0},{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.MapCursor<{%%0},{%%1}> emptyCursor()
 meth public void putAll(org.graalvm.collections.EconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>)
 meth public void putAll(org.graalvm.collections.UnmodifiableEconomicMap<? extends {org.graalvm.collections.EconomicMap%0},? extends {org.graalvm.collections.EconomicMap%1}>)
 meth public {org.graalvm.collections.EconomicMap%1} putIfAbsent({org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1})
+
+CLSS public final org.graalvm.collections.EconomicMapUtil
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> boolean equals(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>,org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> int hashCode(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> keySet(org.graalvm.collections.EconomicMap<{%%0},{%%1}>)
+supr java.lang.Object
 
 CLSS public org.graalvm.collections.EconomicMapWrap<%0 extends java.lang.Object, %1 extends java.lang.Object>
 cons public init(java.util.Map<{org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1}>)
@@ -208,6 +216,7 @@ meth public abstract java.lang.Iterable<{org.graalvm.collections.UnmodifiableEco
 meth public abstract java.lang.Iterable<{org.graalvm.collections.UnmodifiableEconomicMap%1}> getValues()
 meth public abstract org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.UnmodifiableEconomicMap%0},{org.graalvm.collections.UnmodifiableEconomicMap%1}> getEntries()
 meth public abstract {org.graalvm.collections.UnmodifiableEconomicMap%1} get({org.graalvm.collections.UnmodifiableEconomicMap%0})
+meth public org.graalvm.collections.Equivalence getEquivalenceStrategy()
 meth public {org.graalvm.collections.UnmodifiableEconomicMap%1} get({org.graalvm.collections.UnmodifiableEconomicMap%0},{org.graalvm.collections.UnmodifiableEconomicMap%1})
 
 CLSS public abstract interface org.graalvm.collections.UnmodifiableEconomicSet<%0 extends java.lang.Object>

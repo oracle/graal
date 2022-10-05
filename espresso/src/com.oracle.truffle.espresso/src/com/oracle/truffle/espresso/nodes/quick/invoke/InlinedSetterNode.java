@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -75,7 +76,7 @@ public class InlinedSetterNode extends QuickNode {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(BytecodeNode.popObject(frame, top - 1 - slotCount));
+                        : nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
         setFieldNode.setField(frame, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
     }

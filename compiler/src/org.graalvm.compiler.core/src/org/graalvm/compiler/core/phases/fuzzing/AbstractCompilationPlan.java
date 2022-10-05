@@ -67,7 +67,7 @@ public abstract class AbstractCompilationPlan {
     protected AbstractCompilationPlan(AbstractTierPlan<HighTierContext> highTier,
                     AbstractTierPlan<MidTierContext> midTier,
                     AbstractTierPlan<LowTierContext> lowTier,
-                    GraphState graphState,
+                    @SuppressWarnings("unused") GraphState graphState,
                     GraphState.MandatoryStages mandatoryStages) {
         this(highTier, midTier, lowTier, mandatoryStages);
         if (!isSchedulePhaseLast()) {
@@ -75,7 +75,6 @@ public abstract class AbstractCompilationPlan {
             // early on during the compilation.
             this.lowTier.getPhaseSuite().appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
         }
-        verifyCompilationPlan(graphState);
     }
 
     /**

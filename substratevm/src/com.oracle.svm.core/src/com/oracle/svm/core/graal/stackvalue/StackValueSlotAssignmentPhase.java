@@ -30,14 +30,14 @@ import java.util.Map;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.Phase;
 
-import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotHolder;
+import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode.StackSlotHolder;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 
 /**
- * Assigns stack slots to all {@link StackValueNode}s. All nodes with the same identity and
+ * Assigns stack slots to all {@link LoweredStackValueNode}s. All nodes with the same identity and
  * recursion depth share a stack slot. This phase needs to run at a point in the compilation
- * pipeline when it is guaranteed that no additional {@link StackValueNode}s will be created later
- * on.
+ * pipeline when it is guaranteed that no additional {@link LoweredStackValueNode}s will be created
+ * later on.
  */
 public class StackValueSlotAssignmentPhase extends Phase {
 
@@ -45,7 +45,7 @@ public class StackValueSlotAssignmentPhase extends Phase {
     protected void run(StructuredGraph graph) {
         Map<RecursionAwareStackSlotIdentity, StackSlotHolder> slots = new HashMap<>();
 
-        for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {
+        for (LoweredStackValueNode node : graph.getNodes(LoweredStackValueNode.TYPE)) {
             RecursionAwareStackSlotIdentity slotIdentity = new RecursionAwareStackSlotIdentity(node.slotIdentity, node.getRecursionDepth());
             StackSlotHolder slotHolder = slots.get(slotIdentity);
             if (slotHolder == null) {

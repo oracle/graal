@@ -48,11 +48,11 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3575,
-          lineEnd   = 3666,
-          commit    = "0c6094e79602fe85a88e3131710bb39813364ad2",
-          sha1      = "c9f2bd7811e98336d14037382a8324968e56fc09")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
+          lineStart = 907,
+          lineEnd   = 999,
+          commit    = "9d76ac8a4453bc51d9dca2ad6c60259cfb2c4203",
+          sha1      = "6897adbbb852fe319f6425dda3aa1623920f8a30")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 

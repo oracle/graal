@@ -102,7 +102,7 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     static void park() {
-        if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (JavaThreads.isCurrentThreadVirtual()) {
             VirtualThreads.singleton().park();
         } else {
             U.park(false, 0L);
@@ -112,7 +112,7 @@ final class Target_java_util_concurrent_locks_LockSupport {
     @Substitute
     public static void parkNanos(long nanos) {
         if (nanos > 0) {
-            if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+            if (JavaThreads.isCurrentThreadVirtual()) {
                 VirtualThreads.singleton().parkNanos(nanos);
                 ((SubstrateVirtualThread) Thread.currentThread()).parkNanos(nanos);
             } else {
@@ -123,7 +123,7 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     public static void parkUntil(long deadline) {
-        if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (JavaThreads.isCurrentThreadVirtual()) {
             VirtualThreads.singleton().parkUntil(deadline);
         } else {
             U.park(true, deadline);
@@ -147,7 +147,7 @@ final class NativeThreadSetUsedAccessors {
 
     static void set(Target_sun_nio_ch_NativeThreadSet that, int value) {
         // Note that the accessing method holds a lock that prevents concurrent updates
-        if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (JavaThreads.isCurrentThreadVirtual()) {
             int diff = value - that.injectedUsed;
             if (diff == 1) {
                 VirtualThreads.singleton().pinCurrent();

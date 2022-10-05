@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
+import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 
@@ -485,9 +486,9 @@ public abstract class PlatformThreads {
     }
 
     static void setCurrentThread(Thread carrier, Thread thread) {
-        Thread currentCarrierThread = currentThread.get();
-        assert currentCarrierThread == carrier;
-        toTarget(carrier).vthread = (thread != currentCarrierThread) ? thread : null;
+        assert carrier == currentThread.get();
+        assert thread == carrier || (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread));
+        toTarget(carrier).vthread = (thread != carrier) ? thread : null;
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")
@@ -903,7 +904,7 @@ public abstract class PlatformThreads {
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     static void sleep(long millis) throws InterruptedException {
-        assert !isVirtual(Thread.currentThread());
+        assert !isCurrentThreadVirtual();
         if (millis < 0) {
             throw new IllegalArgumentException("timeout value is negative");
         }
@@ -1036,7 +1037,10 @@ public abstract class PlatformThreads {
         @Override
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.add(PlatformThreads.fromVMThread(cur));
+                Thread thread = PlatformThreads.fromVMThread(cur);
+                if (thread != null) {
+                    result.add(thread);
+                }
             }
         }
     }
@@ -1138,7 +1142,7 @@ public abstract class PlatformThreads {
     }
 
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        assert !isVirtual(Thread.currentThread());
+        assert !isCurrentThreadVirtual();
         Target_java_lang_Thread me = toTarget(currentThread.get());
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             synchronized (me.interruptLock) {

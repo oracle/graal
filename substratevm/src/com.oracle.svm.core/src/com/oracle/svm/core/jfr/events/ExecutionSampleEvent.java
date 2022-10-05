@@ -60,28 +60,31 @@ public final class ExecutionSampleEvent {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void writeExecutionSample(IsolateThread isolateThread, Thread.State threadState) {
+    public static void writeExecutionSample(long elapsedTicks, long threadId, long stackTraceId, long threadState) {
         SubstrateJVM svm = SubstrateJVM.get();
         if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvent.ExecutionSample)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ExecutionSample);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putThread(data, isolateThread);
-            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ExecutionSample, 0));
-            JfrNativeEventWriter.putLong(data, JfrThreadState.getId(threadState));
+            JfrNativeEventWriter.putLong(data, elapsedTicks);
+            JfrNativeEventWriter.putLong(data, threadId);
+            JfrNativeEventWriter.putLong(data, stackTraceId);
+            JfrNativeEventWriter.putLong(data, threadState);
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 
     private static final class ExecutionSampleEventCallback implements Threading.RecurringCallback {
-
         @Override
         public void run(Threading.RecurringCallbackAccess access) {
             IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
             Thread javaThread = PlatformThreads.fromVMThread(isolateThread);
-            ExecutionSampleEvent.writeExecutionSample(isolateThread, javaThread.getState());
+            ExecutionSampleEvent.writeExecutionSample(
+                            JfrTicks.elapsedTicks(),
+                            SubstrateJVM.getThreadId(isolateThread),
+                            SubstrateJVM.get().getStackTraceId(JfrEvent.ExecutionSample.getId(), 0),
+                            JfrThreadState.getId(javaThread.getState()));
         }
     }
 }

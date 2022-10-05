@@ -66,7 +66,6 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.CompilationInfo;
-import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -209,12 +208,13 @@ import jdk.vm.ci.meta.Signature;
  * Having a separate analysis universe and hosted universe complicates some things. For example,
  * {@link StructuredGraph graphs} parsed for static analysis need to be "transplanted" from the
  * analysis universe to the hosted universe (see code around
- * {@link CompileQueue#replaceAnalysisObjects}). But the separate universes make AOT compilation
- * more flexible because elements can be duplicated as necessary. For example, a method can be
- * compiled with different optimization levels or for different optimization contexts. One concrete
- * example are methods compiled as {@link HostedMethod#isDeoptTarget() deoptimization entry points}.
- * Therefore, no code must assume a 1:1 relationship between analysis and hosted elements, but a 1:n
- * relationship where there are multiple hosted elements for a single analysis element.
+ * {@code AnalysisToHostedGraphTransplanter#replaceAnalysisObjects}). But the separate universes
+ * make AOT compilation more flexible because elements can be duplicated as necessary. For example,
+ * a method can be compiled with different optimization levels or for different optimization
+ * contexts. One concrete example are methods compiled as {@link HostedMethod#isDeoptTarget()
+ * deoptimization entry points}. Therefore, no code must assume a 1:1 relationship between analysis
+ * and hosted elements, but a 1:n relationship where there are multiple hosted elements for a single
+ * analysis element.
  *
  * In theory, only analysis elements that are found reachable by the static analysis would need a
  * corresponding hosted element. But in practice, this optimization did not work: for example,

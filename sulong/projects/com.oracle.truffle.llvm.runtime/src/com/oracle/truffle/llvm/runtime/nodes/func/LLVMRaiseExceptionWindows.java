@@ -49,6 +49,12 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "throwInfo", type = LLVMExpressionNode.class)
 public abstract class LLVMRaiseExceptionWindows extends LLVMExpressionNode {
 
+    @Specialization(guards = {"throwInfo.isNull()", "exceptionObject.isNull()"})
+    public Object doNull(@SuppressWarnings("unused") LLVMPointer exceptionObject, @SuppressWarnings("unused") LLVMPointer throwInfo) {
+        // rethrow the last exception
+        throw getLanguage().contextThreadLocal.get().popException();
+    }
+
     @Specialization(guards = {"!throwInfo.isNull()", "throwInfo.isSame(cachedThrowInfo)"}, limit = "3")
     public Object doRaise(LLVMPointer exceptionObject, @SuppressWarnings("unused") LLVMPointer throwInfo,
                     @Cached("throwInfo") LLVMPointer cachedThrowInfo,
@@ -66,7 +72,8 @@ public abstract class LLVMRaiseExceptionWindows extends LLVMExpressionNode {
     @TruffleBoundary
     protected LLVMPointer getImageBase(LLVMPointer throwInfo) {
         List<LLVMSymbol> symbols = getContext().findSymbols(throwInfo);
-        assert symbols.size() == 1;
+        // this list sometimes contains identical duplicate symbols
+        assert symbols.stream().allMatch((symb) -> symb == symbols.get(0));
         if (symbols.isEmpty()) {
             throw new LLVMParserException(this, "Could not find exception throw info symbol.");
         }

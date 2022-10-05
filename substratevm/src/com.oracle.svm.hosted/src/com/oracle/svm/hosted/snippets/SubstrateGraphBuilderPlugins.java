@@ -129,6 +129,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -176,7 +177,8 @@ public class SubstrateGraphBuilderPlugins {
                     InvocationPlugins plugins,
                     Replacements replacements,
                     ParsingReason parsingReason,
-                    Architecture architecture) {
+                    Architecture architecture,
+                    boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
@@ -197,7 +199,9 @@ public class SubstrateGraphBuilderPlugins {
         registerSizeOfPlugins(snippetReflection, plugins);
         registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
-        registerAESPlugins(plugins, replacements, architecture);
+        if (supportsStubBasedPlugins) {
+            registerAESPlugins(plugins, replacements, architecture);
+        }
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
@@ -864,13 +868,16 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerStackValuePlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, StackValue.class);
+        registerStackValuePlugins(snippetReflection, new Registration(plugins, StackValue.class), true);
+        registerStackValuePlugins(snippetReflection, new Registration(plugins, UnsafeStackValue.class), false);
+    }
 
+    private static void registerStackValuePlugins(SnippetReflectionProvider snippetReflection, Registration r, boolean disallowVirtualThread) {
         r.register(new RequiredInvocationPlugin("get", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sizeNode) {
                 long size = longValue(b, targetMethod, sizeNode, "size");
-                b.addPush(JavaKind.Object, StackValueNode.create(1, size, b));
+                b.addPush(JavaKind.Object, StackValueNode.create(1, size, b, disallowVirtualThread));
                 return true;
             }
         });
@@ -880,7 +887,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 int size = SizeOf.get(clazz);
-                b.addPush(JavaKind.Object, StackValueNode.create(1, size, b));
+                b.addPush(JavaKind.Object, StackValueNode.create(1, size, b, disallowVirtualThread));
                 return true;
             }
         });
@@ -889,7 +896,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode numElementsNode, ValueNode elementSizeNode) {
                 long numElements = longValue(b, targetMethod, numElementsNode, "numElements");
                 long elementSize = longValue(b, targetMethod, elementSizeNode, "elementSize");
-                b.addPush(JavaKind.Object, StackValueNode.create(numElements, elementSize, b));
+                b.addPush(JavaKind.Object, StackValueNode.create(numElements, elementSize, b, disallowVirtualThread));
                 return true;
             }
         });
@@ -900,7 +907,7 @@ public class SubstrateGraphBuilderPlugins {
                 long numElements = longValue(b, targetMethod, numElementsNode, "numElements");
                 Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 int size = SizeOf.get(clazz);
-                b.addPush(JavaKind.Object, StackValueNode.create(numElements, size, b));
+                b.addPush(JavaKind.Object, StackValueNode.create(numElements, size, b, disallowVirtualThread));
                 return true;
             }
         });

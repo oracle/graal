@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,6 +82,18 @@ public abstract class LLVMX86_VectorMathNode {
             return LLVMDoubleVector.create(new double[]{
                             Math.min(v1.getValue(0), v2.getValue(0)),
                             Math.min(v1.getValue(1), v2.getValue(1))
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorMinsdNode extends LLVMBuiltin { // mm_min_sd
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            return LLVMDoubleVector.create(new double[]{
+                            Math.min(v1.getValue(0), v2.getValue(0)),
+                            v1.getValue(1)
             });
         }
     }

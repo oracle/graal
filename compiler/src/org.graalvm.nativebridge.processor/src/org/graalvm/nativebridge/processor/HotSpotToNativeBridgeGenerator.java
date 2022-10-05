@@ -56,9 +56,9 @@ import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.TypeCache;
 
 final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
-    static final String START_POINT_FACTORY_NAME = "createHotSpotToNative";
-    private static final String START_POINT_SIMPLE_NAME = "HotSpotToNativeStartPoint";
-    private static final String END_POINT_SIMPLE_NAME = "HotSpotToNativeEndPoint";
+    static final String START_POINT_FACTORY_NAME = "createHSToNative";
+    private static final String START_POINT_SIMPLE_NAME = "HSToNativeStartPoint";
+    private static final String END_POINT_SIMPLE_NAME = "HSToNativeEndPoint";
     static final String SHARED_START_POINT_SIMPLE_NAME = "StartPoint";
     static final String SHARED_END_POINT_SIMPLE_NAME = "EndPoint";
     private static final String HOTSPOT_RESULT_VARIABLE = "hsResult";
@@ -701,7 +701,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         builder.indent();
         CharSequence newForeignException = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "forThrowable",
                         exceptionVariable, definitionData.getCustomMarshaller(typeCache.throwable, null, types).name).build();
-        builder.lineStart().invoke(newForeignException, "throwInHotSpot", jniEnvVariable).lineEnd(";");
+        builder.lineStart().invoke(newForeignException, "throwUsingJNI", jniEnvVariable).lineEnd(";");
         if (primitiveReturnType) {
             builder.lineStart("return ").writeDefaultValue(returnType).lineEnd(";");
         } else if (objectReturnType) {

@@ -72,7 +72,7 @@ public class SnippetSubstitutionNode extends MacroWithExceptionNode implements L
                 arg++;
             }
         }
-        SnippetTemplate template = templates.template(this, args);
+        SnippetTemplate template = templates.template(tool, this, args);
         UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), this, SnippetTemplate.DEFAULT_REPLACER, args, true);
         for (Node original : duplicates.getKeys()) {
             if (original instanceof FallbackInvokeWithExceptionNode) {

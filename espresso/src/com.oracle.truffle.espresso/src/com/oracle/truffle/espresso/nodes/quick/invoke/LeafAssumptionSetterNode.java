@@ -26,6 +26,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class LeafAssumptionSetterNode extends InlinedSetterNode {
@@ -45,7 +46,7 @@ public final class LeafAssumptionSetterNode extends InlinedSetterNode {
         if (getContext().getClassHierarchyOracle().isLeafMethod(inlinedMethod.getMethodVersion()).isValid()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(BytecodeNode.popObject(frame, top - 1 - slotCount));
+                            : nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
             setFieldNode.setField(frame, root, receiver, top, statementIndex);
             return -slotCount + stackEffect;
         } else {

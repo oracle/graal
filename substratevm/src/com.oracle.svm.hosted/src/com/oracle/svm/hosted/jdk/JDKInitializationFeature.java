@@ -55,6 +55,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.text", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
+        rci.rerunInitialization("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
         rci.initializeAtBuildTime("javax.annotation.processing", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.lang.model", JDK_CLASS_REASON);
