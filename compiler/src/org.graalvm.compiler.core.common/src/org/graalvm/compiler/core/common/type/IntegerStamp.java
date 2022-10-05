@@ -322,8 +322,9 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     /**
-     * Starting from an initial value derived from the down mask and ignoring the sign bits, start
-     * setting optional bits until a value which is less than or equal to the bound it reached.
+     * Starting from an initial value derived from the must be set mask and ignoring the sign bits,
+     * start setting optional bits until a value which is less than or equal to the bound is
+     * reached.
      */
     private static long setOptionalBits(int bits, long bound, long mustBeSet, long mayBeSet, long initialValue) {
         final long optionalBits = mayBeSet & ~mustBeSet & CodeUtil.mask(bits - 1);
@@ -388,13 +389,14 @@ public final class IntegerStamp extends PrimitiveStamp {
                 int lowBit = Long.numberOfTrailingZeros(mayBeSet);
                 newLowerBound = 1L << lowBit;
             } else {
-                // There is no positive value which is
+                // There is no positive value which is compatible with the masks to return the max
+                // value.
                 newLowerBound = CodeUtil.maxValue(bits);
             }
         }
         if (newLowerBound < lowerBound) {
-            // There is no lower bound which is greater than or equal to the current bound sound
-            // return the max value.
+            // There is no lower bound which is greater than or equal to the current bound
+            // so return the max value.
             return CodeUtil.maxValue(bits);
         }
         return newLowerBound;

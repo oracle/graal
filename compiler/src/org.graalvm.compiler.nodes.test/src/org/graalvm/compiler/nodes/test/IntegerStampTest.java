@@ -218,10 +218,10 @@ public class IntegerStampTest extends GraphTest {
 
         // This exercises a special case:
         // The new lowest bound is max(0b101, 0b011) = 0b101
-        // The new down mask is (0b100 | 0b010) = 0b110
-        // Now based on lowest bound and down mask, we know that the new lowest bound is 0b110
-        // Just making an or with the new down mask would give however (0b110 | 0b101) = 0b111 and
-        // would therefore be wrong.
+        // The new must be set mask is (0b100 | 0b010) = 0b110
+        // Based on the lowest bound and the must be set mask, the new lowest bound is 0b110
+        // Just or'ing with the new must be set mask would give however (0b110 | 0b101) = 0b111
+        // and would therefore be wrong.
         // New upper bound is 0b110.
 
         IntegerStamp result = IntegerStamp.create(32, 0b110, 0b110, 0b110, 0b110);
