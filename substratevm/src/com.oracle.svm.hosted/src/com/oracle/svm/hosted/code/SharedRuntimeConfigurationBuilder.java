@@ -42,6 +42,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -65,13 +66,12 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public abstract class SharedRuntimeConfigurationBuilder {
 
     protected final OptionValues options;
     protected final SVMHost hostVM;
-    protected final MetaAccessProvider metaAccess;
+    protected final UniverseMetaAccess metaAccess;
     protected RuntimeConfiguration runtimeConfig;
     protected WordTypes wordTypes;
     protected final Function<Providers, SubstrateBackend> backendProvider;
@@ -79,7 +79,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final ClassInitializationSupport classInitializationSupport;
     protected final LoopsDataProvider originalLoopsDataProvider;
 
-    public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, MetaAccessProvider metaAccess, Function<Providers, SubstrateBackend> backendProvider,
+    public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, UniverseMetaAccess metaAccess, Function<Providers, SubstrateBackend> backendProvider,
                     NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider) {
         this.options = options;
         this.hostVM = hostVM;

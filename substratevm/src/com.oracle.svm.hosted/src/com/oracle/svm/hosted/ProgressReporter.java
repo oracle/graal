@@ -78,6 +78,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -91,9 +92,12 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
@@ -482,12 +486,12 @@ public class ProgressReporter {
         }
     }
 
-    public void createBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
+    public void createBreakdowns(HostedMetaAccess metaAccess, Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
         if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
             return;
         }
         calculateCodeBreakdown(compilationTasks);
-        calculateHeapBreakdown(heapObjects);
+        calculateHeapBreakdown(metaAccess, heapObjects);
     }
 
     private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
@@ -501,13 +505,13 @@ public class ProgressReporter {
         }
     }
 
-    private void calculateHeapBreakdown(Collection<ObjectInfo> heapObjects) {
+    private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
         long stringByteLength = 0;
         for (ObjectInfo o : heapObjects) {
             heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
-            Object javaObject = o.getObject();
-            if (reportStringBytes && javaObject instanceof String) {
-                stringByteLength += Utils.getInternalByteArrayLength((String) javaObject);
+            JavaConstant javaObject = o.getConstant();
+            if (reportStringBytes && metaAccess.isInstanceOf(javaObject, String.class)) {
+                stringByteLength += Utils.getInternalByteArrayLength((String) SubstrateObjectConstant.asObject(javaObject));
             }
         }
 

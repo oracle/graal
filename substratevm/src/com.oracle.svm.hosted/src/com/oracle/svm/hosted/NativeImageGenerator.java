@@ -697,7 +697,7 @@ public class NativeImageGenerator {
                 }
             }
 
-            ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
+            ProgressReporter.singleton().createBreakdowns(hMetaAccess, compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
             int numCompilations = codeCache.getOrderedCompilations().size();

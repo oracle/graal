@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
@@ -44,7 +45,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateGraalCompilerSetup {
 
@@ -67,7 +67,7 @@ public class SubstrateGraalCompilerSetup {
         }
     }
 
-    public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
+    public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
                     ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
                     NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
         return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, originalReflectionProvider, backendProvider, nativeLibraries, classInitializationSupport,

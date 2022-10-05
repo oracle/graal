@@ -42,7 +42,6 @@ import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
@@ -52,6 +51,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Reference;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticallyRegisteredFeature
@@ -70,7 +70,7 @@ class AMD64HostedPatcherFeature implements InternalFeature {
 
                         } else if (annotation instanceof AddressDisplacementAnnotation) {
                             AddressDisplacementAnnotation dispAnnotation = (AddressDisplacementAnnotation) annotation;
-                            compilationResult.addAnnotation(new HostedImageHeapConstantPatch(dispAnnotation.operandPosition, (SubstrateObjectConstant) dispAnnotation.annotation));
+                            compilationResult.addAnnotation(new HostedImageHeapConstantPatch(dispAnnotation.operandPosition, (JavaConstant) dispAnnotation.annotation));
                         }
                     }
                 };
