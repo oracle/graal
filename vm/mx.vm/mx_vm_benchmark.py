@@ -851,7 +851,7 @@ class NativeImageVM(GraalVm):
             jdk_profiles_args = ['-H:CachedPGOEnabled={}'.format(cached_profiles)]
         else:
             jdk_profiles_args = []
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else []) + ml_args
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args + jdk_profiles_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
             if self.use_upx:
