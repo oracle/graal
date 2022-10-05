@@ -1193,6 +1193,17 @@ suite = {
       "dependencies" : [
         "SULONG_TEST",
       ],
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-I<path:SULONG_HOME>/include -I<path:com.oracle.truffle.llvm.tests.libc.native>/include/win -L<path:SULONG_HOME>/native/lib",
+              "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
+              "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
+            },
+          },
+        },
+      },
       "testProject" : True,
       "defaultBuild" : False,
     },

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,53 +28,31 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <pthread.h>
+#ifndef __PTHREAD_H__
+#define __PTHREAD_H__
 
-void *set_named_thread() {
+#include <stdint.h>
 
-    const pthread_t self = pthread_self();
-
-#if !defined(__APPLE__)
-    const int setname_rv_self = pthread_setname_np(self, "self pthread");
-#else
-    const int setname_rv_self = pthread_setname_np("self pthread");
+#if !defined(_WIN32)
+#error The GraalVM pthreads header should only be used under Windows.
 #endif
 
-    if (setname_rv_self) {
-        printf("Could not set pthread name\n");
-    }
+// a replacement pthread header file that can be used under Windows
 
-    char thread_name_self[16];
-    const int getname_rv_self = pthread_getname_np(self, thread_name_self, 16);
+typedef struct __sulong_pthread_t * pthread_t;
+typedef struct __sulong_pthread_key_t * pthread_key_t;
+typedef struct pthread_attr_t pthread_attr_t;
 
-    if (getname_rv_self) {
-        printf("Could not get pthread name\n");
-    }
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
+int pthread_equal(pthread_t thread1, pthread_t thread2);
+void pthread_exit(void *);
+int pthread_join(pthread_t thread, void **retval);
+pthread_t pthread_self();
+int pthread_setname_np(pthread_t thread, const char *name);
+int pthread_getname_np(pthread_t thread, char *name, size_t len);
+int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
+int pthread_key_delete(pthread_key_t key);
+void *pthread_getspecific(pthread_key_t key);
+int pthread_setspecific(pthread_key_t key, const void *value);
 
-    fprintf(stdout, "My name is '%s'\n", thread_name_self);
-
-    return NULL;
-}
-
-int main() {
-
-    pthread_t thread;
-
-    const int create_rv = pthread_create(&(thread), NULL, &set_named_thread, NULL);
-
-    if (create_rv) {
-        printf("Could not create thread\n");
-        return create_rv;
-    }
-
-    const int join_rv = pthread_join(thread, NULL);
-
-    if (join_rv) {
-        printf("Could not join thread\n");
-        return join_rv;
-    }
-
-    return 0;
-}
+#endif
