@@ -148,9 +148,9 @@ public class StampFactory {
         return forInteger(kind.getBitCount(), lowerBound, upperBound);
     }
 
-    public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, long newDownMask, long newUpMask) {
+    public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, long newMustBeSet, long newMayBeSet) {
         IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
-        return IntegerStamp.create(bits, newLowerBound, newUpperBound, limit.mustBeSet() | newDownMask, limit.mayBeSet() & newUpMask);
+        return IntegerStamp.create(bits, newLowerBound, newUpperBound, limit.mustBeSet() | newMustBeSet, limit.mayBeSet() & newMayBeSet);
     }
 
     public static IntegerStamp forInteger(int bits) {

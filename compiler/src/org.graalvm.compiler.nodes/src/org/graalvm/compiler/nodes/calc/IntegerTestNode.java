@@ -107,15 +107,15 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
             IntegerStamp otherStamp = (IntegerStamp) otherStampGeneric;
             if (negated) {
                 if (Long.bitCount(otherStamp.mayBeSet()) == 1) {
-                    long newDownMask = xStamp.mustBeSet() | otherStamp.mayBeSet();
-                    if (xStamp.mustBeSet() != newDownMask) {
-                        return IntegerStamp.stampForMask(xStamp.getBits(), newDownMask, xStamp.mayBeSet()).join(xStamp);
+                    long newMustBeSet = xStamp.mustBeSet() | otherStamp.mayBeSet();
+                    if (xStamp.mustBeSet() != newMustBeSet) {
+                        return IntegerStamp.stampForMask(xStamp.getBits(), newMustBeSet, xStamp.mayBeSet()).join(xStamp);
                     }
                 }
             } else {
-                long restrictedUpMask = ((~otherStamp.mustBeSet()) & xStamp.mayBeSet());
-                if (xStamp.mayBeSet() != restrictedUpMask) {
-                    return IntegerStamp.stampForMask(xStamp.getBits(), xStamp.mustBeSet(), restrictedUpMask).join(xStamp);
+                long restrictedMayBeSet = ((~otherStamp.mustBeSet()) & xStamp.mayBeSet());
+                if (xStamp.mayBeSet() != restrictedMayBeSet) {
+                    return IntegerStamp.stampForMask(xStamp.getBits(), xStamp.mustBeSet(), restrictedMayBeSet).join(xStamp);
                 }
             }
         }

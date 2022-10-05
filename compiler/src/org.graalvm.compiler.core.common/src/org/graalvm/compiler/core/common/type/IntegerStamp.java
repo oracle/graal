@@ -195,12 +195,12 @@ public final class IntegerStamp extends PrimitiveStamp {
 
             // Compute masks with the new bounds in mind.
             final long boundedMustBeSet;
-            final long boundedmayBeSet;
+            final long boundedMayBeSet;
             long defaultMask = CodeUtil.mask(bits);
             if (lowerBoundTmp == upperBoundTmp) {
                 // For constants the masks are just the value
                 boundedMustBeSet = lowerBoundTmp;
-                boundedmayBeSet = lowerBoundTmp;
+                boundedMayBeSet = lowerBoundTmp;
             } else {
                 /*
                  * Any high bits that are the same between the upper and lower bound can be used to
@@ -209,12 +209,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                  */
                 int sameBitCount = Long.numberOfLeadingZeros(lowerBoundTmp ^ upperBoundTmp);
                 long sameBitMask = -1L >>> sameBitCount;
-                boundedmayBeSet = lowerBoundTmp | sameBitMask;
+                boundedMayBeSet = lowerBoundTmp | sameBitMask;
                 boundedMustBeSet = lowerBoundTmp & ~sameBitMask;
             }
 
             long mustBeSetTmp = defaultMask & (mustBeSetCurrent | boundedMustBeSet);
-            long mayBeSetTmp = defaultMask & mayBeSetCurrent & boundedmayBeSet;
+            long mayBeSetTmp = defaultMask & mayBeSetCurrent & boundedMayBeSet;
 
             // Now recompute the bounds from any adjustments to the may and must masks
             upperBoundTmp = Math.min(upperBoundTmp, maxValueForMasks(bits, mustBeSetTmp, mayBeSetTmp));
@@ -625,16 +625,16 @@ public final class IntegerStamp extends PrimitiveStamp {
         return str.toString();
     }
 
-    private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newMustBeSet, long newmayBeSet, boolean newCanBeZero) {
+    private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newMustBeSet, long newMayBeSet, boolean newCanBeZero) {
         assert getBits() == other.getBits();
-        if (isEmpty(newLowerBound, newUpperBound, newMustBeSet, newmayBeSet)) {
+        if (isEmpty(newLowerBound, newUpperBound, newMustBeSet, newMayBeSet)) {
             return empty();
-        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newMustBeSet == mustBeSet && newmayBeSet == mayBeSet && canBeZero == newCanBeZero) {
+        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newMustBeSet == mustBeSet && newMayBeSet == mayBeSet && canBeZero == newCanBeZero) {
             return this;
-        } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newMustBeSet == other.mustBeSet && newmayBeSet == other.mayBeSet && newCanBeZero == other.canBeZero) {
+        } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newMustBeSet == other.mustBeSet && newMayBeSet == other.mayBeSet && newCanBeZero == other.canBeZero) {
             return other;
         } else {
-            return IntegerStamp.create(getBits(), newLowerBound, newUpperBound, newMustBeSet, newmayBeSet, newCanBeZero);
+            return IntegerStamp.create(getBits(), newLowerBound, newUpperBound, newMustBeSet, newMayBeSet, newCanBeZero);
         }
     }
 
@@ -662,9 +662,9 @@ public final class IntegerStamp extends PrimitiveStamp {
         long newMustBeSet = mustBeSet | other.mustBeSet;
         long newLowerBound = Math.max(lowerBound, other.lowerBound);
         long newUpperBound = Math.min(upperBound, other.upperBound);
-        long newmayBeSet = mayBeSet & other.mayBeSet;
+        long newMayBeSet = mayBeSet & other.mayBeSet;
         boolean newCanBeZero = canBeZero && other.canBeZero;
-        return createStamp(other, newUpperBound, newLowerBound, newMustBeSet, newmayBeSet, newCanBeZero);
+        return createStamp(other, newUpperBound, newLowerBound, newMustBeSet, newMayBeSet, newCanBeZero);
     }
 
     @Override
@@ -984,10 +984,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long variableBits = (a.mustBeSet() ^ a.mayBeSet()) | (b.mustBeSet() ^ b.mayBeSet());
                             long variableBitsWithCarry = variableBits | (carryBits(a.mustBeSet(), b.mustBeSet()) ^ carryBits(a.mayBeSet(), b.mayBeSet()));
                             long newMustBeSet = (a.mustBeSet() + b.mustBeSet()) & ~variableBitsWithCarry;
-                            long newmayBeSet = (a.mustBeSet() + b.mustBeSet()) | variableBitsWithCarry;
+                            long newMayBeSet = (a.mustBeSet() + b.mustBeSet()) | variableBitsWithCarry;
 
                             newMustBeSet &= defaultMask;
-                            newmayBeSet &= defaultMask;
+                            newMayBeSet &= defaultMask;
 
                             long newLowerBound;
                             long newUpperBound;
@@ -1003,11 +1003,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 newUpperBound = CodeUtil.signExtend((a.upperBound() + b.upperBound()) & defaultMask, bits);
                             }
                             IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
-                            newmayBeSet &= limit.mayBeSet();
-                            newUpperBound = CodeUtil.signExtend(newUpperBound & newmayBeSet, bits);
+                            newMayBeSet &= limit.mayBeSet();
+                            newUpperBound = CodeUtil.signExtend(newUpperBound & newMayBeSet, bits);
                             newMustBeSet |= limit.mustBeSet();
                             newLowerBound |= newMustBeSet;
-                            return IntegerStamp.create(bits, newLowerBound, newUpperBound, newMustBeSet, newmayBeSet);
+                            return IntegerStamp.create(bits, newLowerBound, newUpperBound, newMustBeSet, newMayBeSet);
                         }
 
                         @Override
@@ -1154,7 +1154,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 long maxPosB = b.upperBound();
 
                                 // multiplication has shift semantics
-                                long newmayBeSet = ~CodeUtil.mask(Math.min(64, Long.numberOfTrailingZeros(a.mayBeSet) + Long.numberOfTrailingZeros(b.mayBeSet))) & CodeUtil.mask(bits);
+                                long newMayBeSet = ~CodeUtil.mask(Math.min(64, Long.numberOfTrailingZeros(a.mayBeSet) + Long.numberOfTrailingZeros(b.mayBeSet))) & CodeUtil.mask(bits);
 
                                 if (a.canBePositive()) {
                                     if (b.canBePositive()) {
@@ -1210,7 +1210,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 }
 
                                 assert newLowerBound <= newUpperBound;
-                                return StampFactory.forIntegerWithMask(bits, newLowerBound, newUpperBound, 0, newmayBeSet);
+                                return StampFactory.forIntegerWithMask(bits, newLowerBound, newUpperBound, 0, newMayBeSet);
                             }
                         }
 
@@ -1613,8 +1613,8 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                             long variableBits = (a.mustBeSet() ^ a.mayBeSet()) | (b.mustBeSet() ^ b.mayBeSet());
                             long newMustBeSet = (a.mustBeSet() ^ b.mustBeSet()) & ~variableBits;
-                            long newmayBeSet = (a.mustBeSet() ^ b.mustBeSet()) | variableBits;
-                            return stampForMask(a.getBits(), newMustBeSet, newmayBeSet);
+                            long newMayBeSet = (a.mustBeSet() ^ b.mustBeSet()) | variableBits;
+                            return stampForMask(a.getBits(), newMustBeSet, newMayBeSet);
                         }
 
                         @Override
@@ -2022,11 +2022,11 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                             long defaultMask = CodeUtil.mask(resultBits);
                             long newMustBeSet = stamp.mustBeSet() & defaultMask;
-                            long newmayBeSet = stamp.mayBeSet() & defaultMask;
-                            long newLowerBound = CodeUtil.signExtend((lowerBound | newMustBeSet) & newmayBeSet, resultBits);
-                            long newUpperBound = CodeUtil.signExtend((upperBound | newMustBeSet) & newmayBeSet, resultBits);
+                            long newMayBeSet = stamp.mayBeSet() & defaultMask;
+                            long newLowerBound = CodeUtil.signExtend((lowerBound | newMustBeSet) & newMayBeSet, resultBits);
+                            long newUpperBound = CodeUtil.signExtend((upperBound | newMustBeSet) & newMayBeSet, resultBits);
 
-                            IntegerStamp result = IntegerStamp.create(resultBits, newLowerBound, newUpperBound, newMustBeSet, newmayBeSet);
+                            IntegerStamp result = IntegerStamp.create(resultBits, newLowerBound, newUpperBound, newMustBeSet, newMayBeSet);
                             assert result.hasValues();
                             return result;
                         }

@@ -115,8 +115,8 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
         if (bits > 0 && valueStamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) valueStamp;
             if (integerStamp.isPositive()) {
-                long valueUpMask = integerStamp.mayBeSet();
-                if ((valueUpMask & CodeUtil.mask(bits)) == valueUpMask) {
+                long valueMayBeSet = integerStamp.mayBeSet();
+                if ((valueMayBeSet & CodeUtil.mask(bits)) == valueMayBeSet) {
                     // value is unsigned and fits
                     return true;
                 }
