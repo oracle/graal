@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
 abstract class NativeCustomLanguageDispatch extends CustomLanguageDispatch {
 
-    private static final NativeCustomLanguageDispatch INSTANCE = NativeCustomLanguageDispatchGen.createHotSpotToNative();
+    private static final NativeCustomLanguageDispatch INSTANCE = NativeCustomLanguageDispatchGen.createHSToNative();
 
     @CustomDispatchAccessor
     static CustomLanguageDispatch getDispatch(LanguageAPI api) {

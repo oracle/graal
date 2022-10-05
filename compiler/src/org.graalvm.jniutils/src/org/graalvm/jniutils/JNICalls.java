@@ -44,42 +44,42 @@ import java.util.Objects;
 
 /**
  * Support for calling into HotSpot using JNI. In addition to calling a method using JNI, the
- * {@code HotSpotCalls} also perform JNI call tracing and exception handling. All JNI calls into
- * HotSpot must use this support to correctly merge HotSpot and native image stack traces.
+ * {@code JNICalls} also perform JNI call tracing and exception handling. All JNI calls into HotSpot
+ * must use this support to correctly merge HotSpot and native image stack traces.
  */
-public final class HotSpotCalls {
+public final class JNICalls {
 
-    private static final HotSpotCalls INSTANCE = new HotSpotCalls(ExceptionHandler.DEFAULT);
+    private static final JNICalls INSTANCE = new JNICalls(ExceptionHandler.DEFAULT);
 
     private static final ThreadLocal<Boolean> inTrace = ThreadLocal.withInitial(() -> false);
 
     private final ExceptionHandler exceptionHandler;
 
-    private HotSpotCalls(ExceptionHandler exceptionHandler) {
+    private JNICalls(ExceptionHandler exceptionHandler) {
         this.exceptionHandler = exceptionHandler;
     }
 
     /**
-     * Returns a {@link HotSpotCalls} instance with a default exception handler. The default
-     * exception handler rethrows any pending JNI exception as a {@link JNIExceptionWrapper}.
+     * Returns a {@link JNICalls} instance with a default exception handler. The default exception
+     * handler rethrows any pending JNI exception as a {@link JNIExceptionWrapper}.
      */
-    public static HotSpotCalls getDefault() {
+    public static JNICalls getDefault() {
         return INSTANCE;
     }
 
     /**
-     * Creates a new {@link HotSpotCalls} instance with a custom exception handler. The given
-     * exception handler is used to handle pending JNI exceptions.
+     * Creates a new {@link JNICalls} instance with a custom exception handler. The given exception
+     * handler is used to handle pending JNI exceptions.
      */
-    public static HotSpotCalls createWithExceptionHandler(ExceptionHandler handler) {
+    public static JNICalls createWithExceptionHandler(ExceptionHandler handler) {
         Objects.requireNonNull(handler, "Handler must be non null.");
-        return new HotSpotCalls(handler);
+        return new JNICalls(handler);
     }
 
     /**
      * Performs a JNI call of a static void method.
      */
-    @HotSpotCall
+    @JNICall
     public void callStaticVoid(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
         traceCall(env, clazz, method);
         env.getFunctions().getCallStaticVoidMethodA().call(env, clazz, method.getJMethodID(), args);
@@ -89,7 +89,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a static method returning {@code boolean}.
      */
-    @HotSpotCall
+    @JNICall
     public boolean callStaticBoolean(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
         traceCall(env, clazz, method);
         boolean res = env.getFunctions().getCallStaticBooleanMethodA().call(env, clazz, method.getJMethodID(), args);
@@ -100,7 +100,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a static method returning {@code long}.
      */
-    @HotSpotCall
+    @JNICall
     public long callStaticLong(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
         traceCall(env, clazz, method);
         long res = env.getFunctions().getCallStaticLongMethodA().call(env, clazz, method.getJMethodID(), args);
@@ -111,7 +111,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a static method returning {@code int}.
      */
-    @HotSpotCall
+    @JNICall
     public int callStaticInt(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
         traceCall(env, clazz, method);
         int res = env.getFunctions().getCallStaticIntMethodA().call(env, clazz, method.getJMethodID(), args);
@@ -123,7 +123,7 @@ public final class HotSpotCalls {
      * Performs a JNI call of a static method returning {@link Object}.
      */
     @SuppressWarnings("unchecked")
-    @HotSpotCall
+    @JNICall
     public <R extends JObject> R callStaticJObject(JNIEnv env, JClass clazz, JNIMethod method, JNI.JValue args) {
         traceCall(env, clazz, method);
         JNI.JObject res = env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, method.getJMethodID(), args);
@@ -134,7 +134,7 @@ public final class HotSpotCalls {
     /**
      * Creates a new object instance using a given constructor.
      */
-    @HotSpotCall
+    @JNICall
     @SuppressWarnings("unchecked")
     public <R extends JObject> R callNewObject(JNIEnv env, JClass clazz, JNIMethod constructor, JNI.JValue args) {
         traceCall(env, clazz, constructor);
@@ -146,7 +146,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a void method.
      */
-    @HotSpotCall
+    @JNICall
     public void callVoid(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         env.getFunctions().getCallVoidMethodA().call(env, object, method.getJMethodID(), args);
@@ -156,7 +156,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@link Object}.
      */
-    @HotSpotCall
+    @JNICall
     @SuppressWarnings("unchecked")
     public <R extends JObject> R callJObject(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
@@ -168,7 +168,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code boolean}.
      */
-    @HotSpotCall
+    @JNICall
     public boolean callBoolean(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         boolean res = env.getFunctions().getCallBooleanMethodA().call(env, object, method.getJMethodID(), args);
@@ -179,7 +179,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code short}.
      */
-    @HotSpotCall
+    @JNICall
     public short callShort(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         short res = env.getFunctions().getCallShortMethodA().call(env, object, method.getJMethodID(), args);
@@ -190,7 +190,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code int}.
      */
-    @HotSpotCall
+    @JNICall
     public int callInt(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         int res = env.getFunctions().getCallIntMethodA().call(env, object, method.getJMethodID(), args);
@@ -201,7 +201,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code long}.
      */
-    @HotSpotCall
+    @JNICall
     public long callLong(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         long res = env.getFunctions().getCallLongMethodA().call(env, object, method.getJMethodID(), args);
@@ -212,7 +212,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code double}.
      */
-    @HotSpotCall
+    @JNICall
     public double callDouble(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         double res = env.getFunctions().getCallDoubleMethodA().call(env, object, method.getJMethodID(), args);
@@ -223,7 +223,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code float}.
      */
-    @HotSpotCall
+    @JNICall
     public float callFloat(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         float res = env.getFunctions().getCallFloatMethodA().call(env, object, method.getJMethodID(), args);
@@ -234,7 +234,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code byte}.
      */
-    @HotSpotCall
+    @JNICall
     public byte callByte(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         byte res = env.getFunctions().getCallByteMethodA().call(env, object, method.getJMethodID(), args);
@@ -245,7 +245,7 @@ public final class HotSpotCalls {
     /**
      * Performs a JNI call of a method returning {@code char}.
      */
-    @HotSpotCall
+    @JNICall
     public char callChar(JNIEnv env, JObject object, JNIMethod method, JNI.JValue args) {
         traceCall(env, object, method);
         char res = env.getFunctions().getCallCharMethodA().call(env, object, method.getJMethodID(), args);
@@ -344,6 +344,6 @@ public final class HotSpotCalls {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
-    @interface HotSpotCall {
+    @interface JNICall {
     }
 }
