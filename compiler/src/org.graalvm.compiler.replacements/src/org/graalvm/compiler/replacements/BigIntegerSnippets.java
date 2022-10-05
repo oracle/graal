@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.replacements;
-
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayStart;
+package org.graalvm.compiler.replacements;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.word.WordFactory;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class BigIntegerSnippets implements Snippets {
 
+    protected static final MetaAccessProvider INJECTED_METAACCESS = null;
+
     public static class Templates extends SnippetTemplate.AbstractTemplates {
+
+        public final SnippetTemplate.SnippetInfo implMultiplyToLen;
 
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
-        }
 
-        public final SnippetTemplate.SnippetInfo implMultiplyToLen = snippet(BigIntegerSnippets.class, "implMultiplyToLen");
+            this.implMultiplyToLen = snippet(providers, BigIntegerSnippets.class, "implMultiplyToLen");
+        }
     }
 
     @Snippet(allowMissingProbabilities = true)
@@ -54,7 +60,12 @@ public class BigIntegerSnippets implements Snippets {
         } else {
             zLen = zIn.length;
         }
-        HotSpotBackend.multiplyToLenStub(arrayStart(x), xlen, arrayStart(y), ylen, arrayStart(zResult), zLen);
+
+        BigIntegerMultiplyToLenNode.apply(arrayStart(x), xlen, arrayStart(y), ylen, arrayStart(zResult), zLen);
         return zResult;
+    }
+
+    private static Word arrayStart(int[] a) {
+        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
     }
 }

@@ -127,10 +127,14 @@ final class GenScavengeAllocationSnippets implements Snippets {
         Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
             super(options, providers);
             this.baseTemplates = baseTemplates;
-            formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet");
-            formatArray = snippet(GenScavengeAllocationSnippets.class, "formatArraySnippet");
-            formatStoredContinuation = Continuation.isSupported() ? snippet(GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
-            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(GenScavengeAllocationSnippets.class, "formatPodSnippet", NamedLocationIdentity.getArrayLocation(JavaKind.Byte)) : null;
+            formatObject = snippet(providers, GenScavengeAllocationSnippets.class, "formatObjectSnippet");
+            formatArray = snippet(providers, GenScavengeAllocationSnippets.class, "formatArraySnippet");
+            formatStoredContinuation = Continuation.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
+            formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers,
+                            GenScavengeAllocationSnippets.class,
+                            "formatPodSnippet",
+                            NamedLocationIdentity.getArrayLocation(JavaKind.Byte))
+                            : null;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -158,7 +162,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -180,7 +184,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -200,7 +204,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
                 args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -223,7 +227,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
     }

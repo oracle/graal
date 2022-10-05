@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -201,16 +201,16 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_cos.cpp",
-          lineStart = 34,
-          lineEnd   = 612,
-          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
-          sha1      = "9339dc67800971e1d45dd878394cb650a36ffb03")
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_constants.cpp",
-          lineStart = 29,
-          lineEnd   = 236,
-          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
-          sha1      = "f89c1da45b2e91cb114e68cbe20ea6fff3bae315")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_cos.cpp",
+          lineStart = 31,
+          lineEnd   = 623,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "2dc9ee1a0e80fa0f8d421a57dc37bed4140a9b2a")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_constants.cpp",
+          lineStart = 30,
+          lineEnd   = 235,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "3b493a3a99360abf52d3886bd65f84c9f6048897")
 // @formatter:on
 public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 

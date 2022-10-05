@@ -99,18 +99,19 @@ final class StackValueSnippets extends SubstrateTemplates implements Snippets {
         throw error;
     }
 
+    private final SnippetTemplate.SnippetInfo stackValueSnippet;
+
     /*
      * Boilerplate code to register and perform the lowering.
      */
 
     StackValueSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+        this.stackValueSnippet = snippet(providers, StackValueSnippets.class, "stackValueSnippet");
         lowerings.put(StackValueNode.class, new StackValueVirtualThreadCheckLowering());
     }
 
     final class StackValueVirtualThreadCheckLowering implements NodeLoweringProvider<StackValueNode> {
-        private final SnippetTemplate.SnippetInfo stackValueSnippet = snippet(StackValueSnippets.class, "stackValueSnippet");
-
         @Override
         public void lower(StackValueNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
@@ -125,7 +126,7 @@ final class StackValueSnippets extends SubstrateTemplates implements Snippets {
             args.addConst("slotIdentifier", node.slotIdentity);
             args.addConst("disallowVirtualThread", node.checkVirtualThread);
             args.addConst("mustNotAllocate", mustNotAllocate);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

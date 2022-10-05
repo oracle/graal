@@ -218,6 +218,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             providers.getReplacements().registerSnippetTemplateCache(utf16templates);
         }
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers));
+        providers.getReplacements().registerSnippetTemplateCache(new BigIntegerSnippets.Templates(options, providers));
     }
 
     @Override

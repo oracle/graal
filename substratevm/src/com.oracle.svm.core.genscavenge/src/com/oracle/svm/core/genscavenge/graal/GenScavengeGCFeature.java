@@ -106,7 +106,7 @@ class GenScavengeGCFeature implements InternalFeature {
             // Even though I don't hold on to this instance, it is preserved because it becomes the
             // enclosing instance for the lowerings registered within it.
             BarrierSnippets barrierSnippets = new BarrierSnippets(options, providers);
-            barrierSnippets.registerLowerings(lowerings);
+            barrierSnippets.registerLowerings(providers.getMetaAccess(), lowerings);
         }
 
         SubstrateAllocationSnippets allocationSnippets = ImageSingletons.lookup(SubstrateAllocationSnippets.class);

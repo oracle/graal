@@ -279,8 +279,8 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
 
     private AArch64ArithmeticSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers, lowerings, false);
-        frem = snippet(AArch64ArithmeticSnippets.class, "fremSnippet");
-        drem = snippet(AArch64ArithmeticSnippets.class, "dremSnippet");
+        frem = snippet(providers, AArch64ArithmeticSnippets.class, "fremSnippet");
+        drem = snippet(providers, AArch64ArithmeticSnippets.class, "dremSnippet");
 
         lowerings.put(RemNode.class, new AArch64RemLowering());
     }
@@ -295,7 +295,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
             Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("x", node.getX());
             args.add("y", node.getY());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, tool, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, tool, args);
         }
     }
 }

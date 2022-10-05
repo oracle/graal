@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,12 +103,13 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION);
+        private final SnippetInfo pollSnippet;
         private final int pendingHandshakeOffset;
 
         Templates(OptionValues options, HotSpotProviders providers, int pendingHandshakeOffset) {
             super(options, providers);
             this.pendingHandshakeOffset = pendingHandshakeOffset;
+            this.pollSnippet = snippet(providers, HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION);
         }
 
         public void lower(TruffleSafepointNode node, LoweringTool tool) {
@@ -116,8 +117,8 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
             Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("node", node.location());
             args.addConst("pendingHandshakeOffset", pendingHandshakeOffset);
-            SnippetTemplate template = template(node, args);
-            template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, node, args);
+            template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
     }
 

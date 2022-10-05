@@ -555,16 +555,51 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             snippetCounters = new AllocationSnippetCounters(SnippetCounter.Group.NullFactory);
             profilingData = new SubstrateAllocationProfilingData(snippetCounters, null);
 
-            allocateInstance = snippet(SubstrateAllocationSnippets.class, "allocateInstance", null, receiver, ALLOCATION_LOCATIONS);
-            allocateArray = snippet(SubstrateAllocationSnippets.class, "allocateArray", null, receiver, ALLOCATION_LOCATIONS);
-            allocateInstanceDynamic = snippet(SubstrateAllocationSnippets.class, "allocateInstanceDynamic", null, receiver, ALLOCATION_LOCATIONS);
-            allocateArrayDynamic = snippet(SubstrateAllocationSnippets.class, "allocateArrayDynamic", null, receiver, ALLOCATION_LOCATIONS);
-            newmultiarray = snippet(SubstrateAllocationSnippets.class, "newmultiarray", null, receiver, ALLOCATION_LOCATIONS);
-            validateNewInstanceClass = snippet(SubstrateAllocationSnippets.class, "validateNewInstanceClass", null, receiver, ALLOCATION_LOCATIONS);
+            allocateInstance = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "allocateInstance",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
+            allocateArray = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "allocateArray",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
+            allocateInstanceDynamic = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "allocateInstanceDynamic",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
+            allocateArrayDynamic = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "allocateArrayDynamic",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
+            newmultiarray = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "newmultiarray",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
+            validateNewInstanceClass = snippet(providers,
+                            SubstrateAllocationSnippets.class,
+                            "validateNewInstanceClass",
+                            null,
+                            receiver,
+                            ALLOCATION_LOCATIONS);
 
             SnippetInfo allocateStoredContinuationSnippet = null;
             if (Continuation.isSupported()) {
-                allocateStoredContinuationSnippet = snippet(SubstrateAllocationSnippets.class, "allocateStoredContinuation", null, receiver, ALLOCATION_LOCATIONS);
+                allocateStoredContinuationSnippet = snippet(providers,
+                                SubstrateAllocationSnippets.class,
+                                "allocateStoredContinuation",
+                                null,
+                                receiver,
+                                ALLOCATION_LOCATIONS);
             }
             allocateStoredContinuation = allocateStoredContinuationSnippet;
 
@@ -573,7 +608,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Object[] podLocations = SubstrateAllocationSnippets.ALLOCATION_LOCATIONS;
                 podLocations = Arrays.copyOf(podLocations, podLocations.length + 1);
                 podLocations[podLocations.length - 1] = byteArrayIdentity();
-                allocatePodSnippet = snippet(SubstrateAllocationSnippets.class, "allocatePod", null, receiver, podLocations);
+                allocatePodSnippet = snippet(providers,
+                                SubstrateAllocationSnippets.class,
+                                "allocatePod",
+                                null,
+                                receiver,
+                                podLocations);
             }
             allocatePod = allocatePodSnippet;
         }
@@ -638,7 +678,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.instanceClass();
                 DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
 
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
                 long size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue();
 
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
@@ -648,7 +688,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, type));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             }
         }
 
@@ -669,7 +709,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 boolean fillContents = node.fillContents();
                 assert fillContents : "fillContents must be true for hybrid allocations";
 
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -683,7 +723,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, instanceClass));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -702,7 +742,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -713,7 +753,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, instanceClass));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -731,7 +771,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -745,7 +785,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, type));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -764,14 +804,14 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.type();
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(type.getHub()), providers.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(type.getHub()), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.addConst("rank", rank);
                 args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -791,7 +831,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, null));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -812,7 +852,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, null));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -824,7 +864,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
 
@@ -837,7 +877,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 assert node.getKnownInstanceType() == null || (node.getHub().isConstant() &&
-                                providers.getConstantReflection().asJavaType(node.getHub().asConstant()).equals(node.getKnownInstanceType()));
+                                tool.getConstantReflection().asJavaType(node.getHub().asConstant()).equals(node.getKnownInstanceType()));
                 assert node.fillContents() : "fillContents must be true for hybrid allocations";
 
                 Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
@@ -850,7 +890,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, node.getKnownInstanceType()));
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
     }

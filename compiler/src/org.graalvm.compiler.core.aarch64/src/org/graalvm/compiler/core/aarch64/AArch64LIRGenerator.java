@@ -57,6 +57,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
@@ -601,6 +602,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
         append(new AArch64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
+    }
+
+    @Override
+    public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        append(new AArch64BigIntegerMultiplyToLenOp(asAllocatable(x), asAllocatable(xlen), asAllocatable(y), asAllocatable(ylen), asAllocatable(z), asAllocatable(zlen)));
     }
 
     @Override

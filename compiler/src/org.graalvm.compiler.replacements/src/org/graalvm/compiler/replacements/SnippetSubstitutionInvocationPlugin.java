@@ -64,7 +64,7 @@ public abstract class SnippetSubstitutionInvocationPlugin<T extends SnippetTempl
         }
 
         T templates = b.getReplacements().getSnippetTemplateCache(templateClass);
-        GraalError.guarantee(templates != null, "Missing templates for ", templateClass);
+        GraalError.guarantee(templates != null, "Missing templates for %s", templateClass);
         SnippetTemplate.SnippetInfo snippet = getSnippet(templates);
         MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, args);
         SnippetSubstitutionNode node = new SnippetSubstitutionNode(templates, snippet, params);

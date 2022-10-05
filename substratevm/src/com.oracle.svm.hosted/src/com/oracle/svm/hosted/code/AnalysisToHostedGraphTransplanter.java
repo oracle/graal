@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -312,7 +313,9 @@ public class AnalysisToHostedGraphTransplanter {
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoadIfZero.class) {
             ComputedIndirectCallTargetNode.FieldLoadIfZero fieldLoadIfZero = (ComputedIndirectCallTargetNode.FieldLoadIfZero) obj;
             newReplacement = new ComputedIndirectCallTargetNode.FieldLoadIfZero(fieldLoadIfZero.getObject(), hUniverse.lookup(fieldLoadIfZero.getField()));
-
+        } else if (obj.getClass() == SnippetTemplate.EagerSnippetInfo.class) {
+            SnippetTemplate.EagerSnippetInfo info = (SnippetTemplate.EagerSnippetInfo) obj;
+            newReplacement = info.copyWith((ResolvedJavaMethod) replaceAnalysisObjects(info.getMethod(), node, replacements, hUniverse));
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
