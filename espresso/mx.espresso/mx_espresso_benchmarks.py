@@ -131,6 +131,7 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter-inline-accessors', 
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('single-tier', ['--experimental-options', '--engine.MultiTier=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier=true']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('3-compiler-threads', ['--experimental-options', '--engine.CompilerThreads=3']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('safe', ['--experimental-options', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
