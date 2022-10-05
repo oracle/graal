@@ -147,6 +147,15 @@ public final class IntegerStamp extends PrimitiveStamp {
         return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask, canBeZero);
     }
 
+    /**
+     * A stamp is empty if the lower bound is greater than the upper bound, the downMask contains
+     * bits which are not part of the upMask, or there are no bits set and the bound isn't exactly
+     * 0.
+     */
+    private static boolean isEmpty(long lowerBound, long upperBound, long downMask, long upMask) {
+        return lowerBound > upperBound || (downMask & (~upMask)) != 0 || (upMask == 0 && (lowerBound > 0 || upperBound < 0));
+    }
+
     private static long significantBit(long bits, long value) {
         return (value >>> (bits - 1)) & 1;
     }
@@ -778,7 +787,18 @@ public final class IntegerStamp extends PrimitiveStamp {
                             newUpperBound = CodeUtil.signExtend(newUpperBound & newUpMask, bits);
                             newDownMask |= limit.downMask();
                             newLowerBound |= newDownMask;
-                            return new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+                            if (isEmpty(newLowerBound, newUpperBound, newDownMask, newUpMask)) {
+                                // It's possible the masks are inconsistent with the bounds so
+                                // return some less precise but non-empty stamp in that case
+                                if (newLowerBound < newUpperBound) {
+                                    return StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+                                } else {
+                                    return limit.unrestricted();
+                                }
+                            }
+                            IntegerStamp result = new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+                            assert !result.isEmpty() : result;
+                            return result;
                         }
 
                         @Override
