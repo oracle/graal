@@ -108,6 +108,7 @@ import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -301,7 +302,6 @@ import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationExtracter;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -1182,7 +1182,7 @@ public class NativeImageGenerator {
         @Override
         public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
             if (Options.WarnMissingIntrinsic.getValue(options)) {
-                for (Class<?> annotationType : GuardedAnnotationAccess.getAnnotationTypes(targetMethod)) {
+                for (Class<?> annotationType : AnnotationAccess.getAnnotationTypes(targetMethod)) {
                     if (ClassUtil.getUnqualifiedName(annotationType).contains("IntrinsicCandidate")) {
                         String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
                                         targetMethod.getSignature().toMethodDescriptor());

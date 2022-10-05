@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
-import com.oracle.svm.util.GuardedAnnotationAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -58,7 +58,7 @@ public class SubstrateWordOperationPlugins extends WordOperationPlugin {
             }
         }
 
-        SubstrateOperation operation = GuardedAnnotationAccess.getAnnotation(method, SubstrateOperation.class);
+        SubstrateOperation operation = AnnotationAccess.getAnnotation(method, SubstrateOperation.class);
         if (operation == null) {
             processWordOperation(b, args, wordTypes.getWordOperation(method, b.getMethod().getDeclaringClass()));
             return true;
