@@ -53,7 +53,7 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
     public abstract Object execute(VirtualFrame frame, TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
 
     @Override
-    public boolean isInstrumentable() {
+    public final boolean isInstrumentable() {
         return true;
     }
 
