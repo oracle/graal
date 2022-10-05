@@ -57,6 +57,7 @@ import java.util.StringJoiner;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -86,7 +87,6 @@ import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -872,7 +872,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
          */
         T[] result = getDeclaredAnnotationsByType(annotationClass);
 
-        if (result.length == 0 && DirectAnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
+        if (result.length == 0 && AnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
             DynamicHub superClass = (DynamicHub) this.getSuperclass();
             if (superClass != null) {
                 /* Determine if the annotation is associated with the superclass. */
