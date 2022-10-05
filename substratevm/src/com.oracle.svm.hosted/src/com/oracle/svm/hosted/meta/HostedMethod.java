@@ -108,7 +108,9 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         int collisionCount = universe.uniqueHostedMethodNames.merge(uniqueShortName, 0, (oldValue, value) -> oldValue + 1);
         if (collisionCount > 0) {
             name = name + METHOD_NAME_COLLISION_SUFFIX + collisionCount;
-            uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+            String fixedUniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+            VMError.guarantee(!fixedUniqueShortName.equals(uniqueShortName), "failed to generate uniqueShortName for HostedMethod created for " + wrapped);
+            uniqueShortName = fixedUniqueShortName;
         }
         return new HostedMethod(wrapped, holder, signature, constantPool, handlers, deoptOrigin, name, uniqueShortName, localVariableTable);
     }

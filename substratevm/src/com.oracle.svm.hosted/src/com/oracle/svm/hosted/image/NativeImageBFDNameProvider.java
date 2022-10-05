@@ -365,13 +365,14 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             String selector = memberName;
             if (isConstructor) {
                 assert methodSignature != null;
-                assert selector.equals("<init>");
-                int index = fqn.lastIndexOf('.');
+                // replace <init> with the class name n.b. it may include a disambiguating suffix
+                assert selector.startsWith("<init>");
+                String replacement = fqn;
+                int index = replacement.lastIndexOf('.');
                 if (index >= 0) {
-                    selector = fqn.substring(index);
-                } else {
-                    selector = fqn;
+                    replacement = fqn.substring(index + 1);
                 }
+                selector = selector.replace("<init>", replacement);
             }
             mangleClassAndMemberName(loaderName, fqn, selector);
             if (methodSignature != null) {
