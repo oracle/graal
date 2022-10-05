@@ -90,11 +90,7 @@ public class PolyglotTypeMappings {
 
             for (Map.Entry<String, String> entry : converters) {
                 String type = entry.getKey();
-                // make sure the target type class can be found
-                Klass targetKlass = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(type), bindingsLoader, StaticObject.NULL);
-                if (targetKlass == null) {
-                    throw new IllegalStateException("Class not found for target type conversion: " + type);
-                }
+
                 String conversionHandler = entry.getValue();
                 ObjectKlass conversionKlass = (ObjectKlass) context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(conversionHandler), bindingsLoader, StaticObject.NULL);
                 if (conversionKlass == null) {
