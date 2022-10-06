@@ -286,7 +286,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     /**
      * Compute the upper bounds by starting from an initial value derived the mustBeSet and then
      * setting optional bits until a value which is less than or equal to the current upper bound is
-     * found.
+     * found. Returns {@code CodeUtil.minValue(bits)} if no such value can be found.
      */
     private static long computeUpperBound(int bits, long upperBound, long mustBeSet, long mayBeSet, boolean canBeZero) {
         // Start with the sign extended mustBeSet. That will be the smallest positive or negative
@@ -340,7 +340,8 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     /**
-     * Compute a lower bound which is compatible with the masks.
+     * Compute a lower bound which is compatible with the masks. Returns
+     * {@code CodeUtil.maxValue(bits)} if no such value can be found.
      */
     private static long computeLowerBound(int bits, long lowerBound, long mustBeSet, long mayBeSet, boolean canBeZero) {
         long newLowerBound = minValueForMasks(bits, mustBeSet, mayBeSet);
