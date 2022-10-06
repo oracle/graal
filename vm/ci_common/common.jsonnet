@@ -116,7 +116,7 @@ local devkits = common_json.devkits;
     },
     downloads+: {
       F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
-      FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
+      FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '17', platformspecific: true },
     },
     catch_files+: [
       'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
