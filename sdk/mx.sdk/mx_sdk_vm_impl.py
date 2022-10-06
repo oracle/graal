@@ -350,6 +350,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  add_jdk_base=False,
                  base_dir=None,
                  path=None,
+                 jimage_exclusion_list=None,
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
@@ -359,6 +360,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
         base_dir = base_dir or '.'
+        default_jimage_exclusion_list = ['lib/jvm.cfg']
+        jimage_exclusion_list = jimage_exclusion_list or []
+        if src_jdk_base != '.':
+            jimage_exclusion_list = ['/'.join([src_jdk_base, e]) for e in (default_jimage_exclusion_list + jimage_exclusion_list)]
 
         if base_dir != '.':
             self.jdk_base = '/'.join([base_dir, src_jdk_base]) if src_jdk_base != '.' else base_dir
@@ -532,11 +537,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 check_versions(_src_jdk, graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
 
             # Add base JDK
-            # TODO(GR-8329): add exclusions
-            exclude_base = _src_jdk_dir
-            exclusion_list = []
-            if src_jdk_base != '.':
-                exclude_base = join(exclude_base, src_jdk_base)
             if mx.get_os() == 'darwin':
                 # Since on Darwin the jimage is added to `Contents/Home`, `incl_list` must contain `Contents/MacOS` and `Contents/Info.plist`
                 incl_list = _patch_darwin_jdk()
@@ -546,9 +546,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'source_type': 'dependency',
                 'dependency': 'graalvm-stage1-jimage' if stage1 and _needs_stage1_jimage(self, get_final_graalvm_distribution()) else 'graalvm-jimage',
                 'path': '*',
-                'exclude': [
-                    'lib/jvm.cfg'
-                ],
+                'exclude': jimage_exclusion_list,
             })
             _add(layout, "<jre_base>/lib/jvm.cfg", "string:" + _get_jvm_cfg_contents())
 
@@ -883,6 +881,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             add_jdk_base=True,
             base_dir=base_dir,
             path=None,
+            jimage_exclusion_list=None,
             stage1=stage1,
             **kw_args)
 
