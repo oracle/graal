@@ -53,7 +53,7 @@ jobs:
           # /compiler
           - env:
               JDK: "labsjdk-ce-19"
-              GATE: "build,test"
+              GATE: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
               JDK: "labsjdk-ce-19"
