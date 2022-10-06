@@ -34,7 +34,7 @@ import java.util.List;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.AnnotationExtracter;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 // Checkstyle: allow direct annotation access
 
@@ -171,7 +171,7 @@ public interface AnnotationWrapper extends AnnotatedElement {
 
     private static <T extends Annotation> T getRootAnnotation(AnnotatedElement annotationRoot, Class<T> annotationClass, boolean declaredOnly) {
         if (ImageInfo.inImageBuildtimeCode()) {
-            return ImageSingletons.lookup(AnnotationExtracter.class).extractAnnotation(annotationRoot, annotationClass, declaredOnly);
+            return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(annotationRoot, annotationClass, declaredOnly);
         } else {
             if (declaredOnly) {
                 return annotationRoot.getDeclaredAnnotation(annotationClass);

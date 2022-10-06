@@ -76,7 +76,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.nativeimage.impl.AnnotationExtracter;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -86,7 +86,7 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -111,7 +111,7 @@ public class NativeImageClassLoaderSupport {
     public final ModuleLayer moduleLayerForImageBuild;
     public final ModuleFinder modulepathModuleFinder;
 
-    public final AnnotationExtracter annotationExtracter;
+    public final AnnotationExtractor annotationExtractor;
 
     static final class ClassPathClassLoader extends URLClassLoader {
         ClassPathClassLoader(URL[] urls, ClassLoader parent) {
@@ -163,7 +163,7 @@ public class NativeImageClassLoaderSupport {
 
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
-        annotationExtracter = new SubstrateAnnotationExtracter();
+        annotationExtractor = new SubstrateAnnotationExtractor();
     }
 
     List<Path> classpath() {

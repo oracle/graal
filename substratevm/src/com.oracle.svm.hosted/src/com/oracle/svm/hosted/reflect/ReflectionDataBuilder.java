@@ -77,7 +77,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
@@ -121,10 +121,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
 
-    private final SubstrateAnnotationExtracter annotationExtracter;
+    private final SubstrateAnnotationExtractor annotationExtractor;
 
-    ReflectionDataBuilder(SubstrateAnnotationExtracter annotationExtracter) {
-        this.annotationExtracter = annotationExtracter;
+    ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
+        this.annotationExtractor = annotationExtractor;
     }
 
     @Override
@@ -596,7 +596,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotatedElement != null) {
             filteredAnnotations.computeIfAbsent(annotatedElement, element -> {
                 List<AnnotationValue> includedAnnotations = new ArrayList<>();
-                for (AnnotationValue annotation : annotationExtracter.getDeclaredAnnotationData(element)) {
+                for (AnnotationValue annotation : annotationExtractor.getDeclaredAnnotationData(element)) {
                     if (includeAnnotation(access, annotation)) {
                         includedAnnotations.add(annotation);
                         registerTypes(access, annotation.getTypes());
@@ -610,7 +610,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerTypesForParameterAnnotations(DuringAnalysisAccessImpl access, AnalysisMethod executable) {
         if (executable != null) {
             filteredParameterAnnotations.computeIfAbsent(executable, element -> {
-                AnnotationValue[][] parameterAnnotations = annotationExtracter.getParameterAnnotationData(element);
+                AnnotationValue[][] parameterAnnotations = annotationExtractor.getParameterAnnotationData(element);
                 AnnotationValue[][] includedParameterAnnotations = new AnnotationValue[parameterAnnotations.length][];
                 for (int i = 0; i < includedParameterAnnotations.length; ++i) {
                     AnnotationValue[] annotations = parameterAnnotations[i];
@@ -632,7 +632,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotatedElement != null) {
             filteredTypeAnnotations.computeIfAbsent(annotatedElement, element -> {
                 List<TypeAnnotationValue> includedTypeAnnotations = new ArrayList<>();
-                for (TypeAnnotationValue typeAnnotation : annotationExtracter.getTypeAnnotationData(element)) {
+                for (TypeAnnotationValue typeAnnotation : annotationExtractor.getTypeAnnotationData(element)) {
                     if (includeAnnotation(access, typeAnnotation.getAnnotationData())) {
                         includedTypeAnnotations.add(typeAnnotation);
                         registerTypes(access, typeAnnotation.getAnnotationData().getTypes());
@@ -644,7 +644,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForAnnotationDefault(DuringAnalysisAccessImpl access, AnalysisMethod method) {
-        AnnotationMemberValue annotationDefault = annotationExtracter.getAnnotationDefaultData(method);
+        AnnotationMemberValue annotationDefault = annotationExtractor.getAnnotationDefaultData(method);
         if (annotationDefault != null) {
             registerTypes(access, annotationDefault.getTypes());
         }
@@ -902,7 +902,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     public AnnotationMemberValue getAnnotationDefaultData(AnnotatedElement element) {
-        return annotationExtracter.getAnnotationDefaultData(element);
+        return annotationExtractor.getAnnotationDefaultData(element);
     }
 
     @Override

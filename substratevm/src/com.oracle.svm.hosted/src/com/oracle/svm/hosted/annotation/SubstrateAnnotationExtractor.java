@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.impl.AnnotationExtracter;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.hosted.annotation.AnnotationMetadata.AnnotationExtractionError;
 import com.oracle.svm.util.AnnotationWrapper;
@@ -63,7 +63,7 @@ import sun.reflect.annotation.AnnotationParser;
  * through the JDK's {@link AnnotationParser} initializes the class of every annotation on the
  * queried element.
  *
- * When queried, the extracter looks for the root of the provided element, which can be a
+ * When queried, the extractor looks for the root of the provided element, which can be a
  * {@link Field}, {@link Method}, {@link Constructor} or {@link Class} object, as well as a record
  * component on JDK 17. It then looks into the byte arrays representing annotations in the root
  * object and outputs wrapper classes containing all the information necessary to reconstruct the
@@ -71,12 +71,12 @@ import sun.reflect.annotation.AnnotationParser;
  * subclass of {@link AnnotationMemberValue}. The actual annotation can then be created using the
  * {@link AnnotationMemberValue#get(Class)} method.
  *
- * The {@link SubstrateAnnotationExtracter} is tightly coupled with {@link AnnotationAccess}, which
+ * The {@link SubstrateAnnotationExtractor} is tightly coupled with {@link AnnotationAccess}, which
  * provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
  * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} should
  * in principle not be used during Native Image generation.
  */
-public class SubstrateAnnotationExtracter implements AnnotationExtracter {
+public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private final Map<Class<?>, AnnotationValue[]> annotationCache = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, AnnotationValue[]> declaredAnnotationCache = new ConcurrentHashMap<>();
     private final Map<Executable, AnnotationValue[][]> parameterAnnotationCache = new ConcurrentHashMap<>();

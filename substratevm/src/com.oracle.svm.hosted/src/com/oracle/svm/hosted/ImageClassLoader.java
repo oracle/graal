@@ -142,7 +142,7 @@ public final class ImageClassLoader {
 
     private boolean isInPlatform(AnnotatedElement element) {
         try {
-            Platforms platformAnnotation = classLoaderSupport.annotationExtracter.extractAnnotation(element, Platforms.class, false);
+            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(element, Platforms.class, false);
             return NativeImageGenerator.includedIn(platform, platformAnnotation);
         } catch (Throwable t) {
             handleClassLoadingError(t);
@@ -175,7 +175,7 @@ public final class ImageClassLoader {
         do {
             Platforms platformsAnnotation;
             try {
-                platformsAnnotation = classLoaderSupport.annotationExtracter.extractAnnotation(cur, Platforms.class, false);
+                platformsAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(cur, Platforms.class, false);
             } catch (Throwable t) {
                 handleClassLoadingError(t);
                 return;
@@ -373,7 +373,7 @@ public final class ImageClassLoader {
 
     private void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
         for (Class<?> systemClass : classes) {
-            if (classLoaderSupport.annotationExtracter.hasAnnotation(systemClass, annotationClass)) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(systemClass, annotationClass)) {
                 result.add(systemClass);
             }
         }
@@ -382,7 +382,7 @@ public final class ImageClassLoader {
     public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
         ArrayList<Method> result = new ArrayList<>();
         for (Method method : systemMethods) {
-            if (classLoaderSupport.annotationExtracter.hasAnnotation(method, annotationClass)) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(method, annotationClass)) {
                 result.add(method);
             }
         }
@@ -394,7 +394,7 @@ public final class ImageClassLoader {
         for (Method method : systemMethods) {
             boolean match = true;
             for (Class<? extends Annotation> annotationClass : annotationClasses) {
-                if (!classLoaderSupport.annotationExtracter.hasAnnotation(method, annotationClass)) {
+                if (!classLoaderSupport.annotationExtractor.hasAnnotation(method, annotationClass)) {
                     match = false;
                     break;
                 }
@@ -409,7 +409,7 @@ public final class ImageClassLoader {
     public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
-            if (classLoaderSupport.annotationExtracter.hasAnnotation(field, annotationClass)) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(field, annotationClass)) {
                 result.add(field);
             }
         }
@@ -431,13 +431,13 @@ public final class ImageClassLoader {
     public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
         for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
-            result.add(classLoaderSupport.annotationExtracter.extractAnnotation(clazz, annotationClass, false));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(clazz, annotationClass, false));
         }
         for (Method method : findAnnotatedMethods(annotationClass)) {
-            result.add(classLoaderSupport.annotationExtracter.extractAnnotation(method, annotationClass, false));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(method, annotationClass, false));
         }
         for (Field field : findAnnotatedFields(annotationClass)) {
-            result.add(classLoaderSupport.annotationExtracter.extractAnnotation(field, annotationClass, false));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(field, annotationClass, false));
         }
         return result;
     }

@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface AnnotationExtracter {
+public interface AnnotationExtractor {
     boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType);
 
     <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
