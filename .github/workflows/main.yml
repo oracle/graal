@@ -52,11 +52,11 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "build,test"
               PRIMARY: "compiler"
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "build,bootstraplite"
               PRIMARY: "compiler"
           - env:
@@ -73,24 +73,24 @@ jobs:
               PRIMARY: "compiler"
           # /espresso
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-17" # espresso does not support JDK19 yet
               GATE: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "build,test,helloworld"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "build,test,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
@@ -103,12 +103,12 @@ jobs:
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /vm
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK: "labsjdk-ce-19"
               GATE: "build,sulong"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
