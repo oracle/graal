@@ -32,7 +32,6 @@ import static org.graalvm.compiler.core.common.calc.FloatConvert.L2D;
 import static org.graalvm.compiler.core.common.calc.FloatConvert.L2F;
 
 import java.nio.ByteBuffer;
-import java.util.Formatter;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -610,13 +609,43 @@ public final class IntegerStamp extends PrimitiveStamp {
                 str.append(" - ");
                 str.append(upperBound).append(']');
             }
-            if (mustBeSet != 0) {
-                str.append(" must:");
-                new Formatter(str).format("%016x", mustBeSet);
-            }
-            if (mayBeSet != CodeUtil.mask(getBits())) {
-                str.append(" may:");
-                new Formatter(str).format("%016x", mayBeSet);
+            if (lowerBound != upperBound && (mustBeSet != 0 || mayBeSet != CodeUtil.mask(getBits()))) {
+                // Emit a string describing the state of each bit, summarizing any leading repeated
+                // bits since this representation is very verbose otherwise.
+                str.append(" bits:");
+                char firstChar = 0;
+                boolean summarized = false;
+                for (int i = getBits() - 1; i >= 0; i--) {
+                    long bit = 1L << i;
+                    char c = 'x';
+                    if ((mayBeSet & bit) == 0) {
+                        // A zero in mayBeSet means the value must be 0
+                        c = '0';
+                    } else if ((mustBeSet & bit) == bit) {
+                        // A one in mustBeSet means the value must be 1
+                        c = '1';
+                    }
+                    if (summarized) {
+                        str.append(c);
+                        continue;
+                    }
+                    // Summarize leading repeated characters
+                    if (firstChar == 0) {
+                        firstChar = c;
+                    } else if (firstChar != c) {
+                        // The bits have changed, so summarize the leading bits
+                        int leading = getBits() - 1 - i;
+                        if (leading > 8) {
+                            str.append(firstChar).append("...").append(firstChar);
+                        } else {
+                            for (int j = 0; j < leading; j++) {
+                                str.append(firstChar);
+                            }
+                        }
+                        str.append(c);
+                        summarized = true;
+                    }
+                }
             }
             if (!canBeZero && contains(0, true)) {
                 // Only print this for ranges which could contain 0
