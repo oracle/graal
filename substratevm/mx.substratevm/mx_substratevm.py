@@ -1631,8 +1631,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def __init__(self):
         mx.ArchivableProject.__init__(self, suite, 'svm-compiler-flags-builder', [], None, None)
         self.buildDependencies = list(SubstrateCompilerFlagsBuilder.flags_build_dependencies)
-        if llvm_supported:
-            self.buildDependencies += ['substratevm:SVM_LLVM']
 
     def config_file(self, ver):
         return 'graal-compiler-flags-' + str(ver) + '.config'
