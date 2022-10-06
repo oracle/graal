@@ -858,7 +858,7 @@ else:
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
+    def __init__(self, base_name, theLicense=None, stage1=False, components=None, jimage_exclusion_list=None, **kw_args):
         self.base_name = base_name
         components_with_dependencies = [] if components is None else GraalVmLayoutDistribution._add_dependencies(components)
         if components is not None:
@@ -881,7 +881,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             add_jdk_base=True,
             base_dir=base_dir,
             path=None,
-            jimage_exclusion_list=None,
+            jimage_exclusion_list=jimage_exclusion_list,
             stage1=stage1,
             **kw_args)
 
@@ -2595,7 +2595,8 @@ def get_final_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _final_graalvm_distribution
     if _final_graalvm_distribution == 'uninitialized':
-        _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name)
+        jimage_exclusion_list = ['jmods/java.base.jmod'] if _get_libgraal_component() is not None else []
+        _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, stage1=False, jimage_exclusion_list=jimage_exclusion_list)
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = _graalvm_maven_attributes()
     return _final_graalvm_distribution
