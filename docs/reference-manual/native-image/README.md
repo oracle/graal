@@ -195,13 +195,13 @@ native-image [options] -jar jarfile [imagename]
     ```shell
     jar cfvm App.jar META-INF/MANIFEST.MF -C build . 
     ```
-    It will generate a runnable JAR file, named `App.jar`, in the root directory: 
+    It will generate a JAR file, named `App.jar`, in the root directory: 
     To view its contents, type `jar tf App.jar`.
 
-4. Create a native executable from that JAR file:
+4. Create a native executable:
 
     ```
-    native-image -jar App.jar
+    native-image -cp App.jar com.example.App
     ```
     It will produce a native executable in the project root directory.
 5. Run the native executable:
