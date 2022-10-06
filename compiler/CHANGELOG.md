@@ -3,6 +3,7 @@
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
 ## Version 23.0.0
+* (GR-19840): An image produced by GraalVM's jlink now includes and uses libgraal by default and its `java -version` output includes GraalVM branding.
 * (GR-31578): Novel Optimization Log: Unified interface to log and dump (e.g. via JSON) optimization decisions.
 Optimization phases should use the `OptimizationLog` to log transformations. Read more in `OptimizationLog.md` and read
 `Profdiff.md` to learn how to compare performed optimizations in hot compilations of 2 experiments.

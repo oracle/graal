@@ -106,16 +106,15 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
             return;
         }
 
-        // TODO commented until GR-41428 is resolved.
-        // if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
-        // try {
-        // invalidateInstalledCode.invoke(oldCode, false);
-        // } catch (Error e) {
-        // throw e;
-        // } catch (Throwable throwable) {
-        // throw new InternalError(throwable);
-        // }
-        // }
+        if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
+            try {
+                invalidateInstalledCode.invoke(oldCode, false);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
 
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
         // and so allowing it to be installed here would invalidate the truth of
