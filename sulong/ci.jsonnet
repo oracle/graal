@@ -12,9 +12,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   sulong:: {
     suite:: "sulong",
-    environment+: {
-      TRUFFLE_STRICT_OPTION_DEPRECATION: "true",
-    },
     setup+: [
       ["cd", "./sulong"],
     ],
