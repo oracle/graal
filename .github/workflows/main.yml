@@ -59,18 +59,6 @@ jobs:
               JDK: "labsjdk-ce-19"
               GATE: "build,bootstraplite"
               PRIMARY: "compiler"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "style,fullbuild"
-              PRIMARY: "compiler"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build,test"
-              PRIMARY: "compiler"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build,bootstraplite"
-              PRIMARY: "compiler"
           # /espresso
           - env:
               JDK: "labsjdk-ce-17" # espresso does not support JDK19 yet
@@ -94,11 +82,7 @@ jobs:
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build,debuginfotest"
-              PRIMARY: "substratevm"
-          - env:
-              JDK: "labsjdk-ce-11"
+              JDK: "labsjdk-ce-19"
               GATE: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
@@ -115,7 +99,7 @@ jobs:
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK: "labsjdk-ce-11"
+              JDK: "labsjdk-ce-17"
               GATE: "build"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
