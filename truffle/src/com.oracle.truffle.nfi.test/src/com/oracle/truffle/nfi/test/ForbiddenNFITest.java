@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,33 +40,31 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static com.oracle.truffle.nfi.test.LoadNFILibraryTest.loadNFIUnsatisfiedLinkError;
-
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.tck.TruffleRunner;
 import org.graalvm.polyglot.Context;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 
 public class ForbiddenNFITest {
 
-    private final String nativeTestLib = System.getProperty("native.test.lib");
-
     @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
 
     private Object eval(String format, Object... args) {
+        Assume.assumeTrue("Skipping, non-default backends might actually work without allowNativeAccess.", NFITest.TEST_BACKEND == null);
         Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").internal(true).build();
         return runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
     }
 
-    @Test
+    @Test(expected = AbstractTruffleException.class)
     public void loadDefault() {
-        AbstractPolyglotTest.assertFails(() -> eval("default"), loadNFIUnsatisfiedLinkError());
+        eval("default");
     }
 
-    @Test
+    @Test(expected = AbstractTruffleException.class)
     public void loadTestLib() {
-        AbstractPolyglotTest.assertFails(() -> eval("load '%s'", nativeTestLib), loadNFIUnsatisfiedLinkError());
+        eval("load '%s'", NFITest.getLibPath("nativetest"));
     }
 }

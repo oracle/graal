@@ -43,37 +43,36 @@
 
 #include "common.h"
 
-#define GEN_NUMERIC_TEST(name, type) \
-    \
-    EXPORT type increment_##name(type arg) { \
-        return arg + 1; \
-    } \
-    \
-    EXPORT type decrement_##name(type arg) { \
-        return arg - 1; \
-    } \
-    \
-    EXPORT type call_closure_##name(type (*fn)(type), type arg) { \
-        return fn(arg); \
-    } \
-    \
-    EXPORT type callback_##name(type (*fn)(type), type arg) { \
-        return fn(arg + 1) * 2; \
-    } \
-    \
-    typedef type (*fnptr_##name)(type); \
-    \
-    EXPORT fnptr_##name callback_ret_##name() { \
-        return increment_##name; \
-    } \
-    \
-    EXPORT type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv *env, fnptr_##name), type arg) { \
-        fnptr_##name wrapped = wrapFn(env, increment_##name); \
-        int ret = wrapped(arg + 1) * 2; \
-        (*env)->releaseClosureRef(env, wrapped); \
-        return ret; \
+#define GEN_NUMERIC_TEST(name, type)                                                                                                                 \
+                                                                                                                                                     \
+    EXPORT type increment_##name(type arg) {                                                                                                         \
+        return arg + 1;                                                                                                                              \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    EXPORT type decrement_##name(type arg) {                                                                                                         \
+        return arg - 1;                                                                                                                              \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    EXPORT type call_closure_##name(type (*fn)(type), type arg) {                                                                                    \
+        return fn(arg);                                                                                                                              \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    EXPORT type callback_##name(type (*fn)(type), type arg) {                                                                                        \
+        return fn(arg + 1) * 2;                                                                                                                      \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    typedef type (*fnptr_##name)(type);                                                                                                              \
+                                                                                                                                                     \
+    EXPORT fnptr_##name callback_ret_##name() {                                                                                                      \
+        return increment_##name;                                                                                                                     \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    EXPORT type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv * env, fnptr_##name), type arg) {                                 \
+        fnptr_##name wrapped = wrapFn(env, increment_##name);                                                                                        \
+        int ret = wrapped(arg + 1) * 2;                                                                                                              \
+        (*env)->releaseClosureRef(env, wrapped);                                                                                                     \
+        return ret;                                                                                                                                  \
     }
-
 
 GEN_NUMERIC_TEST(SINT8, int8_t)
 GEN_NUMERIC_TEST(UINT8, uint8_t)

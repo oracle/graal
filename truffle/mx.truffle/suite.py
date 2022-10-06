@@ -855,8 +855,7 @@ suite = {
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
-        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>",
-        "native.isolation.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>"
+        "native.test.path" : "<path:TRUFFLE_TEST_NATIVE>",
       },
       "testProject" : True,
       "jacoco" : "exclude",

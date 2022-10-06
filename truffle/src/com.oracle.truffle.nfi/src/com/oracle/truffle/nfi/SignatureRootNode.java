@@ -194,6 +194,9 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getArrayType(api.backend, type);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException("[%s]", type.name());
+            }
             return new NFIType(SimpleTypeCachedState.nop(), backendType);
         }
     }
@@ -204,6 +207,9 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backend) {
             Object backendType = backend.getEnvType(api.backend);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException("ENV");
+            }
             return new NFIType(SimpleTypeCachedState.injected(), backendType, null);
         }
     }

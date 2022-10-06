@@ -56,6 +56,7 @@ from mx_sulong_suite_constituents import BootstrapToolchainLauncherProject #pyli
 from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
+from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):

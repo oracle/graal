@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -85,28 +85,41 @@ public final class SulongNFI extends TruffleLanguage<Env> {
         @Override
         public CallTarget parse(NativeLibraryDescriptor descriptor) {
             Env env = getContext(null);
-            TruffleFile file = env.getInternalTruffleFile(descriptor.getFilename());
-            try {
-                Source source = Source.newBuilder("llvm", file).build();
-                return SulongNFIRootNodeGen.create(SulongNFI.this, source).getCallTarget();
-            } catch (IOException ex) {
-                throw new SulongNFIException(ex.getMessage());
+            if (descriptor.isDefaultLibrary()) {
+                throw new SulongNFIException("default lib not implemented yet");
+            } else {
+                TruffleFile file = env.getInternalTruffleFile(descriptor.getFilename());
+                try {
+                    Source source = Source.newBuilder("llvm", file).build();
+                    return SulongNFIRootNodeGen.create(SulongNFI.this, source).getCallTarget();
+                } catch (IOException ex) {
+                    throw new SulongNFIException(ex.getMessage());
+                }
             }
         }
 
         @ExportMessage
         Object getSimpleType(NativeSimpleType type) {
-            return type; // Sulong does not need extra information here
+            switch (type) {
+                case STRING:
+                    // not implemented
+                    return null;
+                default:
+                    // Sulong does not need extra information here
+                    return type;
+            }
         }
 
         @ExportMessage
         Object getArrayType(@SuppressWarnings("unused") NativeSimpleType type) {
-            throw CompilerDirectives.shouldNotReachHere("array types not yet implemented");
+            // not implemented
+            return null;
         }
 
         @ExportMessage
         Object getEnvType() {
-            throw CompilerDirectives.shouldNotReachHere("env type not yet implemented");
+            // not implemented
+            return null;
         }
 
         @ExportMessage
