@@ -959,7 +959,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -989,7 +989,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1060,7 +1060,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        protected Stamp foldStampImpl(Stamp a, Stamp b) {
                             return OPS.getAdd().foldStamp(a, OPS.getNeg().foldStamp(b));
                         }
 
@@ -1088,7 +1088,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1273,7 +1273,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1355,7 +1355,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1455,7 +1455,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1498,7 +1498,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1529,6 +1529,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             newLowerBound = Math.max(newLowerBound, -magnitude);
                             newUpperBound = Math.min(newUpperBound, magnitude);
 
+                            if (newLowerBound > newUpperBound) {
+                                // Don't return the empty stamp
+                                return stamp1.unrestricted();
+                            }
+
                             return StampFactory.forInteger(a.getBits(), newLowerBound, newUpperBound);
                         }
                     },
@@ -1542,7 +1547,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return stamp;
                             }
@@ -1568,7 +1573,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1601,7 +1606,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1632,7 +1637,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                        protected Stamp foldStampImpl(Stamp stamp1, Stamp stamp2) {
                             if (stamp1.isEmpty()) {
                                 return stamp1;
                             }
@@ -1863,7 +1868,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp input) {
+                        protected Stamp foldStampImpl(Stamp input) {
                             if (input.isEmpty()) {
                                 return input;
                             }
@@ -2074,7 +2079,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        protected Stamp foldStampImpl(Stamp a, Stamp b) {
                             if (a.isEmpty()) {
                                 return a;
                             }
@@ -2104,7 +2109,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        protected Stamp foldStampImpl(Stamp a, Stamp b) {
                             if (a.isEmpty()) {
                                 return a;
                             }
@@ -2134,7 +2139,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        protected Stamp foldStampImpl(Stamp a, Stamp b) {
                             if (a.isEmpty()) {
                                 return a;
                             }
@@ -2164,7 +2169,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        protected Stamp foldStampImpl(Stamp a, Stamp b) {
                             if (a.isEmpty()) {
                                 return a;
                             }
@@ -2213,7 +2218,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp input) {
+                        protected Stamp foldStampImpl(Stamp input) {
                             if (input.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Float);
                             }
@@ -2234,7 +2239,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp input) {
+                        protected Stamp foldStampImpl(Stamp input) {
                             if (input.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Float);
                             }
@@ -2255,7 +2260,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp input) {
+                        protected Stamp foldStampImpl(Stamp input) {
                             if (input.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Double);
                             }
@@ -2276,7 +2281,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp input) {
+                        protected Stamp foldStampImpl(Stamp input) {
                             if (input.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Double);
                             }

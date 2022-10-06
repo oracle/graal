@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -405,7 +406,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -437,7 +438,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -485,7 +486,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -533,7 +534,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -587,7 +588,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -635,7 +636,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -670,7 +671,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -711,7 +712,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -765,7 +766,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -817,7 +818,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -865,7 +866,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -897,7 +898,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -930,7 +931,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -979,7 +980,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -1040,7 +1041,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Int);
                             }
@@ -1069,7 +1070,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Long);
                             }
@@ -1098,7 +1099,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Int);
                             }
@@ -1127,7 +1128,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Long);
                             }
@@ -1156,7 +1157,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Double);
                             }
@@ -1175,7 +1176,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Float);
                             }

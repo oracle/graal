@@ -98,13 +98,7 @@ public class IntegerStampFoldTest extends GraalTest {
         for (long a = -VALUE_LIMIT; a <= VALUE_LIMIT; a++) {
             IntegerStamp constant = StampFactory.forInteger(stamp.getBits(), a, a);
             IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, constant);
-            if ((op == IntegerStamp.OPS.getDiv()) && a == 0) {
-                assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
-            } else if (op == IntegerStamp.OPS.getRem() && a == 0) {
-                assertTrue(foldedStamp.isEmpty(), "%s %s %s must be empty", stamp, op, constant);
-            } else {
-                assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
-            }
+            assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
         }
     }
 
