@@ -149,7 +149,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     /**
      * A stamp is empty if the lower bound is greater than the upper bound, the downMask contains
-     * bits which are not part of the upMask, or there are no bits set and the bound isn't exactly
+     * bits which are not part of the upMask, or there are no bits set and the bound doesn't contain
      * 0.
      */
     private static boolean isEmpty(long lowerBound, long upperBound, long downMask, long upMask) {
