@@ -1469,24 +1469,36 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             throw unimplemented("the LLVM backend only supports XOR of integers, vectors and floating point numbers");
         }
 
+        private LLVMValueRef actualShiftingDistance(LLVMValueRef a, LLVMValueRef b) {
+            // https://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.19
+
+            LLVMTypeRef typeA = typeOf(a);
+            final int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            assert bitWidthA == 32 || bitWidthA == 64;
+
+            LLVMValueRef shiftDistanceBitMask = builder.constantInteger(bitWidthA - 1, bitWidthA);
+            LLVMValueRef valB = emitIntegerConvert(b, typeA);
+            return builder.buildAnd(valB, shiftDistanceBitMask);
+        }
+
         @Override
         public Value emitShl(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
-            LLVMValueRef shl = builder.buildShl(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
+            LLVMValueRef shl = builder.buildShl(valA, actualShiftingDistance(valA, getVal(b)));
             return new LLVMVariable(shl);
         }
 
         @Override
         public Value emitShr(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
-            LLVMValueRef shr = builder.buildShr(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
+            LLVMValueRef shr = builder.buildShr(valA, actualShiftingDistance(valA, getVal(b)));
             return new LLVMVariable(shr);
         }
 
         @Override
         public Value emitUShr(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
-            LLVMValueRef ushr = builder.buildUShr(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
+            LLVMValueRef ushr = builder.buildUShr(valA, actualShiftingDistance(valA, getVal(b)));
             return new LLVMVariable(ushr);
         }
 
