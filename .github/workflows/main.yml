@@ -38,6 +38,7 @@ env:
   JAVA_HOME: ${{ github.workspace }}/jdk
   JDT: builtin
   MX_PATH: ${{ github.workspace }}/mx
+  MX_GATE_OPTS: "--strict-mode"
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -89,11 +90,13 @@ jobs:
           - env:
               JDK: "labsjdk-ce-19"
               GATE: "style,fullbuild,sulongBasic"
+              MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
               PRIMARY: "sulong"
           # /vm
           - env:
               JDK: "labsjdk-ce-19"
               GATE: "build,sulong"
+              MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
@@ -167,7 +170,7 @@ jobs:
         fi
 
         exit_code=0
-        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE} || exit_code=$?
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate ${MX_GATE_OPTS} --tags ${GATE} || exit_code=$?
 
         if [[ -n "${GHA_EXPECTED_FAILURE}" ]]
         then
