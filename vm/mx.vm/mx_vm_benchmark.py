@@ -843,7 +843,7 @@ class NativeImageVM(GraalVm):
         executable_name_args = ['-H:Name=' + config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
-        pgo_args += ['-H:+AOTInliner', '--pgo-sampling-use'] if self.pgo_aot_inline else ['-H:-AOTInliner']
+        pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
         if self.cached_jdk_pgo:
