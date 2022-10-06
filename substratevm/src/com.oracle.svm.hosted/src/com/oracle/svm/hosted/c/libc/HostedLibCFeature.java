@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
+package com.oracle.svm.hosted.c.libc;
 
 import java.util.ServiceLoader;
 
@@ -34,18 +34,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 
 @AutomaticallyRegisteredFeature
-public class LibCFeature implements InternalFeature {
-
+public class HostedLibCFeature extends com.oracle.svm.core.c.libc.LibCFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return LibCBase.isPlatformEquivalent(Platform.LINUX.class);
+        return HostedLibCBase.isPlatformEquivalent(Platform.LINUX.class);
     }
 
     public static class LibCOptions {
@@ -71,8 +69,8 @@ public class LibCFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         String targetLibC = LibCOptions.UseLibC.getValue();
-        ServiceLoader<LibCBase> loader = ServiceLoader.load(LibCBase.class);
-        for (LibCBase libc : loader) {
+        ServiceLoader<HostedLibCBase> loader = ServiceLoader.load(HostedLibCBase.class);
+        for (HostedLibCBase libc : loader) {
             if (libc.getName().equals(targetLibC)) {
                 libc.checkIfLibCSupported();
                 ImageSingletons.add(LibCBase.class, libc);

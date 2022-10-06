@@ -39,6 +39,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.c.libc.MuslLibC;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -838,7 +839,7 @@ public class SubstrateOptions {
 
         @Override
         public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-            if (!values.containsKey(this) && Platform.includedIn(Platform.LINUX.class) && LibCBase.singleton().getName().equals("musl")) {
+            if (!values.containsKey(this) && Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(MuslLibC.class)) {
                 return true;
             }
             return (Boolean) values.get(this, this.getDefaultValue());

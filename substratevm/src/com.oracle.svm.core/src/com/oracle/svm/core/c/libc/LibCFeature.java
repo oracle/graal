@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,13 @@
  */
 package com.oracle.svm.core.c.libc;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
-public interface LibCBase {
-    @Fold
-    static boolean targetLibCIs(Class<? extends LibCBase> libCBase) {
-        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
-        return libCBase.isAssignableFrom(currentLibC.getClass());
-    }
-
-    String getName();
-
-    static LibCBase singleton() {
-        return ImageSingletons.lookup(LibCBase.class);
-    }
-
-    boolean hasIsolatedNamespaces();
+@AutomaticallyRegisteredFeature
+public class LibCFeature implements InternalFeature {
+    /**
+     * This class is necessary in order to ensure that {@code LinuxImageSingletonsFeature} runs
+     * after com.oracle.svm.hosted.LibCFeature.
+     */
 }

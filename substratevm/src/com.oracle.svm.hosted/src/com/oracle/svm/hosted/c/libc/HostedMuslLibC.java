@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
+package com.oracle.svm.hosted.c.libc;
 
 import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.hosted.image.AbstractImage;
 
-public class MuslLibC implements LibCBase {
-
-    public static final String NAME = "musl";
-
-    @Override
-    public String getName() {
-        return NAME;
-    }
-
+public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {
         /* Avoid the dependency to muslc for builds cross compiling to muslc. */
@@ -48,11 +41,6 @@ public class MuslLibC implements LibCBase {
     @Override
     public String getTargetCompiler() {
         return "x86_64-linux-musl-gcc";
-    }
-
-    @Override
-    public boolean hasIsolatedNamespaces() {
-        return false;
     }
 
     @Override

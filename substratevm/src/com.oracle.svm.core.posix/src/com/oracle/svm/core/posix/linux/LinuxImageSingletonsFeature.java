@@ -34,13 +34,12 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
-import com.oracle.svm.core.posix.linux.libc.BionicLibC;
-import com.oracle.svm.core.posix.linux.libc.LibCFeature;
+import com.oracle.svm.core.c.libc.BionicLibC;
+import com.oracle.svm.core.c.libc.LibCFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
 class LinuxImageSingletonsFeature implements InternalFeature {
-
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(LibCFeature.class);
