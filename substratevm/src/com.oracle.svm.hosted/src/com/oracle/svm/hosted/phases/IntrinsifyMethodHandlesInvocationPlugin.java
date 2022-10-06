@@ -48,10 +48,13 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -483,6 +486,31 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
+    @NodeInfo
+    private static final class DirectMethodHandleEnsureInitializedNode extends FixedWithNextNode {
+
+        public static final NodeClass<DirectMethodHandleEnsureInitializedNode> TYPE = NodeClass.create(DirectMethodHandleEnsureInitializedNode.class);
+
+        private final ResolvedJavaType clazz;
+
+        public DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
+            super(TYPE, StampFactory.forVoid());
+            this.clazz = clazz;
+        }
+
+        public ResolvedJavaType instanceClass() {
+            return clazz;
+        }
+    }
+
+    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
+        for (ResolvedJavaField field : type.getInstanceFields(false)) {
+            if (field.getName().equals(name)) {
+                return field;
+            }
+        }
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
+    }
     private void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
@@ -494,6 +522,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * class initialization check manually later on when appending nodes to the target
                  * graph.
                  */
+                GraalError.guarantee(receiver.isConstant(), "Not a java constant %s", receiver.get());
+                ResolvedJavaField memberField = findField(targetMethod.getDeclaringClass(), "member");
+                JavaConstant member = b.getConstantReflection().readFieldValue(memberField, receiver.get().asJavaConstant());
+                ResolvedJavaField clazzField = findField(memberField.getType().resolve(memberField.getDeclaringClass()), "clazz");
+                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, member);
+                b.add(new DirectMethodHandleEnsureInitializedNode(b.getConstantReflection().asJavaType(clazz)));
                 return true;
             }
         });
@@ -787,6 +821,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 transplanted.put(oNew, tNew);
                 return true;
 
+            } else if (oNode.getClass() == DirectMethodHandleEnsureInitializedNode.class) {
+                DirectMethodHandleEnsureInitializedNode oInit = (DirectMethodHandleEnsureInitializedNode) oNode;
+                ResolvedJavaType tInstanceClass = lookup(oInit.instanceClass());
+                maybeEmitClassInitialization(b, true, tInstanceClass);
+                return true;
             } else {
                 return false;
             }
@@ -813,6 +852,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 ConstantNode oConstant = (ConstantNode) oNode;
                 tNode = ConstantNode.forConstant(constant(oConstant.getValue()), universeProviders.getMetaAccess());
 
+            } else if (oNode.getClass() == DirectMethodHandleEnsureInitializedNode.class) {
+                return null;
             } else if (oNode.getClass() == PiNode.class) {
                 PiNode oPi = (PiNode) oNode;
                 tNode = new PiNode(node(oPi.object()), stamp(oPi.piStamp()), node(oPi.getGuard().asNode()));
