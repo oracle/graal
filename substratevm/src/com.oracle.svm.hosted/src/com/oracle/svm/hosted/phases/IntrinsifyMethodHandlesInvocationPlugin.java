@@ -50,11 +50,9 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -120,6 +118,7 @@ import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.nodes.DirectMethodHandleEnsureInitializedNode;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -483,23 +482,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         @Override
         public boolean canVirtualize(ResolvedJavaType instanceType) {
             return true;
-        }
-    }
-
-    @NodeInfo
-    private static final class DirectMethodHandleEnsureInitializedNode extends FixedWithNextNode {
-
-        public static final NodeClass<DirectMethodHandleEnsureInitializedNode> TYPE = NodeClass.create(DirectMethodHandleEnsureInitializedNode.class);
-
-        private final ResolvedJavaType clazz;
-
-        public DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
-            super(TYPE, StampFactory.forVoid());
-            this.clazz = clazz;
-        }
-
-        public ResolvedJavaType instanceClass() {
-            return clazz;
         }
     }
 
