@@ -141,6 +141,17 @@ public abstract class DebugInfoBase {
      * Index of files which contain primary or secondary ranges keyed by path.
      */
     private Map<Path, FileEntry> filesIndex = new HashMap<>();
+
+    /**
+     * List of all loaders associated with classes included in the image.
+     */
+    private List<LoaderEntry> loaders = new ArrayList<>();
+
+    /**
+     * Index of all loaders associated with classes included in the image.
+     */
+    private Map<String, LoaderEntry> loaderIndex = new HashMap<>();
+
     /**
      * Flag set to true if heap references are stored as addresses relative to a heap base register
      * otherwise false.
@@ -501,6 +512,15 @@ public abstract class DebugInfoBase {
         return dirEntry;
     }
 
+    protected LoaderEntry ensureLoaderEntry(String loaderId) {
+        LoaderEntry loaderEntry = loaderIndex.get(loaderId);
+        if (loaderEntry == null) {
+            loaderEntry = new LoaderEntry(uniqueDebugString(loaderId));
+            loaderIndex.put(loaderEntry.getLoaderId(), loaderEntry);
+        }
+        return loaderEntry;
+    }
+
     /* Accessors to query the debug info model. */
     public ByteOrder getByteOrder() {
         return byteOrder;
@@ -522,6 +542,15 @@ public abstract class DebugInfoBase {
     @SuppressWarnings("unused")
     public FileEntry findFile(Path fullFileName) {
         return filesIndex.get(fullFileName);
+    }
+
+    public List<LoaderEntry> getLoaders() {
+        return loaders;
+    }
+
+    @SuppressWarnings("unused")
+    public LoaderEntry findLoader(String id) {
+        return loaderIndex.get(id);
     }
 
     public StringTable getStringTable() {

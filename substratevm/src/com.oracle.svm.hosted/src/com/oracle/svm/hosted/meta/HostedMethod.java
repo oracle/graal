@@ -104,11 +104,13 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
                     ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
         String name = deoptOrigin != null ? wrapped.getName() + METHOD_NAME_DEOPT_SUFFIX : wrapped.getName();
-        String uniqueShortName = SubstrateUtil.uniqueShortName(SubstrateUtil.classLoaderNameAndId(holder.getJavaClass().getClassLoader()), holder, name, signature, wrapped.isConstructor());
+        String uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
         int collisionCount = universe.uniqueHostedMethodNames.merge(uniqueShortName, 0, (oldValue, value) -> oldValue + 1);
         if (collisionCount > 0) {
             name = name + METHOD_NAME_COLLISION_SUFFIX + collisionCount;
-            uniqueShortName = SubstrateUtil.uniqueShortName(SubstrateUtil.classLoaderNameAndId(holder.getJavaClass().getClassLoader()), holder, name, signature, wrapped.isConstructor());
+            String fixedUniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+            VMError.guarantee(!fixedUniqueShortName.equals(uniqueShortName), "failed to generate uniqueShortName for HostedMethod created for " + wrapped);
+            uniqueShortName = fixedUniqueShortName;
         }
         return new HostedMethod(wrapped, holder, signature, constantPool, handlers, deoptOrigin, name, uniqueShortName, localVariableTable);
     }
