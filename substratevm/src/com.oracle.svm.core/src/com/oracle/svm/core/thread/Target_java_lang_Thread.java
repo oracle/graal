@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.thread.ThreadStatus.JVMTI_THREAD_STATE_TERMINATED;
 
-import java.lang.invoke.VarHandle;
 import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
@@ -720,34 +719,4 @@ final class Target_java_lang_Thread_ThreadIdentifiers {
 interface Target_sun_nio_ch_Interruptible {
     @Alias
     void interrupt(Thread t);
-}
-
-/**
- * Substitution that works around an issue with {@link VarHandle} (GR-41347). See
- * {@link #nextThreadName()}.
- */
-@TargetClass(className = "java.lang.ThreadBuilders", innerClass = "BaseThreadFactory", onlyWith = JDK19OrLater.class)
-@SuppressWarnings("unused")
-final class Target_java_lang_ThreadBuilders_BaseThreadFactory {
-
-    @Alias //
-    private static VarHandle COUNT;
-    @Alias //
-    private String name;
-    @Alias //
-    private boolean hasCounter;
-
-    /**
-     * Originally, this uses {@code COUNT.getAndAdd(this, 1)} ({@code int} instead of {@code long}
-     * parameter). That, however, triggers an issue with {@code VarHandle} and mismatching field and
-     * parameter type (GR-41347). For now, we work around the issue by making the types match.
-     */
-    @Substitute
-    String nextThreadName() {
-        if (hasCounter) {
-            return name + (long) COUNT.getAndAdd(this, 1L);
-        } else {
-            return name;
-        }
-    }
 }
