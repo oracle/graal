@@ -391,24 +391,31 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void flush() {
+        System.out.println("*** Flush called");
+        SubstrateJVM.get().flush();
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void include(Thread thread) {
+        System.out.println("*** include called");
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void exclude(Thread thread) {
+        Exception e = new Exception();
+        e.printStackTrace();
+        System.out.println("*** exclude called");
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public boolean isExcluded(Thread thread) {
+        System.out.println("*** isExcluded called");
         // Temporarily do nothing. This is used for JFR streaming.
         return false;
     }
@@ -442,6 +449,7 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void markChunkFinal() {
+        System.out.println("*** markChunkFinal called");
         // Temporarily do nothing. This is used for JFR streaming.
     }
 }

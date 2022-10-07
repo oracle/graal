@@ -183,11 +183,13 @@ public final class JfrThreadRepository implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
-        JfrThreadEpochData epochData = getEpochData(true);
+    public int write(JfrChunkWriter writer, boolean flush) {
+        JfrThreadEpochData epochData = getEpochData(!flush);
         int count = writeThreads(writer, epochData);
         count += writeThreadGroups(writer, epochData);
-        epochData.clear();
+        if (!flush) {
+            epochData.clear();
+        }
         return count;
     }
 

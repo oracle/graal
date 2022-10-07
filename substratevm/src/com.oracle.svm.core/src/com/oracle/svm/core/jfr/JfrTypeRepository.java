@@ -54,10 +54,10 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         // Visit all used classes, and collect their packages, modules, classloaders and possibly
         // referenced classes.
-        TypeInfo typeInfo = collectTypeInfo();
+        TypeInfo typeInfo = collectTypeInfo(flush);
 
         // The order of writing matters as following types can be tagged during the write process
         int count = writeClasses(writer, typeInfo);
@@ -70,10 +70,15 @@ public class JfrTypeRepository implements JfrConstantPool {
         return count;
     }
 
-    private TypeInfo collectTypeInfo() {
+    private TypeInfo collectTypeInfo(boolean flush) {
         TypeInfo typeInfo = new TypeInfo();
         for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
-            if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+            if (flush) {
+                if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
+                    visitClass(typeInfo, clazz);
+                }
+            }
+            else if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
                 JfrTraceId.clearUsedPreviousEpoch(clazz);
                 visitClass(typeInfo, clazz);
             }

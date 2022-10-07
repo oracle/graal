@@ -36,7 +36,7 @@ public class JfrFrameTypeSerializer implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         writer.writeCompressedLong(JfrType.FrameType.getId());
 
         JfrFrameType[] values = JfrFrameType.values();

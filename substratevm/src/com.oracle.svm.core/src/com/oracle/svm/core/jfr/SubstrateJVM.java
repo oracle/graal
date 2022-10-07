@@ -282,6 +282,9 @@ public class SubstrateJVM {
     /** See {@link JVM#storeMetadataDescriptor}. */
     public void storeMetadataDescriptor(byte[] bytes) {
         metadataDescriptor = bytes;
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        chunkWriter.setCurrentMetadataId();
+        chunkWriter.unlock();
     }
 
     /** See {@link JVM#beginRecording}. */
@@ -331,13 +334,13 @@ public class SubstrateJVM {
                 if (existingFile) {
                     chunkWriter.closeFile(metadataDescriptor, repositories);
                 }
-
+                System.out.println("*** setOutput: "+ file);
                 if (file != null) {
-                    chunkWriter.openFile(file);
+                    chunkWriter.openFile(file);// *** open up the new file
                     // If in-memory recording was active so far, we should notify the recorder
                     // thread because the global memory buffers could be rather full.
                     if (!existingFile) {
-                        recorderThread.signal();
+                        recorderThread.signal();// *** do this if there was no existing file
                     }
                 }
             } else {
@@ -449,6 +452,22 @@ public class SubstrateJVM {
         // Return false to signal that there is no need to do another flush at the end of the
         // current event.
         return false;
+    }
+
+//    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    public void flush() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock(); //does this make it a safepoint? [NO]
+        try {
+            if (recording) {
+                boolean existingFile = chunkWriter.hasOpenFile();
+                if (existingFile) {
+                    chunkWriter.flush(metadataDescriptor, repositories);
+                    System.out.println("*** Flushed");
+                }
+            }
+        } finally {
+            chunkWriter.unlock();
+        }
     }
 
     /** See {@link JVM#setRepositoryLocation}. */

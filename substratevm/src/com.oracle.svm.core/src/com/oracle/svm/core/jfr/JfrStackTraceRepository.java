@@ -58,7 +58,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     }
 
     @Override
-    public int write(@SuppressWarnings("unused") JfrChunkWriter writer) {
+    public int write(@SuppressWarnings("unused") JfrChunkWriter writer, boolean flush) {
         return EMPTY;
     }
 }

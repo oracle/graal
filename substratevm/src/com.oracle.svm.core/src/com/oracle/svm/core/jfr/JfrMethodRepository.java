@@ -37,7 +37,7 @@ public class JfrMethodRepository implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         return EMPTY;
     }
 }
