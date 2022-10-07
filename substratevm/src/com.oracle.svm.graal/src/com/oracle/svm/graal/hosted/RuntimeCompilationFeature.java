@@ -200,11 +200,30 @@ public abstract class RuntimeCompilationFeature implements Feature {
         }
     }
 
-    public interface IncludeCalleePredicate {
-        boolean includeCallee(CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods);
+    public interface RuntimeCompilationCandidatePredicate {
+        boolean allowRuntimeCompilation(ResolvedJavaMethod method);
     }
 
-    public static final class CallTreeNode {
+    public interface AbstractCallTreeNode {
+        AnalysisMethod getImplementationMethod();
+
+        AnalysisMethod getTargetMethod();
+
+        StructuredGraph getGraph();
+
+        String getSourceReference();
+
+        AbstractCallTreeNode getParent();
+
+        int getLevel();
+    }
+
+    public AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
+        assert method instanceof AnalysisMethod;
+        return getRuntimeCompiledMethods().get(method);
+    }
+
+    public static final class CallTreeNode implements AbstractCallTreeNode {
         protected final AnalysisMethod implementationMethod;
         protected final AnalysisMethod targetMethod;
 
@@ -216,7 +235,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
         protected StructuredGraph graph;
         protected final Set<Invoke> unreachableInvokes;
 
-        public CallTreeNode(ResolvedJavaMethod implementationMethod, ResolvedJavaMethod targetMethod, CallTreeNode parent, int level, String sourceReference) {
+        private CallTreeNode(ResolvedJavaMethod implementationMethod, ResolvedJavaMethod targetMethod, CallTreeNode parent, int level, String sourceReference) {
             this.implementationMethod = (AnalysisMethod) implementationMethod;
             this.targetMethod = (AnalysisMethod) targetMethod;
             this.parent = parent;
@@ -226,30 +245,32 @@ public abstract class RuntimeCompilationFeature implements Feature {
             this.unreachableInvokes = new HashSet<>();
         }
 
+        @Override
         public AnalysisMethod getImplementationMethod() {
             return implementationMethod;
         }
 
+        @Override
         public AnalysisMethod getTargetMethod() {
             return targetMethod;
         }
 
+        @Override
         public CallTreeNode getParent() {
             return parent;
         }
 
-        public List<CallTreeNode> getChildren() {
-            return children;
-        }
-
+        @Override
         public int getLevel() {
             return level;
         }
 
+        @Override
         public String getSourceReference() {
             return sourceReference;
         }
 
+        @Override
         public StructuredGraph getGraph() {
             return graph;
         }
@@ -261,13 +282,9 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
     public static class RuntimeGraphBuilderPhase extends SubstrateGraphBuilderPhase {
 
-        final CallTreeNode node;
-
         RuntimeGraphBuilderPhase(Providers providers,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes,
-                        CallTreeNode node) {
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
             super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
-            this.node = node;
         }
 
         @Override
@@ -291,10 +308,6 @@ public abstract class RuntimeCompilationFeature implements Feature {
             }
             return result;
         }
-
-        public CallTreeNode getCallTreeNode() {
-            return ((RuntimeGraphBuilderPhase) getGraphBuilderInstance()).node;
-        }
     }
 
     private GraalGraphObjectReplacer objectReplacer;
@@ -305,12 +318,13 @@ public abstract class RuntimeCompilationFeature implements Feature {
     private boolean initialized;
     private GraphBuilderConfiguration graphBuilderConfig;
     private OptimisticOptimizations optimisticOpts;
-    private IncludeCalleePredicate includeCalleePredicate;
+    private RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
     private Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
-    private Map<AnalysisMethod, CallTreeNode> methods;
+    private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodMap;
+    private Set<CallTreeNode> runtimeCompilationCandidates;
 
     public StructuredGraph lookupMethodGraph(AnalysisMethod method) {
-        CallTreeNode callTree = methods.get(method);
+        CallTreeNode callTree = runtimeCompiledMethodMap.get(method);
         assert callTree != null : "Unable to find method.";
         StructuredGraph graph = callTree.getGraph();
         assert graph != null : "Method's graph is null.";
@@ -350,7 +364,11 @@ public abstract class RuntimeCompilationFeature implements Feature {
     }
 
     public Map<AnalysisMethod, CallTreeNode> getRuntimeCompiledMethods() {
-        return methods;
+        return runtimeCompiledMethodMap;
+    }
+
+    public Set<CallTreeNode> getAllRuntimeCompilationCandidates() {
+        return runtimeCompilationCandidates;
     }
 
     @Override
@@ -418,10 +436,11 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
         /* Initialize configuration with reasonable default values. */
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
-        includeCalleePredicate = RuntimeCompilationFeature::defaultIncludeCallee;
+        runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-        methods = new LinkedHashMap<>();
+        runtimeCompiledMethodMap = new LinkedHashMap<>();
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+        runtimeCompilationCandidates = new HashSet<>();
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object
@@ -438,22 +457,23 @@ public abstract class RuntimeCompilationFeature implements Feature {
     }
 
     @SuppressWarnings("unused")
-    private static boolean defaultIncludeCallee(CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
+    private static boolean defaultAllowRuntimeCompilation(ResolvedJavaMethod method) {
         return false;
     }
 
-    public void initializeRuntimeCompilationConfiguration(IncludeCalleePredicate newIncludeCalleePredicate) {
-        initializeRuntimeCompilationConfiguration(hostedProviders, graphBuilderConfig, newIncludeCalleePredicate, deoptimizeOnExceptionPredicate);
+    public void initializeRuntimeCompilationConfiguration(RuntimeCompilationCandidatePredicate newRuntimeCompilationCandidatePredicate) {
+        initializeRuntimeCompilationConfiguration(hostedProviders, graphBuilderConfig, newRuntimeCompilationCandidatePredicate, deoptimizeOnExceptionPredicate);
     }
 
-    public void initializeRuntimeCompilationConfiguration(HostedProviders newHostedProviders, GraphBuilderConfiguration newGraphBuilderConfig, IncludeCalleePredicate newIncludeCalleePredicate,
+    public void initializeRuntimeCompilationConfiguration(HostedProviders newHostedProviders, GraphBuilderConfiguration newGraphBuilderConfig,
+                    RuntimeCompilationCandidatePredicate newRuntimeCompilationCandidatePredicate,
                     Predicate<ResolvedJavaMethod> newDeoptimizeOnExceptionPredicate) {
         guarantee(initialized == false, "runtime compilation configuration already initialized");
         initialized = true;
 
         hostedProviders = newHostedProviders;
         graphBuilderConfig = newGraphBuilderConfig;
-        includeCalleePredicate = newIncludeCalleePredicate;
+        runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
 
         if (SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
@@ -478,8 +498,8 @@ public abstract class RuntimeCompilationFeature implements Feature {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        if (!methods.containsKey(aMethod)) {
-            methods.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
+        if (!runtimeCompiledMethodMap.containsKey(aMethod)) {
+            runtimeCompiledMethodMap.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
             config.registerAsRoot(aMethod, true);
         }
 
@@ -491,15 +511,15 @@ public abstract class RuntimeCompilationFeature implements Feature {
         DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) c;
 
         Deque<CallTreeNode> worklist = new ArrayDeque<>();
-        worklist.addAll(methods.values());
+        worklist.addAll(runtimeCompiledMethodMap.values());
 
         while (!worklist.isEmpty()) {
             processMethod(worklist.removeFirst(), worklist, config.getBigBang());
         }
 
-        SubstrateMethod[] methodsToCompileArr = new SubstrateMethod[methods.size()];
+        SubstrateMethod[] methodsToCompileArr = new SubstrateMethod[runtimeCompiledMethodMap.size()];
         int idx = 0;
-        for (CallTreeNode node : methods.values()) {
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
             methodsToCompileArr[idx++] = objectReplacer.createMethod(node.implementationMethod);
         }
         if (GraalSupport.setMethodsToCompile(config, methodsToCompileArr)) {
@@ -555,7 +575,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
                 if (parse) {
-                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(), node);
+                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes());
                     builderPhase.apply(graph);
                 }
 
@@ -622,7 +642,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
             List<AnalysisMethod> implementationMethods = new ArrayList<>();
             for (AnalysisMethod implementationMethod : allImplementationMethods) {
                 /* Filter out all the implementation methods that have already been processed. */
-                if (!methods.containsKey(implementationMethod)) {
+                if (!runtimeCompiledMethodMap.containsKey(implementationMethod)) {
                     implementationMethods.add(implementationMethod);
                 }
             }
@@ -634,9 +654,10 @@ public abstract class RuntimeCompilationFeature implements Feature {
                 String sourceReference = buildSourceReference(targetNode.invoke().stateAfter());
                 for (AnalysisMethod implementationMethod : implementationMethods) {
                     CallTreeNode calleeNode = new CallTreeNode(implementationMethod, targetMethod, node, node.level + 1, sourceReference);
-                    if (includeCalleePredicate.includeCallee(calleeNode, implementationMethods)) {
-                        assert !methods.containsKey(implementationMethod);
-                        methods.put(implementationMethod, calleeNode);
+                    runtimeCompilationCandidates.add(calleeNode);
+                    if (runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementationMethod)) {
+                        assert !runtimeCompiledMethodMap.containsKey(implementationMethod);
+                        runtimeCompiledMethodMap.put(implementationMethod, calleeNode);
                         worklist.add(calleeNode);
                         node.children.add(calleeNode);
                         objectReplacer.createMethod(implementationMethod);
@@ -666,7 +687,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ProgressReporter.singleton().setNumRuntimeCompiledMethods(methods.size());
+        ProgressReporter.singleton().setNumRuntimeCompiledMethods(runtimeCompiledMethodMap.size());
     }
 
     @Override
@@ -689,9 +710,9 @@ public abstract class RuntimeCompilationFeature implements Feature {
                 throw UserError.abort("Invalid value for option 'MaxRuntimeCompileMethods': '%s' is not a valid number", numberStr);
             }
         }
-        if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && methods.size() > maxMethods) {
+        if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && runtimeCompiledMethodMap.size() > maxMethods) {
             printDeepestLevelPath();
-            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
+            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + runtimeCompiledMethodMap.size() + " > " + maxMethods);
         }
 
         /*
@@ -705,7 +726,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
         IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
         ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase(canonicalizer);
 
-        for (CallTreeNode node : methods.values()) {
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
             StructuredGraph graph = node.graph;
             if (graph != null) {
                 DebugContext debug = graph.getDebug();
@@ -731,7 +752,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
         graphEncoder.finishPrepare();
 
-        for (CallTreeNode node : methods.values()) {
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
             if (node.graph != null) {
                 registerDeoptEntries(node);
 
@@ -828,7 +849,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
     private void printDeepestLevelPath() {
         CallTreeNode maxLevelCallTreeNode = null;
-        for (CallTreeNode callTreeNode : methods.values()) {
+        for (CallTreeNode callTreeNode : runtimeCompiledMethodMap.values()) {
             if (maxLevelCallTreeNode == null || maxLevelCallTreeNode.level < callTreeNode.level) {
                 maxLevelCallTreeNode = callTreeNode;
             }
@@ -849,7 +870,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
     private void printCallTree() {
         System.out.println("depth;method;Graal nodes;invoked from source;full method name;full name of invoked virtual method");
-        for (CallTreeNode node : methods.values()) {
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
             if (node.level == 0) {
                 printCallTreeNode(node);
             }
