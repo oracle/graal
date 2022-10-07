@@ -39,6 +39,7 @@ public class JavaFrameAnchors {
 
     private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchor = FastThreadLocalFactory.createWord("JavaFrameAnchors.lastAnchor").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void pushFrameAnchor(JavaFrameAnchor anchor) {
         /*
          * Set IP and SP to null during initialization, these values will later be overwritten by
