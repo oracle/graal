@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class InvokeQuickNode extends QuickNode {
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
     protected final Method.MethodVersion method;
 
     // Helper information for easier arguments handling.
@@ -48,7 +50,19 @@ public abstract class InvokeQuickNode extends QuickNode {
         this.returnsPrimitive = m.getReturnKind().isPrimitive();
     }
 
-    protected final Object[] getArguments(VirtualFrame frame) {
+    public StaticObject peekReceiver(VirtualFrame frame) {
+        return EspressoFrame.peekReceiver(frame, top, method.getMethod());
+    }
+
+    protected Object[] getArguments(VirtualFrame frame) {
+        /*
+         * Method signature does not change across methods. Can safely use the constant signature
+         * from `method` instead of the non-constant signature from the lookup.
+         */
+        if (method.isStatic() && method.getMethod().getParameterCount() == 0) {
+            // Don't create an array for empty arguments.
+            return EMPTY_ARGS;
+        }
         return EspressoFrame.popArguments(frame, top, !method.isStatic(), method.getMethod().getParsedSignature());
     }
 
@@ -67,5 +81,10 @@ public abstract class InvokeQuickNode extends QuickNode {
         } else {
             return method.getMethod().isRemovedByRedefition();
         }
+    }
+
+    @Override
+    public String toString() {
+        return "INVOKE: " + method.getDeclaringKlass().getExternalName() + "." + method.getNameAsString() + ":" + method.getRawSignature();
     }
 }

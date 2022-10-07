@@ -361,6 +361,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
@@ -1634,7 +1635,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        generifyBytecodeLevelInlining();
         InstrumentationSupport info = this.instrumentation;
         if (info == null && materializedTags.contains(StatementTag.class)) {
             Lock lock = getLock();
@@ -1643,6 +1643,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 info = this.instrumentation;
                 // double checked locking
                 if (info == null) {
+                    generifyBytecodeLevelInlining();
                     this.instrumentation = info = insert(new InstrumentationSupport(getMethodVersion()));
                     // the debug info contains instrumentable nodes so we need to notify for
                     // instrumentation updates.
@@ -2074,10 +2075,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
      * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
      */
-    public int reQuickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed) {
+    public int reQuickenInvoke(VirtualFrame frame, int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode invoke = generifyInlinedMethodNode(top, curBCI, opcode, statementIndex, resolutionSeed);
+        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, resolutionSeed);
         // Perform the call outside of the lock.
         return invoke.execute(frame);
     }
@@ -2086,9 +2087,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
      * happening on this node.
      */
-    public BaseQuickNode generifyInlinedMethodNode(int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed) {
+    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
         synchronized (this) {
-            // Note that another thread might have already generify-ed our node at this point
+            // Note that another thread might have already generify-ed our node at this point.
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);
             BaseQuickNode invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
@@ -2199,7 +2200,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // endregion quickenForeign
 
     private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
-        BaseQuickNode invoke;
+        InvokeQuickNode invoke;
         Method resolved = resolutionSeed;
         switch (opcode) {
             case INVOKESTATIC:

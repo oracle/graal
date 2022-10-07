@@ -23,11 +23,6 @@
 
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -47,6 +42,11 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
+
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 public final class SubstitutionProcessor extends EspressoProcessor {
     // @EspressoSubstitutions
@@ -280,10 +280,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             // Obtain the name of the element to be substituted in.
             String targetMethodName = getSubstutitutedMethodName(element);
 
-            /**
+            /*
              * Obtain the actual target method to call in the substitution. This is the method that
              * will be called in the substitution: Either element itself, for method substitutions.
-             * Or the execute* method of the Truffle node, for node substitutions.
+             * Or the execute method of the Truffle node, for node substitutions.
              */
             ExecutableElement targetMethod = getTargetMethod(element);
 

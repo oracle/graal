@@ -675,11 +675,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isInlinableGetter() {
-        if (getSubstitutions().get(this) == null) {
+        if (!getSubstitutions().hasSubstitutionFor(this)) {
             if (getParameterCount() == 0 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
-                    return hasGetterBytecodes();
-                }
+                return hasGetterBytecodes();
             }
         }
         return false;
@@ -700,11 +698,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isInlinableSetter() {
-        if (getSubstitutions().get(this) == null) {
+        if (!getSubstitutions().hasSubstitutionFor(this)) {
             if (getParameterCount() == 1 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
-                    return hasSetterBytecodes();
-                }
+                return hasSetterBytecodes();
             }
         }
         return false;

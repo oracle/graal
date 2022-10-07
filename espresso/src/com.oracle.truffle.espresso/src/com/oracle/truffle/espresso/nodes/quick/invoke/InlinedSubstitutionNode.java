@@ -24,46 +24,28 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
-import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 public final class InlinedSubstitutionNode extends InlinedMethodNode {
-    @Child private JavaSubstitution substitution;
+    @Child JavaSubstitution substitution;
 
-    InlinedSubstitutionNode(Method inlinedMethod, int top, int callerBCI, int opcode, int statementIndex, JavaSubstitution substitution) {
-        super(inlinedMethod, top, callerBCI, opcode, statementIndex);
+    InlinedSubstitutionNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution substitution) {
+        super(inlinedMethod, top, opcode, callerBCI, statementIndex);
         this.substitution = insert(substitution);
     }
 
-    public static InlinedSubstitutionNode lookupInlineSubstitution(Method m, int top, int callerBCI, int opcode, int statementIndex) {
-        if (canInline(m, opcode)) {
-            JavaSubstitution.Factory factory = Substitutions.lookupSubstitution(m);
-            if (factory != null) {
-                return InlinedSubstitutionNode.create(m, top, opcode, callerBCI, statementIndex, factory);
-            }
+    public static InlinedMethodNode create(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution.Factory factory) {
+        InlinedMethodNode node = new InlinedSubstitutionNode(inlinedMethod, top, opcode, callerBCI, statementIndex, factory.create());
+        if (factory.guard() != null) {
+            node = new GuardedInlinedMethodNode(node, (GuardedInlinedMethodNode.InlinedMethodGuard) factory.guard());
         }
-        return null;
-    }
-
-    public static InlinedSubstitutionNode create(Method inlinedMethod, int top, int callerBCI, int opcode, int statementIndex, JavaSubstitution.Factory factory) {
-        return new InlinedSubstitutionNode(inlinedMethod, top, callerBCI, opcode, statementIndex, factory.create());
-    }
-
-    public static boolean canInline(Method m, int opcode) {
-        if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
-            return true;
-        }
-        if (opcode == Bytecodes.INVOKEVIRTUAL && (m.isFinalFlagSet() || m.isPrivate() || m.getDeclaringKlass().isFinalFlagSet())) {
-            return true;
-        }
-        return false;
+        return node;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        Object result = substitution.invoke(getArguments(frame));
-        return pushResult(frame, result);
+        Object[] args = getArguments(frame);
+        return pushResult(frame, substitution.invoke(args));
     }
 }

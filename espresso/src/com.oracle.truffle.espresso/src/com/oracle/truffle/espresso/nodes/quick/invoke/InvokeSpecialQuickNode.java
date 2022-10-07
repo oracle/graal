@@ -34,18 +34,14 @@ public final class InvokeSpecialQuickNode extends InvokeQuickNode {
 
     public InvokeSpecialQuickNode(Method method, int top, int callerBCI) {
         super(method, top, callerBCI);
+        assert !method.isStatic();
         this.invokeSpecial = InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method);
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        /*
-         * Method signature does not change across methods. Can safely use the constant signature
-         * from `method` instead of the non-constant signature from the lookup.
-         */
         Object[] args = getArguments(frame);
         nullCheck((StaticObject) args[0]);
-        Object result = invokeSpecial.execute(args);
-        return pushResult(frame, result);
+        return pushResult(frame, invokeSpecial.execute(args));
     }
 }

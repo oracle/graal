@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class InlinedSetterNode extends InlinedMethodNode {
+public final class InlinedSetterNode extends InlinedMethodNode {
 
     private static final DebugCounter setterNodes = DebugCounter.create("setters: ");
     private static final DebugCounter leafSetterNodes = DebugCounter.create("leaf set: ");
@@ -46,21 +46,22 @@ public class InlinedSetterNode extends InlinedMethodNode {
     @Child AbstractSetFieldNode setFieldNode;
 
     InlinedSetterNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
-        super(inlinedMethod, top, callerBCI, opcode, statementIndex);
+        super(inlinedMethod, top, opcode, callerBCI, statementIndex);
         this.field = getInlinedField(inlinedMethod);
         this.slotCount = field.getKind().getSlotCount();
         setFieldNode = insert(AbstractSetFieldNode.create(this.field));
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
-    public static InlinedSetterNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+    public static InlinedMethodNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+        assert isInlineCandidate(inlinedMethod, opCode);
         setterNodes.inc();
-        if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedSetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
-        } else {
+        InlinedMethodNode node = new InlinedSetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
+        if (!isUncoditionalInlineCandidate(inlinedMethod, opCode)) {
             leafSetterNodes.inc();
-            return new LeafAssumptionSetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
+            node = new GuardedInlinedMethodNode(node, GuardedInlinedMethodNode.InlinedMethodGuard.LEAF_ASSUMPTION_CHECK);
         }
+        return node;
     }
 
     @Override

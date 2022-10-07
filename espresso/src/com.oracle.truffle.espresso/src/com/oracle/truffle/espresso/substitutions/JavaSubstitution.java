@@ -67,6 +67,14 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
         public boolean isValidFor(@SuppressWarnings("unused") JavaVersion version) {
             return true;
         }
+
+        public boolean isTrivial() {
+            return false;
+        }
+
+        public Object guard() {
+            return null;
+        }
     }
 
     JavaSubstitution() {

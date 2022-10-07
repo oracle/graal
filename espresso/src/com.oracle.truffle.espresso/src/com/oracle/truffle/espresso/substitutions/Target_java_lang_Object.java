@@ -33,6 +33,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.quick.invoke.GuardedInlinedMethodNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -48,7 +49,10 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
+    public static final GuardedInlinedMethodNode.InlinedMethodGuard InitGuard = //
+                    (context, version, frame, node) -> !Init.hasFinalizer(node.peekReceiver(frame));
+
+    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true, hasGuard = true)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);

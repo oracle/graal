@@ -33,12 +33,12 @@ import com.oracle.truffle.espresso.vm.VM;
 public final class InvokeStaticQuickNode extends InvokeQuickNode {
 
     @Child InvokeStatic invokeStatic;
-    final boolean callsDoPrivileged;
+    final boolean isDoPrivilegedCall;
 
     public InvokeStaticQuickNode(Method method, int top, int curBCI) {
         super(method, top, curBCI);
         assert method.isStatic();
-        this.callsDoPrivileged = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
+        this.isDoPrivilegedCall = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
                         Name.doPrivileged.equals(method.getName());
         this.invokeStatic = InvokeStaticNodeGen.create(method);
     }
@@ -46,7 +46,7 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
     @Override
     public int execute(VirtualFrame frame) {
         // Support for AccessController.doPrivileged.
-        if (callsDoPrivileged) {
+        if (isDoPrivilegedCall) {
             EspressoRootNode rootNode = (EspressoRootNode) getRootNode();
             if (rootNode != null) {
                 // Put cookie in the caller frame.
@@ -54,7 +54,6 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
             }
         }
         Object[] args = getArguments(frame);
-        Object result = invokeStatic.execute(args);
-        return pushResult(frame, result);
+        return pushResult(frame, invokeStatic.execute(args));
     }
 }

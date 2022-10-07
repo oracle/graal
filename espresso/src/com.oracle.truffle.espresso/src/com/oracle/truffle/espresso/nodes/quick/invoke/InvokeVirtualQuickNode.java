@@ -40,13 +40,8 @@ public final class InvokeVirtualQuickNode extends InvokeQuickNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        /*
-         * Method signature does not change across methods. Can safely use the constant signature
-         * from `resolutionSeed` instead of the non-constant signature from the resolved method.
-         */
         Object[] args = getArguments(frame);
         nullCheck((StaticObject) args[0]);
-        Object result = invokeVirtual.execute(args);
-        return pushResult(frame, result);
+        return pushResult(frame, invokeVirtual.execute(args));
     }
 }

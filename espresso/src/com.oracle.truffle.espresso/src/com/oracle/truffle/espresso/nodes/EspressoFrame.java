@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
@@ -291,6 +292,14 @@ public final class EspressoFrame {
         return VALUES_START + maxLocals;
     }
 
+    public static StaticObject peekReceiver(VirtualFrame frame, int top, Method m) {
+        assert !m.isStatic();
+        int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
+        StaticObject result = peekObject(frame, top - skipSlots - 1);
+        assert result != null;
+        return result;
+    }
+
     @ExplodeLoop
     public static Object[] popArguments(VirtualFrame frame, int top, boolean hasReceiver, final Symbol<Type>[] signature) {
         int argCount = Signatures.parameterCount(signature);
@@ -333,12 +342,12 @@ public final class EspressoFrame {
 
     // Effort to prevent double copies. Erases sub-word primitive types.
     @ExplodeLoop
-    public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
+    public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, boolean hasReceiver, Object[] args) {
         // Use basic types
-        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(Signatures.parameterCount(signature));
         CompilerAsserts.partialEvaluationConstant(signature);
         int argAt = top - 1;
-        for (int i = argCount - 1; i >= 0; --i) {
+        for (int i = Signatures.parameterCount(signature) - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
             // @formatter:off
             switch (argType.byteAt(0)) {
@@ -346,18 +355,21 @@ public final class EspressoFrame {
                 case 'B' : // fall through
                 case 'S' : // fall through
                 case 'C' : // fall through
-                case 'I' : args[i + start] = popInt(frame, argAt);    break;
-                case 'F' : args[i + start] = popFloat(frame, argAt);  break;
-                case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
-                case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
+                case 'I' : args[i] = popInt(frame, argAt);    break;
+                case 'F' : args[i] = popFloat(frame, argAt);  break;
+                case 'J' : args[i] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i] = popDouble(frame, argAt); --argAt; break;
                 case '[' : // fall through
-                case 'L' : args[i + start] = popObject(frame, argAt); break;
+                case 'L' : args[i] = popObject(frame, argAt); break;
                 default  :
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
             --argAt;
+        }
+        if (hasReceiver) {
+            args[0] = popObject(frame, argAt);
         }
         return args;
     }

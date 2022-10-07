@@ -56,8 +56,12 @@ public abstract class QuickNode extends BaseQuickNode {
         return callerBCI;
     }
 
-    protected int getCallerBCI() {
+    public int getCallerBCI() {
         return callerBCI;
+    }
+
+    public int getTop() {
+        return top;
     }
 
     @Override

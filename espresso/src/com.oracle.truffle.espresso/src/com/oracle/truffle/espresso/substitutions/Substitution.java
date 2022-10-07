@@ -92,4 +92,14 @@ import java.lang.annotation.Target;
      * </ul>
      */
     boolean isTrivial() default false;
+
+    /**
+     * If the bytecode-level inlining of the substitution should be guarded by a
+     * {@link com.oracle.truffle.espresso.nodes.quick.invoke.GuardedInlinedMethodNode.InlinedMethodGuard
+     * method guard}.
+     * <p>
+     * The guard should be a {@code public static final} field in the substitution class, named
+     * {@code [SubstitutionName]Guard}.
+     */
+    boolean hasGuard() default false;
 }

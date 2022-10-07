@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class InlinedGetterNode extends InlinedMethodNode {
+public final class InlinedGetterNode extends InlinedMethodNode {
 
     private static final DebugCounter getterNodes = DebugCounter.create("getters: ");
     private static final DebugCounter leafGetterNodes = DebugCounter.create("leaf get: ");
@@ -45,30 +45,36 @@ public class InlinedGetterNode extends InlinedMethodNode {
     @Child AbstractGetFieldNode getFieldNode;
 
     InlinedGetterNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
-        super(inlinedMethod, top, callerBCI, opcode, statementIndex);
+        super(inlinedMethod, top, opcode, callerBCI, statementIndex);
         this.field = getInlinedField(inlinedMethod);
         getFieldNode = insert(AbstractGetFieldNode.create(this.field));
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
-    public static InlinedGetterNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+    public static InlinedMethodNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+        assert isInlineCandidate(inlinedMethod, opCode);
         getterNodes.inc();
-        if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedGetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
-        } else {
+        InlinedMethodNode node = new InlinedGetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
+        if (!isUncoditionalInlineCandidate(inlinedMethod, opCode)) {
             leafGetterNodes.inc();
-            return new LeafAssumptionGetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
+            node = new GuardedInlinedMethodNode(node, GuardedInlinedMethodNode.InlinedMethodGuard.LEAF_ASSUMPTION_CHECK);
         }
+        return node;
     }
 
+    // Shortcuts arguments array creation
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
-        StaticObject receiver = field.isStatic()
-                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(EspressoFrame.popObject(frame, top - 1));
+        StaticObject receiver = getReceiver(frame);
         getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
         return stackEffect;
+    }
+
+    private StaticObject getReceiver(VirtualFrame frame) {
+        return field.isStatic()
+                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+                        : nullCheck(EspressoFrame.popObject(frame, top - 1));
     }
 
     private static Field getInlinedField(Method inlinedMethod) {

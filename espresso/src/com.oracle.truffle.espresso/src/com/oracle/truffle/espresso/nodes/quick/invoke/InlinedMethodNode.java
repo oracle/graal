@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
@@ -33,22 +34,26 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
     protected final int opcode;
     protected final int statementIndex;
 
-    protected InlinedMethodNode(Method inlinedMethod, int top, int callerBCI, int opcode, int statementIndex) {
+    protected InlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
         super(inlinedMethod, top, callerBCI);
         this.opcode = opcode;
         this.statementIndex = statementIndex;
     }
 
     public static InlinedMethodNode createFor(Method resolutionSeed, int top, int opcode, int curBCI, int statementIndex) {
+        if (!isInlineCandidate(resolutionSeed, opcode)) {
+            return null;
+        }
         if (resolutionSeed.isInlinableGetter()) {
             return InlinedGetterNode.create(resolutionSeed, top, opcode, curBCI, statementIndex);
         }
         if (resolutionSeed.isInlinableSetter()) {
             return InlinedSetterNode.create(resolutionSeed, top, opcode, curBCI, statementIndex);
         }
-        if (InlinedSubstitutionNode.canInline(resolutionSeed, opcode)) {
+        if (isUncoditionalInlineCandidate(resolutionSeed, opcode)) {
+            // Try to inline trivial substitutions.
             JavaSubstitution.Factory factory = Substitutions.lookupSubstitution(resolutionSeed);
-            if (factory != null) {
+            if (factory != null && factory.isTrivial()) {
                 return InlinedSubstitutionNode.create(resolutionSeed, top, opcode, curBCI, statementIndex, factory);
             }
         }
@@ -56,6 +61,35 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
     }
 
     public final void revertToGeneric(BytecodeNode parent) {
-        parent.generifyInlinedMethodNode(top, getCallerBCI(), opcode, statementIndex, method.getMethod());
+        parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex, method.getMethod());
+    }
+
+    protected static boolean isInlineCandidate(Method resolutionSeed, int opcode) {
+        if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
+            return true;
+        }
+        if (opcode == Bytecodes.INVOKEVIRTUAL) {
+            // InvokeVirtual can be bytecode-level inlined if method is final, or there are no
+            // overrides yet.
+            if ((resolutionSeed.isFinalFlagSet() || resolutionSeed.isPrivate() || resolutionSeed.getDeclaringKlass().isFinalFlagSet()) ||
+                            resolutionSeed.getContext().getClassHierarchyOracle().isLeafMethod(resolutionSeed).isValid()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected static boolean isUncoditionalInlineCandidate(Method resolutionSeed, int opcode) {
+        if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
+            return true;
+        }
+        if (opcode == Bytecodes.INVOKEVIRTUAL) {
+            // InvokeVirtual can be unconditionally bytecode-level inlined if method can never be
+            // overriden.
+            if (resolutionSeed.isFinalFlagSet() || resolutionSeed.isPrivate() || resolutionSeed.getDeclaringKlass().isFinalFlagSet()) {
+                return true;
+            }
+        }
+        return false;
     }
 }
