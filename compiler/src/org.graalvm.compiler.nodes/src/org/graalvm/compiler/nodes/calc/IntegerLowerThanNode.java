@@ -588,7 +588,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     }
                     low += 1;
                 }
-                if (compare(low, lowerBound(xStamp)) > 0 || upperBound(xStamp) != (xStamp.upperBound() & mask(xStamp.getBits()))) {
+                if (compare(low, lowerBound(xStamp)) > 0 || (upperBound(xStamp) != xStamp.upperBound() && upperBound(xStamp) != (xStamp.upperBound() & mask(xStamp.getBits())))) {
                     return forInteger(bits, low, upperBound(xStamp));
                 }
             } else {
@@ -600,7 +600,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     }
                     low -= 1;
                 }
-                if (compare(low, upperBound(xStamp)) < 0 || lowerBound(xStamp) != (xStamp.lowerBound() & mask(xStamp.getBits()))) {
+                if (compare(low, upperBound(xStamp)) < 0 || (lowerBound(xStamp) != xStamp.lowerBound() && lowerBound(xStamp) != (xStamp.lowerBound() & mask(xStamp.getBits())))) {
                     return forInteger(bits, lowerBound(xStamp), low);
                 }
             }

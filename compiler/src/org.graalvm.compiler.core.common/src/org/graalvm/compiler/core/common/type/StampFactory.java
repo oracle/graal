@@ -154,11 +154,11 @@ public class StampFactory {
     }
 
     public static IntegerStamp forInteger(int bits) {
-        return IntegerStamp.create(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits), 0, CodeUtil.mask(bits));
+        return IntegerStamp.create(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits));
     }
 
     public static IntegerStamp forUnsignedInteger(int bits) {
-        return forUnsignedInteger(bits, 0, NumUtil.maxValueUnsigned(bits), 0, CodeUtil.mask(bits));
+        return forUnsignedInteger(bits, 0, NumUtil.maxValueUnsigned(bits));
     }
 
     public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound) {
@@ -180,7 +180,7 @@ public class StampFactory {
     }
 
     public static IntegerStamp forInteger(int bits, long lowerBound, long upperBound) {
-        return IntegerStamp.create(bits, lowerBound, upperBound, 0, CodeUtil.mask(bits));
+        return IntegerStamp.create(bits, lowerBound, upperBound);
     }
 
     public static FloatStamp forFloat(JavaKind kind, double lowerBound, double upperBound, boolean nonNaN) {

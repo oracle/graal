@@ -125,6 +125,21 @@ public final class IntegerStamp extends PrimitiveStamp {
         this(bits, constant, constant, constant & CodeUtil.mask(bits), constant & CodeUtil.mask(bits), constant == 0);
     }
 
+    private IntegerStamp(int bits, long lowerBound, long upperBound) {
+        super(bits, OPS);
+        int sameBitCount = Long.numberOfLeadingZeros(lowerBound ^ upperBound);
+        long sameBitMask = -1L >>> sameBitCount;
+        long defaultMask = CodeUtil.mask(bits);
+
+        this.lowerBound = lowerBound;
+        this.upperBound = upperBound;
+        this.mustBeSet = defaultMask & (lowerBound & ~sameBitMask);
+        this.mayBeSet = defaultMask & (lowerBound | sameBitMask);
+
+        this.canBeZero = contains(0, true);
+        assert check();
+    }
+
     private IntegerStamp(int bits, long lowerBound, long upperBound, long mustBeSet, long mayBeSet, boolean canBeZero) {
         super(bits, OPS);
 
@@ -133,26 +148,27 @@ public final class IntegerStamp extends PrimitiveStamp {
         this.mustBeSet = mustBeSet;
         this.mayBeSet = mayBeSet;
 
-        assert lowerBound >= CodeUtil.minValue(bits) : this;
-        assert upperBound <= CodeUtil.maxValue(bits) : this;
-        assert (mustBeSet & CodeUtil.mask(bits)) == mustBeSet : this;
-        assert (mayBeSet & CodeUtil.mask(bits)) == mayBeSet : this;
-        // Check for valid masks or the empty encoding
-        assert (mustBeSet & ~mayBeSet) == 0 || (mayBeSet == 0 && mustBeSet == CodeUtil.mask(bits)) : String.format("must: %016x may: %016x", mustBeSet, mayBeSet);
         // use ctor param because canBeZero is not set yet
         this.canBeZero = contains(0, canBeZero);
+        assert check();
+    }
+
+    private boolean check() {
+        assert lowerBound >= CodeUtil.minValue(getBits()) : this;
+        assert upperBound <= CodeUtil.maxValue(getBits()) : this;
+        assert (mustBeSet & CodeUtil.mask(getBits())) == mustBeSet : this;
+        assert (mayBeSet & CodeUtil.mask(getBits())) == mayBeSet : this;
+        // Check for valid masks or the empty encoding
+        assert (mustBeSet & ~mayBeSet) == 0 || (mayBeSet == 0 && mustBeSet == CodeUtil.mask(getBits())) : String.format("must: %016x may: %016x", mustBeSet, mayBeSet);
         assert !this.canBeZero || contains(0) : " Stamp " + this + " either has canBeZero set to false or needs to contain 0";
-        GraalError.guarantee(!isEmpty(), "unexpected empty stamp: %s %s %s %s %s %s", lowerBound, upperBound, mustBeSet, mayBeSet, canBeZero, this);
-        GraalError.guarantee(contains(upperBound), "%s must contain its upper bound", this);
-        GraalError.guarantee(contains(lowerBound), "%s must contain its lower bound", this);
+        assert !isEmpty() : String.format("unexpected empty stamp: %s %s %s %s %s %s", lowerBound, upperBound, mustBeSet, mayBeSet, canBeZero, this);
+        assert contains(upperBound) : String.format("%s must contain its upper bound", this);
+        assert contains(lowerBound) : String.format("%s must contain its lower bound", this);
+        return true;
     }
 
     public static IntegerStamp createConstant(int bits, long value) {
         return new IntegerStamp(bits, value);
-    }
-
-    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
-        return create(bits, lowerBoundInput, upperBoundInput, 0, CodeUtil.mask(bits));
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long mustBeSet, long mayBeSet) {
@@ -170,11 +186,17 @@ public final class IntegerStamp extends PrimitiveStamp {
     static final int ITERATION_LIMIT = 3;
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long mustBeSetInput, long mayBeSetInput, boolean canBeZero) {
+        assert lowerBoundInput >= CodeUtil.minValue(bits) && lowerBoundInput <= CodeUtil.maxValue(bits);
+        assert upperBoundInput >= CodeUtil.minValue(bits) && upperBoundInput <= CodeUtil.maxValue(bits);
         if (isEmpty(lowerBoundInput, upperBoundInput, mustBeSetInput, mayBeSetInput)) {
             return createEmptyStamp(bits);
         }
 
-        assert (mustBeSetInput & ~mayBeSetInput) == 0 : String.format("must: %016x may: %016x", mustBeSetInput, mayBeSetInput);
+        long defaultMask = CodeUtil.mask(bits);
+
+        if (mustBeSetInput == 0 && mayBeSetInput == defaultMask && canBeZero) {
+            return create(bits, lowerBoundInput, upperBoundInput);
+        }
 
         long lowerBoundCurrent = lowerBoundInput;
         long upperBoundCurrent = upperBoundInput;
@@ -195,7 +217,6 @@ public final class IntegerStamp extends PrimitiveStamp {
             // Compute masks with the new bounds in mind.
             final long boundedMustBeSet;
             final long boundedMayBeSet;
-            long defaultMask = CodeUtil.mask(bits);
             if (lowerBoundTmp == upperBoundTmp) {
                 // For constants the masks are just the value
                 boundedMustBeSet = lowerBoundTmp;
@@ -226,13 +247,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                 return createEmptyStamp(bits);
             }
 
-            if (lowerBoundInput == lowerBoundTmp && upperBoundInput == upperBoundTmp && mustBeSetInput == mustBeSetTmp && mayBeSetInput == mayBeSetTmp) {
-                // The inputs values are completely unchanged so there's no point in iterating.
-                return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, mustBeSetTmp, mayBeSetTmp, canBeZero);
-            }
-
             if (lowerBoundCurrent == lowerBoundTmp && upperBoundCurrent == upperBoundTmp && mustBeSetCurrent == mustBeSetTmp && mayBeSetCurrent == mayBeSetTmp) {
-                // The values have reached a stable state
+                // The values have reached a stable state. If the incoming values are unchanged then
+                // this completes in a single pass but if they change then another iteration is
+                // performed to ensure the values have stabilized.
                 return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, mustBeSetTmp, mayBeSetTmp, canBeZero);
             }
 
@@ -245,6 +263,18 @@ public final class IntegerStamp extends PrimitiveStamp {
             mayBeSetCurrent = mayBeSetTmp;
         }
         throw GraalError.shouldNotReachHere("More than " + ITERATION_LIMIT + "iterations required to reach a stable stamp");
+    }
+
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
+        if (lowerBoundInput > upperBoundInput) {
+            return createEmptyStamp(bits);
+        }
+
+        if (lowerBoundInput == upperBoundInput) {
+            return createConstant(bits, lowerBoundInput);
+        }
+
+        return new IntegerStamp(bits, lowerBoundInput, upperBoundInput);
     }
 
     /**
@@ -412,7 +442,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         if ((mustBeSet & ~mayBeSet) != 0L) {
             return createEmptyStamp(bits);
         }
-        return IntegerStamp.create(bits, minValueForMasks(bits, mustBeSet, mayBeSet), maxValueForMasks(bits, mustBeSet, mayBeSet), mustBeSet, mayBeSet);
+        return new IntegerStamp(bits, minValueForMasks(bits, mustBeSet, mayBeSet), maxValueForMasks(bits, mustBeSet, mayBeSet), mustBeSet, mayBeSet, true);
     }
 
     @Override
@@ -2020,6 +2050,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
 
                             long inputMask = CodeUtil.mask(inputBits);
+                            if (inputBits < stamp.getBits() && (stamp.contains(CodeUtil.minValue(inputBits) - 1) || stamp.contains(CodeUtil.maxValue(inputBits) + 1))) {
+                                // Truncation will cause this value to wrap around
+                                return StampFactory.forInteger(inputBits).unrestricted();
+                            }
                             return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
                         }
                     },
