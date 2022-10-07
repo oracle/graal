@@ -227,7 +227,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
                             .setIsSubstitution(true)
                             .build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
-                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true) {
+                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
 
                 private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
 
