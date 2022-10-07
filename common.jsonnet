@@ -1,6 +1,6 @@
 local composable = (import "common-utils.libsonnet").composable;
 
-local mx_version = (import "graal-common.json").mx_version;
+local mx_version = (import "common.json").mx_version;
 local common_json = composable(import "common.json");
 local repo_config = import 'repo-configuration.libsonnet';
 local jdks = common_json.jdks;

@@ -121,7 +121,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Determine mx version
-      run: echo "MX_VERSION=$(cat graal-common.json | jq -r '.mx_version')" >> ${GITHUB_ENV}
+      run: echo "MX_VERSION=$(cat common.json | jq -r '.mx_version')" >> ${GITHUB_ENV}
     - uses: actions/checkout@v2
       with:
         repository: graalvm/mx.git
