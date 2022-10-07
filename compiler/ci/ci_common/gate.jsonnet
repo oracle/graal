@@ -50,7 +50,7 @@
 
   test:: s.base(no_warning_as_error=true),
 
-  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"]) + {
+  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"]) + {
     teardown+: [
       ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
@@ -79,7 +79,7 @@
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Dgraal.CompilerConfiguration=economy"),
   ctw_phaseplan_fuzzing:: s.base("build,ctwphaseplanfuzzing"),
 
-  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
+  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
     teardown+: [
       ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
