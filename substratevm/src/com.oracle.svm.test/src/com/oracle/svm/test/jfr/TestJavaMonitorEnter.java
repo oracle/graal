@@ -28,9 +28,7 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;
@@ -46,14 +44,13 @@ public class TestJavaMonitorEnter extends JfrTest {
     static Thread firstThread;
     static Thread secondThread;
     static final Helper helper = new Helper();
-    private static Queue<String> orderedWaiterNames = new LinkedList<>();
 
     @Override
     public String[] getTestedEvents() {
         return new String[]{"jdk.JavaMonitorEnter"};
     }
 
-    public void validateEvents() throws Throwable{
+    public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("jdk.JavaMonitorEnter");
         int count = 0;
@@ -61,19 +58,15 @@ public class TestJavaMonitorEnter extends JfrTest {
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            if (event.getEventType().getName().equals("jdk.JavaMonitorEnter")
-                    && struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())
-                    && event.getDuration().toMillis() >= MILLIS
-                    && secondThread.getName().equals(eventThread)) {
+            if (struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
 
                 // verify previous owner
-                assertTrue("Previous owner is wrong",struct.<RecordedThread> getValue("previousOwner").getJavaName().equals(firstThread.getName()));
+                assertTrue("Previous owner is wrong", struct.<RecordedThread> getValue("previousOwner").getJavaName().equals(firstThread.getName()));
                 found = true;
                 break;
             }
         }
-        assertTrue("Expected monitor blocked event not found" , found);
-
+        assertTrue("Expected monitor blocked event not found", found);
     }
 
     @Test
@@ -88,8 +81,8 @@ public class TestJavaMonitorEnter extends JfrTest {
 
         Runnable second = () -> {
             try {
-                //wait until lock is held
-                while(!inCritical) {
+                // wait until lock is held
+                while (!inCritical) {
                     Thread.sleep(10);
                 }
                 helper.doWork();
@@ -116,7 +109,7 @@ public class TestJavaMonitorEnter extends JfrTest {
             }
 
             // spin until second thread blocks
-            while(!secondThread.getState().equals(Thread.State.BLOCKED)) {
+            while (!secondThread.getState().equals(Thread.State.BLOCKED)) {
                 Thread.sleep(10);
             }
 

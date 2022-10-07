@@ -31,11 +31,11 @@ import static org.junit.Assume.assumeTrue;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Comparator;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -59,7 +59,6 @@ public abstract class JfrTest {
     protected Jfr jfr;
     protected Recording recording;
     private final ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
-    protected final long msTolerance = 10;
 
     @BeforeClass
     public static void checkForJFR() {
@@ -91,7 +90,7 @@ public abstract class JfrTest {
         checkEvents();
         try {
             validateEvents();
-        }catch (Throwable throwable) {
+        } catch (Throwable throwable) {
             Assert.fail("validateEvents failed: " + throwable.getMessage());
         }
         try {
@@ -115,7 +114,7 @@ public abstract class JfrTest {
 
     public abstract String[] getTestedEvents();
 
-    public void validateEvents() throws Throwable{
+    public void validateEvents() throws Throwable {
     }
 
     protected void checkEvents() {
@@ -166,6 +165,8 @@ public abstract class JfrTest {
         Path p = makeCopy(testName);
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
         Collections.sort(events, chronologicalComparator);
+        // remove events that are not in the list of tested events
+        events.removeIf(event -> (Arrays.stream(getTestedEvents()).noneMatch(testedEvent -> (testedEvent.equals(event.getEventType().getName())))));
         return events;
     }
 

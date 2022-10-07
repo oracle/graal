@@ -30,8 +30,6 @@ import static java.lang.Math.abs;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
 
 import jdk.jfr.consumer.RecordedClass;
@@ -53,7 +51,7 @@ public class TestJavaMonitorWait extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
-    public void validateEvents() throws Throwable{
+    public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("jdk.JavaMonitorWait");
 
@@ -65,7 +63,7 @@ public class TestJavaMonitorWait extends JfrTest {
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
             String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
             assertTrue("No event thread", eventThread != null);
-            if ((!eventThread.equals(producerName) && !eventThread.equals(consumerName)) || !event.getEventType().getName().equals("jdk.JavaMonitorWait") ||
+            if ((!eventThread.equals(producerName) && !eventThread.equals(consumerName)) ||
                             !struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }

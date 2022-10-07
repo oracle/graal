@@ -55,15 +55,12 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
-    public void validateEvents() throws Throwable{
+    public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("TestJavaMonitorWaitInterrupt");
 
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
-            if (!event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
-                continue;
-            }
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
             String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
             if (!eventThread.equals(interrupterThread.getName()) &&
@@ -90,7 +87,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
                         simpleWaitFound && interruptedFound);
     }
 
-    private void testInterruption() throws Exception{
+    private void testInterruption() throws Exception {
 
         Runnable interrupted = () -> {
             try {
@@ -120,7 +117,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         interrupterThread.join();
     }
 
-    private void testWaitNotify() throws Exception{
+    private void testWaitNotify() throws Exception {
         Runnable simpleWaiter = () -> {
             helper.simpleWait();
         };
@@ -131,7 +128,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
                     Thread.sleep(10);
                 }
                 helper.simpleNotify();
-            }catch (Exception e) {
+            } catch (Exception e) {
                 Assert.fail(e.getMessage());
             }
         };
@@ -144,10 +141,10 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         simpleWaitThread.join();
         simpleNotifyThread.join();
     }
+
     @Test
     public void test() throws Exception {
         testInterruption();
-        System.out.println("*** testInterruption done");
         testWaitNotify();
     }
 
@@ -162,7 +159,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
             try {
                 Thread.sleep(MILLIS);
                 interruptedThread.interrupt();
-            }catch (Exception e) {
+            } catch (Exception e) {
                 Assert.fail(e.getMessage());
             }
         }
@@ -176,8 +173,8 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         }
 
         public synchronized void simpleNotify() throws InterruptedException {
-                Thread.sleep(MILLIS);
-                notify();
+            Thread.sleep(MILLIS);
+            notify();
         }
     }
 }

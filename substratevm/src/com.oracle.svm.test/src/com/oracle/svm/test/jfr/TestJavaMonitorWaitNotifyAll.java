@@ -29,8 +29,6 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
 
 import org.junit.Test;
@@ -55,32 +53,28 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
-    public void validateEvents() throws Throwable{
+    public void validateEvents() throws Throwable {
         List<RecordedEvent> events = getEvents("TestJavaMonitorWaitNotifyAll");
-
 
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
-            if (!event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
-                continue;
-            }
-            String eventThread = struct.<RecordedThread>getValue("eventThread").getJavaName();
-            String notifThread = struct.<RecordedThread>getValue("notifier") != null ? struct.<RecordedThread>getValue("notifier").getJavaName() : null;
+            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
+            String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
             if (!eventThread.equals(producerThread1.getName()) &&
-                    !eventThread.equals(producerThread2.getName()) &&
-                    !eventThread.equals(consumerThread.getName())) {
+                            !eventThread.equals(producerThread2.getName()) &&
+                            !eventThread.equals(consumerThread.getName())) {
                 continue;
             }
-            if (!struct.<RecordedClass>getValue("monitorClass").getName().equals(Helper.class.getName())) {
+            if (!struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
 
             assertTrue("Event is wrong duration.", event.getDuration().toMillis() >= MILLIS);
             if (eventThread.equals(consumerThread.getName())) {
-                assertTrue("Should have timed out.", struct.<Boolean>getValue("timedOut").booleanValue());
+                assertTrue("Should have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
                 notifierFound = true;
             } else {
-                assertFalse("Should not have timed out.", struct.<Boolean>getValue("timedOut").booleanValue());
+                assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
                 assertTrue("Notifier thread name is incorrect", notifThread.equals(consumerThread.getName()));
                 waitersFound++;
             }

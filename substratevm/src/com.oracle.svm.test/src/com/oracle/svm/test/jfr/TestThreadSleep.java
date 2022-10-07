@@ -31,7 +31,6 @@ import jdk.jfr.consumer.RecordedObject;
 import jdk.jfr.consumer.RecordedThread;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;
@@ -55,9 +54,6 @@ public class TestThreadSleep extends JfrTest {
         }
         boolean foundSleepEvent = false;
         for (RecordedEvent event : events) {
-            if (!event.getEventType().getName().equals("jdk.ThreadSleep")) {
-                continue;
-            }
             RecordedObject struct = event;
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
             if (!eventThread.equals(sleepingThreadName)) {
