@@ -51,9 +51,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.serialization.OperationSerializer;
 import com.oracle.truffle.api.source.Source;
 
-public abstract class OperationNodes {
+public abstract class OperationNodes<NodeType extends RootNode & OperationRootNode> {
     protected final OperationParser<? extends OperationBuilder> parse;
-    @CompilationFinal(dimensions = 1) protected OperationRootNode[] nodes;
+    @CompilationFinal(dimensions = 1) protected NodeType[] nodes;
     @CompilationFinal(dimensions = 1) protected Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
@@ -62,8 +62,8 @@ public abstract class OperationNodes {
     }
 
     @SuppressWarnings({"unchecked", "cast", "rawtypes"})
-    public <T extends RootNode & OperationRootNode> List<T> getNodes() {
-        return (List<T>) (List) List.of(nodes);
+    public List<NodeType> getNodes() {
+        return List.of(nodes);
     }
 
     public boolean hasSources() {

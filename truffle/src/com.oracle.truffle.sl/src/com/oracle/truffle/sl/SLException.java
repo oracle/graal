@@ -60,18 +60,15 @@ public class SLException extends AbstractOperationsTruffleException {
 
     private static final long serialVersionUID = -6799734410727348507L;
     private static final InteropLibrary UNCACHED_LIB = InteropLibrary.getFactory().getUncached();
-    private final int bci;
 
     @TruffleBoundary
     public SLException(String message, Node location, int bci) {
         super(message, location, bci);
-        this.bci = bci;
     }
 
     @TruffleBoundary
     public SLException(String message, Node location) {
         super(message, location, -1);
-        this.bci = -1;
     }
 
     /**

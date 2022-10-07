@@ -63,9 +63,11 @@ public interface OperationRootNode extends NodeInterface {
 
     SourceSection getSourceSectionAtBci(int bci);
 
+    @SuppressWarnings("unused")
     default void executeProlog(VirtualFrame frame) {
     }
 
+    @SuppressWarnings("unused")
     default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
     }
 }

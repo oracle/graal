@@ -54,11 +54,9 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -99,7 +97,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
-        OperationNodes nodes = SLOperationRootNodeGen.create(OperationConfig.DEFAULT, builder -> {
+        var nodes = SLOperationRootNodeGen.create(OperationConfig.DEFAULT, builder -> {
             SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, builder);
             parseSLImpl(source, visitor);
         });
@@ -113,9 +111,9 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
             }
         }
 
-        for (OperationRootNode node : nodes.getNodes()) {
+        for (SLOperationRootNode node : nodes.getNodes()) {
             TruffleString name = node.getMetadata(SLOperationRootNode.MethodName);
-            RootCallTarget callTarget = ((RootNode) node).getCallTarget();
+            RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);
         }
     }

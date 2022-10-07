@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.operation.serialization;
 
-import java.io.DataOutputStream;
+import java.io.DataOutput;
 import java.io.IOException;
 
 import com.oracle.truffle.api.operation.OperationRootNode;
@@ -48,8 +48,8 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 @FunctionalInterface
 public interface OperationSerializer {
     interface SerializerContext {
-        void serializeOperationNode(DataOutputStream buffer, OperationRootNode node) throws IOException;
+        void serializeOperationNode(DataOutput buffer, OperationRootNode node) throws IOException;
     }
 
-    void serialize(SerializerContext context, DataOutputStream buffer, Object object) throws IOException;
+    void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException;
 }

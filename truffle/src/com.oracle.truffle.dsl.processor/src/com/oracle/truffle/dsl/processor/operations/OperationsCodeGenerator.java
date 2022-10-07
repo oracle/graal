@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -52,7 +53,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -116,14 +116,17 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private static final int SER_CODE_METADATA = -6;
 
     private static final Class<?> DATA_INPUT_CLASS = ByteBuffer.class;
-    private static final Class<?> DATA_OUTPUT_CLASS = DataOutputStream.class;
+    private static final Class<?> DATA_INPUT_WRAP_CLASS = DataInput.class;
+    private static final Class<?> DATA_OUTPUT_CLASS = DataOutput.class;
+
     private static final String DATA_READ_METHOD_PREFIX = "get";
     private static final String DATA_WRITE_METHOD_PREFIX = "write";
 
     private static final TypeMirror TYPE_UNSAFE = new GeneratedTypeMirror("sun.misc", "Unsafe");
 
     CodeTypeElement createOperationNodes() {
-        CodeTypeElement typOperationNodes = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, OPERATION_NODES_IMPL_NAME, types.OperationNodes);
+        CodeTypeElement typOperationNodes = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, OPERATION_NODES_IMPL_NAME,
+                        generic(types.OperationNodes, m.getTemplateType().asType()));
         typOperationNodes.add(GeneratorUtils.createConstructorUsingFields(Set.of(), typOperationNodes));
 
         typOperationNodes.add(createOperationNodedsReparse());
@@ -138,7 +141,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodes.add(mGetSources);
 
         CodeExecutableElement mSetNodes = new CodeExecutableElement(context.getType(void.class), "setNodes");
-        mSetNodes.addParameter(new CodeVariableElement(arrayOf(types.OperationRootNode), "nodes"));
+        mSetNodes.addParameter(new CodeVariableElement(arrayOf(m.getTemplateType().asType()), "nodes"));
         mSetNodes.createBuilder().statement("this.nodes = nodes");
         typOperationNodes.add(mSetNodes);
 
@@ -184,7 +187,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
         CodeVariableElement parBuffer = new CodeVariableElement(context.getType(DATA_INPUT_CLASS), "input");
         CodeVariableElement parCallback = new CodeVariableElement(context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializer"), "callback");
-        CodeExecutableElement met = new CodeExecutableElement(MOD_PUBLIC_STATIC, types.OperationNodes, "deserialize", parLanguage, parConfig, parBuffer, parCallback);
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PUBLIC_STATIC, generic(types.OperationNodes, m.getTemplateType().asType()), "deserialize", parLanguage, parConfig, parBuffer,
+                        parCallback);
 
         met.addThrownType(context.getType(IOException.class));
 
@@ -254,7 +258,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private CodeExecutableElement createCreateMethod(CodeTypeElement typBuilder, CodeTypeElement typBuilderImpl) {
         CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
         CodeVariableElement parParser = new CodeVariableElement(operationParser(typBuilder.asType()), "generator");
-        CodeExecutableElement metCreate = new CodeExecutableElement(MOD_PUBLIC_STATIC, types.OperationNodes, "create");
+        CodeExecutableElement metCreate = new CodeExecutableElement(MOD_PUBLIC_STATIC, generic(types.OperationNodes, m.getTemplateType().asType()), "create");
         metCreate.addParameter(parConfig);
         metCreate.addParameter(parParser);
 
@@ -1139,6 +1143,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("ArrayList<OperationLabel> labels = new ArrayList<>()");
             b.statement("ArrayList<" + m.getTemplateType().getSimpleName() + "> builtNodes = new ArrayList<>()");
 
+            b.statement("buffer.rewind()");
+            b.declaration(context.getType(DATA_INPUT_WRAP_CLASS), "dataInput", "com.oracle.truffle.api.operation.serialization.ByteBufferDataInput.createDataInput(buffer)");
+
             TypeMirror deserContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext");
 
             b.startStatement();
@@ -1146,8 +1153,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string(" context = ").startNew(deserContext).end().startBlock();
 
             b.string("@Override").newLine();
-            b.string("public " + m.getTemplateType().getSimpleName() + " deserializeOperationNode(").type(context.getType(DATA_INPUT_CLASS)).string(" buffer) throws IOException ").startBlock();
-            b.statement("return builtNodes.get(buffer." + DATA_READ_METHOD_PREFIX + "Int())");
+            b.string("public " + m.getTemplateType().getSimpleName() + " deserializeOperationNode(").type(context.getType(DATA_INPUT_WRAP_CLASS)).string(" buffer) throws IOException ").startBlock();
+            b.statement("return builtNodes.get(buffer.readInt())");
             b.end();
 
             b.end(2);
@@ -1166,7 +1173,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.end();
 
             b.startCase().string("" + SER_CODE_CREATE_OBJECT).end().startBlock();
-            b.statement("consts.add(callback.deserialize(context, buffer))");
+            b.statement("consts.add(callback.deserialize(context, dataInput))");
             b.statement("break");
             b.end();
 
@@ -1183,7 +1190,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                     b.startCase().string("" + i).end().startCaseBlock();
                     b.startStatement().startCall("builder", "set" + metadata.getName());
                     b.startGroup().maybeCast(context.getType(Object.class), metadata.getType());
-                    b.string("callback.deserialize(context, buffer)");
+                    b.string("callback.deserialize(context, dataInput)");
                     b.end(3);
                     b.statement("break");
                     b.end();
@@ -2432,6 +2439,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return new DeclaredCodeTypeMirror(el, List.of(args));
     }
 
+    private static TypeMirror generic(DeclaredType el, TypeMirror... args) {
+        return new DeclaredCodeTypeMirror((TypeElement) el.asElement(), List.of(args));
+    }
+
     private static TypeMirror generic(Class<?> cls, TypeMirror... args) {
         return generic(ProcessorContext.getInstance().getTypeElement(cls), args);
     }
@@ -2658,7 +2669,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.end();
 
         b.startIf().string("!isReparse").end().startBlock();
-        b.statement("nodes.setNodes(builtNodes.toArray(new OperationRootNode[0]))");
+        b.statement("nodes.setNodes(builtNodes.toArray(new " + m.getTemplateType().getSimpleName() + "[0]))");
         b.end();
 
         return mFinish;
