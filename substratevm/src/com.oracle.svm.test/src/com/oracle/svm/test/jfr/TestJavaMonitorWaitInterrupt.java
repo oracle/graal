@@ -118,7 +118,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         interrupterThread.join();
     }
 
-    private void testWaitNotify() throws Exception {
+    private static void testWaitNotify() throws Exception {
         Runnable simpleWaiter = () -> {
             helper.simpleWait();
         };

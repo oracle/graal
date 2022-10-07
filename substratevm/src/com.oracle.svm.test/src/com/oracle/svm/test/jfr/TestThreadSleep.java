@@ -45,6 +45,7 @@ public class TestThreadSleep extends JfrTest {
         return new String[]{"jdk.ThreadSleep"};
     }
 
+    @Override
     public void validateEvents() {
         List<RecordedEvent> events;
         try {

@@ -54,7 +54,6 @@ public class TestJavaMonitorEnter extends JfrTest {
     public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("jdk.JavaMonitorEnter");
-        int count = 0;
         boolean found = false;
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
