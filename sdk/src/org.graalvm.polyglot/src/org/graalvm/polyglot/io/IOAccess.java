@@ -65,11 +65,11 @@ public final class IOAccess {
         return fileSystem;
     }
 
-    boolean allowsHostFileAccess() {
+    boolean hasHostFileAccess() {
         return allowHostFileAccess;
     }
 
-    boolean allowsSocketAccess() {
+    boolean hasSocketAccess() {
         return allowSocketAccess;
     }
 

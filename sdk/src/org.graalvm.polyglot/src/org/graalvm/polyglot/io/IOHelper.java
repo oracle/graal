@@ -222,13 +222,13 @@ final class IOHelper {
         }
 
         @Override
-        public boolean allowsHostFileAccess(IOAccess ioAccess) {
-            return ioAccess.allowsHostFileAccess();
+        public boolean hasHostFileAccess(IOAccess ioAccess) {
+            return ioAccess.hasHostFileAccess();
         }
 
         @Override
-        public boolean allowsSocketAccess(IOAccess ioaccess) {
-            return ioaccess.allowsSocketAccess();
+        public boolean hasSocketAccess(IOAccess ioaccess) {
+            return ioaccess.hasSocketAccess();
         }
     }
 }

@@ -1211,6 +1211,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean hasSocketAccess(Object engineFileSystemContext) {
+            if (engineFileSystemContext instanceof PolyglotLanguageContext) {
+                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) engineFileSystemContext;
+                return languageContext.getImpl().getIO().hasSocketAccess(languageContext.context.config.ioAccess);
+            } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
+                return true;
+            } else {
+                throw new AssertionError();
+            }
+        }
+
+        @Override
         public boolean hasNoAccess(FileSystem fs) {
             return FileSystems.hasNoAccess(fs);
         }

@@ -1680,7 +1680,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 throw PolyglotEngineException.illegalArgument(error);
             }
             final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
-            final boolean allowHostFileAccess = getImpl().getIO().allowsHostFileAccess(ioAccess);
+            final boolean allowHostFileAccess = getImpl().getIO().hasHostFileAccess(ioAccess);
             final FileSystem fs;
             final FileSystem internalFs;
             if (!ALLOW_IO) {
