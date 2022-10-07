@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.image;
+package org.graalvm.compiler.core.common.type;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-public interface ImageHeapObject {
-    long getSize();
+// Subject to unification with HotspotConstant
+public interface CompressibleConstant extends JavaConstant {
+    boolean isCompressed();
 
-    Object getObject();
+    JavaConstant compress();
 
-    Class<?> getObjectClass();
-
-    JavaConstant getConstant();
-
-    void setHeapPartition(ImageHeapPartition value);
-
-    void setOffsetInPartition(long value);
-
-    long getOffset();
-
-    ImageHeapPartition getPartition();
+    JavaConstant uncompress();
 }

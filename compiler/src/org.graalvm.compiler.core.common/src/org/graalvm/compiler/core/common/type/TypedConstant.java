@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.meta;
+package org.graalvm.compiler.core.common.type;
 
-import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-// Subject to unification with HotspotConstant
-public interface CompressibleConstant extends Constant {
-    boolean isCompressed();
-
-    Constant compress();
-
-    Constant uncompress();
+public interface TypedConstant extends JavaConstant {
+    ResolvedJavaType getType(MetaAccessProvider provider);
 }

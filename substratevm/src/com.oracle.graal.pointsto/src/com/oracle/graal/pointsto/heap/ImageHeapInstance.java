@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,47 +30,10 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
-
-/**
- * It represents an object snapshot. It stores the replaced object, i.e., the result of applying
- * object replacers on the original object, and the instance field values or array elements of this
- * object. The field values are stored as JavaConstant to also encode primitive values.
- * ImageHeapObject are created only after an object is processed through the object replacers.
- */
-public class ImageHeapObject {
-    /**
-     * Store the object, already processed by the object transformers.
-     */
-    private final JavaConstant object;
-
-    ImageHeapObject(JavaConstant object) {
-        this.object = object;
-    }
-
-    public JavaConstant getObject() {
-        return object;
-    }
-
-    /* Equals and hashCode just compare the replaced constant. */
-
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof ImageHeapObject) {
-            ImageHeapObject other = (ImageHeapObject) o;
-            return this.object.equals(other.object);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return object.hashCode();
-    }
-}
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class implements an instance object snapshot. It stores the field values in an Object[],
@@ -78,24 +41,36 @@ public class ImageHeapObject {
  * <li>a not-yet-executed {@link AnalysisFuture} of {@link JavaConstant} which captures the
  * original, hosted field value and contains logic to transform and replace this value</li>, or
  * <li>the result of executing the future, a replaced {@link JavaConstant}, i.e., the snapshot.</li>
- *
+ * <p>
  * The future task is executed when the field is marked as read. Moreover, the future is
  * self-replacing, i.e., when it is executed it also calls
  * {@link #setFieldValue(AnalysisField, JavaConstant)} and updates the corresponding entry.
  */
-final class ImageHeapInstance extends ImageHeapObject {
+public final class ImageHeapInstance extends ImageHeapConstant {
 
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
 
     /**
      * Stores either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
-     * {@link JavaConstant}.
+     * {@link JavaConstant}, indexed by {@link AnalysisField#getPosition()}.
      */
-    private final Object[] values;
+    private final Object[] fieldValues;
+
+    public ImageHeapInstance(ResolvedJavaType type) {
+        this(type, null, type.getInstanceFields(true).length);
+    }
 
     ImageHeapInstance(JavaConstant object, int length) {
-        super(object);
-        this.values = new Object[length];
+        this(null, object, length);
+    }
+
+    ImageHeapInstance(ResolvedJavaType type, JavaConstant object, int length) {
+        this(type, object, new Object[length], false);
+    }
+
+    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, Object[] fieldValues, boolean compressed) {
+        super(type, object, compressed);
+        this.fieldValues = fieldValues;
     }
 
     /**
@@ -103,7 +78,7 @@ final class ImageHeapInstance extends ImageHeapObject {
      * is marked as read.
      */
     public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
-        arrayHandle.setVolatile(this.values, field.getPosition(), task);
+        arrayHandle.setVolatile(this.fieldValues, field.getPosition(), task);
     }
 
     /**
@@ -112,44 +87,53 @@ final class ImageHeapInstance extends ImageHeapObject {
      * and replaced.
      */
     public void setFieldValue(AnalysisField field, JavaConstant value) {
-        arrayHandle.setVolatile(this.values, field.getPosition(), value);
+        arrayHandle.setVolatile(this.fieldValues, field.getPosition(), value);
     }
 
     /**
      * Return either a task for transforming the field value, effectively a future for
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason, Consumer)},
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ImageHeapInstance, JavaConstant, ObjectScanner.ScanReason, Consumer)},
      * or the result of executing the task, i.e., a {@link JavaConstant}.
      */
     public Object getFieldValue(AnalysisField field) {
-        return arrayHandle.getVolatile(this.values, field.getPosition());
-    }
-}
-
-final class ImageHeapArray extends ImageHeapObject {
-
-    /**
-     * Contains the already scanned array elements.
-     */
-    private final JavaConstant[] arrayElementValues;
-
-    ImageHeapArray(JavaConstant object, JavaConstant[] arrayElementValues) {
-        super(object);
-        this.arrayElementValues = arrayElementValues;
+        return arrayHandle.getVolatile(this.fieldValues, field.getPosition());
     }
 
     /**
-     * Return the value of the element at the specified index as computed by
-     * {@link ImageHeapScanner#onArrayElementReachable(JavaConstant, AnalysisType, JavaConstant, int, ObjectScanner.ScanReason)}.
+     * Returns the field value, i.e., a {@link JavaConstant}. If the value is not yet materialized
+     * then the future is executed on the current thread.
      */
-    public JavaConstant getElement(int idx) {
-        return arrayElementValues[idx];
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public JavaConstant readFieldValue(AnalysisField field) {
+        Object value = getFieldValue(field);
+        return value instanceof JavaConstant ? (JavaConstant) value : ((AnalysisFuture<ImageHeapConstant>) value).ensureDone();
     }
 
-    public void setElement(int idx, JavaConstant value) {
-        arrayElementValues[idx] = value;
+    @Override
+    public JavaConstant compress() {
+        assert !compressed;
+        return new ImageHeapInstance(type, hostedObject, fieldValues, true);
     }
 
-    public int getLength() {
-        return arrayElementValues.length;
+    @Override
+    public JavaConstant uncompress() {
+        assert compressed;
+        return new ImageHeapInstance(type, hostedObject, fieldValues, false);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof ImageHeapInstance) {
+            return super.equals(o) && this.fieldValues == ((ImageHeapInstance) o).fieldValues;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + System.identityHashCode(fieldValues);
+        return result;
     }
 }

@@ -47,7 +47,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
@@ -370,7 +369,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 } else if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
 
-                    ObjectInfo objectInfo = imageHeap.getObjectInfo(SubstrateObjectConstant.asObject(patch.constant));
+                    ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
                     long objectAddress = objectInfo.getAddress();
 
                     if (targetCode == null) {

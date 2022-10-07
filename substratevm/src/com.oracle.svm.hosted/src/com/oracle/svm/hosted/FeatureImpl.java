@@ -85,7 +85,6 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.GuardedAnnotationAccess;
@@ -581,7 +580,7 @@ public class FeatureImpl {
                     }
                 } else {
                     JavaConstant constant = SubstrateObjectConstant.forObject(cur);
-                    for (HostedField field : ((HostedType) getMetaAccess().lookupJavaType(constant)).getInstanceFields(true)) {
+                    for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
                             Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);

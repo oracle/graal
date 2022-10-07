@@ -430,7 +430,8 @@ public class MethodTypeFlowBuilder {
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
                         assert type.isInstantiated();
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
-                            ConstantTypeFlow constantSource = new ConstantTypeFlow(sourcePosition(node), type, TypeState.forConstant(this.bb, node.asJavaConstant(), type));
+                            JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(node.asJavaConstant());
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(sourcePosition(node), type, TypeState.forConstant(this.bb, heapConstant, type));
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });

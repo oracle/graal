@@ -83,7 +83,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider(Providers p) {
-        return new HostedConstantReflectionProvider(hostVM, universe, new HostedMemoryAccessProvider((HostedMetaAccess) p.getMetaAccess()));
+        return new HostedConstantReflectionProvider(hostVM, universe, metaAccess, new HostedMemoryAccessProvider((HostedMetaAccess) p.getMetaAccess()));
     }
 
     @Override

@@ -45,12 +45,14 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -78,9 +80,10 @@ public abstract class HostVM {
     /**
      * Check if the provided object is a relocated pointer.
      * 
-     * @param originalObject the object to check
+     * @param metaAccess the meta-access provider
+     * @param constant the constant to check
      */
-    public boolean isRelocatedPointer(Object originalObject) {
+    public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
         return false;
     }
 
