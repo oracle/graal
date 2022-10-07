@@ -53,6 +53,7 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
+    @Override
     public void validateEvents() throws Throwable {
         List<RecordedEvent> events = getEvents("TestJavaMonitorWaitNotifyAll");
 

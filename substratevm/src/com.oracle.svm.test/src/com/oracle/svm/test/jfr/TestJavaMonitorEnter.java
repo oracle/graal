@@ -50,6 +50,7 @@ public class TestJavaMonitorEnter extends JfrTest {
         return new String[]{"jdk.JavaMonitorEnter"};
     }
 
+    @Override
     public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("jdk.JavaMonitorEnter");

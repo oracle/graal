@@ -55,6 +55,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
+    @Override
     public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("TestJavaMonitorWaitInterrupt");
@@ -87,7 +88,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
                         simpleWaitFound && interruptedFound);
     }
 
-    private void testInterruption() throws Exception {
+    private static void testInterruption() throws Exception {
 
         Runnable interrupted = () -> {
             try {

@@ -54,6 +54,7 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
+    @Override
     public void validateEvents() throws Throwable {
         List<RecordedEvent> events;
         events = getEvents("TestJavaMonitorWaitTimeout");
@@ -86,13 +87,9 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
                         simpleWaitFound && timeoutFound);
     }
 
-    private void testTimeout() throws InterruptedException {
+    private static void testTimeout() throws InterruptedException {
         Runnable unheardNotifier = () -> {
-            try {
-                helper.unheardNotify();
-            } catch (InterruptedException e) {
-                Assert.fail(e.getMessage());
-            }
+            helper.unheardNotify();
         };
 
         Runnable timouter = () -> {
@@ -115,7 +112,7 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
 
     }
 
-    private void testWaitNotify() throws Exception {
+    private static void testWaitNotify() throws Exception {
         Runnable simpleWaiter = () -> {
             helper.simpleWait();
         };
@@ -151,7 +148,7 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
             wait(MILLIS);
         }
 
-        public synchronized void unheardNotify() throws InterruptedException {
+        public synchronized void unheardNotify() {
             notify();
         }
 
