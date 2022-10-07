@@ -228,7 +228,7 @@ public class AnalysisToHostedGraphTransplanter {
         } else if (obj instanceof FieldLocationIdentity) {
             ResolvedJavaField inner = ((FieldLocationIdentity) obj).getField();
             assert inner instanceof AnalysisField;
-            newReplacement = new SubstrateFieldLocationIdentity((ResolvedJavaField) replaceAnalysisObjects(inner, node, replacements, hUniverse));
+            newReplacement = new SubstrateFieldLocationIdentity((ResolvedJavaField) replaceAnalysisObjects(inner, node, replacements, hUniverse), ((FieldLocationIdentity) obj).isImmutable());
         } else if (obj.getClass() == ObjectStamp.class) {
             ObjectStamp stamp = (ObjectStamp) obj;
             if (stamp.type() == null) {
