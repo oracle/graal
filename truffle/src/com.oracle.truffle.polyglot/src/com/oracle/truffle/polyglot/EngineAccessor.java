@@ -88,6 +88,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
@@ -947,12 +948,15 @@ final class EngineAccessor extends Accessor {
             boolean useAllowCreateThread = inheritAccess(inheritAccess, allowCreateThreads, creatorConfig.createThreadAllowed);
             boolean useAllowNativeAccess = inheritAccess(inheritAccess, allowNativeAccess, creatorConfig.nativeAccessAllowed);
 
+            IOAccess useIOAccess;
             FileSystem useFileSystem;
             FileSystem useInternalFileSystem;
             if (inheritAccess(inheritAccess, allowIO, true)) {
+                useIOAccess = creatorConfig.ioAccess;
                 useFileSystem = creatorConfig.fileSystem;
                 useInternalFileSystem = creatorConfig.internalFileSystem;
             } else {
+                useIOAccess = IOAccess.NONE;
                 useFileSystem = FileSystems.newNoIOFileSystem();
                 useInternalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : useFileSystem;
             }
@@ -1020,7 +1024,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, sharingEnabled, useOut, useErr, useIn,
                             useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
-                            useClassFilter, useArguments, allowedLanguages, useOptions, useFileSystem, useInternalFileSystem, creatorConfig.logHandler,
+                            useClassFilter, useArguments, allowedLanguages, useOptions, useIOAccess, useFileSystem, useInternalFileSystem, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
                             useTimeZone, creatorConfig.limits, creatorConfig.hostClassLoader, useAllowHostAccess,
                             creatorConfig.allowValueSharing, false,

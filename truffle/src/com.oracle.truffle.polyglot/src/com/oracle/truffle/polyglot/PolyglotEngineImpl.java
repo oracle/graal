@@ -93,6 +93,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -1625,11 +1626,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     @SuppressWarnings({"all"})
     public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess, PolyglotAccess polyglotAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
-                    boolean allowContextOptions, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
-                    Map<String, String[]> arguments, String[] onlyLanguagesArray, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                    boolean allowValueSharing, boolean useSystemExit) {
+                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowContextOptions, boolean allowExperimentalOptions,
+                    Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, IOAccess ioAccess, Object logHandlerOrStream,
+                    boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
+                    String currentWorkingDirectory, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
         boolean replayEvents;
         boolean contextAddedToEngine;
@@ -1679,17 +1679,19 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (error != null) {
                 throw PolyglotEngineException.illegalArgument(error);
             }
+            final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
+            final boolean allowHostFileAccess = getImpl().getIO().allowsHostFileAccess(ioAccess);
             final FileSystem fs;
             final FileSystem internalFs;
             if (!ALLOW_IO) {
-                if (fileSystem == null) {
-                    fileSystem = FileSystems.newNoIOFileSystem();
+                if (allowHostFileAccess) {
+                    throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
                 }
-                fs = fileSystem;
-                internalFs = fileSystem;
-            } else if (allowHostIO) {
-                fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
-                internalFs = fs;
+                fs = internalFs = customFileSystem != null ? customFileSystem : FileSystems.newNoIOFileSystem();
+            } else if (allowHostFileAccess) {
+                fs = internalFs = FileSystems.newDefaultFileSystem();
+            } else if (customFileSystem != null) {
+                fs = internalFs = customFileSystem;
             } else {
                 fs = FileSystems.newNoIOFileSystem();
                 internalFs = FileSystems.newLanguageHomeFileSystem();
@@ -1731,7 +1733,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             PolyglotLimits polyglotLimits = (PolyglotLimits) limitsImpl;
             PolyglotContextConfig config = new PolyglotContextConfig(this, null, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, allowContextOptions,
-                            allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
+                            allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, ioAccess, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit, null, null, null, null);
             context = loadPreinitializedContext(config);
             replayEvents = false;

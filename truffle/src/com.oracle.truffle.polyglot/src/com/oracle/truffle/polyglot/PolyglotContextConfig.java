@@ -62,6 +62,7 @@ import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -85,6 +86,7 @@ final class PolyglotContextConfig {
     final Set<String> allowedPublicLanguages;
     final Map<String, String> originalOptions;
     private final Map<String, OptionValuesImpl> optionsById;
+    final IOAccess ioAccess;
     @CompilationFinal FileSystem fileSystem;
     @CompilationFinal FileSystem internalFileSystem;
     final Map<String, Level> logLevels;    // effectively final
@@ -214,6 +216,7 @@ final class PolyglotContextConfig {
                         Collections.emptyMap(),
                         Collections.emptySet(),
                         sharableConfig.originalOptions,
+                        IOAccess.ALL,
                         fs,
                         internalFs,
                         engine.logHandler,
@@ -236,7 +239,7 @@ final class PolyglotContextConfig {
                     boolean createThreadAllowed, boolean hostClassLoadingAllowed,
                     boolean contextOptionsAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    Set<String> onlyLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
+                    Set<String> onlyLanguages, Map<String, String> options, IOAccess ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
                     ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit,
                     Map<String, Object> creatorArguments, Runnable onCancelled, Consumer<Integer> onExited, Runnable onClosed) {
@@ -260,6 +263,7 @@ final class PolyglotContextConfig {
         this.applicationArguments = applicationArguments;
         this.onlyLanguages = onlyLanguages;
         this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getLanguages().keySet() : onlyLanguages;
+        this.ioAccess = ioAccess;
         this.fileSystem = publicFileSystem;
         this.internalFileSystem = internalFileSystem;
         this.optionsById = new HashMap<>();
