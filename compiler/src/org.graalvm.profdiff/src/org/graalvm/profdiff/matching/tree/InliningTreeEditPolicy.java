@@ -26,7 +26,7 @@ package org.graalvm.profdiff.matching.tree;
 
 import java.util.Objects;
 
-import org.graalvm.profdiff.core.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 
 /**
  * Provides an equality test of two {@link InliningTreeNode inlining tree nodes} and determines

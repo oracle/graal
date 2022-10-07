@@ -22,12 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.profdiff.core;
+package org.graalvm.profdiff.core.inlining;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.util.Writer;
 
 /**

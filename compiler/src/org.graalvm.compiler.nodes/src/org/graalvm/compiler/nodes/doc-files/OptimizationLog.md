@@ -90,7 +90,7 @@ The ASCII art below is a snippet of an optimization tree.
                    /                  |                  \
                 LowTier            MidTier            HighTier
            ______/  \___              |                   |
-          /             \     CanonicalizerPhase         ...    
+          /             \     CanonicalizerPhase         ...
   LoopPeelingPhase      ...     ___|     |__________
           |                    /                    \
      LoopPeeling       CfgSimplification      CanonicalReplacement

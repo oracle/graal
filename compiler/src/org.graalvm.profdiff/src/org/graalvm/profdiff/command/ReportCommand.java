@@ -76,22 +76,21 @@ public class ReportCommand implements Command {
     }
 
     @Override
-    public void invoke(Writer writer) {
-        VerbosityLevel verbosity = writer.getVerbosityLevel();
-        Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue());
-        hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
-        experiment.preprocessCompilationUnits(verbosity);
-        experiment.writeExperimentSummary(writer);
-        writer.writeln();
-
+    public void invoke(Writer writer) throws Exception {
         ExplanationWriter explanationWriter = new ExplanationWriter(writer);
         explanationWriter.explain();
 
+        VerbosityLevel verbosity = writer.getVerbosityLevel();
+        writer.writeln();
+        Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
+        experiment.writeExperimentSummary(writer);
+        hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
+
         for (Method method : experiment.getMethodsByDescendingPeriod()) {
+            writer.writeln();
             if (proftoolArgument.getValue() != null && !method.isHot()) {
                 continue;
             }
-            writer.writeln();
             writer.writeln("Method " + method.getMethodName());
             writer.increaseIndent();
             method.writeCompilationList(writer);

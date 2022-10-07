@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.parser.experiment.CompilationUnitTreeParser;
 import org.graalvm.profdiff.util.Writer;
 
 /**
@@ -96,16 +96,13 @@ public class Method {
     /**
      * Creates and adds a compilation unit to the method.
      *
-     * @param compilationId compilation ID of the compilation unit
-     * @param inliningTreeRoot the root of the inlining tree of the compilation unit
-     * @param rootPhase the root of the optimization tree of the compilation unit
+     * @param compilationId the compilation ID of the compilation unit
+     * @param treeParser a tree parser associated with the compilation unit
      * @return the added compilation unit
      */
     public CompilationUnit addCompilationUnit(String compilationId,
-                    InliningTreeNode inliningTreeRoot,
-                    OptimizationPhase rootPhase,
-                    long period) {
-        CompilationUnit compilationUnit = new CompilationUnit(this, compilationId, inliningTreeRoot, rootPhase, period);
+                    long period, CompilationUnitTreeParser treeParser) {
+        CompilationUnit compilationUnit = new CompilationUnit(this, compilationId, period, treeParser);
         compilationUnits.add(compilationUnit);
         totalPeriod += period;
         return compilationUnit;

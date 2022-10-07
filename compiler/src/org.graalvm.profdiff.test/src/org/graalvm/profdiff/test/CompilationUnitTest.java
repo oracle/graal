@@ -28,34 +28,37 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.profdiff.core.CompilationUnit;
-import org.graalvm.profdiff.core.InliningTreeNode;
 import org.graalvm.profdiff.core.TreeNode;
+import org.graalvm.profdiff.core.inlining.InliningTree;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class CompilationUnitTest {
     private static class MockCompilationUnit {
-        public final CompilationUnit compilationUnit;
+        public final InliningTree inliningTree;
+
+        public final OptimizationTree optimizationTree;
 
         /**
-         * The expected preorder of the {@link #compilationUnit compilation units}'s optimization
-         * tree after {@link CompilationUnit#sortUnorderedPhases()}.
+         * The expected preorder of the compilation units's optimization tree after
+         * {@link org.graalvm.profdiff.core.optimization.OptimizationTree#sortUnorderedPhases()}.
          */
         public final List<OptimizationTreeNode> optimizationTreePreorderAfterSort;
 
         /**
-         * The expected preorder of the {@link #compilationUnit compilation units}'s optimization
-         * tree after {@link CompilationUnit#removeVeryDetailedPhases()}.
+         * The expected preorder of the compilation units's optimization tree after
+         * {@link org.graalvm.profdiff.core.optimization.OptimizationTree#removeVeryDetailedPhases()}.
          */
         public final List<OptimizationTreeNode> optimizationTreePreorderAfterRemoval;
 
         /**
-         * The expected preorder of the {@link #compilationUnit compilation units}'s inlining tree
-         * after {@link CompilationUnit#sortInliningTree()}.
+         * The expected preorder of the compilation units's inlining tree after
+         * {@link org.graalvm.profdiff.core.inlining.InliningTree#sortInliningTree()}.
          */
         public final List<InliningTreeNode> inliningTreeNodePreorderAfterSort;
 
@@ -106,7 +109,8 @@ public class CompilationUnitTest {
             inliningTreeRoot.addChild(method3);
             inliningTreeRoot.addChild(method2);
 
-            compilationUnit = new CompilationUnit(null, "1234", inliningTreeRoot, rootPhase, 0);
+            inliningTree = new InliningTree(inliningTreeRoot);
+            optimizationTree = new OptimizationTree(rootPhase);
             optimizationTreePreorderAfterSort = List.of(rootPhase, controlPhase, controlPhaseChild2, controlPhaseChild1,
                             unorderedDetailedPhase, optimization1, optimization2, optimization3, optimization4, optimization5,
                             optimization6, subphase1, subphase2);
@@ -125,24 +129,24 @@ public class CompilationUnitTest {
     @Test
     public void removeVeryDetailedPhases() {
         MockCompilationUnit mockCompilationUnit = new MockCompilationUnit();
-        mockCompilationUnit.compilationUnit.removeVeryDetailedPhases();
-        List<OptimizationTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.compilationUnit.getRootPhase());
+        mockCompilationUnit.optimizationTree.removeVeryDetailedPhases();
+        List<OptimizationTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.optimizationTree.getRoot());
         Assert.assertEquals(mockCompilationUnit.optimizationTreePreorderAfterRemoval, actualPreorder);
     }
 
     @Test
     public void sortUnorderedPhases() {
         MockCompilationUnit mockCompilationUnit = new MockCompilationUnit();
-        mockCompilationUnit.compilationUnit.sortUnorderedPhases();
-        List<OptimizationTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.compilationUnit.getRootPhase());
+        mockCompilationUnit.optimizationTree.sortUnorderedPhases();
+        List<OptimizationTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.optimizationTree.getRoot());
         Assert.assertEquals(mockCompilationUnit.optimizationTreePreorderAfterSort, actualPreorder);
     }
 
     @Test
     public void sortInliningTree() {
         MockCompilationUnit mockCompilationUnit = new MockCompilationUnit();
-        mockCompilationUnit.compilationUnit.sortInliningTree();
-        List<InliningTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.compilationUnit.getInliningTreeRoot());
+        mockCompilationUnit.inliningTree.sortInliningTree();
+        List<InliningTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.inliningTree.getRoot());
         Assert.assertEquals(mockCompilationUnit.inliningTreeNodePreorderAfterSort, actualPreorder);
     }
 }

@@ -59,7 +59,7 @@ public interface Command {
      *
      * @param writer the writer to use for standard output of the command
      */
-    void invoke(Writer writer);
+    void invoke(Writer writer) throws Exception;
 
     /**
      * Sets the {@link HotCompilationUnitPolicy} for the command. The policy's parameters are parsed

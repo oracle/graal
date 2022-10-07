@@ -24,96 +24,130 @@
  */
 package org.graalvm.profdiff.parser.experiment;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.InliningTreeNode;
 import org.graalvm.profdiff.core.ProftoolMethod;
-import org.graalvm.profdiff.core.optimization.Optimization;
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
-import org.graalvm.util.json.JSONParser;
-import org.graalvm.util.json.JSONParserException;
+import org.graalvm.profdiff.util.Writer;
 
 /**
  * Parses an experiment from its files.
  */
 public class ExperimentParser {
+    /**
+     * A partially parsed {@link org.graalvm.profdiff.core.CompilationUnit}.
+     */
     private static final class PartialCompilationUnit {
+        /**
+         * The compilation ID of this compilation unit.
+         */
         String compilationId;
 
+        /**
+         * The name of the root-compiled method in this compilation unit.
+         */
         String methodName;
 
-        InliningTreeNode inliningTreeRoot;
-
-        OptimizationPhase rootPhase;
-
+        /**
+         * The number of cycles spent executing this method measured by proftool.
+         */
         long period;
+
+        /**
+         * The file from which this compilation unit was read. The file may contain several
+         * compilation units separated by {@code '\n'}.
+         */
+        File file;
+
+        /**
+         * The byte index where this compilation unit starts in its source {@link #file}.
+         */
+        long offset;
     }
 
+    /**
+     * A parsed proftool log.
+     */
     private static class ProftoolLog {
+        /**
+         * The execution ID of the experiment.
+         */
         String executionId;
 
+        /**
+         * The total measured number of cycles spent executing the experiment.
+         */
         long totalPeriod;
 
+        /**
+         * A list of sampled methods.
+         */
         List<ProftoolMethod> methods = new ArrayList<>();
     }
 
+    /**
+     * A regex capturing the method name and the compilation ID of a serialized compilation unit.
+     */
+    private static final String COMPILATION_UNIT_REGEX = "\\{\"compilationMethodName\": \"([^\"]*)\", \"compilationId\": \"([^\"]*)\"";
+
+    /**
+     * The experiment files to be parsed.
+     */
     private final ExperimentFiles experimentFiles;
+
+    /**
+     * A writer for warning messages.
+     */
+    private final Writer warningWriter;
 
     /**
      * The compiler level of graal-compiled methods in the output of proftool.
      */
     private static final int GRAAL_COMPILER_LEVEL = 4;
 
-    /**
-     * The name of the resource being parsed at the moment.
-     */
-    private String currentResourceName = null;
-
-    public ExperimentParser(ExperimentFiles experimentFiles) {
+    public ExperimentParser(ExperimentFiles experimentFiles, Writer warningWriter) {
         this.experimentFiles = experimentFiles;
+        this.warningWriter = warningWriter;
     }
 
     /**
      * Parses the experiment by combining proftool output and an optimization log. The optimization
      * log is read first and all compiled methods are parsed. The proftool output is then used to
      * add information about execution periods. Method compilations from the optimization log are
-     * matched with the proftool output according to compilation IDs.
+     * matched with the proftool output according to compilation IDs. Warning messages are printed
+     * using the provided writer.
      *
      * @return the parsed experiment
      * @throws IOException failed to read the experiment files
      * @throws ExperimentParserTypeError the experiment files had an in incorrect format
      */
     public Experiment parse() throws IOException, ExperimentParserError {
-        EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = EconomicMap.create();
-        for (ExperimentFiles.NamedReader reader : experimentFiles.getOptimizationLogs()) {
-            PartialCompilationUnit parseCompilationUnit = parseCompilationUnit(reader);
-            partialCompilationUnits.put(parseCompilationUnit.compilationId, parseCompilationUnit);
-        }
-
+        EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = parsePartialCompilationUnits();
         Experiment experiment;
-        Optional<ExperimentFiles.NamedReader> proftoolLogReader = experimentFiles.getProftoolOutput();
-        if (proftoolLogReader.isPresent()) {
-            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogReader.get());
-
+        Optional<File> proftoolLogFile = experimentFiles.getProftoolOutput();
+        if (proftoolLogFile.isPresent()) {
+            ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get());
             for (ProftoolMethod method : proftoolLog.methods) {
-                if (method.getLevel() == null || method.getLevel() != GRAAL_COMPILER_LEVEL) {
+                if (method.getLevel() == null || method.getLevel() != GRAAL_COMPILER_LEVEL || method.getCompilationId() == null) {
                     continue;
                 }
                 PartialCompilationUnit unit = partialCompilationUnits.get(method.getCompilationId());
                 if (unit == null) {
-                    System.out.println("Warning: Compilation ID " + method.getCompilationId() + " not found in the optimization log");
+                    warningWriter.writeln("Warning: Compilation ID " + method.getCompilationId() + " not found in the optimization log");
                 } else {
                     unit.period = method.getPeriod();
                 }
             }
-
             experiment = new Experiment(
                             proftoolLog.executionId,
                             experimentFiles.getExperimentId(),
@@ -124,192 +158,95 @@ public class ExperimentParser {
             experiment = new Experiment(experimentFiles.getExperimentId(), experimentFiles.getCompilationKind());
         }
         for (PartialCompilationUnit unit : partialCompilationUnits.getValues()) {
-            experiment.addCompilationUnit(unit.methodName, unit.compilationId, unit.inliningTreeRoot, unit.rootPhase, unit.period);
+            CompilationUnitTreeParser treeParser = new CompilationUnitTreeParser(experimentFiles.getExperimentId(), unit.file, unit.offset);
+            experiment.addCompilationUnit(unit.methodName, unit.compilationId, unit.period, treeParser);
         }
         return experiment;
     }
 
-    private PartialCompilationUnit parseCompilationUnit(ExperimentFiles.NamedReader reader) throws IOException, ExperimentParserError {
-        currentResourceName = reader.getName();
-        try {
-            JSONParser parser = new JSONParser(reader.getReader());
-            EconomicMap<String, Object> log = expectMap(parser.parse(), "the root of a compiled method", false);
-            PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
-            compilationUnit.compilationId = expectString(log, "compilationId", false);
-            compilationUnit.methodName = expectString(log, "compilationMethodName", false);
-            compilationUnit.inliningTreeRoot = parseInliningTreeNode(log.get("inliningTreeRoot"));
-            EconomicMap<String, Object> rootPhase = expectMap(log.get("rootPhase"), "the root phase of a method", false);
-            compilationUnit.rootPhase = parseOptimizationPhase(rootPhase);
-            return compilationUnit;
-        } catch (JSONParserException parserException) {
-            throw new ExperimentParserError(experimentFiles.getExperimentId(), currentResourceName, parserException.getMessage());
-        }
-    }
-
-    private InliningTreeNode parseInliningTreeNode(Object obj) throws ExperimentParserTypeError {
-        if (obj == null) {
-            return null;
-        }
-        EconomicMap<String, Object> map = expectMap(obj, "inliningTreeNode", false);
-        String methodName = expectString(map, "targetMethodName", true);
-        int bci = expectInteger(map, "bci");
-        boolean positive = expectBoolean(map, "positive");
-        List<String> reason = expectStringList(map, "reason", true);
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason);
-        List<Object> inlinees = expectList(map, "inlinees", true);
-        if (inlinees == null) {
-            return inliningTreeNode;
-        }
-        for (Object inlinee : inlinees) {
-            inliningTreeNode.addChild(parseInliningTreeNode(inlinee));
-        }
-        return inliningTreeNode;
-    }
-
-    private OptimizationPhase parseOptimizationPhase(EconomicMap<String, Object> log) throws ExperimentParserTypeError {
-        String phaseName = expectString(log, "phaseName", false);
-        OptimizationPhase optimizationPhase = new OptimizationPhase(phaseName);
-        List<Object> optimizations = expectList(log, "optimizations", true);
-        if (optimizations == null) {
-            return optimizationPhase;
-        }
-        for (Object optimization : optimizations) {
-            EconomicMap<String, Object> map = expectMap(optimization, "optimization", false);
-            Object subphaseName = map.get("phaseName");
-            if (subphaseName instanceof String) {
-                optimizationPhase.addChild(parseOptimizationPhase(map));
-            } else {
-                optimizationPhase.addChild(parseOptimization(map));
+    /**
+     * Parses partial compilation units from the optimization logs provided by experiment files.
+     *
+     * @return the parsed partial compilation units
+     * @throws IOException failed to read the optimization logs
+     */
+    private EconomicMap<String, PartialCompilationUnit> parsePartialCompilationUnits() throws IOException {
+        EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = EconomicMap.create();
+        long lineIndex = 0;
+        Pattern compilationUnitPattern = Pattern.compile(COMPILATION_UNIT_REGEX);
+        for (File file : experimentFiles.getOptimizationLogs()) {
+            long start = 0;
+            try (FileReader fileReader = new FileReader(file); BufferedReader reader = new BufferedReader(fileReader)) {
+                String source;
+                while ((source = reader.readLine()) != null) {
+                    Matcher matcher = compilationUnitPattern.matcher(source);
+                    if (matcher.find()) {
+                        PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
+                        compilationUnit.file = file;
+                        compilationUnit.offset = start;
+                        compilationUnit.methodName = matcher.group(1);
+                        compilationUnit.compilationId = matcher.group(2);
+                        partialCompilationUnits.put(compilationUnit.compilationId, compilationUnit);
+                    } else {
+                        long lineNumber = lineIndex + 1;
+                        warningWriter.writeln("Warning: Invalid compilation unit in file " + file.getPath() + " on line " + lineNumber);
+                    }
+                    start += source.length() + 1;
+                }
             }
         }
-        return optimizationPhase;
+        return partialCompilationUnits;
     }
 
-    private Optimization parseOptimization(EconomicMap<String, Object> optimization) throws ExperimentParserTypeError {
-        String optimizationName = expectString(optimization, "optimizationName", false);
-        String eventName = expectString(optimization, "eventName", false);
-        EconomicMap<String, Object> rawPosition = expectMap(optimization.get("position"), "optimization position", true);
-        EconomicMap<String, Integer> position = null;
-        if (rawPosition != null) {
-            MapCursor<String, Object> cursor = rawPosition.getEntries();
-            position = EconomicMap.create();
-            while (cursor.advance()) {
-                if (!(cursor.getValue() instanceof Integer)) {
-                    throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, "bci", Integer.class, cursor.getValue());
-                }
-                position.put(cursor.getKey(), (Integer) cursor.getValue());
+    /**
+     * Reads and returns the contents of a file.
+     *
+     * @param file the file to read
+     * @return the contents of the file
+     * @throws IOException an IO error occurred
+     */
+    private static String readFully(File file) throws IOException {
+        char[] arr = new char[1024];
+        StringBuilder sb = new StringBuilder();
+        try (FileReader reader = new FileReader(file)) {
+            int numChars;
+            while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
+                sb.append(arr, 0, numChars);
             }
         }
-        optimization.removeKey("optimizationName");
-        optimization.removeKey("eventName");
-        optimization.removeKey("position");
-        EconomicMap<String, Object> properties = optimization.isEmpty() ? null : optimization;
-        return new Optimization(optimizationName, eventName, position, properties);
+        return sb.toString();
     }
 
-    private ProftoolLog parseProftoolLog(ExperimentFiles.NamedReader profOutput) throws IOException, ExperimentParserError {
-        currentResourceName = profOutput.getName();
-        try {
-            JSONParser parser = new JSONParser(profOutput.getReader());
-            ProftoolLog proftoolLog = new ProftoolLog();
-            EconomicMap<String, Object> root = expectMap(parser.parse(), "root", false);
-            proftoolLog.executionId = expectString(root, "executionId", false);
-            proftoolLog.totalPeriod = expectLong(root, "totalPeriod");
-            List<Object> codeObjects = expectList(root, "code", false);
-            for (Object codeObject : codeObjects) {
-                EconomicMap<String, Object> code = expectMap(codeObject, "root.code[]", false);
-                String compilationId = expectString(code, "compileId", true);
-                if (compilationId != null && compilationId.endsWith("%")) {
-                    compilationId = compilationId.substring(0, compilationId.length() - 1);
-                }
-                String name = expectString(code, "name", false);
-                int colonIndex = name.indexOf(':');
-                if (colonIndex != -1 && colonIndex + 2 <= name.length()) {
-                    name = name.substring(colonIndex + 2);
-                }
-                long period = expectLong(code, "period");
-                Integer level = expectIntegerNullable(code, "level");
-                proftoolLog.methods.add(new ProftoolMethod(compilationId, name, level, period));
+    /**
+     * Parses proftool logs from a file.
+     *
+     * @param file a JSON file with the proftool log
+     * @return the parsed proftool logs
+     * @throws IOException failed to read the file
+     * @throws ExperimentParserError failed to parse the file
+     */
+    private ProftoolLog parseProftoolLog(File file) throws IOException, ExperimentParserError {
+        ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), file, readFully(file));
+        ProftoolLog proftoolLog = new ProftoolLog();
+        ExperimentJSONParser.JSONMap map = parser.parse().asMap();
+        proftoolLog.executionId = map.property("executionId").asString();
+        proftoolLog.totalPeriod = map.property("totalPeriod").asLong();
+        for (ExperimentJSONParser.JSONLiteral codeObject : map.property("code").asList()) {
+            ExperimentJSONParser.JSONMap code = codeObject.asMap();
+            String compilationId = code.property("compileId").asNullableString();
+            if (compilationId != null && compilationId.endsWith("%")) {
+                compilationId = compilationId.substring(0, compilationId.length() - 1);
             }
-            return proftoolLog;
-        } catch (JSONParserException parserException) {
-            throw new ExperimentParserError(experimentFiles.getExperimentId(), currentResourceName, parserException.getMessage());
-        }
-    }
-
-    private List<String> expectStringList(EconomicMap<String, Object> map, String key, boolean listNullable) throws ExperimentParserTypeError {
-        List<Object> objects = expectList(map, key, listNullable);
-        if (objects == null) {
-            return null;
-        }
-        List<String> strings = null;
-        for (Object object : objects) {
-            if (object instanceof String) {
-                if (strings == null) {
-                    strings = new ArrayList<>();
-                }
-                strings.add((String) object);
-            } else {
-                throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key + "[]", String.class, object);
+            String name = code.property("name").asString();
+            int colonIndex = name.indexOf(':');
+            if (colonIndex != -1 && colonIndex + 2 <= name.length()) {
+                name = name.substring(colonIndex + 2);
             }
+            long period = code.property("period").asLong();
+            Integer level = code.property("level").asNullableInteger();
+            proftoolLog.methods.add(new ProftoolMethod(compilationId, name, level, period));
         }
-        return strings;
-    }
-
-    private boolean expectBoolean(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
-        Object object = map.get(key);
-        if (object instanceof Boolean) {
-            return (Boolean) object;
-        }
-        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, Boolean.class, object);
-    }
-
-    private String expectString(EconomicMap<String, Object> map, String key, boolean nullable) throws ExperimentParserTypeError {
-        Object object = map.get(key);
-        if ((nullable && object == null) || object instanceof String) {
-            return (String) object;
-        }
-        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, String.class, object);
-    }
-
-    private long expectLong(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
-        Object object = map.get(key);
-        if (object instanceof Number) {
-            return ((Number) object).longValue();
-        }
-        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, Long.class, object);
-    }
-
-    private int expectInteger(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
-        Object object = map.get(key);
-        if (object instanceof Integer) {
-            return (Integer) object;
-        }
-        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, Integer.class, object);
-    }
-
-    private Integer expectIntegerNullable(EconomicMap<String, Object> map, String key) throws ExperimentParserTypeError {
-        if (map.get(key) == null) {
-            return null;
-        }
-        return expectInteger(map, key);
-    }
-
-    @SuppressWarnings("unchecked")
-    private EconomicMap<String, Object> expectMap(Object object, String objectName, boolean nullable) throws ExperimentParserTypeError {
-        if ((nullable && object == null) || object instanceof EconomicMap) {
-            return (EconomicMap<String, Object>) object;
-        }
-        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, objectName, EconomicMap.class, object);
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<Object> expectList(EconomicMap<String, Object> map, String key, boolean nullable) throws ExperimentParserTypeError {
-        Object object = map.get(key);
-        if ((nullable && object == null) || object instanceof List) {
-            return (List<Object>) object;
-        }
-        throw new ExperimentParserTypeError(experimentFiles.getExperimentId(), currentResourceName, key, List.class, object);
+        return proftoolLog;
     }
 
     /**
@@ -321,11 +258,13 @@ public class ExperimentParser {
      * @param proftoolPath the file path to the JSON proftool output (mx profjson), can be
      *            {@code null} if the experiment does not have any associated proftool output
      * @param optimizationLogPath the path to the directory containing optimization logs
+     * @param warningWriter a writer for warning messages
      * @return an experiment parsed from the provided files
      */
-    public static Experiment parseOrExit(ExperimentId experimentId, Experiment.CompilationKind compilationKind, String proftoolPath, String optimizationLogPath) {
+    public static Experiment parseOrExit(ExperimentId experimentId, Experiment.CompilationKind compilationKind,
+                    String proftoolPath, String optimizationLogPath, Writer warningWriter) {
         ExperimentFiles files = new ExperimentFilesImpl(experimentId, compilationKind, proftoolPath, optimizationLogPath);
-        ExperimentParser parser = new ExperimentParser(files);
+        ExperimentParser parser = new ExperimentParser(files, warningWriter);
         try {
             return parser.parse();
         } catch (IOException e) {

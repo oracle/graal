@@ -39,11 +39,11 @@ public class HotCompilationUnitPolicyTest {
     @Test
     public void testHotMethodPolicy() {
         Experiment experiment = new Experiment("1", ExperimentId.ONE, Experiment.CompilationKind.JIT, 100, List.of());
-        experiment.addCompilationUnit("foo", "foo1", null, null, 6);
-        experiment.addCompilationUnit("foo", "foo2", null, null, 35);
-        experiment.addCompilationUnit("foo", "foo3", null, null, 30);
-        experiment.addCompilationUnit("bar", "bar1", null, null, 20);
-        experiment.addCompilationUnit("baz", "baz1", null, null, 9);
+        experiment.addCompilationUnit("foo", "foo1", 6, null);
+        experiment.addCompilationUnit("foo", "foo2", 35, null);
+        experiment.addCompilationUnit("foo", "foo3", 30, null);
+        experiment.addCompilationUnit("bar", "bar1", 20, null);
+        experiment.addCompilationUnit("baz", "baz1", 9, null);
 
         HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
         hotCompilationUnitPolicy.markHotCompilationUnits(experiment);

@@ -25,7 +25,7 @@
 package org.graalvm.profdiff.matching.tree;
 
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.util.Writer;
 
 /**

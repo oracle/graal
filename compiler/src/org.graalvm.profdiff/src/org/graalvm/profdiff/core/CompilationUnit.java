@@ -24,14 +24,57 @@
  */
 package org.graalvm.profdiff.core;
 
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
-import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
+import org.graalvm.profdiff.core.inlining.InliningTree;
+import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents an executed Graal compilation of a method.
+ *
+ * A compilation unit contains holds only its identifiers (compilation ID, root method) and simple
+ * scalar metadata (execution period, hot flag). The most resource-heavy parts, i.e. an
+ * {@link OptimizationTree} and {@link InliningTree}, can be loaded on demand. This design is
+ * necessary, because a whole experiment might not fit in memory.
  */
 public class CompilationUnit {
+    /**
+     * A pair of an {@link OptimizationTree} and {@link InliningTree} belonging to a compilation
+     * unit.
+     */
+    public static class TreePair {
+        private final OptimizationTree optimizationTree;
+
+        private final InliningTree inliningTree;
+
+        public TreePair(OptimizationTree optimizationTree, InliningTree inliningTree) {
+            this.optimizationTree = optimizationTree;
+            this.inliningTree = inliningTree;
+        }
+
+        public InliningTree getInliningTree() {
+            return inliningTree;
+        }
+
+        public OptimizationTree getOptimizationTree() {
+            return optimizationTree;
+        }
+    }
+
+    /**
+     * Loads the {@link OptimizationTree} and the {@link InliningTree} of a compilation unit on
+     * demand.
+     */
+    public interface TreeLoader {
+        /**
+         * Loads and returns a pair of trees associated with a compilation unit.
+         *
+         * @return the loaded pair of trees
+         * @throws ExperimentParserError the trees could not be loaded
+         */
+        TreePair load() throws ExperimentParserError;
+    }
+
     /**
      * The root method of this compilation unit.
      */
@@ -44,18 +87,6 @@ public class CompilationUnit {
     private final String compilationId;
 
     /**
-     * The root of the inlining tree if it is available. The root method in the inlining tree
-     * corresponds to this method.
-     */
-    private final InliningTreeNode inliningTreeRoot;
-
-    /**
-     * The root optimization phase of this compilation unit, which holds all optimization phases
-     * applied in this compilation.
-     */
-    private final OptimizationPhase rootPhase;
-
-    /**
      * The period of execution as reported by proftool.
      */
     private final long period;
@@ -65,15 +96,16 @@ public class CompilationUnit {
      */
     private boolean hot;
 
-    public CompilationUnit(Method method, String compilationId,
-                    InliningTreeNode inliningTreeRoot,
-                    OptimizationPhase rootPhase,
-                    long period) {
+    /**
+     * The tree loader associated with this compilation unit.
+     */
+    private final TreeLoader loader;
+
+    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader) {
         this.method = method;
         this.compilationId = compilationId;
-        this.inliningTreeRoot = inliningTreeRoot;
         this.period = period;
-        this.rootPhase = rootPhase;
+        this.loader = loader;
     }
 
     /**
@@ -84,27 +116,6 @@ public class CompilationUnit {
     }
 
     /**
-     * Creates and returns a summary that specifies the execution time of this compilation unit
-     * relative to the total execution time and relative to the execution time of all graal-compiled
-     * methods. This is only possible when proftool data is {@link Experiment#isProfileAvailable()
-     * available} to the experiment.
-     *
-     * Example of a returned string:
-     *
-     * <pre>
-     * 10.05% of Graal execution, 4.71% of total
-     * </pre>
-     *
-     * @return a summary of the relative execution time
-     */
-    public String createExecutionSummary() {
-        assert method.getExperiment().isProfileAvailable();
-        String graalPercent = String.format("%.2f", (double) period / method.getExperiment().getGraalPeriod() * 100);
-        String totalPercent = String.format("%.2f", (double) period / method.getExperiment().getTotalPeriod() * 100);
-        return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
-    }
-
-    /**
      * Gets the compilation ID of this compilation unit as reported in the optimization log. Matches
      * {@code compileId} in the proftool output.
      *
@@ -112,26 +123,6 @@ public class CompilationUnit {
      */
     public String getCompilationId() {
         return compilationId;
-    }
-
-    /**
-     * Gets the root of the inlining tree if it is available. The root method in the inlining tree
-     * corresponds to this method.
-     *
-     * @return the root of the inlining tree if it is available
-     */
-    public InliningTreeNode getInliningTreeRoot() {
-        return inliningTreeRoot;
-    }
-
-    /**
-     * Gets the root optimization phase of this compilation unit, which holds all optimization
-     * phases applied in this compilation.
-     *
-     * @return the root optimization phase
-     */
-    public OptimizationPhase getRootPhase() {
-        return rootPhase;
     }
 
     /**
@@ -164,6 +155,37 @@ public class CompilationUnit {
     }
 
     /**
+     * Loads the {@link OptimizationTree} and the {@link InliningTree} of this compilation units.
+     *
+     * @return a pair of the loaded trees
+     * @throws ExperimentParserError the trees could not be loaded
+     */
+    public TreePair loadTrees() throws ExperimentParserError {
+        return loader.load();
+    }
+
+    /**
+     * Creates and returns a summary that specifies the execution time of this compilation unit
+     * relative to the total execution time and relative to the execution time of all graal-compiled
+     * methods. This is only possible when proftool data is {@link Experiment#isProfileAvailable()
+     * available} to the experiment.
+     *
+     * Example of a returned string:
+     *
+     * <pre>
+     * 10.05% of Graal execution, 4.71% of total
+     * </pre>
+     *
+     * @return a summary of the relative execution time
+     */
+    public String createExecutionSummary() {
+        assert method.getExperiment().isProfileAvailable();
+        String graalPercent = String.format("%.2f", (double) period / method.getExperiment().getGraalPeriod() * 100);
+        String totalPercent = String.format("%.2f", (double) period / method.getExperiment().getTotalPeriod() * 100);
+        return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
+    }
+
+    /**
      * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
      * and the optimization and inlining tree to the destination writer. The execution summary is
      * omitted when proftool data is not {@link Experiment#isProfileAvailable() available} to the
@@ -171,66 +193,18 @@ public class CompilationUnit {
      *
      * @param writer the destination writer
      */
-    public void write(Writer writer) {
+    public void write(Writer writer) throws Exception {
         writer.write("Compilation " + compilationId);
         if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");
         }
         writer.writeln(" in experiment " + method.getExperiment().getExperimentId());
         writer.increaseIndent();
-        if (inliningTreeRoot == null) {
-            writer.writeln("Inlining tree not available");
-        } else {
-            writer.writeln("Inlining tree");
-            writer.increaseIndent();
-            inliningTreeRoot.writeRecursive(writer);
-            writer.decreaseIndent();
-        }
-        writer.writeln("Optimization tree");
-        writer.increaseIndent();
-        rootPhase.writeRecursive(writer);
-        writer.decreaseIndent(2);
-    }
-
-    /**
-     * Sorts all children of each node in {@link #inliningTreeRoot the inlining tree} according to
-     * the {@link InliningTreeNode#compareTo(InliningTreeNode) comparator}.
-     */
-    public void sortInliningTree() {
-        if (inliningTreeRoot == null) {
-            return;
-        }
-        inliningTreeRoot.forEach(inliningTreeNode -> inliningTreeNode.getChildren().sort(InliningTreeNode::compareTo));
-    }
-
-    /**
-     * Removes all subtrees from {@link #rootPhase the optimization tree} which are optimization
-     * phases in {@link OptimizationPhase#isVeryDetailedCategory() the very detailed category}.
-     */
-    public void removeVeryDetailedPhases() {
-        rootPhase.removeIf(optimizationTreeNode -> {
-            if (!(optimizationTreeNode instanceof OptimizationPhase)) {
-                return false;
-            }
-            OptimizationPhase optimizationPhase = (OptimizationPhase) optimizationTreeNode;
-            return optimizationPhase.isVeryDetailedCategory();
-        });
-    }
-
-    /**
-     * Sorts children of all {@link OptimizationPhase#isUnorderedCategory() unordered phases} in
-     * {@link #rootPhase the optimization tree} according to
-     * {@link OptimizationTreeNode#compareTo(OptimizationTreeNode) their comparator}.
-     */
-    public void sortUnorderedPhases() {
-        rootPhase.forEach(optimizationTreeNode -> {
-            if (!(optimizationTreeNode instanceof OptimizationPhase)) {
-                return;
-            }
-            OptimizationPhase optimizationPhase = (OptimizationPhase) optimizationTreeNode;
-            if (optimizationPhase.isUnorderedCategory()) {
-                optimizationPhase.getChildren().sort(OptimizationTreeNode::compareTo);
-            }
-        });
+        TreePair treePair = loader.load();
+        treePair.getInliningTree().preprocess(writer.getVerbosityLevel());
+        treePair.getInliningTree().write(writer);
+        treePair.getOptimizationTree().preprocess(writer.getVerbosityLevel());
+        treePair.getOptimizationTree().write(writer);
+        writer.decreaseIndent();
     }
 }

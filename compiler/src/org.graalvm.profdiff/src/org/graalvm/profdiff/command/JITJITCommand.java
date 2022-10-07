@@ -82,11 +82,20 @@ public class JITJITCommand implements Command {
     }
 
     @Override
-    public void invoke(Writer writer) {
-        Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue());
+    public void invoke(Writer writer) throws Exception {
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer);
+        explanationWriter.explain();
+
+        writer.writeln();
+        Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
+        jit1.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(jit1);
-        Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
+
+        writer.writeln();
+        Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
+        jit1.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(jit2);
+
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit1, jit2));
     }

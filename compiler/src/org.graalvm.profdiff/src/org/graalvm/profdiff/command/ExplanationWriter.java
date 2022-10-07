@@ -24,7 +24,7 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.core.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.util.Writer;

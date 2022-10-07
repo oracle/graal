@@ -545,8 +545,8 @@ public class OptimizationLogImpl implements OptimizationLog {
                 pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), "optimization_log");
             }
             PathUtilities.createDirectories(pathOptionValue);
-            String filePath = PathUtilities.getPath(pathOptionValue, compilationId + ".json");
-            streams.add(new PrintStream(PathUtilities.openOutputStream(filePath)));
+            String filePath = PathUtilities.getPath(pathOptionValue, String.valueOf(Thread.currentThread().getId()));
+            streams.add(new PrintStream(PathUtilities.openOutputStream(filePath, true)));
         }
         if (!streams.isEmpty()) {
             String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));

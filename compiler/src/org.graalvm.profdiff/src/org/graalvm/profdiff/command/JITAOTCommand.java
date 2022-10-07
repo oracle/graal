@@ -80,11 +80,18 @@ public class JITAOTCommand implements Command {
     }
 
     @Override
-    public void invoke(Writer writer) {
-        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue());
+    public void invoke(Writer writer) throws Exception {
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer);
+        explanationWriter.explain();
+
+        writer.writeln();
+        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
+        jit.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(jit);
 
-        Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument.getValue());
+        writer.writeln();
+        Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument.getValue(), writer);
+        aot.writeExperimentSummary(writer);
         for (CompilationUnit jitUnit : jit.getCompilationUnits()) {
             if (!jitUnit.isHot()) {
                 continue;

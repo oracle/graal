@@ -120,7 +120,7 @@ public class StdoutWriter implements Writer {
 
     @Override
     public void clearPrefixAfterIndent() {
-        this.prefix = null;
+        prefix = null;
     }
 
     @Override

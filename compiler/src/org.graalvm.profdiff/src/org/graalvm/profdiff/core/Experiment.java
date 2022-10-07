@@ -31,7 +31,7 @@ import java.util.Objects;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.parser.experiment.CompilationUnitTreeParser;
 import org.graalvm.profdiff.util.Writer;
 
 /**
@@ -302,38 +302,12 @@ public class Experiment {
      *
      * @param methodName the name of the root method of the compilation unit
      * @param compilationId compilation ID of the compilation unit
-     * @param inliningTreeRoot the root of the inlining tree of the compilation unit
-     * @param rootPhase the root of the optimization tree of the compilation unit
+     * @param treeParser
      * @return the added compilation unit
      */
-    public CompilationUnit addCompilationUnit(String methodName, String compilationId,
-                    InliningTreeNode inliningTreeRoot,
-                    OptimizationPhase rootPhase,
-                    long period) {
+    public CompilationUnit addCompilationUnit(String methodName, String compilationId, long period, CompilationUnitTreeParser treeParser) {
         graalPeriod = null;
-        return getMethodOrCreate(methodName).addCompilationUnit(compilationId, inliningTreeRoot, rootPhase, period);
-    }
-
-    /**
-     * Preprocess the compilation units of the experiment according to the provided
-     * {@link VerbosityLevel}. Preprocessing includes removing some branches from optimization
-     * and/or inlining trees, and partially sorting them. The intention is to show less output and
-     * produce fewer differences after tree matching for lower verbosity levels.
-     *
-     * @param verbosityLevel the verbosity level to designate the level of preprocessing
-     */
-    public void preprocessCompilationUnits(VerbosityLevel verbosityLevel) {
-        getCompilationUnits().forEach(compilationUnit -> {
-            if (verbosityLevel.shouldSortInliningTree()) {
-                compilationUnit.sortInliningTree();
-            }
-            if (verbosityLevel.shouldRemoveVeryDetailedPhases()) {
-                compilationUnit.removeVeryDetailedPhases();
-            }
-            if (verbosityLevel.shouldSortUnorderedPhases()) {
-                compilationUnit.sortUnorderedPhases();
-            }
-        });
+        return getMethodOrCreate(methodName).addCompilationUnit(compilationId, period, treeParser);
     }
 
     /**
