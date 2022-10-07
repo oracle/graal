@@ -513,6 +513,10 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
+                if (ModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty()) {
+                    throw UserError.abort("Please install the LLVM backend for GraalVM Native Image via `$JAVA_HOME/bin/gu install native-image-llvm-backend`.");
+                }
+
                 /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
                 GraalOptions.EmitStringSubstitutions.update(values, false);
                 /*
