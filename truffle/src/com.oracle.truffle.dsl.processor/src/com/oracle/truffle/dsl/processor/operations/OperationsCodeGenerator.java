@@ -316,7 +316,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     private CodeVariableElement createSerializationContext() {
         DeclaredType typeContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext");
-        CodeVariableElement fld = new CodeVariableElement(typeContext, "SER_CONTEXT");
+        CodeVariableElement fld = new CodeVariableElement(MOD_PRIVATE, typeContext, "SER_CONTEXT");
         CodeTreeBuilder b = fld.createInitBuilder();
 
         b.startNew(typeContext).end().string(" ").startBlock();
@@ -363,20 +363,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getDeclaredType("com.oracle.truffle.api.impl.UnsafeFrameAccess"), "UFA = UnsafeFrameAccess.lookup()"));
 
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME), "nodes")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(short[].class), "_bc")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(Object[].class), "_consts")));
-        typOperationNodeImpl.add(children(new CodeVariableElement(arrayOf(types.Node), "_children")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME), "nodes")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(short[].class), "_bc")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object[].class), "_consts")));
+        typOperationNodeImpl.add(children(new CodeVariableElement(MOD_PRIVATE, arrayOf(types.Node), "_children")));
         if (m.getOperationsContext().hasBoxingElimination()) {
-            typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(byte[].class), "_localTags")));
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(byte[].class), "_localTags")));
         }
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(arrayOf(typExceptionHandler.asType()), "_handlers")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int[].class), "_conditionProfiles")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxLocals")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "_maxStack")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int[].class), "sourceInfo")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, arrayOf(typExceptionHandler.asType()), "_handlers")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "_conditionProfiles")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "_maxLocals")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "_maxStack")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "sourceInfo")));
         if (m.enableYield) {
-            typOperationNodeImpl.add(compFinal(new CodeVariableElement(arrayOf(new GeneratedTypeMirror("", "ContinuationRoot")), "yieldEntries")));
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, arrayOf(new GeneratedTypeMirror("", "ContinuationRoot")), "yieldEntries")));
         }
 
         CodeVariableElement fldSwitchImpl = new CodeVariableElement(MOD_PRIVATE, typBytecodeBase.asType(), "switchImpl");
@@ -384,7 +384,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         fldSwitchImpl.createInitBuilder().string("INITIAL_EXECUTE");
         typOperationNodeImpl.add(fldSwitchImpl);
 
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "uncachedExecuteCount = 16")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "uncachedExecuteCount = 16")));
 
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object.class), "_osrMetadata")));
 
@@ -692,7 +692,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeExecutableElement createChangeInterpreter(CodeTypeElement loopBase) {
-        CodeExecutableElement met = new CodeExecutableElement(context.getType(void.class), "changeInterpreters");
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE, context.getType(void.class), "changeInterpreters");
         met.addParameter(new CodeVariableElement(loopBase.asType(), "impl"));
 
         CodeTreeBuilder b = met.createBuilder();
@@ -1045,9 +1045,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE_FINAL, new DeclaredCodeTypeMirror(context.getTypeElement(ArrayList.class), List.of(typOperationNodeImpl.asType())), "builtNodes"));
 
-        CodeVariableElement fldOperationData = new CodeVariableElement(opDataImpl.asType(), "operationData");
+        CodeVariableElement fldOperationData = new CodeVariableElement(MOD_PRIVATE, opDataImpl.asType(), "operationData");
 
-        CodeVariableElement fldBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
+        CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE, arrayOf(context.getType(byte.class)), "bc");
 
         CodeVariableElement fldIndent = null;
         if (OperationGeneratorFlags.FLAG_NODE_AST_PRINTING) {
@@ -1055,9 +1055,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(fldIndent);
         }
 
-        CodeVariableElement fldBci = new CodeVariableElement(context.getType(int.class), "bci");
+        CodeVariableElement fldBci = new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "bci");
 
-        CodeVariableElement fldLastPush = new CodeVariableElement(context.getType(int.class), "lastChildPush");
+        CodeVariableElement fldLastPush = new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "lastChildPush");
         typBuilderImpl.add(fldLastPush);
 
         BuilderVariables vars = new BuilderVariables();
@@ -1101,7 +1101,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeTypeElement createBuilderState(CodeTypeElement typBuilder, String... fields) {
-        CodeTypeElement typ = new CodeTypeElement(MOD_FINAL, ElementKind.CLASS, null, "BuilderState");
+        CodeTypeElement typ = new CodeTypeElement(MOD_PRIVATE_FINAL, ElementKind.CLASS, null, "BuilderState");
         typ.add(new CodeVariableElement(typ.asType(), "parentData"));
 
         ArrayList<String> foundFields = new ArrayList<>();
@@ -1510,7 +1510,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     @SuppressWarnings("static-method")
     private CodeExecutableElement createBuilderImplCreateParentLocal(CodeTypeElement typBuilder, CodeTypeElement typLocalData) {
-        CodeExecutableElement mCreateLocal = new CodeExecutableElement(typLocalData.asType(), "createParentLocal");
+        CodeExecutableElement mCreateLocal = new CodeExecutableElement(MOD_PRIVATE, typLocalData.asType(), "createParentLocal");
         mCreateLocal.createBuilder().startReturn().startNew(typLocalData.asType()).string("operationData.parent").string("numLocals++").end(2);
         return mCreateLocal;
     }
@@ -2321,7 +2321,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeExecutableElement createAfterChild(BuilderVariables vars) {
-        CodeExecutableElement mAfterChild = new CodeExecutableElement(context.getType(void.class), "doAfterChild");
+        CodeExecutableElement mAfterChild = new CodeExecutableElement(MOD_PRIVATE, context.getType(void.class), "doAfterChild");
         CodeTreeBuilder b = mAfterChild.getBuilder();
         GeneratorUtils.addSuppressWarnings(context, mAfterChild, "unused");
 
@@ -2356,7 +2356,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeExecutableElement createBeforeChild(BuilderVariables vars) {
-        CodeExecutableElement mBeforeChild = new CodeExecutableElement(context.getType(void.class), "doBeforeChild");
+        CodeExecutableElement mBeforeChild = new CodeExecutableElement(MOD_PRIVATE, context.getType(void.class), "doBeforeChild");
         CodeTreeBuilder b = mBeforeChild.getBuilder();
         GeneratorUtils.addSuppressWarnings(context, mBeforeChild, "unused");
 
@@ -2456,7 +2456,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         String simpleName = m.getTemplateType().getSimpleName() + "Gen";
 
         try {
-            return List.of(createOperationNodeImpl());
+            CodeTypeElement el = createOperationNodeImpl();
+            OperationGeneratorUtils.checkAccessibility(el);
+            return List.of(el);
+
         } catch (Throwable e) {
             CodeTypeElement el = GeneratorUtils.createClass(m, null, Set.of(), simpleName, null);
             CodeTreeBuilder b = el.createDocBuilder();

@@ -45,11 +45,12 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
@@ -259,5 +260,29 @@ public class OperationGeneratorUtils {
             }
             element.add(ex);
         }
+    }
+
+    public static void checkAccessibility(Element el) {
+        checkAccessibility(el, "");
+    }
+
+    private static void checkAccessibility(Element el, String namePrefix) {
+        Set<Modifier> mods = el.getModifiers();
+
+        if (mods.contains(Modifier.PRIVATE) || el.getSimpleName().toString().equals("<cinit>")) {
+            return;
+        }
+
+        if (mods.contains(Modifier.PUBLIC) || mods.contains(Modifier.PROTECTED)) {
+            List<? extends Element> els = el.getEnclosedElements();
+            if (els != null) {
+                for (Element cel : els) {
+                    checkAccessibility(cel, namePrefix + el.getSimpleName() + ".");
+                }
+            }
+            return;
+        }
+
+        throw new AssertionError(namePrefix + el.getSimpleName() + " must not be package-protected");
     }
 }
