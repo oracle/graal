@@ -420,6 +420,7 @@ public class RubyTests extends RegexTestBase {
     public void recursiveSubexpressionCalls() {
         testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
         testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
+        testUnsupported("a\\g<0>?", "");
     }
 
     @Test
@@ -531,5 +532,10 @@ public class RubyTests extends RegexTestBase {
     public void gr39214() {
         // Compiling a Regexp with a backreference inside an atomic group should not crash.
         test("()(?>\\1)", "", "", 0, true, 0, 0, 0, 0);
+    }
+
+    @Test
+    public void gr41489() {
+        testUnsupported("\\((?>[^)(]+|\\g<0>)*\\)", "");
     }
 }

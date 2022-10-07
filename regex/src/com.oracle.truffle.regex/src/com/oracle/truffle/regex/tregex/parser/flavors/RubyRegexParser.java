@@ -1417,7 +1417,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 throw syntaxErrorAt(RbErrorMessages.NUMBERED_BACKREF_CALL_IS_NOT_ALLOWED, beginPos);
             }
             if (resolveReference) {
-                if (groupNumber <= 0 || groupNumber > numberOfCaptureGroups()) {
+                if (groupNumber < 0 || groupNumber > numberOfCaptureGroups()) {
                     throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(groupName), beginPos);
                 }
                 groupNumbers = new ArrayList<>(1);
