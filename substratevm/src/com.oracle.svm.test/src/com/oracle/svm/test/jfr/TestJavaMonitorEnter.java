@@ -26,15 +26,13 @@
 
 package com.oracle.svm.test.jfr;
 
-import static java.lang.Math.abs;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;
 import org.junit.Test;
 
@@ -42,10 +40,12 @@ import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedObject;
 
 public class TestJavaMonitorEnter extends JfrTest {
-    private final int threads = 10;
     private static final int MILLIS = 60;
-    static Object monitor = new Object();
 
+    static boolean inCritical = false;
+    static Thread firstThread;
+    static Thread secondThread;
+    static final Helper helper = new Helper();
     private static Queue<String> orderedWaiterNames = new LinkedList<>();
 
     @Override
@@ -53,60 +53,75 @@ public class TestJavaMonitorEnter extends JfrTest {
         return new String[]{"jdk.JavaMonitorEnter"};
     }
 
-    @Override
-    public void analyzeEvents() {
+    public void validateEvents() throws Throwable{
         List<RecordedEvent> events;
-        try {
-            events = getEvents("jdk.JavaMonitorEnter");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        events = getEvents("jdk.JavaMonitorEnter");
         int count = 0;
-        orderedWaiterNames.poll(); // first worker does not wait
-        String waiterName = orderedWaiterNames.poll();
-        Long prev = 0L;
+        boolean found = false;
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            if (event.getEventType().getName().equals("jdk.JavaMonitorEnter") && isGreaterDuration(Duration.ofMillis(MILLIS), event.getDuration()) && waiterName.equals(eventThread)) {
-                Long duration = event.getDuration().toMillis();
-                assertTrue("Durations not as expected ", abs(duration - prev - MILLIS) < msTolerance);
-                count++;
-                waiterName = orderedWaiterNames.poll();
-                prev = duration;
+            if (event.getEventType().getName().equals("jdk.JavaMonitorEnter")
+                    && struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())
+                    && event.getDuration().toMillis() >= MILLIS
+                    && secondThread.getName().equals(eventThread)) {
+
+                // verify previous owner
+                assertTrue("Previous owner is wrong",struct.<RecordedThread> getValue("previousOwner").getJavaName().equals(firstThread.getName()));
+                found = true;
+                break;
             }
         }
-        assertTrue("Wrong number of Java Monitor Enter Events " + count, count == threads - 1);
+        assertTrue("Expected monitor blocked event not found" , found);
 
-    }
-
-    private static void doWork(Object obj) throws InterruptedException {
-        synchronized (obj) {
-            Thread.sleep(MILLIS);
-            orderedWaiterNames.add(Thread.currentThread().getName());
-        }
     }
 
     @Test
     public void test() throws Exception {
-        int threadCount = threads;
-        Runnable r = () -> {
-            // create contention between threads for one lock
+        Runnable first = () -> {
             try {
-                doWork(monitor);
+                helper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-
         };
-        Thread.UncaughtExceptionHandler eh = (t, e) -> e.printStackTrace();
 
-        try {
-            Stressor.execute(threadCount, eh, r);
-            // sleep so we know the event is recorded
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        Runnable second = () -> {
+            try {
+                //wait until lock is held
+                while(!inCritical) {
+                    Thread.sleep(10);
+                }
+                helper.doWork();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
+        firstThread = new Thread(first);
+        secondThread = new Thread(second);
+        firstThread.start();
+        secondThread.start();
+
+        firstThread.join();
+        secondThread.join();
+    }
+
+    static class Helper {
+        private synchronized void doWork() throws InterruptedException {
+            inCritical = true;
+            if (Thread.currentThread().equals(secondThread)) {
+                inCritical = false;
+                return; // second thread doesn't need to do work.
+            }
+
+            // spin until second thread blocks
+            while(!secondThread.getState().equals(Thread.State.BLOCKED)) {
+                Thread.sleep(10);
+            }
+
+            Thread.sleep(MILLIS);
+            inCritical = false;
         }
     }
 }

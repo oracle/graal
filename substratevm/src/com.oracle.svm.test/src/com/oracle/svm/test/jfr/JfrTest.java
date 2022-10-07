@@ -58,7 +58,7 @@ import jdk.jfr.consumer.RecordingFile;
 public abstract class JfrTest {
     protected Jfr jfr;
     protected Recording recording;
-    private ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
+    private final ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
     protected final long msTolerance = 10;
 
     @BeforeClass
@@ -85,11 +85,15 @@ public abstract class JfrTest {
     public void endRecording() {
         try {
             jfr.endRecording(recording);
-            analyzeEvents();
         } catch (Exception e) {
             Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
         }
-
+        checkEvents();
+        try {
+            validateEvents();
+        }catch (Throwable throwable) {
+            Assert.fail("validateEvents failed: " + throwable.getMessage());
+        }
         try {
             checkRecording();
         } finally {
@@ -111,7 +115,7 @@ public abstract class JfrTest {
 
     public abstract String[] getTestedEvents();
 
-    public void analyzeEvents() {
+    public void validateEvents() throws Throwable{
     }
 
     protected void checkEvents() {
@@ -163,19 +167,6 @@ public abstract class JfrTest {
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
         Collections.sort(events, chronologicalComparator);
         return events;
-    }
-
-    /** Used for comparing durations with a tolerance of MS_TOLERANCE. */
-    protected boolean isEqualDuration(Duration d1, Duration d2) {
-        return d1.minus(d2).abs().compareTo(Duration.ofMillis(msTolerance)) < 0;
-    }
-
-    /**
-     * Used for comparing durations with a tolerance of MS_TOLERANCE. True if 'larger' really is
-     * bigger
-     */
-    protected boolean isGreaterDuration(Duration smaller, Duration larger) {
-        return smaller.minus(larger.plus(Duration.ofMillis(msTolerance))).isNegative();
     }
 
 }

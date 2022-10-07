@@ -46,21 +46,16 @@ public class TestJavaMonitorWait extends JfrTest {
     private static final int COUNT = 10;
     private String producerName;
     private String consumerName;
-    static Helper helper = new Helper();
+    static final Helper helper = new Helper();
 
     @Override
     public String[] getTestedEvents() {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
-    @Override
-    public void analyzeEvents() {
+    public void validateEvents() throws Throwable{
         List<RecordedEvent> events;
-        try {
-            events = getEvents("jdk.JavaMonitorWait");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        events = getEvents("jdk.JavaMonitorWait");
 
         int prodCount = 0;
         int consCount = 0;
@@ -75,7 +70,7 @@ public class TestJavaMonitorWait extends JfrTest {
                 continue;
             }
 
-            assertTrue("Wrong event duration", isEqualDuration(Duration.ofMillis(MILLIS), event.getDuration()));
+            assertTrue("Wrong event duration", event.getDuration().toMillis() >= MILLIS);
             assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
 
             if (lastEventThreadName == null) {
@@ -120,9 +115,6 @@ public class TestJavaMonitorWait extends JfrTest {
         tc.start();
         tp.join();
         tc.join();
-
-        // sleep so we know the event is recorded
-        Thread.sleep(500);
     }
 
     static class Helper {

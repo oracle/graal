@@ -46,8 +46,7 @@ public class TestThreadSleep extends JfrTest {
         return new String[]{"jdk.ThreadSleep"};
     }
 
-    @Override
-    public void analyzeEvents() {
+    public void validateEvents() {
         List<RecordedEvent> events;
         try {
             events = getEvents("jdk.ThreadSleep");
@@ -64,7 +63,7 @@ public class TestThreadSleep extends JfrTest {
             if (!eventThread.equals(sleepingThreadName)) {
                 continue;
             }
-            if (!isEqualDuration(event.getDuration(), Duration.ofMillis(MILLIS))) {
+            if (event.getDuration().toMillis() < MILLIS) {
                 continue;
             }
             foundSleepEvent = true;

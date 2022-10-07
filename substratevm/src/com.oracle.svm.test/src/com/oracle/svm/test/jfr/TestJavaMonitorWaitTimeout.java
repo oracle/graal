@@ -28,11 +28,11 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-import java.time.Duration;
+
 import java.util.List;
 
 import org.junit.Test;
+import org.junit.Assert;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
@@ -41,11 +41,12 @@ import jdk.jfr.consumer.RecordedThread;
 
 public class TestJavaMonitorWaitTimeout extends JfrTest {
     private static final int MILLIS = 50;
-    static Helper helper = new Helper();
-    static String timeOutName;
-    static String notifierName;
-    static String simpleWaitName;
-    static String simpleNotifyName;
+    static final Helper helper = new Helper();
+    static Thread unheardNotifierThread;
+    static Thread timeoutThread;
+
+    static Thread simpleWaitThread;
+    static Thread simpleNotifyThread;
     private boolean timeoutFound = false;
     private boolean simpleWaitFound = false;
 
@@ -54,14 +55,10 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
-    @Override
-    public void analyzeEvents() {
+    public void validateEvents() throws Throwable{
         List<RecordedEvent> events;
-        try {
-            events = getEvents("TestJavaMonitorWaitTimeout");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        events = getEvents("TestJavaMonitorWaitTimeout");
+
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
             if (!event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
@@ -69,22 +66,22 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
             }
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
             String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
-            if (!eventThread.equals(notifierName) &&
-                            !eventThread.equals(timeOutName) &&
-                            !eventThread.equals(simpleNotifyName) &&
-                            !eventThread.equals(simpleWaitName)) {
+            if (!eventThread.equals(unheardNotifierThread.getName()) &&
+                            !eventThread.equals(timeoutThread.getName()) &&
+                            !eventThread.equals(simpleNotifyThread.getName()) &&
+                            !eventThread.equals(simpleWaitThread.getName())) {
                 continue;
             }
             if (!struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
-            assertTrue("Event is wrong duration.", isGreaterDuration(Duration.ofMillis(MILLIS), event.getDuration()));
-            if (eventThread.equals(timeOutName)) {
+            assertTrue("Event is wrong duration:"+event.getDuration().toMillis(), event.getDuration().toMillis() >= MILLIS);
+            if (eventThread.equals(timeoutThread.getName())) {
                 assertTrue("Notifier of timeout thread should be null", notifThread == null);
                 assertTrue("Should have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
                 timeoutFound = true;
-            } else if (eventThread.equals(simpleWaitName)) {
-                assertTrue("Notifier of simple wait is incorrect", notifThread.equals(simpleNotifyName));
+            } else if (eventThread.equals(simpleWaitThread.getName())) {
+                assertTrue("Notifier of simple wait is incorrect", notifThread.equals(simpleNotifyThread.getName()));
                 simpleWaitFound = true;
             }
 
@@ -93,13 +90,13 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
                         simpleWaitFound && timeoutFound);
     }
 
-    @Test
-    public void test() throws Exception {
+
+    private void testTimeout() throws InterruptedException {
         Runnable unheardNotifier = () -> {
             try {
                 helper.unheardNotify();
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Assert.fail(e.getMessage());
             }
         };
 
@@ -107,51 +104,51 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
             try {
                 helper.timeout();
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Assert.fail(e.getMessage());
             }
         };
 
+        unheardNotifierThread = new Thread(unheardNotifier);
+        timeoutThread = new Thread(timouter);
+
+        timeoutThread.start();
+        timeoutThread.join();
+
+        //wait for timeout before trying to notify
+        unheardNotifierThread.start();
+        unheardNotifierThread.join();
+
+    }
+
+    private void testWaitNotify() throws Exception{
         Runnable simpleWaiter = () -> {
-            try {
                 helper.simpleWait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
         };
 
         Runnable simpleNotifier = () -> {
             try {
+                while (!simpleWaitThread.getState().equals(Thread.State.WAITING)) {
+                    Thread.sleep(10);
+                }
                 helper.simpleNotify();
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Assert.fail(e.getMessage());
             }
         };
-        Thread unheardNotifierThread = new Thread(unheardNotifier);
-        Thread timeoutThread = new Thread(timouter);
-        timeOutName = timeoutThread.getName();
-        notifierName = unheardNotifierThread.getName();
 
-        timeoutThread.start();
-        Thread.sleep(10);
-        unheardNotifierThread.start();
+        simpleWaitThread = new Thread(simpleWaiter);
+        simpleNotifyThread = new Thread(simpleNotifier);
 
-        timeoutThread.join();
-        unheardNotifierThread.join();
-
-        Thread tw = new Thread(simpleWaiter);
-        Thread tn = new Thread(simpleNotifier);
-        simpleWaitName = tw.getName();
-        simpleNotifyName = tn.getName();
-
-        tw.start();
-        Thread.sleep(10);
-        tn.start();
-
-        tw.join();
-        tn.join();
-
-        // sleep so we know the event is recorded
-        Thread.sleep(500);
+        simpleWaitThread.start();
+        simpleNotifyThread.start();
+        simpleWaitThread.join();
+        simpleNotifyThread.join();
+    }
+    @Test
+    public void test() throws Exception {
+        testTimeout();
+        System.out.println("timeout test done");
+        testWaitNotify();
     }
 
     static class Helper {
@@ -160,18 +157,20 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
         }
 
         public synchronized void unheardNotify() throws InterruptedException {
-            Thread.sleep(2 * MILLIS);
-            // notify after timeout
             notify();
         }
 
-        public synchronized void simpleWait() throws InterruptedException {
-            wait();
+        public synchronized void simpleWait() {
+            try {
+                wait();
+            } catch (Exception e) {
+                Assert.fail(e.getMessage());
+            }
         }
 
         public synchronized void simpleNotify() throws InterruptedException {
-            Thread.sleep(2 * MILLIS);
-            notify();
+                Thread.sleep(MILLIS);
+                notify();
         }
     }
 }

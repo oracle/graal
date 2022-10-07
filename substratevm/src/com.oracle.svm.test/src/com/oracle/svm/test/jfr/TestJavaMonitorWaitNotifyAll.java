@@ -42,10 +42,11 @@ import jdk.jfr.consumer.RecordedThread;
 
 public class TestJavaMonitorWaitNotifyAll extends JfrTest {
     private static final int MILLIS = 50;
-    static Helper helper = new Helper();
-    static String waiterName1;
-    static String waiterName2;
-    static String notifierName;
+    static final Helper helper = new Helper();
+    static Thread producerThread1;
+    static Thread producerThread2;
+    static Thread consumerThread;
+
     private boolean notifierFound = false;
     private int waitersFound = 0;
 
@@ -54,40 +55,36 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
         return new String[]{"jdk.JavaMonitorWait"};
     }
 
-    @Override
-    public void analyzeEvents() {
-        List<RecordedEvent> events;
-        try {
-            events = getEvents("TestJavaMonitorWaitNotifyAll");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public void validateEvents() throws Throwable{
+        List<RecordedEvent> events = getEvents("TestJavaMonitorWaitNotifyAll");
+
+
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
             if (!event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
                 continue;
             }
-            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
-            if (!eventThread.equals(waiterName1) &&
-                            !eventThread.equals(waiterName2) &&
-                            !eventThread.equals(notifierName)) {
+            String eventThread = struct.<RecordedThread>getValue("eventThread").getJavaName();
+            String notifThread = struct.<RecordedThread>getValue("notifier") != null ? struct.<RecordedThread>getValue("notifier").getJavaName() : null;
+            if (!eventThread.equals(producerThread1.getName()) &&
+                    !eventThread.equals(producerThread2.getName()) &&
+                    !eventThread.equals(consumerThread.getName())) {
                 continue;
             }
-            if (!struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+            if (!struct.<RecordedClass>getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
 
-            assertTrue("Event is wrong duration.", isGreaterDuration(Duration.ofMillis(MILLIS), event.getDuration()));
-
-            if (eventThread.equals(notifierName)) {
-                assertTrue("Should have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+            assertTrue("Event is wrong duration.", event.getDuration().toMillis() >= MILLIS);
+            if (eventThread.equals(consumerThread.getName())) {
+                assertTrue("Should have timed out.", struct.<Boolean>getValue("timedOut").booleanValue());
                 notifierFound = true;
             } else {
-                assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
-                assertTrue("Notifier thread name is incorrect", notifThread.equals(notifierName));
+                assertFalse("Should not have timed out.", struct.<Boolean>getValue("timedOut").booleanValue());
+                assertTrue("Notifier thread name is incorrect", notifThread.equals(consumerThread.getName()));
                 waitersFound++;
             }
+
         }
         assertTrue("Couldn't find expected wait events. NotifierFound: " + notifierFound + " waitersFound: " + waitersFound,
                         notifierFound && waitersFound == 2);
@@ -95,14 +92,6 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
 
     @Test
     public void test() throws Exception {
-        Runnable consumer = () -> {
-            try {
-                helper.consume();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        };
-
         Runnable producer = () -> {
             try {
                 helper.produce();
@@ -110,23 +99,28 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
                 throw new RuntimeException(e);
             }
         };
-        Thread tc1 = new Thread(consumer);
-        Thread tp1 = new Thread(producer);
-        Thread tp2 = new Thread(producer);
-        waiterName1 = tp1.getName();
-        waiterName2 = tp2.getName();
-        notifierName = tc1.getName();
 
-        tp1.start();
-        tp2.start();
-        tc1.start();
+        producerThread1 = new Thread(producer);
+        producerThread2 = new Thread(producer);
+        Runnable consumer = () -> {
+            try {
+                while (!producerThread1.getState().equals(Thread.State.WAITING) || !producerThread2.getState().equals(Thread.State.WAITING)) {
+                    Thread.sleep(10);
+                }
+                helper.consume();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        };
 
-        tp1.join();
-        tp2.join();
-        tc1.join();
+        consumerThread = new Thread(consumer);
+        consumerThread.start();
+        producerThread1.start();
+        producerThread2.start();
 
-        // sleep so we know the event is recorded
-        Thread.sleep(500);
+        consumerThread.join();
+        producerThread1.join();
+        producerThread2.join();
     }
 
     static class Helper {
@@ -135,7 +129,6 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
         }
 
         public synchronized void consume() throws InterruptedException {
-            // give the producers a headstart so they can start waiting
             wait(MILLIS);
             notifyAll(); // should wake up both producers
         }
