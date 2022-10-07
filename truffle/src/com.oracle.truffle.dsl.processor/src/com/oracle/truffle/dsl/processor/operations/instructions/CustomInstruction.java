@@ -166,12 +166,26 @@ public class CustomInstruction extends Instruction {
 
     @Override
     public boolean splitOnBoxingElimination() {
-        return data.getMainProperties().returnsValue;
+        return !data.isAlwaysBoxed() && data.getMainProperties().returnsValue;
+    }
+
+    @Override
+    public boolean alwaysBoxed() {
+        return data.isAlwaysBoxed();
+    }
+
+    @Override
+    public List<FrameKind> getBoxingEliminationSplits() {
+        List<FrameKind> result = new ArrayList<>();
+        result.add(FrameKind.OBJECT);
+        result.addAll(data.getPossiblePrimitiveTypes());
+
+        return result;
     }
 
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
 
-        String exName = getUniqueName() + "_entryPoint_" + (uncached ? "uncached" : ctx.hasBoxingElimination() ? vars.specializedKind : "");
+        String exName = getUniqueName() + "_entryPoint_" + (uncached ? "uncached" : (!alwaysBoxed() && ctx.hasBoxingElimination() ? vars.specializedKind : ""));
         OperationGeneratorUtils.createHelperMethod(ctx.outerType, exName, () -> {
             CodeExecutableElement el = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), exName);
             el.getParameters().addAll(executeMethods[0].getParameters());
@@ -186,8 +200,12 @@ public class CustomInstruction extends Instruction {
                     b.declaration("int", "destSlot", "$sp - " + data.getMainProperties().numStackValues);
                 }
 
-                if (!uncached && ctx.hasBoxingElimination()) {
+                if (!uncached && ctx.hasBoxingElimination() && !alwaysBoxed()) {
                     int i = ctx.getBoxingKinds().indexOf(vars.specializedKind);
+
+                    if (i == -1) {
+                        throw new AssertionError("kind=" + vars.specializedKind + " name=" + name + "bk=" + ctx.getBoxingKinds());
+                    }
 
                     boolean needsUnexpectedResult = executeMethods[i] != null && executeMethods[i].getThrownTypes().size() > 0;
 
@@ -302,11 +320,18 @@ public class CustomInstruction extends Instruction {
         }
         b.end(2);
 
-        b.startAssign(vars.sp).variable(vars.sp).string(" - " + data.getMainProperties().numStackValues + " + " + numPushedValues);
-        if (isVariadic()) {
-            b.string(" - numVariadics + 1");
+        int stackDelta = numPushedValues - data.getMainProperties().numStackValues + (isVariadic() ? 1 : 0);
+
+        if (isVariadic() || stackDelta != 0) {
+            b.startStatement().variable(vars.sp).string(" += ");
+            if (stackDelta != 0) {
+                b.string("" + stackDelta);
+            }
+            if (isVariadic()) {
+                b.string(" - numVariadics");
+            }
+            b.end();
         }
-        b.end();
 
         return b.build();
     }

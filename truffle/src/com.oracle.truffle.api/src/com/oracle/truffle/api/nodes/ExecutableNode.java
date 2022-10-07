@@ -89,7 +89,7 @@ public abstract class ExecutableNode extends Node {
         assert language == null || getLanguageInfo() != null : "Truffle language instance is not initialized.";
     }
 
-    final TruffleLanguage<?> getLanguage() {
+    protected final TruffleLanguage<?> getLanguage() {
         Object ref = polyglotRef;
         if (ref instanceof TruffleLanguage<?>) {
             return (TruffleLanguage<?>) ref;
@@ -165,9 +165,5 @@ public abstract class ExecutableNode extends Node {
             throw new ClassCastException(String.format("Illegal language class specified. Expected '%s'.", language.getClass().getName()));
         }
         return (C) language;
-    }
-
-    public final TruffleLanguage<?> getLanguageInternal() {
-        return getLanguage();
     }
 }

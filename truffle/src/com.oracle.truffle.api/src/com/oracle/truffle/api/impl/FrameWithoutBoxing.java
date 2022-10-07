@@ -545,33 +545,35 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void swap(int first, int second) {
         byte firstTag = getIndexedTagChecked(first);
-        Object firstValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        Object firstValue = unsafeGetObject(getIndexedLocals(), getObjectOffset(first), true, OBJECT_LOCATION);
         long firstPrimitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(first), true, PRIMITIVE_LOCATION);
+
         byte secondTag = getIndexedTagChecked(second);
-        Object secondValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        Object secondValue = unsafeGetObject(getIndexedLocals(), getObjectOffset(second), true, OBJECT_LOCATION);
         long secondPrimitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(second), true, PRIMITIVE_LOCATION);
 
         verifyIndexedSet(first, secondTag);
         verifyIndexedSet(second, firstTag);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, secondValue, OBJECT_LOCATION);
+        unsafePutObject(getIndexedLocals(), getObjectOffset(first), secondValue, OBJECT_LOCATION);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(first), secondPrimitiveValue, PRIMITIVE_LOCATION);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, firstValue, OBJECT_LOCATION);
+        unsafePutObject(getIndexedLocals(), getObjectOffset(second), firstValue, OBJECT_LOCATION);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(second), firstPrimitiveValue, PRIMITIVE_LOCATION);
     }
 
     void unsafeSwap(int first, int second) {
         byte firstTag = unsafeGetIndexedTag(first);
-        Object firstValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        Object firstValue = unsafeGetObject(getIndexedLocals(), getObjectOffset(first), true, OBJECT_LOCATION);
         long firstPrimitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(first), true, PRIMITIVE_LOCATION);
+
         byte secondTag = unsafeGetIndexedTag(second);
-        Object secondValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        Object secondValue = unsafeGetObject(getIndexedLocals(), getObjectOffset(second), true, OBJECT_LOCATION);
         long secondPrimitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(second), true, PRIMITIVE_LOCATION);
 
-        verifyIndexedSet(first, secondTag);
-        verifyIndexedSet(second, firstTag);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, secondValue, OBJECT_LOCATION);
+        unsafeVerifyIndexedSet(first, secondTag);
+        unsafeVerifyIndexedSet(second, firstTag);
+        unsafePutObject(getIndexedLocals(), getObjectOffset(first), secondValue, OBJECT_LOCATION);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(first), secondPrimitiveValue, PRIMITIVE_LOCATION);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, firstValue, OBJECT_LOCATION);
+        unsafePutObject(getIndexedLocals(), getObjectOffset(second), firstValue, OBJECT_LOCATION);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(second), firstPrimitiveValue, PRIMITIVE_LOCATION);
     }
 
@@ -615,7 +617,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private byte unsafeGetIndexedTag(int slot) {
         byte tag = UNSAFE.getByte(getIndexedTags(), Unsafe.ARRAY_BYTE_BASE_OFFSET + slot * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-        assert tag != STATIC_TAG : UNEXPECTED_NON_STATIC_READ;
+        assert (tag & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_READ;
         return tag;
     }
 
@@ -963,6 +965,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
         FrameWithoutBoxing o = (FrameWithoutBoxing) dst;
         if (o.descriptor != descriptor //
+                        || length < 0 //
                         || srcOffset < 0 //
                         || srcOffset + length > getIndexedTags().length //
                         || dstOffset < 0 //

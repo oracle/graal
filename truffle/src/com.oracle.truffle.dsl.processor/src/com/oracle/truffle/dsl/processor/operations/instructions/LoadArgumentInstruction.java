@@ -67,43 +67,11 @@ public class LoadArgumentInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.declaration("Object", "value", createGetValue(vars));
-
-        if (ctx.hasBoxingElimination()) {
-            FrameKind kind = vars.specializedKind;
-            if (kind == FrameKind.OBJECT) {
-                b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.variable(vars.stackFrame);
-                b.variable(vars.sp);
-                b.string("value");
-                b.end(2);
-            } else {
-                b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
-                // {
-                b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
-                b.variable(vars.stackFrame);
-                b.variable(vars.sp);
-                b.string("(", kind.getTypeName(), ") value");
-                b.end(2);
-                // }
-                b.end().startElseBlock();
-                // {
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.variable(vars.stackFrame);
-                b.variable(vars.sp);
-                b.string("value");
-                b.end(2);
-                // }
-                b.end();
-            }
-        } else {
-            b.startStatement().startCall("UFA", "unsafeSetObject");
-            b.variable(vars.stackFrame);
-            b.variable(vars.sp);
-            b.string("value");
-            b.end(2);
-        }
+        b.startStatement().startCall("UFA", "unsafeSetObject");
+        b.variable(vars.stackFrame);
+        b.variable(vars.sp);
+        b.tree(createGetValue(vars));
+        b.end(2);
 
         b.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
 
@@ -116,7 +84,7 @@ public class LoadArgumentInstruction extends Instruction {
     }
 
     @Override
-    public boolean splitOnBoxingElimination() {
+    public boolean alwaysBoxed() {
         return true;
     }
 }

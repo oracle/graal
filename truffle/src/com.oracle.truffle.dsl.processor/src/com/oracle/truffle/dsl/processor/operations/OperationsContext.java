@@ -65,12 +65,12 @@ import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationL
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadArgumentInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.LoadNonlocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalMaterializedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.StoreNonlocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalMaterializedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ThrowInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.YieldInstruction;
 
@@ -83,6 +83,9 @@ public class OperationsContext {
     public Instruction commonBranch;
     public Instruction commonBranchFalse;
     public Instruction commonThrow;
+
+    public LoadLocalInstruction loadLocalUnboxed;
+    public LoadLocalInstruction loadLocalBoxed;
 
     public LoadArgumentInstruction[] loadArgumentInstructions;
     public LoadConstantInstruction[] loadConstantInstructions;
@@ -133,14 +136,18 @@ public class OperationsContext {
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
 
-        add(new Operation.Simple(this, "ConstObject", operationId++, 0, add(new LoadConstantInstruction(this, instructionId++))));
+        add(new Operation.Simple(this, "LoadConstant", operationId++, 0, add(new LoadConstantInstruction(this, instructionId++))));
         add(new Operation.Simple(this, "LoadArgument", operationId++, 0, add(new LoadArgumentInstruction(this, instructionId++))));
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(this, instructionId++))));
+        loadLocalUnboxed = add(new LoadLocalInstruction(this, instructionId++, false));
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, loadLocalUnboxed));
+        if (hasBoxingElimination()) {
+            loadLocalBoxed = add(new LoadLocalInstruction(this, instructionId++, true));
+        }
         add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(this, instructionId++))));
         add(new Operation.Simple(this, "Return", operationId++, 1, add(new ReturnInstruction(this, instructionId++))));
 
-        add(new Operation.LoadNonlocal(this, operationId++, add(new LoadNonlocalInstruction(this, instructionId++))));
-        add(new Operation.StoreNonlocal(this, operationId++, add(new StoreNonlocalInstruction(this, instructionId++))));
+        add(new Operation.LoadLocalMaterialized(this, operationId++, add(new LoadLocalMaterializedInstruction(this, instructionId++))));
+        add(new Operation.StoreLocalMaterialized(this, operationId++, add(new StoreLocalMaterializedInstruction(this, instructionId++))));
 
         if (data.enableYield) {
             add(new Operation.Simple(this, "Yield", operationId++, 1, add(new YieldInstruction(this, instructionId++))));

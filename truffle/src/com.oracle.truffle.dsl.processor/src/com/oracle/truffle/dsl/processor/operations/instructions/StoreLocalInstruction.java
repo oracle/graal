@@ -92,7 +92,11 @@ public class StoreLocalInstruction extends Instruction {
 
                 b.declaration("byte", "curKind", "UFA.unsafeByteArrayRead(localTags, localIdx)");
 
+                b.declaration("int", "bciOffset", createPopIndexedIndex(vars, 0, false));
+
                 b.statement("// System.err.printf(\"primitiveTag=%d value=%s %s curKind=%s tag=%s%n\", primitiveTag, value.getClass(), value, curKind, $frame.getTag(sourceSlot))");
+
+                b.startIf().string("bciOffset != 0").end().startBlock();
 
                 for (FrameKind primKind : ctx.getPrimitiveBoxingKinds()) {
                     // todo: use implicit conversions here
@@ -129,15 +133,22 @@ public class StoreLocalInstruction extends Instruction {
                     b.statement("System.err.printf(\" [store-spec] local=%d value=%s kind=%d->OBJECT%n\", localIdx, $frame.getValue(sourceSlot), curKind)");
                 }
 
+                createBoxingEliminateChild(vars, b, "0 /* OBJECT */");
+
+                b.end();
+
                 createSetFrameDescriptorKind(vars, b, "7 /* generic */");
                 createSetPrimitiveTag(vars, b, "7 /* generic */");
-                createBoxingEliminateChild(vars, b, "0 /* OBJECT */");
 
                 b.startStatement().startCall("UFA", "unsafeSetObject");
                 b.variable(vars.localFrame);
                 b.string("localIdx");
                 b.string("value");
                 b.end(2);
+
+                if (OperationGeneratorFlags.LOG_LOCAL_STORES_SPEC) {
+                    b.statement("System.err.printf(\" [store-spec] local=%d value=%s kind=%d->GENERIC%n\", localIdx, $frame.getValue(sourceSlot), curKind)");
+                }
 
                 return ex;
             });
@@ -215,7 +226,7 @@ public class StoreLocalInstruction extends Instruction {
                     b.end(2);
 
                     if (OperationGeneratorFlags.LOG_LOCAL_STORES) {
-                        b.statement("System.err.printf(\" [store] loacl=%d value=%s kind=OBJECT%n\", localIdx, $frame.getValue(sourceSlot))");
+                        b.statement("System.err.printf(\" [store] loacl=%d value=%s kind=GENERIC%n\", localIdx, $frame.getValue(sourceSlot))");
                     }
 
                     b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
@@ -309,8 +320,8 @@ public class StoreLocalInstruction extends Instruction {
         b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, "(short) ((" + tag + " << 13) | " + opcodeIdField.getName() + ")"));
     }
 
-    private void createBoxingEliminateChild(ExecutionVariables vars, CodeTreeBuilder b, String tag) {
-        b.tree(OperationGeneratorUtils.callSetResultBoxed(createPopIndexedIndex(vars, 0, false), CodeTreeBuilder.singleString(tag)));
+    private static void createBoxingEliminateChild(ExecutionVariables vars, CodeTreeBuilder b, String tag) {
+        b.tree(OperationGeneratorUtils.callSetResultBoxed(CodeTreeBuilder.singleString("bciOffset"), CodeTreeBuilder.singleString(tag)));
     }
 
     @Override

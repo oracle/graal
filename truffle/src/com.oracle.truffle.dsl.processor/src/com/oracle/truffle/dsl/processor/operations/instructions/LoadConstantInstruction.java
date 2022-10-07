@@ -40,17 +40,9 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
-import java.util.EnumSet;
-
-import javax.lang.model.element.Modifier;
-
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadConstantInstruction extends Instruction {
@@ -63,52 +55,17 @@ public class LoadConstantInstruction extends Instruction {
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
 
-        String helperName = "do_loadConstant_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
-            CodeExecutableElement metImpl = new CodeExecutableElement(
-                            EnumSet.of(Modifier.PRIVATE, Modifier.STATIC),
-                            context.getType(void.class),
-                            helperName);
+        b.startStatement().startCall("UFA", "unsafeSetObject");
+        b.variable(vars.stackFrame);
+        b.variable(vars.sp);
+        b.tree(createGetArgument(vars, FrameKind.OBJECT));
+        b.end(2);
 
-            metImpl.addParameter(vars.stackFrame);
-            metImpl.addParameter(vars.bc);
-            metImpl.addParameter(vars.bci);
-            metImpl.addParameter(vars.sp);
-            metImpl.addParameter(vars.consts);
+        b.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
 
-            CodeTreeBuilder b = metImpl.getBuilder();
-
-            if (ctx.hasBoxingElimination()) {
-                b.startStatement().startCall("UFA", "unsafeSet" + vars.specializedKind.getFrameName());
-                b.variable(vars.stackFrame);
-                b.variable(vars.sp);
-                b.tree(createGetArgument(vars, vars.specializedKind));
-                b.end(2);
-                b.end();
-            } else {
-                b.startStatement().startCall("UFA", "unsafeSetObject");
-                b.variable(vars.stackFrame);
-                b.variable(vars.sp);
-                b.tree(createGetArgument(vars, FrameKind.OBJECT));
-                b.end(2);
-            }
-
-            return metImpl;
-        });
-
-        CodeTreeBuilder bOuter = CodeTreeBuilder.createBuilder();
-        bOuter.startStatement().startCall(helperName);
-        bOuter.variable(vars.stackFrame);
-        bOuter.variable(vars.bc);
-        bOuter.variable(vars.bci);
-        bOuter.variable(vars.sp);
-        bOuter.variable(vars.consts);
-        bOuter.end(2);
-
-        bOuter.startAssign(vars.sp).variable(vars.sp).string(" + 1").end();
-
-        return bOuter.build();
+        return b.build();
 
     }
 
@@ -132,7 +89,7 @@ public class LoadConstantInstruction extends Instruction {
     }
 
     @Override
-    public boolean splitOnBoxingElimination() {
+    public boolean alwaysBoxed() {
         return true;
     }
 }

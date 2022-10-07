@@ -379,6 +379,14 @@ public abstract class Instruction {
         return false;
     }
 
+    public boolean alwaysBoxed() {
+        throw new AssertionError(name);
+    }
+
+    public List<FrameKind> getBoxingEliminationSplits() {
+        return ctx.getBoxingKinds();
+    }
+
     public boolean hasGeneric() {
         return false;
     }
@@ -436,6 +444,7 @@ public abstract class Instruction {
         b.startCall("doBeforeEmitInstruction");
         b.tree(numPop);
         b.string(numPushedValues == 0 ? "false" : "true");
+        b.string(numPushedValues > 0 && !alwaysBoxed() ? "true" : "false");
         b.end(2);
 
         // emit opcode
@@ -581,6 +590,11 @@ public abstract class Instruction {
         printList(sb, popSimple, "Simple Pops");
         if (isVariadic) {
             sb.append("  Variadic\n");
+        }
+        if (numPushedValues > 0 && alwaysBoxed()) {
+            sb.append("  Always Boxed\n");
+        } else if (splitOnBoxingElimination()) {
+            sb.append("  Split on Boxing Elimination\n");
         }
         sb.append("  Pushed Values: ").append(numPushedValues).append("\n");
         printList(sb, branchTargets, "Branch Targets");

@@ -178,7 +178,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.endTag();
 
         b.beginReturn();
-        b.emitConstObject(SLNull.SINGLETON);
+        b.emitLoadConstant(SLNull.SINGLETON);
         b.endReturn();
 
         b.endTag();
@@ -317,7 +317,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.beginReturn();
 
         if (ctx.expression() == null) {
-            b.emitConstObject(SLNull.SINGLETON);
+            b.emitLoadConstant(SLNull.SINGLETON);
         } else {
             visit(ctx.expression());
         }
@@ -531,7 +531,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
                 b.emitLoadLocal(locals.get(localIdx));
             } else {
                 b.beginSLFunctionLiteral();
-                b.emitConstObject(asTruffleString(ident, false));
+                b.emitLoadConstant(asTruffleString(ident, false));
                 b.endSLFunctionLiteral();
             }
             return;
@@ -566,7 +566,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
             b.beginTag(StandardTags.ExpressionTag.class);
             b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
-            b.emitConstObject(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
+            b.emitLoadConstant(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
             b.endSLReadProperty();
             b.endTag();
         } else {
@@ -606,7 +606,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
             b.beginTag(StandardTags.ExpressionTag.class);
             b.beginSLWriteProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
-            b.emitConstObject(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
+            b.emitLoadConstant(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
         } else {
             MemberIndexContext lastCtx = (MemberIndexContext) last;
 
@@ -633,7 +633,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitStringLiteral(StringLiteralContext ctx) {
-        b.emitConstObject(asTruffleString(ctx.STRING_LITERAL().getSymbol(), true));
+        b.emitLoadConstant(asTruffleString(ctx.STRING_LITERAL().getSymbol(), true));
         return null;
     }
 
@@ -645,7 +645,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         } catch (NumberFormatException ex) {
             value = new SLBigNumber(new BigInteger(ctx.NUMERIC_LITERAL().getText()));
         }
-        b.emitConstObject(value);
+        b.emitLoadConstant(value);
         return null;
     }
 

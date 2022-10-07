@@ -78,6 +78,7 @@ public class BoxingOperationsTest {
     private static OperationRootNode parseNode(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationNodes nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
         OperationRootNode node = nodes.getNodes().get(0);
+        // System.out.println(node.dump());
         return node;
     }
 

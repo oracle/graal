@@ -61,9 +61,9 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.EmitArguments;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.LoadNonlocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalMaterializedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.StoreNonlocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalMaterializedInstruction;
 
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
@@ -246,11 +246,11 @@ public abstract class Operation {
         }
     }
 
-    public static class LoadNonlocal extends Operation {
-        private final LoadNonlocalInstruction instr;
+    public static class LoadLocalMaterialized extends Operation {
+        private final LoadLocalMaterializedInstruction instr;
 
-        public LoadNonlocal(OperationsContext context, int id, LoadNonlocalInstruction instr) {
-            super(context, "LoadNonlocal", id, 1);
+        public LoadLocalMaterialized(OperationsContext context, int id, LoadLocalMaterializedInstruction instr) {
+            super(context, "MaterializedLoadLocal", id, 1);
             this.instr = instr;
         }
 
@@ -277,11 +277,11 @@ public abstract class Operation {
         }
     }
 
-    public static class StoreNonlocal extends Operation {
-        private final StoreNonlocalInstruction instr;
+    public static class StoreLocalMaterialized extends Operation {
+        private final StoreLocalMaterializedInstruction instr;
 
-        public StoreNonlocal(OperationsContext context, int id, StoreNonlocalInstruction instr) {
-            super(context, "StoreNonlocal", id, 2);
+        public StoreLocalMaterialized(OperationsContext context, int id, StoreLocalMaterializedInstruction instr) {
+            super(context, "StoreLocalMaterialized", id, 2);
             this.instr = instr;
         }
 

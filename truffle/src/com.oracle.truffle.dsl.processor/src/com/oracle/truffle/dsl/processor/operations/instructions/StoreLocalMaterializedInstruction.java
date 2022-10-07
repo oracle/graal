@@ -4,11 +4,12 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
-public class LoadNonlocalInstruction extends Instruction {
+public class StoreLocalMaterializedInstruction extends Instruction {
 
-    public LoadNonlocalInstruction(OperationsContext ctx, int id) {
-        super(ctx, "load.nonlocal", id, 1);
+    public StoreLocalMaterializedInstruction(OperationsContext ctx, int id) {
+        super(ctx, "store.local.mat", id, 0);
         addPopSimple("frame");
+        addPopSimple("value");
         addArgument("index");
     }
 
@@ -20,16 +21,15 @@ public class LoadNonlocalInstruction extends Instruction {
 
         b.startAssign("outerFrame").cast(types.Frame).startCall("UFA", "unsafeGetObject");
         b.variable(vars.stackFrame);
-        b.string("$sp - 1");
+        b.string("$sp - 2");
         b.end(2);
 
-        b.startStatement().startCall("UFA", "unsafeSetObject");
-        b.variable(vars.stackFrame);
-        b.string("$sp - 1");
-        b.startCall("outerFrame", "getObject");
+        b.startStatement().startCall("outerFrame", "setObject");
         b.tree(createArgumentIndex(vars, 0, false));
-        b.end();
+        b.startCall("UFA", "unsafeGetObject").variable(vars.stackFrame).string("$sp - 1").end();
         b.end(2);
+
+        b.statement("$sp -= 2");
 
         return b.build();
     }

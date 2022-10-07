@@ -4,12 +4,11 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
-public class StoreNonlocalInstruction extends Instruction {
+public class LoadLocalMaterializedInstruction extends Instruction {
 
-    public StoreNonlocalInstruction(OperationsContext ctx, int id) {
-        super(ctx, "store.nonlocal", id, 0);
+    public LoadLocalMaterializedInstruction(OperationsContext ctx, int id) {
+        super(ctx, "load.local.mat", id, 1);
         addPopSimple("frame");
-        addPopSimple("value");
         addArgument("index");
     }
 
@@ -21,15 +20,16 @@ public class StoreNonlocalInstruction extends Instruction {
 
         b.startAssign("outerFrame").cast(types.Frame).startCall("UFA", "unsafeGetObject");
         b.variable(vars.stackFrame);
-        b.string("$sp - 2");
+        b.string("$sp - 1");
         b.end(2);
 
-        b.startStatement().startCall("outerFrame", "setObject");
+        b.startStatement().startCall("UFA", "unsafeSetObject");
+        b.variable(vars.stackFrame);
+        b.string("$sp - 1");
+        b.startCall("outerFrame", "getObject");
         b.tree(createArgumentIndex(vars, 0, false));
-        b.startCall("UFA", "unsafeGetObject").variable(vars.stackFrame).string("$sp - 1").end();
+        b.end();
         b.end(2);
-
-        b.statement("$sp -= 2");
 
         return b.build();
     }
@@ -37,6 +37,11 @@ public class StoreNonlocalInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public boolean alwaysBoxed() {
+        return true;
     }
 
 }

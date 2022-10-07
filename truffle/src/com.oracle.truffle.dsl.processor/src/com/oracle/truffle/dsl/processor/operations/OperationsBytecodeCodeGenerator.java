@@ -298,10 +298,7 @@ public class OperationsBytecodeCodeGenerator {
 
         b.startTryBlock();
 
-        b.startIf().variable(vars.sp).string(" < maxLocals").end();
-        b.startBlock();
-        b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
-        b.end();
+        b.startAssert().variable(vars.sp).string(" >= maxLocals : \"stack underflow @ \" + $bci").end();
 
         b.startSwitch().string("curOpcode").end();
         b.startBlock();
@@ -341,7 +338,7 @@ public class OperationsBytecodeCodeGenerator {
 
             if (ctx.hasBoxingElimination() && !isUncached) {
                 if (op.splitOnBoxingElimination()) {
-                    for (FrameKind kind : ctx.getBoxingKinds()) {
+                    for (FrameKind kind : op.getBoxingEliminationSplits()) {
                         b.startCase().variable(op.opcodeIdField).string(" | (short) (", kind.toOrdinal(), " << 13)").end();
                         b.startBlock();
                         vars.specializedKind = kind;
@@ -355,13 +352,13 @@ public class OperationsBytecodeCodeGenerator {
                         createBody.run();
                         b.end();
                     }
-                } else if (op.numPushedValues == 0) {
+                } else if (op.numPushedValues == 0 || op.alwaysBoxed()) {
                     b.startCase().variable(op.opcodeIdField).end();
                     b.startBlock();
                     createBody.run();
                     b.end();
                 } else {
-                    for (FrameKind kind : ctx.getBoxingKinds()) {
+                    for (FrameKind kind : op.getBoxingEliminationSplits()) {
                         b.startCase().variable(op.opcodeIdField).string(" | (short) (", kind.toOrdinal(), " << 13)").end();
                     }
 

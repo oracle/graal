@@ -618,7 +618,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("ContinuationRoot node = root.yieldEntries[entry]");
         b.startIf().string("node == null").end().startBlock();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-        b.statement("node = new ContinuationRoot(root.getLanguageInternal(), root.getFrameDescriptor(), root, target)");
+        b.statement("node = new ContinuationRoot(root.getLanguage(), root.getFrameDescriptor(), root, target)");
         b.statement("root.yieldEntries[entry] = node");
         b.end();
         b.statement("return node");
@@ -703,7 +703,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private CodeTree createNodeCopy(CodeTypeElement typOperationNodeImpl) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startNew(typOperationNodeImpl.asType());
-        b.startCall("getLanguage").typeLiteral(m.languageClass).end();
+        b.startCall("getLanguage").end();
         b.startCall("getFrameDescriptor().copy").end();
         b.end();
         return b.build();
@@ -2696,6 +2696,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement mDoBeforeEmitInstruction = new CodeExecutableElement(MOD_PRIVATE, context.getType(int[].class), "doBeforeEmitInstruction");
         mDoBeforeEmitInstruction.addParameter(new CodeVariableElement(context.getType(int.class), "numPops"));
         mDoBeforeEmitInstruction.addParameter(new CodeVariableElement(context.getType(boolean.class), "pushValue"));
+        mDoBeforeEmitInstruction.addParameter(new CodeVariableElement(context.getType(boolean.class), "doBoxing"));
 
         CodeTreeBuilder b = mDoBeforeEmitInstruction.createBuilder();
 
@@ -2713,7 +2714,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("stackSourceBci = Arrays.copyOf(stackSourceBci, stackSourceBci.length * 2)");
         b.end();
 
-        b.statement("stackSourceBci[curStack] = bci");
+        b.statement("stackSourceBci[curStack] = doBoxing ? bci : -65535");
         b.statement("curStack++");
         b.startIf().string("curStack > maxStack").end().startBlock();
         b.statement("maxStack = curStack");

@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -58,7 +60,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -155,9 +156,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 return null;
             }
 
-            AnnotationMirror mir = ElementUtils.findAnnotationMirror(mirror, getAnnotationType());
-            AnnotationValue valDBE = ElementUtils.getAnnotationValue(mir, "disableBoxingElimination", true);
-
             te = (TypeElement) element;
             if (isShortCircuit) {
                 name = (String) ElementUtils.getAnnotationValue(proxyMirror, "name").getValue();
@@ -215,23 +213,36 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         MethodProperties props = processMethod(data, operationFunctions.get(0));
-        boolean isVariadic = props.isVariadic;
 
         boolean[] canPossiblyReturn = new boolean[FrameKind.values().length];
         canPossiblyReturn[FrameKind.OBJECT.ordinal()] = true;
+
+        Set<FrameKind> possiblePrimitiveReturns = new HashSet<>();
+        boolean isAlwaysBoxed = true;
 
         for (ExecutableElement fun : operationFunctions) {
             MethodProperties props2 = processMethod(data, fun);
             props2.checkMatches(data, props);
             data.getThrowDeclarations().addAll(fun.getThrownTypes());
+
             if (ElementUtils.isObject(fun.getReturnType())) {
+                // object => all primitives could potentially be returned (boxed)
                 for (int i = 0; i < canPossiblyReturn.length; i++) {
                     canPossiblyReturn[i] = true;
+                    possiblePrimitiveReturns.addAll(parentData.getOperationsContext().getPrimitiveBoxingKinds());
                 }
-            } else {
-                canPossiblyReturn[FrameKind.valueOfWithBoxing(fun.getReturnType().getKind()).ordinal()] = true;
+            } else if (parentData.getBoxingEliminatedTypes().contains(fun.getReturnType().getKind())) {
+                isAlwaysBoxed = false;
+                FrameKind kind = FrameKind.valueOfWithBoxing(fun.getReturnType().getKind());
+                canPossiblyReturn[kind.ordinal()] = true;
+                if (kind != FrameKind.OBJECT && !possiblePrimitiveReturns.contains(kind)) {
+                    possiblePrimitiveReturns.add(kind);
+                }
             }
         }
+
+        data.setPossiblePrimitiveTypes(possiblePrimitiveReturns.stream().collect(Collectors.toList()));
+        data.setAlwaysBoxed(isAlwaysBoxed);
 
         if (isShortCircuit && (props.numStackValues != 1 || props.isVariadic || !props.returnsValue)) {
             data.addError("Boolean converter must take exactly one argument, not be variadic, and return a value");
@@ -270,6 +281,8 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             clonedType.add(createExecuteMethod(props, "execute", context.getType(boolean.class), false));
         } else if (!props.returnsValue) {
             clonedType.add(createExecuteMethod(props, "execute", context.getType(void.class), false));
+        } else if (isAlwaysBoxed) {
+            clonedType.add(createExecuteMethod(props, "execute", context.getType(Object.class), false));
         } else {
             for (FrameKind kind : parentData.getFrameKinds()) {
                 if (canPossiblyReturn[kind.ordinal()]) {

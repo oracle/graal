@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -57,6 +56,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 
 public class SingleOperationData extends Template {
     private String name;
@@ -66,6 +66,9 @@ public class SingleOperationData extends Template {
     private final Set<TypeMirror> throwDeclarations = new HashSet<>();
     private final boolean isShortCircuit;
     private boolean shortCircuitContinueWhen;
+
+    private List<FrameKind> possiblePrimitiveTypes;
+    private boolean isAlwaysBoxed;
 
     public enum ParameterKind {
         STACK_VALUE,
@@ -230,6 +233,22 @@ public class SingleOperationData extends Template {
 
     public void setShortCircuitContinueWhen(boolean shortCircuitContinueWhen) {
         this.shortCircuitContinueWhen = shortCircuitContinueWhen;
+    }
+
+    public List<FrameKind> getPossiblePrimitiveTypes() {
+        return possiblePrimitiveTypes;
+    }
+
+    public void setPossiblePrimitiveTypes(List<FrameKind> prossiblePrimitiveTypes) {
+        this.possiblePrimitiveTypes = prossiblePrimitiveTypes;
+    }
+
+    public boolean isAlwaysBoxed() {
+        return isAlwaysBoxed;
+    }
+
+    public void setAlwaysBoxed(boolean isAlwaysBoxed) {
+        this.isAlwaysBoxed = isAlwaysBoxed;
     }
 
 }

@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -55,14 +57,18 @@ import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadLocalInstruction extends Instruction {
 
-    public LoadLocalInstruction(OperationsContext ctx, int id) {
-        super(ctx, "load.local", id, 1);
+    private final boolean boxed;
+
+    public LoadLocalInstruction(OperationsContext ctx, int id, boolean boxed) {
+        super(ctx, "load.local" + (boxed ? ".boxed" : ""), id, 1);
+        this.boxed = boxed;
         addLocal("local");
     }
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
-        String helperName = "do_loadLocal_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
+
+        String helperName = "do_loadLocal" + (boxed ? "Boxed" : "") + "_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
         OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
             CodeExecutableElement res = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), helperName);
 
@@ -121,24 +127,48 @@ public class LoadLocalInstruction extends Instruction {
                     b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName());
                     b.variable(vars.stackFrame);
                     b.variable(vars.sp);
-                    b.startCall("UFA", "unsafeGet" + kind.getFrameName());
+
+                    b.startGroup();
+                    if (boxed) {
+                        b.string("(", kind.getTypeName() + ") ");
+                        b.startCall("UFA", "unsafeGetObject");
+                    } else {
+                        b.startCall("UFA", "unsafeGet" + kind.getFrameName());
+                    }
                     b.variable(vars.localFrame);
                     b.string("localIdx");
-                    b.end();
+                    b.end(2);
+
                     b.end(2);
 
                     if (OperationGeneratorFlags.LOG_LOCAL_LOADS) {
-                        b.statement("System.err.printf(\" [load]  local=%d value=%s kind=" + kind + "%n\", localIdx, $frame.getValue(localIdx))");
+                        b.statement("System.err.printf(\" [load]  local=%d value=%s kind=" + kind + " boxed=" + boxed + "%n\", localIdx, $frame.getValue(localIdx))");
                     }
 
                     b.returnStatement();
 
-                    b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
+                    if (boxed) {
+                        b.end().startCatchBlock(new TypeMirror[]{types.FrameSlotTypeException, context.getType(ClassCastException.class)}, "ex");
+                    } else {
+                        b.end().startCatchBlock(types.FrameSlotTypeException, "ex");
+                    }
 
                     b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                     b.startAssign("Object result").startCall(vars.localFrame, "getValue").string("localIdx").end(2);
 
                     b.startIf().string("result instanceof " + kind.getTypeNameBoxed()).end().startBlock();
+
+                    b.startIf().startCall("UFA", "unsafeByteArrayRead").string("localTags").string("localIdx").end().string(" == 7").end().startBlock();
+
+                    if (OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
+                        b.statement("System.err.printf(\" [load-spec]  local=%d value=%s kind=OBJECT->" + kind + " (boxed)%n\", localIdx, $frame.getValue(localIdx))");
+                    }
+
+                    b.tree(OperationGeneratorUtils.createWriteOpcode(
+                                    vars.bc, vars.bci,
+                                    "(short) (" + ctx.loadLocalBoxed.opcodeIdField.getName() + " | (" + kind.toOrdinal() + " << 13))"));
+
+                    b.end().startElseBlock();
 
                     if (OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
                         b.statement("System.err.printf(\" [load-spec]  local=%d value=%s kind=OBJECT->" + kind + "%n\", localIdx, $frame.getValue(localIdx))");
@@ -154,15 +184,16 @@ public class LoadLocalInstruction extends Instruction {
                     b.startStatement().startCall("UFA", "unsafeSet" + kind.getFrameName()).variable(vars.stackFrame).variable(vars.sp).string("(", kind.getTypeName(), ") result").end(2);
                     b.returnStatement();
 
-                    b.end();
-                    b.end();
+                    b.end(); // if tag
+                    b.end(); // if instanceof
+                    b.end(); // try
                 }
 
                 if (kind != FrameKind.OBJECT) {
                     b.startAssign("Object result").startCall(vars.localFrame, "getValue").string("localIdx").end(2);
 
                     if (OperationGeneratorFlags.LOG_LOCAL_LOADS_SPEC) {
-                        b.statement("System.err.printf(\" [load-spec]  local=%d value=%s kind=" + kind + "->OBJECT%n\", localIdx, $frame.getValue(localIdx))");
+                        b.statement("System.err.printf(\" [load-spec]  local=%d value=%s kind=" + kind + "->OBJECT boxed=" + boxed + "%n\", localIdx, $frame.getValue(localIdx))");
                     }
 
                     b.startStatement().startCall("UFA", "unsafeByteArrayWrite");
@@ -174,7 +205,6 @@ public class LoadLocalInstruction extends Instruction {
                     b.startStatement().startCall("UFA", "unsafeSetObject").variable(vars.localFrame).string("localIdx").string("result").end(2);
                     b.startStatement().startCall("UFA", "unsafeSetObject").variable(vars.stackFrame).variable(vars.sp).string("result").end(2);
                 }
-
             } else {
                 if (ctx.getData().enableYield) {
                     b.startStatement().startCall("UFA", "unsafeCopyTo");
@@ -234,6 +264,20 @@ public class LoadLocalInstruction extends Instruction {
     @Override
     public boolean splitOnBoxingElimination() {
         return true;
+    }
+
+    @Override
+    public List<FrameKind> getBoxingEliminationSplits() {
+        if (boxed) {
+            return ctx.getPrimitiveBoxingKinds();
+        } else {
+            return ctx.getBoxingKinds();
+        }
+    }
+
+    @Override
+    public boolean alwaysBoxed() {
+        return boxed;
     }
 
 }

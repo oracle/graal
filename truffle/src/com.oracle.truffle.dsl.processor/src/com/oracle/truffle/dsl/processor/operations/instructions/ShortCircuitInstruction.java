@@ -101,5 +101,4 @@ public class ShortCircuitInstruction extends CustomInstruction {
     public boolean isBranchInstruction() {
         return true;
     }
-
 }

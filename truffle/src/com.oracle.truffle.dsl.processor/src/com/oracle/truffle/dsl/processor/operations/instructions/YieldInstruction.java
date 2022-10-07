@@ -68,4 +68,9 @@ public class YieldInstruction extends Instruction {
         return null;
     }
 
+    @Override
+    public boolean alwaysBoxed() {
+        return true;
+    }
+
 }
