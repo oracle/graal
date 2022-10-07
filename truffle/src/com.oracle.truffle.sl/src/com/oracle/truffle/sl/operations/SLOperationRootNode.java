@@ -112,10 +112,6 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
 
     static final boolean __magic_LogInvalidations = true;
 
-    protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
-        super((SLLanguage) language, frameDescriptor.build());
-    }
-
     protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);
     }

@@ -93,10 +93,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             data.addError(typeElement, "Operations class must be declared abstract.");
         }
 
-        if (ElementUtils.findParentEnclosingType(typeElement).isPresent()) {
-            data.addError(typeElement, "Operations class must be a top-level class.");
-        }
-
         if (!ElementUtils.isAssignable(typeElement.asType(), types.RootNode)) {
             data.addError(typeElement, "Operation class must directly or indirectly subclass RootNode");
         }
@@ -104,13 +100,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         if (!ElementUtils.isAssignable(typeElement.asType(), types.OperationRootNode)) {
             data.addError(typeElement, "Operation class must directly or indirectly implement OperationRootNode");
         }
-
-        if (data.hasErrors()) {
-            return data;
-        }
-
-        boolean haveNonBuilderCtor = false;
-        boolean haveBuilderCtor = false;
 
         for (ExecutableElement ctor : ElementFilter.constructorsIn(typeElement.getEnclosedElements())) {
             boolean isValid = ctor.getParameters().size() == 2;
@@ -122,9 +111,9 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             if (isValid) {
                 TypeMirror paramType2 = ctor.getParameters().get(1).asType();
                 if (ElementUtils.isAssignable(paramType2, types.FrameDescriptor)) {
-                    haveNonBuilderCtor = true;
+                    data.fdConstructor = ctor;
                 } else if (ElementUtils.isAssignable(paramType2, context.getDeclaredType(TruffleTypes.FrameDescriptor_Name + ".Builder"))) {
-                    haveBuilderCtor = true;
+                    data.fdBuilderConstructor = ctor;
                 } else {
                     isValid = false;
                 }
@@ -135,12 +124,8 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
         }
 
-        if (!haveNonBuilderCtor) {
-            data.addError(typeElement, "Operation class requires a (TruffleLanguage, FrameDescriptor) constructor");
-        }
-
-        if (!haveBuilderCtor) {
-            data.addError(typeElement, "Operation class requires a (TruffleLanguage, FrameDescriptor.Builder) constructor");
+        if (data.fdConstructor == null) {
+            data.addError(typeElement, "Operation class requires a (TruffleLanguage, FrameDescriptor) constructor.");
         }
 
         if (data.hasErrors()) {

@@ -301,9 +301,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private CodeTypeElement createOperationSerNodeImpl() {
         CodeTypeElement typOperationNodeImpl = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "OperationSerNodeImpl", m.getTemplateType().asType());
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "buildOrder")));
-        for (ExecutableElement el : ElementFilter.constructorsIn(m.getTemplateType().getEnclosedElements())) {
-            typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl, el));
-        }
+        typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl, m.fdConstructor));
 
         for (String methodName : new String[]{"dump", "execute", "getSourceSectionAtBci"}) {
             CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationRootNode, methodName);
@@ -347,11 +345,24 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement typBytecodeBase = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_ABSTRACT, BYTECODE_BASE_NAME, null);
         typOperationNodeImpl.add(createBytecodeBaseClass(typBytecodeBase, typOperationNodeImpl, typExceptionHandler));
 
-        for (ExecutableElement ctor : ElementFilter.constructorsIn(m.getTemplateType().getEnclosedElements())) {
-            CodeExecutableElement genCtor = typOperationNodeImpl.add(GeneratorUtils.createSuperConstructor(m.getTemplateType(), ctor));
-            genCtor.setSimpleName(CodeNames.of(simpleName));
-            genCtor.getModifiers().clear();
-            genCtor.getModifiers().add(Modifier.PRIVATE);
+        CodeExecutableElement genCtor = typOperationNodeImpl.add(GeneratorUtils.createSuperConstructor(m.getTemplateType(), m.fdConstructor));
+        genCtor.setSimpleName(CodeNames.of(simpleName));
+        genCtor.getModifiers().clear();
+        genCtor.getModifiers().add(Modifier.PRIVATE);
+
+        if (m.fdBuilderConstructor == null) {
+            CodeExecutableElement genBuilderCtor = typOperationNodeImpl.add(new CodeExecutableElement(MOD_PRIVATE, null, simpleName));
+            genBuilderCtor.addParameter(genCtor.getParameters().get(0));
+            genBuilderCtor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
+            genBuilderCtor.renameArguments("language", "builder");
+
+            CodeTreeBuilder b = genBuilderCtor.createBuilder();
+            b.startStatement().startCall("this").string("language").string("builder.build()").end(2);
+        } else {
+            CodeExecutableElement genBuilderCtor = typOperationNodeImpl.add(GeneratorUtils.createSuperConstructor(m.getTemplateType(), m.fdBuilderConstructor));
+            genBuilderCtor.setSimpleName(CodeNames.of(simpleName));
+            genBuilderCtor.getModifiers().clear();
+            genBuilderCtor.getModifiers().add(Modifier.PRIVATE);
         }
 
         boolean doHookTti = ElementFilter.fieldsIn(m.getTemplateType().getEnclosedElements()).stream().anyMatch(x -> x.getSimpleName().toString().equals("__magic_LogInvalidations"));
@@ -2220,7 +2231,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
             b.startIf().string("isSerializing").end().startBlock();
-            b.declaration(m.getTemplateType().getSimpleName().toString(), "result", "new OperationSerNodeImpl(null, FrameDescriptor.newBuilder(), buildIndex++)");
+            b.declaration(m.getTemplateType().getSimpleName().toString(), "result", "new OperationSerNodeImpl(null, FrameDescriptor.newBuilder().build(), buildIndex++)");
             b.statement("numLocals = 0");
             b.statement("numLabels = 0");
             b.statement("return result");

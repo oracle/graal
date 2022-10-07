@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
@@ -79,6 +80,9 @@ public class OperationsData extends Template {
     private int numTosSlots;
 
     public boolean enableYield;
+
+    public ExecutableElement fdConstructor;
+    public ExecutableElement fdBuilderConstructor;
 
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);

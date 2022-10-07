@@ -87,6 +87,7 @@ public class TruffleTypes {
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
+    public static final String FrameDescriptor_Builder_Name = "com.oracle.truffle.api.frame.FrameDescriptor.Builder";
     public static final String FrameSlotKind_Name = "com.oracle.truffle.api.frame.FrameSlotKind";
     public static final String FrameSlotTypeException_Name = "com.oracle.truffle.api.frame.FrameSlotTypeException";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
@@ -127,6 +128,7 @@ public class TruffleTypes {
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
+    public final DeclaredType FrameDescriptor_Builder = c.getDeclaredType(FrameDescriptor_Builder_Name);
     public final DeclaredType FrameSlotKind = c.getDeclaredType(FrameSlotKind_Name);
     public final DeclaredType FrameSlotTypeException = c.getDeclaredType(FrameSlotTypeException_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);

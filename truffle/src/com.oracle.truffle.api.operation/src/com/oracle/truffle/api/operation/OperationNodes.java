@@ -42,6 +42,7 @@ package com.oracle.truffle.api.operation;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -59,6 +60,11 @@ public abstract class OperationNodes<NodeType extends RootNode & OperationRootNo
 
     protected OperationNodes(OperationParser<? extends OperationBuilder> parse) {
         this.parse = parse;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("OperationNodes %s", Arrays.toString(nodes));
     }
 
     @SuppressWarnings({"unchecked", "cast", "rawtypes"})
