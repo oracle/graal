@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +23,26 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.sampler;
 
-import org.junit.Test;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
- * Test if event ({@link ThreadEvent}) with {@link Thread} payload is working.
+ * Returns {@code true} if the Native Image is built with Sampler support. This does not necessarily
+ * mean that Sampler is really enabled at runtime (see
+ * {@link SubstrateSigprofHandler#isProfilingEnabled()}).
  */
-public class TestThreadEvent extends JfrTest {
+public class SamplerHasSupport implements BooleanSupplier {
     @Override
-    public String[] getTestedEvents() {
-        return new String[]{
-                        ThreadEvent.class.getName()
-        };
+    public boolean getAsBoolean() {
+        return get();
     }
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
+    @Fold
+    public static boolean get() {
+        return ImageSingletons.contains(SubstrateSigprofHandler.class);
     }
 }
