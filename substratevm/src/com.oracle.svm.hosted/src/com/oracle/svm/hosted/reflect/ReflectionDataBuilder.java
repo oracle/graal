@@ -108,7 +108,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<AccessibleObject> heapReflectionObjects = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
 
-    private final Set<Type> processedTypes = new HashSet<>();
+    private final Map<Type, Integer> processedTypes = new HashMap<>();
     private final Set<DynamicHub> processedDynamicHubs = new HashSet<>();
     private final Map<AnalysisField, Set<AnalysisType>> processedHidingFields = new HashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisType>> processedHidingMethods = new HashMap<>();
@@ -531,18 +531,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
+        makeTypeReachable(access, type, 0);
+    }
+
+    /*
+     * We need the dimension argument to keep track of how deep in the stack of GenericArrayType
+     * instances we are so we register the correct array type once we get to the leaf Class object.
+     */
+    private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type, int dimension) {
         try {
-            if (type == null || processedTypes.contains(type)) {
+            if (type == null || processedTypes.getOrDefault(type, -1) >= dimension) {
                 return;
             }
         } catch (TypeNotPresentException e) {
             /* Hash code computation can trigger an exception if the type is missing */
             return;
         }
-        processedTypes.add(type);
+        processedTypes.put(type, dimension);
         if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
             Class<?> clazz = (Class<?>) type;
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz));
+            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz).getArrayClass(dimension));
 
             /*
              * Reflection signature parsing will try to instantiate classes via Class.forName().
@@ -556,13 +564,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 makeTypeReachable(access, bound);
             }
         } else if (type instanceof GenericArrayType) {
-            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType());
+            /*
+             * We only need to register the array type here, since it is the one that gets stored in
+             * the heap. The component type will be registered elsewhere if needed.
+             */
+            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType(), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
             for (Type actualType : parameterizedType.getActualTypeArguments()) {
                 makeTypeReachable(access, actualType);
             }
-            makeTypeReachable(access, parameterizedType.getRawType());
+            makeTypeReachable(access, parameterizedType.getRawType(), dimension);
             makeTypeReachable(access, parameterizedType.getOwnerType());
         } else if (type instanceof WildcardType) {
             WildcardType wildcardType = (WildcardType) type;
