@@ -46,6 +46,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 
+import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -394,10 +396,12 @@ public class SVMHost extends HostVM {
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
         boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
+        boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
+        boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
 
-        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
-                        superHub, componentHub, sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus,
-                        type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, simpleBinaryName, getDeclaringClass(javaClass));
+        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
+                        isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
+                        getDeclaringClass(javaClass));
         ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }

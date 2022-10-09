@@ -31,6 +31,7 @@ import java.security.AccessController;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -145,11 +146,11 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+        if (DynamicHub.fromClass(clazz).isVMInternal()) {
             return false;
         }
 
-        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
+        if (!showLambdaFrames && DynamicHub.fromClass(clazz).isLambdaFormHidden()) {
             return false;
         }
 

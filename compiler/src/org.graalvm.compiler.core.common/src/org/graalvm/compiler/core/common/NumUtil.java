@@ -120,6 +120,11 @@ public class NumUtil {
         return (byte) v;
     }
 
+    public static short safeToUShort(int v) {
+        assert isUShort(v);
+        return (short) v;
+    }
+
     public static short safeToShort(int v) {
         assert isShort(v);
         return (short) v;
