@@ -54,7 +54,7 @@ public final class IOAccess {
 
     IOAccess(boolean allowHostFileAccess, boolean allowSocketAccess, FileSystem fileSystem) {
         if (allowHostFileAccess && fileSystem != null) {
-            throw new IllegalStateException("The allow host file access and custom filesystem are mutually exclusive.");
+            throw new IllegalArgumentException("The allow host file access and custom filesystem are mutually exclusive.");
         }
         this.allowHostFileAccess = allowHostFileAccess;
         this.allowSocketAccess = allowSocketAccess;

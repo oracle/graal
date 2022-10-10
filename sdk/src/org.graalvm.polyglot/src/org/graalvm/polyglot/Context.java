@@ -1503,7 +1503,9 @@ public final class Context implements AutoCloseable {
          * @param enabled {@code true} to enable Input/Output
          * @return the {@link Builder}
          * @since 19.0
+         * @deprecated Use {@link #allowIO(IOAccess)}
          */
+        @Deprecated
         public Builder allowIO(final boolean enabled) {
             allowIO = enabled;
             return this;
@@ -1515,7 +1517,9 @@ public final class Context implements AutoCloseable {
          * @param fileSystem the file system to be installed
          * @return the {@link Builder}
          * @since 19.0
+         * @deprecated Use {@link #allowIO(IOAccess)}
          */
+        @Deprecated
         public Builder fileSystem(final FileSystem fileSystem) {
             Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             this.customFileSystem = fileSystem;
