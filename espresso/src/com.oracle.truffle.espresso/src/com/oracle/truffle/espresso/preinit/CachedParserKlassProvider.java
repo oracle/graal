@@ -45,10 +45,9 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
 
     @Override
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
-        assert (info.isAnonymousClass() && typeOrNull == null) || (!info.isAnonymousClass() && typeOrNull != null);
-        if (shouldCacheClass(info)) {
+        if (shouldCacheClass(info) && typeOrNull != null) {
             ParserKlassCacheKey key = null;
-            ParserKlass parserKlass = null;
+            ParserKlass parserKlass;
 
             boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
 
