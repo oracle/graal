@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvo
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -96,7 +97,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
-import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -519,7 +519,7 @@ public final class TruffleBaseFeature implements InternalFeature {
              * Never replaceable classes do not count as candidates. They are checked to never be
              * used for replacing.
              */
-            if (DirectAnnotationAccess.getAnnotation(u, DenyReplace.class) != null) {
+            if (AnnotationAccess.getAnnotation(u, DenyReplace.class) != null) {
                 return;
             }
 

@@ -134,7 +134,6 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -142,6 +141,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 public class MethodTypeFlowBuilder {
 
@@ -335,7 +335,7 @@ public class MethodTypeFlowBuilder {
 
     protected void apply() {
         // assert method.getAnnotation(Fold.class) == null : method;
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
+        if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
             AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
             if (returnType.getJavaKind() == JavaKind.Object) {

@@ -41,11 +41,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.hosted.annotation.AnnotationMetadata.AnnotationExtractionError;
-import com.oracle.svm.util.AnnotationExtracter;
 import com.oracle.svm.util.AnnotationWrapper;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ConstantPool;
@@ -63,7 +63,7 @@ import sun.reflect.annotation.AnnotationParser;
  * through the JDK's {@link AnnotationParser} initializes the class of every annotation on the
  * queried element.
  *
- * When queried, the extracter looks for the root of the provided element, which can be a
+ * When queried, the extractor looks for the root of the provided element, which can be a
  * {@link Field}, {@link Method}, {@link Constructor} or {@link Class} object, as well as a record
  * component on JDK 17. It then looks into the byte arrays representing annotations in the root
  * object and outputs wrapper classes containing all the information necessary to reconstruct the
@@ -71,12 +71,12 @@ import sun.reflect.annotation.AnnotationParser;
  * subclass of {@link AnnotationMemberValue}. The actual annotation can then be created using the
  * {@link AnnotationMemberValue#get(Class)} method.
  *
- * The {@link SubstrateAnnotationExtracter} is tightly coupled with {@link GuardedAnnotationAccess},
- * which provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
+ * The {@link SubstrateAnnotationExtractor} is tightly coupled with {@link AnnotationAccess}, which
+ * provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
  * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} should
  * in principle not be used during Native Image generation.
  */
-public class SubstrateAnnotationExtracter implements AnnotationExtracter {
+public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private final Map<Class<?>, AnnotationValue[]> annotationCache = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, AnnotationValue[]> declaredAnnotationCache = new ConcurrentHashMap<>();
     private final Map<Executable, AnnotationValue[][]> parameterAnnotationCache = new ConcurrentHashMap<>();
@@ -163,22 +163,43 @@ public class SubstrateAnnotationExtracter implements AnnotationExtracter {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly) {
-        for (AnnotationValue annotation : getAnnotationData(element, declaredOnly)) {
-            if (annotation.type != null && annotation.type.equals(annotationType)) {
-                return (T) resolvedAnnotationsCache.computeIfAbsent(annotation, value -> (Annotation) value.get(annotationType));
+        try {
+            for (AnnotationValue annotation : getAnnotationData(element, declaredOnly)) {
+                if (annotation.type != null && annotation.type.equals(annotationType)) {
+                    return (T) resolvedAnnotationsCache.computeIfAbsent(annotation, value -> (Annotation) value.get(annotationType));
+                }
             }
+            return null;
+        } catch (LinkageError e) {
+            /*
+             * Returning null essentially means that the element doesn't declare the annotationType,
+             * but we cannot know that since the annotation parsing failed. However, this allows us
+             * to defend against crashing the image builder if the user code references types
+             * missing from the classpath.
+             */
+            return null;
         }
-        return null;
+
     }
 
     @Override
     public boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType) {
-        for (AnnotationValue annotation : getAnnotationData(element, false)) {
-            if (annotation.type != null && annotation.type.equals(annotationType)) {
-                return true;
+        try {
+            for (AnnotationValue annotation : getAnnotationData(element, false)) {
+                if (annotation.type != null && annotation.type.equals(annotationType)) {
+                    return true;
+                }
             }
+            return false;
+        } catch (LinkageError e) {
+            /*
+             * Returning false essentially means that the element doesn't declare the
+             * annotationType, but we cannot know that since the annotation parsing failed. However,
+             * this allows us to defend against crashing the image builder if the user code
+             * references types missing from the classpath.
+             */
+            return false;
         }
-        return false;
     }
 
     @SuppressWarnings("unchecked")

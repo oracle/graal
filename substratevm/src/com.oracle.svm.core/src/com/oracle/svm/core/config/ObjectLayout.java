@@ -26,8 +26,8 @@ package com.oracle.svm.core.config;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -182,7 +182,7 @@ public final class ObjectLayout {
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             return target.wordJavaKind;
         }
-        if (isEntryPoint && GuardedAnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
+        if (isEntryPoint && AnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
             return JavaKind.Int;
         }
         return type.getJavaKind();

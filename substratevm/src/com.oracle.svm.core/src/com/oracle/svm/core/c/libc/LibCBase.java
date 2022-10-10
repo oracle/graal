@@ -30,22 +30,22 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 public interface LibCBase {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean containsLibCAnnotation(AnnotatedElement element) {
-        return GuardedAnnotationAccess.getAnnotation(element, LibCSpecific.class) != null;
+        return AnnotationAccess.getAnnotation(element, LibCSpecific.class) != null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isProvidedInCurrentLibc(AnnotatedElement element) {
         LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
-        LibCSpecific targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibCSpecific.class);
+        LibCSpecific targetLibC = AnnotationAccess.getAnnotation(element, LibCSpecific.class);
         return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
     }
 

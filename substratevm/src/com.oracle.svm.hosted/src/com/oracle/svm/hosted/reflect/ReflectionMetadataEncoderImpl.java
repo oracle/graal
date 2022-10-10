@@ -63,6 +63,7 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -93,7 +94,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.Reflection;
@@ -330,7 +330,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         boolean trustedFinal = isTrustedFinal(reflectField);
         String signature = getSignature(reflectField);
         int offset = hostedField.wrapped.isUnsafeAccessed() ? hostedField.getOffset() : SharedField.LOC_UNINITIALIZED;
-        Delete deleteAnnotation = GuardedAnnotationAccess.getAnnotation(hostedField, Delete.class);
+        Delete deleteAnnotation = AnnotationAccess.getAnnotation(hostedField, Delete.class);
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
 
         /* Fill encoders with the necessary values. */

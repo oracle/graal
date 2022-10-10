@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import com.oracle.svm.util.DirectAnnotationAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -74,7 +74,7 @@ public class SnippetRuntime {
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable,
                     LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
-        SubstrateForeignCallTarget foreignCallTargetAnnotation = DirectAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
+        SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
 
         boolean isUninterruptible = Uninterruptible.Utils.isUninterruptible(method);
@@ -85,7 +85,7 @@ public class SnippetRuntime {
     private static SubstrateForeignCallDescriptor findForeignJdkCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean isUninterruptible,
                     boolean isFullyUninterruptible, LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
-        SubstrateForeignCallTarget foreignCallTargetAnnotation = DirectAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
+        SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation == null, declaringClass.getName() + "." + methodName + " must not be annotated with @SubstrateForeignCallTarget.");
 
         return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);

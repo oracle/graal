@@ -43,12 +43,14 @@ package org.graalvm.nativeimage.impl;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
-public interface ImageBuildtimeCodeAnnotationAccessSupport {
-    // needed as Annotation Access-specific ImageSingletons key
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    boolean isAnnotationPresent(AnnotatedElement element, Class<? extends Annotation> annotationClass);
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface AnnotationExtractor {
+    boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType);
 
-    Annotation getAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType);
+    <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
 
     Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element);
 }

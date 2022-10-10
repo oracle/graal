@@ -125,6 +125,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilatio
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -160,7 +161,6 @@ import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -762,12 +762,12 @@ public class TruffleFeature implements InternalFeature {
              * all methods in the warning list, just enough to trigger the warnings. Accessors are
              * generally allowed too.
              */
-            if (GuardedAnnotationAccess.getAnnotationTypes(m).length == 0 && !m.getName().startsWith("get") && !m.getName().startsWith("set")) {
+            if (AnnotationAccess.getAnnotationTypes(m).length == 0 && !m.getName().startsWith("get") && !m.getName().startsWith("set")) {
                 warnMethods.add(metaAccess.lookupJavaMethod(m));
             }
         }
         for (Executable m : clazz.getDeclaredConstructors()) {
-            if (GuardedAnnotationAccess.getAnnotationTypes(m).length == 0) {
+            if (AnnotationAccess.getAnnotationTypes(m).length == 0) {
                 warnMethods.add(metaAccess.lookupJavaMethod(m));
             }
         }
