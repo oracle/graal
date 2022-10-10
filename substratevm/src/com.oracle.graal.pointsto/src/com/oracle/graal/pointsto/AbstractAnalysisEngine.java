@@ -35,6 +35,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -55,7 +58,10 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This abstract class is shared between Reachability and Points-to. It contains generic methods
@@ -307,4 +313,26 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     public Replacements getReplacements() {
         return replacements;
     }
+
+    /**
+     * Provide a non-null position. Some flows like newInstance and invoke require a non-null
+     * position, for others is just better. The constructed position is best-effort, i.e., it
+     * contains at least the method, and a BCI only if the node provides it.
+     *
+     * This is necessary because {@link Node#getNodeSourcePosition()} doesn't always provide a
+     * position, like for example for generated factory methods in FactoryThrowMethodHolder.
+     */
+    public static BytecodePosition sourcePosition(ValueNode node) {
+        BytecodePosition position = node.getNodeSourcePosition();
+        if (position == null) {
+            int bci = BytecodeFrame.UNKNOWN_BCI;
+            if (node instanceof DeoptBciSupplier) {
+                bci = ((DeoptBciSupplier) node).bci();
+            }
+            ResolvedJavaMethod method = node.graph().method();
+            position = new BytecodePosition(null, method, bci);
+        }
+        return position;
+    }
+
 }

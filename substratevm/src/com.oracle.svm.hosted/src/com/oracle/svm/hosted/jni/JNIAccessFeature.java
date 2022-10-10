@@ -418,7 +418,7 @@ public class JNIAccessFeature implements Feature {
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers()));
         field.registerAsJNIAccessed();
-        field.registerAsRead(null);
+        field.registerAsRead("it is registered for JNI access");
         if (writable) {
             field.registerAsWritten(null);
             AnalysisType fieldType = field.getType();

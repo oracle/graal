@@ -27,10 +27,19 @@ package com.oracle.graal.pointsto.util;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class AtomicUtils {
+
+    public static <T, V> boolean atomicSet(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater) {
+        return updater.compareAndSet(holder, null, value);
+    }
+
+    public static <T, V> boolean isSet(T holder, AtomicReferenceFieldUpdater<T, V> updater) {
+        return updater.get(holder) != null;
+    }
 
     /**
      * Atomically set the field to 1 if the current value is 0.
