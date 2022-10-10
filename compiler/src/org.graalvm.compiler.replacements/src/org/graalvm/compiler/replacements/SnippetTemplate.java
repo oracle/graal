@@ -1032,6 +1032,7 @@ public class SnippetTemplate {
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
         snippetCopy.getGraphState().setGuardsStage(snippetGraph.getGuardsStage());
+        snippetCopy.getGraphState().getStageFlags().addAll(snippetGraph.getGraphState().getStageFlags());
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
@@ -1215,7 +1216,10 @@ public class SnippetTemplate {
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
                 new FloatingReadPhase(true, canonicalizer).apply(snippetCopy, providers);
-                new GuardLoweringPhase().apply(snippetCopy, providers);
+                if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
+                    new GuardLoweringPhase().apply(snippetCopy, providers);
+                }
+                assert snippetCopy.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING);
                 new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
