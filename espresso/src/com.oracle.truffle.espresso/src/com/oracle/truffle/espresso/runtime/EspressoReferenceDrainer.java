@@ -234,6 +234,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
             }
         }
 
+        @TruffleBoundary
         private void drain(Meta meta, StaticObject lock, boolean block) {
             // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
             // HotSpot's "new behavior": Walk down the list, self-looping the next field
