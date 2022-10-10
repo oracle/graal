@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 23.0.0
+* (GR-26758) Added the [TraceLimits](https://www.graalvm.org/reference-manual/embed-languages/sandbox-resource-limits#determining-sandbox-resource-limits) option to the Truffle Sandbox to measure a guest application's resource consumption and obtain realistic sandbox parameters.
+
 ## Version 22.3.0
 * (GR-39852) Native Image API: Added FieldValueTransformer API
 * (GR-35358) Added `Context.Builder.allowInnerContextOptions(boolean)` which allows the context to spawn inner contexts and modify and override language options. The default value for this privilege is set depending `Context.Builder.allowAllPrivilages(boolean)` is set or not. Do not enable this privilege in security sensitive scenarios.
