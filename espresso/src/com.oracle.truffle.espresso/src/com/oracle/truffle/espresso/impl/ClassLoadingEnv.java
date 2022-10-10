@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -29,8 +31,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 public class ClassLoadingEnv implements LanguageAccess {
     private final AtomicLong klassIdProvider = new AtomicLong();
@@ -72,6 +72,10 @@ public class ClassLoadingEnv implements LanguageAccess {
     public boolean loaderIsBootOrPlatform(StaticObject loader) {
         return StaticObject.isNull(loader) ||
                         (language.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
+    }
+
+    public boolean loaderIsApp(StaticObject loader) {
+        return language.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$AppClassLoader.isAssignableFrom(loader.getKlass());
     }
 
     public long getNewKlassId() {

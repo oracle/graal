@@ -551,6 +551,7 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders = knownKlass(Type.jdk_internal_loader_ClassLoaders);
             jdk_internal_loader_ClassLoaders_platformClassLoader = jdk_internal_loader_ClassLoaders.requireDeclaredMethod(Name.platformClassLoader, Signature.ClassLoader);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
+            jdk_internal_loader_ClassLoaders$AppClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$AppClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
             java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
             java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
@@ -569,6 +570,7 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders = null;
             jdk_internal_loader_ClassLoaders_platformClassLoader = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
+            jdk_internal_loader_ClassLoaders$AppClassLoader = null;
             java_lang_StackWalker = null;
             java_lang_AbstractStackWalker = null;
             java_lang_AbstractStackWalker_doStackWalk = null;
@@ -1036,6 +1038,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass jdk_internal_loader_ClassLoaders;
     public final Method jdk_internal_loader_ClassLoaders_platformClassLoader;
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
+    public final ObjectKlass jdk_internal_loader_ClassLoaders$AppClassLoader;
 
     public final ObjectKlass java_lang_Module;
     public final Field java_lang_Module_name;
