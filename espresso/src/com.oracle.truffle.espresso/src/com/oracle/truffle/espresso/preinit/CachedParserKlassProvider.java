@@ -47,15 +47,25 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         if (shouldCacheClass(info) && typeOrNull != null) {
             ParserKlassCacheKey key = null;
-            ParserKlass parserKlass;
+            ParserKlass parserKlass = null;
 
-            boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
+            boolean loaderIsBootOrPlatform = false;
+            boolean loaderIsApp = false;
+            if (env.loaderIsBootOrPlatform(loader)) {
+                loaderIsBootOrPlatform = true;
+            } else if (env.loaderIsApp(loader)) {
+                loaderIsApp = true;
+            } else {
+                // no cache for this class loader
+                return fallbackProvider.getParserKlass(env, loader, typeOrNull, bytes, info);
+            }
 
             if (loaderIsBootOrPlatform) {
                 // For boot/platform CL, query the boot cache
                 parserKlass = bootParserKlassCache.get(typeOrNull);
             } else {
-                // For other class loaders, query the application cache
+                assert loaderIsApp;
+                // For app class loader, query the application cache
                 key = new ParserKlassCacheKey(bytes);
                 parserKlass = appParserKlassCache.get(key);
             }
@@ -67,6 +77,7 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
                 if (loaderIsBootOrPlatform) {
                     bootParserKlassCache.put(typeOrNull, parserKlass);
                 } else {
+                    assert loaderIsApp;
                     appParserKlassCache.put(key, parserKlass);
                 }
             } else {
