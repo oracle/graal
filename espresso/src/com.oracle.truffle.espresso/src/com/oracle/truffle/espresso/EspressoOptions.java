@@ -607,7 +607,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> UseHostFinalReference = new OptionKey<>(true);
+    public static final OptionKey<Boolean> UseHostFinalReference = new OptionKey<>(false);
 
     public enum JImageMode {
         NATIVE,
@@ -636,7 +636,7 @@ public final class EspressoOptions {
 
     // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
     public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);
-    public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", true);
+    public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", false);
 
     private static boolean booleanProperty(String name, boolean defaultValue) {
         String value = System.getProperty(name);
