@@ -152,21 +152,6 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-maven-dry-run-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_11_17 + vm_common.sulong_linux + {
-     downloads+: {
-       OPEN_JDK_11: common_json.jdks.openjdk11,
-     },
-     run: [
-       $.maven_11_17.build,
-       $.maven_11_17.deploy + ['--version-string', 'GATE'],
-       ['set-export', 'JAVA_HOME', '$OPEN_JDK_11'],
-       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal-js-jdk11-maven-demo.git'], 'graal-js-jdk11-maven-demo'],
-       ['cd', 'graal-js-jdk11-maven-demo'],
-       ['mvn', '-Dgraalvm.version=GATE', 'package'],
-       ['mvn', '-Dgraalvm.version=GATE', 'exec:exec'],
-     ],
-     name: 'gate-vm-js-on-jdk11-maven-linux-amd64',
-    },
     vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_11_17 + vm_common.sulong_linux + {
      run: [
        $.maven_11_17.build,
