@@ -529,6 +529,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     private CodeExecutableElement createHookTransferToInterpreterAndInvalidate() {
         CodeExecutableElement el = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "hook_transferToInterpreterAndInvalidate");
+        el.addParameter(new CodeVariableElement(m.getOperationsContext().outerType.asType(), "$this"));
 
         CodeTreeBuilder b = el.createBuilder();
 
@@ -538,7 +539,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         for (VariableElement field : ElementFilter.fieldsIn(m.getTemplateType().getEnclosedElements())) {
             if (field.getSimpleName().toString().equals("__magic_CountInvalidations")) {
-                b.startStatement().staticReference(field).string(" += 1").end();
+                b.startStatement().field("$this", field).string(" += 1").end();
             }
         }
 
@@ -826,6 +827,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.startIf().string("(result & 0xffff) == 0xffff").end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
+        b.declaration(m.getOperationsContext().outerType.asType(), "$this", "this");
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.end();
 
@@ -1289,6 +1291,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
     private CodeExecutableElement createConditionProfile() {
         CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(boolean.class), "do_profileCondition");
+        met.addParameter(new CodeVariableElement(m.getOperationsContext().outerType.asType(), "$this"));
         met.addParameter(new CodeVariableElement(context.getType(boolean.class), "value"));
         met.addParameter(new CodeVariableElement(context.getType(int[].class), "profiles"));
         met.addParameter(new CodeVariableElement(context.getType(int.class), "index"));

@@ -70,31 +70,22 @@ public class BoxingOperationsTest {
     private static final int NUM_ITERATIONS = 10_000;
     private static final int MAX_INVALIDATIONS = 20;
 
-    private static RootCallTarget parse(OperationParser<BoxingOperationsGen.Builder> parser) {
-        OperationRootNode node = parseNode(parser);
-        return ((RootNode) node).getCallTarget();
-    }
-
-    private static OperationRootNode parseNode(OperationParser<BoxingOperationsGen.Builder> parser) {
-        OperationNodes nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
-        OperationRootNode node = nodes.getNodes().get(0);
+    private static BoxingOperations parse(OperationParser<BoxingOperationsGen.Builder> parser) {
+        OperationNodes<BoxingOperations> nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
+        BoxingOperations node = nodes.getNodes().get(0);
         // System.out.println(node.dump());
         return node;
     }
 
-    private static void testInvalidations(Runnable r) {
-        int startInvalidations = BoxingOperations.__magic_CountInvalidations;
-
+    private static void testInvalidations(BoxingOperations node, int invalidations, Runnable r) {
         r.run();
-
-        int totalInval = BoxingOperations.__magic_CountInvalidations - startInvalidations;
-
-        Assert.assertTrue("too many invalidations: " + totalInval, totalInval <= MAX_INVALIDATIONS);
+        int totalInval = node.__magic_CountInvalidations;
+        Assert.assertEquals(invalidations, totalInval);
     }
 
     @Test
     public void testCastsPrimToPrim() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -106,16 +97,18 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 1, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call());
+                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call());
             }
         });
     }
 
     @Test
     public void testCastsRefToPrim() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -127,16 +120,18 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 1, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call());
+                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, callTarget.call());
             }
         });
     }
 
     @Test
     public void testCastsPrimToRef() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -148,16 +143,18 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 1, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call());
+                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, callTarget.call());
             }
         });
     }
 
     @Test
     public void testCastsRefToRef() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -169,16 +166,18 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 1, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call());
+                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, callTarget.call());
             }
         });
     }
 
     @Test
     public void testCastsChangePrim() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -192,15 +191,17 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 4, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_INT));
+                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_INT));
             }
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_REF_B));
+                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_B));
             }
             try {
-                root.call(ObjectProducer.PRODUCE_BOOLEAN);
+                callTarget.call(ObjectProducer.PRODUCE_BOOLEAN);
                 Assert.fail();
             } catch (UnsupportedSpecializationException e) {
             }
@@ -209,7 +210,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangeRef() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -223,17 +224,19 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 4, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_BOOLEAN));
+                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_BOOLEAN));
             }
 
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_REF_A));
+                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_A));
             }
 
             try {
-                root.call(ObjectProducer.PRODUCE_INT);
+                callTarget.call(ObjectProducer.PRODUCE_INT);
                 Assert.fail();
             } catch (UnsupportedSpecializationException e) {
             }
@@ -242,7 +245,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangeSpecPrim() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -256,17 +259,19 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 7, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_INT));
+                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_INT));
             }
 
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, root.call(ObjectProducer.PRODUCE_REF_B));
+                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_B));
             }
 
             try {
-                root.call(ObjectProducer.PRODUCE_BOOLEAN);
+                callTarget.call(ObjectProducer.PRODUCE_BOOLEAN);
                 Assert.fail();
             } catch (UnsupportedSpecializationException e) {
             }
@@ -275,7 +280,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangeSpecRef() {
-        RootCallTarget root = parse(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -289,15 +294,17 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        testInvalidations(() -> {
+        RootCallTarget callTarget = root.getCallTarget();
+
+        testInvalidations(root, 6, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_BOOLEAN));
+                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_BOOLEAN));
             }
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, root.call(ObjectProducer.PRODUCE_REF_A));
+                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_A));
             }
             try {
-                root.call(ObjectProducer.PRODUCE_INT);
+                callTarget.call(ObjectProducer.PRODUCE_INT);
                 Assert.fail();
             } catch (UnsupportedSpecializationException e) {
             }
@@ -306,13 +313,13 @@ public class BoxingOperationsTest {
 
     @Test
     public void testLBEMultipleLoads() {
-        OperationRootNode node = parseNode(b -> {
+        BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal local = b.createLocal();
 
             b.beginStoreLocal(local);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endStoreLocal();
 
             b.beginLongOperator();
@@ -326,11 +333,11 @@ public class BoxingOperationsTest {
             b.endRoot();
         });
 
-        RootCallTarget root = ((RootNode) node).getCallTarget();
+        RootCallTarget callTarget = root.getCallTarget();
 
-        testInvalidations(() -> {
+        testInvalidations(root, 3, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(1L, root.call());
+                Assert.assertEquals(1L, callTarget.call());
             }
         });
     }
@@ -393,7 +400,7 @@ class BoxingTypeSystem {
 abstract class BoxingOperations extends RootNode implements OperationRootNode {
 
     static final boolean __magic_LogInvalidations = false;
-    static int __magic_CountInvalidations = 0;
+    int __magic_CountInvalidations = 0;
 
     protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
         super(language, frameDescriptor.build());

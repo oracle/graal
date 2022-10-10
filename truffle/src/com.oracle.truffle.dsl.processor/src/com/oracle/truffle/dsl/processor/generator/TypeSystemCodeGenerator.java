@@ -137,7 +137,12 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         if (typeSystem.hasType(type)) {
             builder.startStaticCall(createTypeSystemGen(typeSystem), expectTypeMethodName(typeSystem, type, null)).tree(content).end();
         } else {
-            builder.startCall(expectTypeMethodName(typeSystem, type, plugs)).tree(content).end();
+            builder.startCall(expectTypeMethodName(typeSystem, type, plugs));
+            if (plugs != null) {
+                // todo: Operations hack
+                builder.string("$this");
+            }
+            builder.tree(content).end();
         }
 
         return builder.build();

@@ -250,7 +250,7 @@ public abstract class Operation {
         private final LoadLocalMaterializedInstruction instr;
 
         public LoadLocalMaterialized(OperationsContext context, int id, LoadLocalMaterializedInstruction instr) {
-            super(context, "MaterializedLoadLocal", id, 1);
+            super(context, "LoadLocalMaterialized", id, 1);
             this.instr = instr;
         }
 

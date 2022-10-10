@@ -75,6 +75,7 @@ public class ConditionalBranchInstruction extends Instruction {
 
         b.startIf().startCall("do_profileCondition");
 
+        b.string("$this");
         b.string("cond");
         b.string("$conditionProfiles");
         b.tree(createBranchProfileIndex(vars, 0, false));

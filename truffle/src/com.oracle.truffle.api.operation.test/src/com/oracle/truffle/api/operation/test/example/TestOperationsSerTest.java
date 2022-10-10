@@ -62,10 +62,10 @@ public class TestOperationsSerTest {
     }
 
     private static TestOperations deserialize(byte[] byteArray) {
-        OperationNodes nodes2 = null;
+        OperationNodes<TestOperations> nodes2 = null;
         try {
             nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray), (ctx, buf2) -> {
-                return buf2.getLong();
+                return buf2.readLong();
             });
         } catch (IOException e) {
             Assert.fail();
@@ -81,8 +81,8 @@ public class TestOperationsSerTest {
 
             b.beginReturn();
             b.beginAddOperation();
-            b.emitConstObject(1L);
-            b.emitConstObject(2L);
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(2L);
             b.endAddOperation();
             b.endReturn();
 

@@ -636,6 +636,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         OperationGeneratorUtils.createHelperMethod(m.getOperationsContext().outerType, name, () -> {
             CodeExecutableElement el = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), type, name);
 
+            el.addParameter(new CodeVariableElement(m.getOperationsContext().outerType.asType(), "$this"));
             el.addParameter(new CodeVariableElement(context.getType(Object.class), "value"));
             el.addThrownType(types.UnexpectedResultException);
 

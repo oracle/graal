@@ -63,11 +63,38 @@ public class StoreLocalInstruction extends Instruction {
     }
 
     @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startAssign("int localIdx").tree(createLocalIndex(vars, 0, false)).end();
+        if (ctx.getData().enableYield) {
+            b.startStatement().startCall("UFA", "unsafeCopyTo");
+            b.variable(vars.stackFrame);
+            b.string("$sp - 1");
+            b.variable(vars.localFrame);
+            b.string("localIdx");
+            b.string("1");
+            b.end(2);
+        } else {
+            b.startStatement().startCall("UFA", "unsafeCopyObject");
+            b.variable(vars.stackFrame);
+            b.string("$sp - 1");
+            b.string("localIdx");
+            b.end(2);
+        }
+
+        b.statement("$sp -= 1");
+
+        return b.build();
+    }
+
+    @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         if (ctx.hasBoxingElimination()) {
             OperationGeneratorUtils.createHelperMethod(ctx.outerType, "do_storeLocalSpecialize", () -> {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(void.class), "do_storeLocalSpecialize");
 
+                ex.addParameter(new CodeVariableElement(ctx.outerType.asType(), "$this"));
                 ex.addParameter(vars.stackFrame);
                 if (ctx.getData().enableYield) {
                     ex.addParameter(vars.localFrame);
@@ -158,6 +185,7 @@ public class StoreLocalInstruction extends Instruction {
         OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(void.class), helperName);
 
+            ex.addParameter(new CodeVariableElement(ctx.outerType.asType(), "$this"));
             ex.addParameter(vars.stackFrame);
             if (ctx.getData().enableYield) {
                 ex.addParameter(vars.localFrame);
@@ -252,6 +280,7 @@ public class StoreLocalInstruction extends Instruction {
         b.startAssign("int localIdx").tree(createLocalIndex(vars, 0, false)).end();
 
         b.startStatement().startCall(helperName);
+        b.string("$this");
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
             b.variable(vars.localFrame);
@@ -291,6 +320,7 @@ public class StoreLocalInstruction extends Instruction {
 
     private void createCallSpecialize(ExecutionVariables vars, CodeTreeBuilder b, FrameKind kind) {
         b.startStatement().startCall("do_storeLocalSpecialize");
+        b.string("$this");
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
             b.variable(vars.localFrame);

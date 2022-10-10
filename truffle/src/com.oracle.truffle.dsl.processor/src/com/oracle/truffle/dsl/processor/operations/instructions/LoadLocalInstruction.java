@@ -66,12 +66,51 @@ public class LoadLocalInstruction extends Instruction {
     }
 
     @Override
+    public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startAssign("int localIdx").tree(createLocalIndex(vars, 0, false)).end();
+
+        if (ctx.getData().enableYield) {
+            b.startStatement().startCall("UFA", "unsafeCopyTo");
+            b.variable(vars.localFrame);
+            b.string("localIdx");
+            b.variable(vars.stackFrame);
+            b.string("$sp");
+            b.string("1");
+            b.end(2);
+        } else {
+            b.startStatement().startCall("UFA", "unsafeCopyObject");
+            b.variable(vars.stackFrame);
+            b.string("localIdx");
+            b.string("$sp");
+            b.end(2);
+        }
+
+        b.statement("$sp += 1");
+
+        return b.build();
+    }
+
+    @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
+
+        if (boxed && vars.specializedKind == FrameKind.OBJECT) {
+            // load boxed object == load object
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalUnboxed.opcodeIdField.getName()));
+            b.statement("$bci -= LOAD_LOCAL_BOXED_LENGTH");
+
+            return b.build();
+        }
 
         String helperName = "do_loadLocal" + (boxed ? "Boxed" : "") + "_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
         OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
             CodeExecutableElement res = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), helperName);
 
+            res.addParameter(new CodeVariableElement(ctx.outerType.asType(), "$this"));
             res.addParameter(vars.stackFrame);
             if (ctx.getData().enableYield) {
                 res.addParameter(vars.localFrame);
@@ -233,6 +272,7 @@ public class LoadLocalInstruction extends Instruction {
         b.end();
 
         b.startStatement().startCall(helperName);
+        b.string("$this");
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
             b.variable(vars.localFrame);
@@ -268,11 +308,7 @@ public class LoadLocalInstruction extends Instruction {
 
     @Override
     public List<FrameKind> getBoxingEliminationSplits() {
-        if (boxed) {
-            return ctx.getPrimitiveBoxingKinds();
-        } else {
-            return ctx.getBoxingKinds();
-        }
+        return ctx.getBoxingKinds();
     }
 
     @Override

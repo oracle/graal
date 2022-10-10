@@ -69,13 +69,7 @@ public class TestOperationsParserTest {
     }
 
     private static OperationRootNode parseNode(OperationParser<TestOperationsGen.Builder> builder) {
-        OperationNodes nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
-
-        for (OperationRootNode node : nodes.getNodes()) {
-            System.out.println("-------------------------------------");
-            System.out.println(node.dump());
-        }
-
+        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
@@ -137,11 +131,11 @@ public class TestOperationsParserTest {
 
             b.beginLessThanOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endLessThanOperation();
 
             b.beginReturn();
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endReturn();
 
             b.endIfThen();
@@ -173,11 +167,11 @@ public class TestOperationsParserTest {
             OperationLocal locJ = b.createLocal();
 
             b.beginStoreLocal(locI);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endStoreLocal();
 
             b.beginStoreLocal(locJ);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endStoreLocal();
 
             b.beginWhile();
@@ -197,7 +191,7 @@ public class TestOperationsParserTest {
                     b.beginStoreLocal(locI);
                         b.beginAddOperation();
                         b.emitLoadLocal(locI);
-                        b.emitConstObject(1L);
+                        b.emitLoadConstant(1L);
                         b.endAddOperation();
                     b.endStoreLocal();
                 b.endBlock();
@@ -225,7 +219,7 @@ public class TestOperationsParserTest {
             b.beginIfThen();
             b.beginLessThanOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endLessThanOperation();
 
             b.emitThrowOperation();
@@ -233,13 +227,13 @@ public class TestOperationsParserTest {
             b.endIfThen();
 
             b.beginReturn();
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endReturn();
 
             b.endTryCatch();
 
             b.beginReturn();
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endReturn();
 
             b.endRoot();
@@ -258,18 +252,18 @@ public class TestOperationsParserTest {
             OperationLocal local1 = b.createLocal();
 
             b.beginStoreLocal(local0);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endStoreLocal();
 
             b.beginStoreLocal(local1);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endStoreLocal();
 
             b.beginWhile();
 
             b.beginLessThanOperation();
             b.emitLoadLocal(local0);
-            b.emitConstObject(100L);
+            b.emitLoadConstant(100L);
             b.endLessThanOperation();
 
             b.beginBlock();
@@ -286,7 +280,7 @@ public class TestOperationsParserTest {
             b.beginStoreLocal(local0);
             b.beginAddOperation();
             b.emitLoadLocal(local0);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endAddOperation();
             b.endStoreLocal();
 
@@ -333,17 +327,17 @@ public class TestOperationsParserTest {
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(2L);
+                b.emitLoadConstant(2L);
                 b.endAppenderOperation();
 
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(1L);
+                b.emitLoadConstant(1L);
                 b.endAppenderOperation();
             b.endFinallyTry();
 
             b.beginReturn();
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endReturn();
 
 
@@ -364,26 +358,26 @@ public class TestOperationsParserTest {
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(3L);
+                b.emitLoadConstant(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.emitThrowOperation();
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTry();
 
             b.beginReturn();
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endReturn();
 
 
@@ -400,24 +394,24 @@ public class TestOperationsParserTest {
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(1L);
+                b.emitLoadConstant(1L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
 
                     b.beginReturn();
-                    b.emitConstObject(0L);
+                    b.emitLoadConstant(0L);
                     b.endReturn();
                 b.endBlock();
             b.endFinallyTry();
 
             b.beginAppenderOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(3L);
+            b.emitLoadConstant(3L);
             b.endAppenderOperation();
 
 
@@ -440,38 +434,38 @@ public class TestOperationsParserTest {
             b.beginFinallyTry();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(3L);
+                b.emitLoadConstant(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.emitBranch(lbl);
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTry();
 
             b.beginAppenderOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(4L);
+            b.emitLoadConstant(4L);
             b.endAppenderOperation();
 
             b.emitLabel(lbl);
 
             b.beginAppenderOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(5L);
+            b.emitLoadConstant(5L);
             b.endAppenderOperation();
 
             b.beginReturn();
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endReturn();
 
 
@@ -495,7 +489,7 @@ public class TestOperationsParserTest {
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
 
                     b.emitBranch(lbl);
@@ -504,29 +498,29 @@ public class TestOperationsParserTest {
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.beginReturn();
-                    b.emitConstObject(0L);
+                    b.emitLoadConstant(0L);
                     b.endReturn();
                 b.endBlock();
             b.endFinallyTry();
 
             b.beginAppenderOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(3L);
+            b.emitLoadConstant(3L);
             b.endAppenderOperation();
 
             b.emitLabel(lbl);
 
             b.beginAppenderOperation();
             b.emitLoadArgument(0);
-            b.emitConstObject(4L);
+            b.emitLoadConstant(4L);
             b.endAppenderOperation();
 
             b.beginReturn();
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endReturn();
 
 
@@ -550,37 +544,37 @@ public class TestOperationsParserTest {
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(3L);
+                    b.emitLoadConstant(3L);
                     b.endAppenderOperation();
 
                     b.emitBranch(lbl);
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(4L);
+                    b.emitLoadConstant(4L);
                     b.endAppenderOperation();
 
                     b.emitLabel(lbl);
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(5L);
+                    b.emitLoadConstant(5L);
                     b.endAppenderOperation();
                 b.endBlock();
 
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.beginReturn();
-                    b.emitConstObject(0L);
+                    b.emitLoadConstant(0L);
                     b.endReturn();
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTry();
@@ -604,7 +598,7 @@ public class TestOperationsParserTest {
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(4L);
+                    b.emitLoadConstant(4L);
                     b.endAppenderOperation();
                 b.endBlock();
 
@@ -612,23 +606,23 @@ public class TestOperationsParserTest {
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(3L);
+                        b.emitLoadConstant(3L);
                         b.endAppenderOperation();
                     b.endBlock();
 
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(1L);
+                        b.emitLoadConstant(1L);
                         b.endAppenderOperation();
 
                         b.beginReturn();
-                        b.emitConstObject(0L);
+                        b.emitLoadConstant(0L);
                         b.endReturn();
 
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(2L);
+                        b.emitLoadConstant(2L);
                         b.endAppenderOperation();
                     b.endBlock();
                 b.endFinallyTry();
@@ -654,23 +648,23 @@ public class TestOperationsParserTest {
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(5L);
+                        b.emitLoadConstant(5L);
                         b.endAppenderOperation();
                     b.endBlock();
 
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(3L);
+                        b.emitLoadConstant(3L);
                         b.endAppenderOperation();
 
                         b.beginReturn();
-                        b.emitConstObject(0L);
+                        b.emitLoadConstant(0L);
                         b.endReturn();
 
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(4L);
+                        b.emitLoadConstant(4L);
                         b.endAppenderOperation();
                     b.endBlock();
                 b.endFinallyTry();
@@ -678,16 +672,16 @@ public class TestOperationsParserTest {
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.beginReturn();
-                    b.emitConstObject(0L);
+                    b.emitLoadConstant(0L);
                     b.endReturn();
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTry();
@@ -711,7 +705,7 @@ public class TestOperationsParserTest {
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(4L);
+                    b.emitLoadConstant(4L);
                     b.endAppenderOperation();
                 b.endBlock();
 
@@ -719,21 +713,21 @@ public class TestOperationsParserTest {
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(3L);
+                        b.emitLoadConstant(3L);
                         b.endAppenderOperation();
                     b.endBlock();
 
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(1L);
+                        b.emitLoadConstant(1L);
                         b.endAppenderOperation();
 
                         b.emitThrowOperation();
 
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(2L);
+                        b.emitLoadConstant(2L);
                         b.endAppenderOperation();
                     b.endBlock();
                 b.endFinallyTry();
@@ -759,21 +753,21 @@ public class TestOperationsParserTest {
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(5L);
+                        b.emitLoadConstant(5L);
                         b.endAppenderOperation();
                     b.endBlock();
 
                     b.beginBlock();
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(3L);
+                        b.emitLoadConstant(3L);
                         b.endAppenderOperation();
 
                         b.emitThrowOperation();
 
                         b.beginAppenderOperation();
                         b.emitLoadArgument(0);
-                        b.emitConstObject(4L);
+                        b.emitLoadConstant(4L);
                         b.endAppenderOperation();
                     b.endBlock();
                 b.endFinallyTry();
@@ -781,14 +775,14 @@ public class TestOperationsParserTest {
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.emitThrowOperation();
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTry();
@@ -812,22 +806,22 @@ public class TestOperationsParserTest {
             b.beginFinallyTryNoExcept();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(3L);
+                b.emitLoadConstant(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.beginReturn();
-                    b.emitConstObject(0L);
+                    b.emitLoadConstant(0L);
                     b.endReturn();
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTryNoExcept();
@@ -851,20 +845,20 @@ public class TestOperationsParserTest {
             b.beginFinallyTryNoExcept();
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
-                b.emitConstObject(3L);
+                b.emitLoadConstant(3L);
                 b.endAppenderOperation();
 
                 b.beginBlock();
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(1L);
+                    b.emitLoadConstant(1L);
                     b.endAppenderOperation();
 
                     b.emitThrowOperation();
 
                     b.beginAppenderOperation();
                     b.emitLoadArgument(0);
-                    b.emitConstObject(2L);
+                    b.emitLoadConstant(2L);
                     b.endAppenderOperation();
                 b.endBlock();
             b.endFinallyTryNoExcept();
@@ -928,7 +922,7 @@ public class TestOperationsParserTest {
             OperationLocal local = b.createLocal();
 
             b.beginTeeLocal(local);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endTeeLocal();
 
             b.beginReturn();
@@ -948,15 +942,15 @@ public class TestOperationsParserTest {
             b.beginRoot(LANGUAGE);
 
             b.beginYield();
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endYield();
 
             b.beginYield();
-            b.emitConstObject(2L);
+            b.emitLoadConstant(2L);
             b.endYield();
 
             b.beginReturn();
-            b.emitConstObject(3L);
+            b.emitLoadConstant(3L);
             b.endReturn();
 
             b.endRoot();
@@ -987,7 +981,7 @@ public class TestOperationsParserTest {
             // return loc
 
             b.beginStoreLocal(loc);
-            b.emitConstObject(0L);
+            b.emitLoadConstant(0L);
             b.endStoreLocal();
 
             b.beginYield();
@@ -997,7 +991,7 @@ public class TestOperationsParserTest {
             b.beginStoreLocal(loc);
             b.beginAddOperation();
             b.emitLoadLocal(loc);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endAddOperation();
             b.endStoreLocal();
 
@@ -1008,7 +1002,7 @@ public class TestOperationsParserTest {
             b.beginStoreLocal(loc);
             b.beginAddOperation();
             b.emitLoadLocal(loc);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endAddOperation();
             b.endStoreLocal();
 
@@ -1032,18 +1026,16 @@ public class TestOperationsParserTest {
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal loc = b.createLocal();
-
             // return (yield 1) + (yield 2)
             b.beginReturn();
             b.beginAddOperation();
 
             b.beginYield();
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endYield();
 
             b.beginYield();
-            b.emitConstObject(2L);
+            b.emitLoadConstant(2L);
             b.endYield();
 
             b.endAddOperation();
@@ -1076,12 +1068,12 @@ public class TestOperationsParserTest {
                 b.beginRoot(LANGUAGE);
 
                 b.beginReturn();
-                b.emitConstObject(1L);
+                b.emitLoadConstant(1L);
                 b.endReturn();
 
                 TestOperations innerRoot = b.endRoot();
 
-            b.emitConstObject(innerRoot);
+            b.emitLoadConstant(innerRoot);
             b.endInvoke();
 
             b.endReturn();
@@ -1102,7 +1094,7 @@ public class TestOperationsParserTest {
             OperationLocal xLoc = b.createLocal();
 
             b.beginStoreLocal(xLoc);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endStoreLocal();
 
             b.beginReturn();
@@ -1111,14 +1103,14 @@ public class TestOperationsParserTest {
 
                 b.beginRoot(LANGUAGE);
                 b.beginReturn();
-                b.beginLoadNonlocal(xLoc);
+                b.beginLoadLocalMaterialized(xLoc);
                 b.emitLoadArgument(0);
-                b.endLoadNonlocal();
+                b.endLoadLocalMaterialized();
                 b.endReturn();
                 TestOperations inner = b.endRoot();
 
             b.beginCreateClosure();
-            b.emitConstObject(inner);
+            b.emitLoadConstant(inner);
             b.endCreateClosure();
 
             b.endInvoke();
@@ -1141,7 +1133,7 @@ public class TestOperationsParserTest {
             OperationLocal xLoc = b.createLocal();
 
             b.beginStoreLocal(xLoc);
-            b.emitConstObject(1L);
+            b.emitLoadConstant(1L);
             b.endStoreLocal();
 
 
@@ -1149,19 +1141,19 @@ public class TestOperationsParserTest {
 
                 b.beginRoot(LANGUAGE);
 
-                b.beginStoreNonlocal(xLoc);
+                b.beginStoreLocalMaterialized(xLoc);
                 b.emitLoadArgument(0);
-                b.emitConstObject(2L);
-                b.endStoreNonlocal();
+                b.emitLoadConstant(2L);
+                b.endStoreLocalMaterialized();
 
                 b.beginReturn();
-                b.emitConstObject(null);
+                b.emitLoadConstant(null);
                 b.endReturn();
 
                 TestOperations inner = b.endRoot();
 
             b.beginCreateClosure();
-            b.emitConstObject(inner);
+            b.emitLoadConstant(inner);
             b.endCreateClosure();
 
             b.endInvoke();

@@ -105,7 +105,7 @@ public class GeneratorUtils {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         if (hookTransferToInterpreter.get()) {
-            builder.startCall("hook_transferToInterpreterAndInvalidate").end();
+            builder.startCall("hook_transferToInterpreterAndInvalidate").string("$this").end();
         } else {
             builder.startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end();
         }

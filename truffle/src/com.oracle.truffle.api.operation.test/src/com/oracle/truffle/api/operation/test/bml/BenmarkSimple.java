@@ -348,25 +348,25 @@ public class BenmarkSimple extends BaseBenchmark {
 
         // int i = 0;
         b.beginStoreLocal(iLoc);
-        b.emitConstObject(0);
+        b.emitLoadConstant(0);
         b.endStoreLocal();
 
         // int sum = 0;
         b.beginStoreLocal(sumLoc);
-        b.emitConstObject(0);
+        b.emitLoadConstant(0);
         b.endStoreLocal();
 
         // while (i < TOTAL_ITERATIONS) {
         b.beginWhile();
         b.beginLess();
         b.emitLoadLocal(iLoc);
-        b.emitConstObject(TOTAL_ITERATIONS);
+        b.emitLoadConstant(TOTAL_ITERATIONS);
         b.endLess();
         b.beginBlock();
 
         // int j = 0;
         b.beginStoreLocal(jLoc);
-        b.emitConstObject(0);
+        b.emitLoadConstant(0);
         b.endStoreLocal();
 
         // while (j < i) {
@@ -384,14 +384,14 @@ public class BenmarkSimple extends BaseBenchmark {
         b.beginLess();
         beginMod(b, mode);
         b.emitLoadLocal(iLoc);
-        b.emitConstObject(3);
+        b.emitLoadConstant(3);
         endMod(b, mode);
-        b.emitConstObject(1);
+        b.emitLoadConstant(1);
         b.endLess();
 
         // temp = 1;
         b.beginStoreLocal(tempLoc);
-        b.emitConstObject(1);
+        b.emitLoadConstant(1);
         b.endStoreLocal();
 
         // } else {
@@ -399,7 +399,7 @@ public class BenmarkSimple extends BaseBenchmark {
         b.beginStoreLocal(tempLoc);
         beginMod(b, mode);
         b.emitLoadLocal(iLoc);
-        b.emitConstObject(3);
+        b.emitLoadConstant(3);
         endMod(b, mode);
         b.endStoreLocal();
 
@@ -430,7 +430,7 @@ public class BenmarkSimple extends BaseBenchmark {
         b.beginStoreLocal(iLoc);
         beginAdd(b, mode);
         b.emitLoadLocal(iLoc);
-        b.emitConstObject(1);
+        b.emitLoadConstant(1);
         endAdd(b, mode);
         b.endStoreLocal();
 

@@ -292,7 +292,7 @@ public class OperationsBytecodeCodeGenerator {
         b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.bci));
         b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.sp));
 
-        b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci));
+        b.declaration("int", varCurOpcode.getName(), CodeTreeBuilder.createBuilder().tree(OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci)).string(" & 0xffff").build());
 
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
@@ -339,7 +339,7 @@ public class OperationsBytecodeCodeGenerator {
             if (ctx.hasBoxingElimination() && !isUncached) {
                 if (op.splitOnBoxingElimination()) {
                     for (FrameKind kind : op.getBoxingEliminationSplits()) {
-                        b.startCase().variable(op.opcodeIdField).string(" | (short) (", kind.toOrdinal(), " << 13)").end();
+                        b.startCase().variable(op.opcodeIdField).string(" | (", kind.toOrdinal(), " << 13)").end();
                         b.startBlock();
                         vars.specializedKind = kind;
                         createBody.run();
@@ -347,7 +347,7 @@ public class OperationsBytecodeCodeGenerator {
                         b.end();
                     }
                     if (op.hasGeneric()) {
-                        b.startCase().variable(op.opcodeIdField).string(" | (short) (7 << 13)").end();
+                        b.startCase().variable(op.opcodeIdField).string(" | (7 << 13)").end();
                         b.startBlock();
                         createBody.run();
                         b.end();
@@ -359,7 +359,7 @@ public class OperationsBytecodeCodeGenerator {
                     b.end();
                 } else {
                     for (FrameKind kind : op.getBoxingEliminationSplits()) {
-                        b.startCase().variable(op.opcodeIdField).string(" | (short) (", kind.toOrdinal(), " << 13)").end();
+                        b.startCase().variable(op.opcodeIdField).string(" | (", kind.toOrdinal(), " << 13)").end();
                     }
 
                     b.startBlock();
