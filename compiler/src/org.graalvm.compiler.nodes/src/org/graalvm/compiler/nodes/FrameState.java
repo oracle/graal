@@ -140,7 +140,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     /**
      * The bytecode to which this frame state applies.
      */
-    private final Bytecode code;
+    private Bytecode code;
 
     /**
      * Flag to indicate whether this frame represents valid deoptimization state.
@@ -229,6 +229,15 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 value = valueFunction.apply(i, value);
             }
             this.values.initialize(i, value);
+        }
+    }
+
+    public FrameState(FrameState original, Bytecode code) {
+        this(original.outerFrameState, code, original.bci, original.localsSize, original.stackSize, original.locksSize, original.rethrowException, original.duringCall, original.validForDeoptimization,
+                        original.monitorIds, original.virtualObjectMappings);
+        this.values = new NodeInputList<>(this, original.values.size());
+        for (ValueNode val : original.values) {
+            values.add(val.copyWithInputs(true));
         }
     }
 
@@ -973,4 +982,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         return bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNWIND_BCI;
     }
 
+    public void setCode(Bytecode code) {
+        this.code = code;
+    }
 }

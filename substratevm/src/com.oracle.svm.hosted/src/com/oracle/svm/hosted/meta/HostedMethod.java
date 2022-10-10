@@ -32,10 +32,16 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -157,24 +163,56 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     }
 
     public HostedMethod cloneDuplicated(HostedUniverse universe, List<Pair<HostedMethod, Integer>> context) {
+        int count = duplicateCounter.incrementAndGet();
         HostedMethod duplicate = new HostedMethod(this.wrapped,
                         this.holder,
                         this.signature,
                         this.constantPool,
                         this.handlers,
                         this.compilationInfo.getDeoptOrigin(),
-                        duplicateName(this.name, context),
-                        duplicateName(this.uniqueShortName, context),
+                        duplicateName(this.name, count),
+                        duplicateName(this.uniqueShortName, count),
                         createLocalVariableTable(universe, this.wrapped));
-        duplicate.compilationInfo.setGraph(compilationInfo.getCompilationGraph());
+        duplicate.compilationInfo.encodeGraph(duplicateGraph(universe.bb.getDebug(), duplicate));
         duplicate.compilationInfo.setCompileOptions(compilationInfo.getCompileOptions());
         duplicate.staticAnalysisResults = new StaticAnalysisResults(staticAnalysisResults);
         duplicate.specializationReason = SpecializationReason.create(context);
         return duplicate;
     }
 
-    private static String duplicateName(String name, List<Pair<HostedMethod, Integer>> context) {
-        return name + "<" + System.identityHashCode(context) + ">";
+    @SuppressWarnings("try")
+    private StructuredGraph duplicateGraph(DebugContext debug, HostedMethod duplicate) {
+        StructuredGraph copy = decodeAndCopy(debug, duplicate);
+        ResolvedJavaMethodBytecode code = new ResolvedJavaMethodBytecode(duplicate);
+        for (FrameState frameState : copy.getNodes(FrameState.TYPE)) {
+            if (this.equals(frameState.getMethod())) {
+                frameState.setCode(code);
+            }
+        }
+        return copy;
+    }
+
+    @SuppressWarnings("try")
+    private StructuredGraph decodeAndCopy(DebugContext debug, HostedMethod duplicate) {
+        var graph = new StructuredGraph.Builder(this.compilationInfo.getCompileOptions(), debug)
+                        .method(this)
+                        .recordInlinedMethods(false)
+                        .trackNodeSourcePosition(this.compilationInfo.getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
+                        .compilationId(CompilationIdentifier.INVALID_COMPILATION_ID)
+                        .build();
+
+        try (var ignored = debug.scope("CreateGraph", graph, this)) {
+            new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, graph).decode(this.compilationInfo.getCompilationGraph().getEncodedGraph());
+        } catch (Throwable ex) {
+            throw debug.handle(ex);
+        }
+        return graph.copy(duplicate, graph.getOptions(), graph.getDebug(), graph.trackNodeSourcePosition());
+    }
+
+    private static final AtomicInteger duplicateCounter = new AtomicInteger();
+
+    private static String duplicateName(String name, int count) {
+        return name + "<" + count + ">";
     }
 
     @Override
