@@ -84,9 +84,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         }
         ConfigurationCondition condition = conditionResult.get();
 
-        TypeResult<T> result = delegate.resolveType(condition, className);
+        TypeResult<T> result = delegate.resolveType(condition, className, false);
         if (!result.isPresent()) {
-            handleError("Could not resolve " + className + " for reflection configuration.", result.getException());
+            handleError("Could not resolve class " + className + " for reflection configuration.", result.getException());
             return;
         }
         T clazz = result.get();
@@ -256,7 +256,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(ConfigurationCondition.alwaysTrue(), typeName);
+            TypeResult<T> typeResult = delegate.resolveType(ConfigurationCondition.alwaysTrue(), typeName, true);
             if (!typeResult.isPresent()) {
                 handleError("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -53,6 +54,11 @@ class NFIUnsupportedTypeException extends AbstractTruffleException {
 
     NFIUnsupportedTypeException(String type) {
         super(type, null);
+    }
+
+    @TruffleBoundary
+    NFIUnsupportedTypeException(String format, Object... args) {
+        this(String.format(format, args));
     }
 
     @ExportMessage

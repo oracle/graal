@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -58,6 +59,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -72,6 +75,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.ModuleSupport;
@@ -165,6 +169,7 @@ public final class ReflectionPlugins {
                     ByteOrder.class));
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
+
         registerFoldInvocationPlugins(plugins, MethodHandles.class,
                         "publicLookup", "privateLookupIn",
                         "arrayConstructor", "arrayLength", "arrayElementGetter", "arrayElementSetter", "arrayElementVarHandle",
@@ -174,9 +179,9 @@ public final class ReflectionPlugins {
                         "in",
                         "findStatic", "findVirtual", "findConstructor", "findClass", "accessClass", "findSpecial",
                         "findGetter", "findSetter", "findVarHandle",
-                        "findStaticGetter", "findStaticSetter", "findStaticVarHandle",
+                        "findStaticGetter", "findStaticSetter",
                         "unreflect", "unreflectSpecial", "unreflectConstructor",
-                        "unreflectGetter", "unreflectSetter", "unreflectVarHandle");
+                        "unreflectGetter", "unreflectSetter");
 
         registerFoldInvocationPlugins(plugins, MethodType.class,
                         "methodType", "genericMethodType",
@@ -184,12 +189,61 @@ public final class ReflectionPlugins {
                         "changeReturnType", "erase", "generic", "wrap", "unwrap",
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
 
+        registerConditionalFoldInvocationPlugins(plugins);
+
         Registration r = new Registration(plugins, MethodHandles.class);
         r.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
             }
+        });
+    }
+
+    /**
+     * For some methods check if folding an invocation using reflection, i.e., by executing the
+     * target method and capturing the result, has undesired side effects, such as triggering
+     * initialization of classes that should be initialized at run time. This is based on knowledge
+     * about the reflection API methods implementation.
+     */
+    private void registerConditionalFoldInvocationPlugins(InvocationPlugins plugins) {
+        Method methodHandlesLookupFindStaticVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "findStaticVarHandle", Class.class, String.class, Class.class);
+        registerFoldInvocationPlugin(plugins, methodHandlesLookupFindStaticVarHandle, (args) -> {
+            /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
+            Object classArg = args[0];
+            if (classArg instanceof Class<?>) {
+                if (shouldInitializeAtRuntime((Class<?>) classArg)) {
+                    /* Skip the folding and register the field for run time reflection. */
+                    if (reason == ParsingReason.PointsToAnalysis) {
+                        Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
+                        if (field != null) {
+                            RuntimeReflection.register(field);
+                        }
+                    }
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        Method methodHandlesLookupUnreflectVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectVarHandle", Field.class);
+        registerFoldInvocationPlugin(plugins, methodHandlesLookupUnreflectVarHandle, (args) -> {
+            /*
+             * VarHandles.makeFieldHandle() triggers init of static field's declaring class
+             * (JDK-8291065).
+             */
+            Object fieldArg = args[0];
+            if (fieldArg instanceof Field) {
+                Field field = (Field) fieldArg;
+                if (isStatic(field) && shouldInitializeAtRuntime(field.getDeclaringClass())) {
+                    /* Skip the folding and register the field for run time reflection. */
+                    if (reason == ParsingReason.PointsToAnalysis) {
+                        RuntimeReflection.register(field);
+                    }
+                    return false;
+                }
+            }
+            return true;
         });
     }
 
@@ -272,7 +326,7 @@ public final class ReflectionPlugins {
         boolean initialize = (Boolean) initializeValue;
         Supplier<String> targetParameters = () -> className + ", " + initialize;
 
-        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className);
+        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className, false);
         if (!typeResult.isPresent()) {
             Throwable e = typeResult.getException();
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
@@ -326,7 +380,13 @@ public final class ReflectionPlugins {
         }
     }
 
+    private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
+
     private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod) {
+        registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding);
+    }
+
+    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding) {
         if (!ALLOWED_CONSTANT_CLASSES.contains(reflectionMethod.getReturnType()) && !reflectionMethod.getReturnType().isPrimitive()) {
             throw VMError.shouldNotReachHere("Return type of method " + reflectionMethod + " is not on the allow-list for types that are immutable");
         }
@@ -341,12 +401,13 @@ public final class ReflectionPlugins {
         plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args);
+                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding);
             }
         });
     }
 
-    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args) {
+    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args,
+                    Predicate<Object[]> allowConstantFolding) {
         assert b.getMetaAccess().lookupJavaMethod(reflectionMethod).equals(targetMethod) : "Fold method mismatch: " + reflectionMethod + " != " + targetMethod;
 
         Object receiverValue;
@@ -376,6 +437,10 @@ public final class ReflectionPlugins {
             }
         }
 
+        if (!allowConstantFolding.test(argValues)) {
+            return false;
+        }
+
         /* String representation of the parameters for debug printing. */
         Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue.toString() + "; ") +
                         Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
@@ -399,6 +464,15 @@ public final class ReflectionPlugins {
         }
 
         return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
+    }
+
+    private static boolean shouldInitializeAtRuntime(Class<?> classArg) {
+        ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        return classInitializationSupport.shouldInitializeAtRuntime(classArg);
+    }
+
+    private static boolean isStatic(Field field) {
+        return Modifier.isStatic(field.getModifiers());
     }
 
     private Object unbox(GraphBuilderContext b, ValueNode arg, JavaKind argKind) {

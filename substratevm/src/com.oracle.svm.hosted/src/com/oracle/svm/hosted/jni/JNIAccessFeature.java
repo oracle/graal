@@ -333,6 +333,9 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
+        if (classObj.isPrimitive()) {
+            return null; // primitives cannot be looked up by name and have no methods or fields
+        }
         if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess(), access.getUniverse())) {
             return null;
         }

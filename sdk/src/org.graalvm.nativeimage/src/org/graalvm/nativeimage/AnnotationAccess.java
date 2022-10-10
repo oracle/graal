@@ -44,7 +44,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.impl.ImageBuildtimeCodeAnnotationAccessSupport;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 /**
  * This class provides methods to query annotation information on {@link AnnotatedElement}s while
@@ -79,7 +79,7 @@ public final class AnnotationAccess {
      */
     public static boolean isAnnotationPresent(AnnotatedElement element, Class<? extends Annotation> annotationClass) {
         if (ImageInfo.inImageBuildtimeCode()) {
-            return ImageSingletons.lookup(ImageBuildtimeCodeAnnotationAccessSupport.class).isAnnotationPresent(element, annotationClass);
+            return ImageSingletons.lookup(AnnotationExtractor.class).hasAnnotation(element, annotationClass);
         } else {
             return element.isAnnotationPresent(annotationClass);
         }
@@ -93,7 +93,7 @@ public final class AnnotationAccess {
     @SuppressWarnings("unchecked")
     public static <T extends Annotation> T getAnnotation(AnnotatedElement element, Class<T> annotationType) {
         if (ImageInfo.inImageBuildtimeCode()) {
-            return (T) ImageSingletons.lookup(ImageBuildtimeCodeAnnotationAccessSupport.class).getAnnotation(element, annotationType);
+            return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(element, annotationType, false);
         } else {
             return element.getAnnotation(annotationType);
         }
@@ -107,7 +107,7 @@ public final class AnnotationAccess {
     @SuppressWarnings("unchecked")
     public static Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
         if (ImageInfo.inImageBuildtimeCode()) {
-            return ImageSingletons.lookup(ImageBuildtimeCodeAnnotationAccessSupport.class).getAnnotationTypes(element);
+            return ImageSingletons.lookup(AnnotationExtractor.class).getAnnotationTypes(element);
         } else {
             return Arrays.stream(element.getAnnotations()).map(Annotation::annotationType).toArray(Class[]::new);
         }

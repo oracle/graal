@@ -57,6 +57,7 @@ import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.type.IllegalStamp;
 import org.graalvm.compiler.core.common.type.RawPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -80,6 +81,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
@@ -114,7 +116,6 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -124,7 +125,6 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -499,7 +499,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     private static boolean isCEnumType(ResolvedJavaType type) {
-        return type.isEnum() && GuardedAnnotationAccess.isAnnotationPresent(type, CEnum.class);
+        return type.isEnum() && AnnotationAccess.isAnnotationPresent(type, CEnum.class);
     }
 
     /* Constants */
@@ -568,7 +568,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             symbolName = "constant_" + functionName + "#" + nextConstantId++;
             constants.put(constant, symbolName);
 
-            Constant storedConstant = uncompressedObject ? ((SubstrateObjectConstant) constant).compress() : constant;
+            Constant storedConstant = uncompressedObject ? ((CompressibleConstant) constant).compress() : constant;
             DataSectionReference reference = compilationResult.getDataSection().insertData(dataBuilder.createDataItem(storedConstant));
             compilationResult.recordDataPatchWithNote(0, reference, symbolName);
         }
@@ -576,7 +576,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     private static boolean isUncompressedObjectConstant(Constant constant) {
-        return SubstrateOptions.SpawnIsolates.getValue() && constant instanceof SubstrateObjectConstant && !((SubstrateObjectConstant) constant).isCompressed();
+        return SubstrateOptions.SpawnIsolates.getValue() && constant instanceof CompressibleConstant && !((CompressibleConstant) constant).isCompressed();
     }
 
     private static boolean isUncompressedObjectKind(LIRKind kind) {
@@ -1469,24 +1469,36 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             throw unimplemented("the LLVM backend only supports XOR of integers, vectors and floating point numbers");
         }
 
+        private LLVMValueRef actualShiftingDistance(LLVMValueRef a, LLVMValueRef b) {
+            // https://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.19
+
+            LLVMTypeRef typeA = typeOf(a);
+            final int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            assert bitWidthA == 32 || bitWidthA == 64;
+
+            LLVMValueRef shiftDistanceBitMask = builder.constantInteger(bitWidthA - 1, bitWidthA);
+            LLVMValueRef valB = emitIntegerConvert(b, typeA);
+            return builder.buildAnd(valB, shiftDistanceBitMask);
+        }
+
         @Override
         public Value emitShl(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
-            LLVMValueRef shl = builder.buildShl(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
+            LLVMValueRef shl = builder.buildShl(valA, actualShiftingDistance(valA, getVal(b)));
             return new LLVMVariable(shl);
         }
 
         @Override
         public Value emitShr(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
-            LLVMValueRef shr = builder.buildShr(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
+            LLVMValueRef shr = builder.buildShr(valA, actualShiftingDistance(valA, getVal(b)));
             return new LLVMVariable(shr);
         }
 
         @Override
         public Value emitUShr(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
-            LLVMValueRef ushr = builder.buildUShr(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
+            LLVMValueRef ushr = builder.buildUShr(valA, actualShiftingDistance(valA, getVal(b)));
             return new LLVMVariable(ushr);
         }
 

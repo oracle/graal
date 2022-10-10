@@ -78,16 +78,23 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     private final boolean allowAssumptionsDuringParsing;
 
+    /**
+     * Creates a new CachingPEGraphDecoder.
+     *
+     * @param forceLink if {@code true} and the graph contains an invoke of a method from a class
+     *            that has not yet been linked, linking is performed.
+     */
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache, Supplier<AutoCloseable> createPersistentCachedGraphScope,
                     boolean allowAssumptionsDuringParsing,
-                    boolean needsExplicitException) {
+                    boolean needsExplicitException,
+                    boolean forceLink) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
-                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException);
+                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException, forceLink);
 
         assert !graphBuilderConfig.trackNodeSourcePosition() || graph.trackNodeSourcePosition();
 

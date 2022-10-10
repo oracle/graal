@@ -654,7 +654,7 @@ public class CompileQueue {
                             null,
                             new InlineInvokePlugin[]{inliningPlugin},
                             null, null, null, null,
-                            new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true);
+                            new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);
         }
 
         @Override

@@ -59,6 +59,19 @@ public final class ReflectionAccessorHolder {
         Object invoke(Object obj, Object[] args, CFunctionPointer invokedMethod);
     }
 
+    private static Object invokePrototypeForCallerSensitiveAdapter(Object obj, Object[] args, CFunctionPointer invokedMethod, Class<?> callerClass) {
+        throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
+    }
+
+    public interface MethodInvokeFunctionPointerForCallerSensitiveAdapter extends CFunctionPointer {
+        /**
+         * Must match the signature of
+         * {@link ReflectionAccessorHolder#invokePrototypeForCallerSensitiveAdapter}.
+         */
+        @InvokeJavaFunctionPointer
+        Object invoke(Object obj, Object[] args, CFunctionPointer invokedMethod, Class<?> callerClass);
+    }
+
     /*
      * Methods for throwing exceptions when a method or constructor is used in an illegal way. These
      * methods are invoked via function pointers, so must have the same signature as the prototype

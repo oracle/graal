@@ -973,10 +973,15 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
         if jlink_has_copy_files(jdk):
-            libgraal = f'lib/{mx.add_lib_suffix(mx.add_lib_prefix("jvmcicompiler"))}'
-            if mx.get_os() == 'windows':
-                libgraal = libgraal.replace('lib/', 'bin/')
-            jlink_persist.append(f'--copy-files={libgraal}')
+            import mx_sdk_vm_impl
+            libgraal_component = mx_sdk_vm_impl._get_libgraal_component()
+            if libgraal_component is not None:
+                # Only bake --copy-files into the args of <dst_jdk_dir>/bin/jlink
+                # if libgraal will be in <dst_jdk_dir>/lib
+                libgraal = f'lib/{mx.add_lib_suffix(mx.add_lib_prefix("jvmcicompiler"))}'
+                if mx.get_os() == 'windows':
+                    libgraal = libgraal.replace('lib/', 'bin/')
+                jlink_persist.append(f'--copy-files={libgraal}')
 
         module_path = patched_java_base + os.pathsep + jmods_dir
         if modules and not use_upgrade_module_path:

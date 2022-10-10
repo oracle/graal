@@ -48,13 +48,13 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * Code that must be allocation free cannot throw new {@link AssertionError}. Therefore we convert
@@ -73,7 +73,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (GuardedAnnotationAccess.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
+        if (AnnotationAccess.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
              * Factory methods, which includes methods in ImplicitExceptions, are the methods that
              * actually perform the allocations at run time.

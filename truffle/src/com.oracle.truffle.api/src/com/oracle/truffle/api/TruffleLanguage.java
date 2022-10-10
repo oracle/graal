@@ -1859,7 +1859,7 @@ public abstract class TruffleLanguage<C> {
          * @deprecated use {@link #newInnerContextBuilder(String...)} instead. Note that the
          *             replacement method configures the context differently by default. To restore
          *             the old behavior: <code>newInnerContextBuilder()
-         *                   .initializeCreatorContext(true).allowInheritAccess(true).build() </code>
+         *                   .initializeCreatorContext(true).inheritAllAccess(true).build() </code>
          */
         @Deprecated
         public TruffleContext.Builder newContextBuilder() {

@@ -46,6 +46,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 
+import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -66,6 +68,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -74,6 +77,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -119,10 +123,10 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -225,8 +229,8 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public boolean isRelocatedPointer(Object originalObject) {
-        return originalObject instanceof RelocatedPointer;
+    public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
+        return metaAccess.isInstanceOf(constant, RelocatedPointer.class);
     }
 
     @Override
@@ -394,10 +398,12 @@ public class SVMHost extends HostVM {
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
         boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
+        boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
+        boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
 
-        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
-                        superHub, componentHub, sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus,
-                        type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, simpleBinaryName, getDeclaringClass(javaClass));
+        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
+                        isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
+                        getDeclaringClass(javaClass));
         ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
@@ -676,7 +682,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean hasNeverInlineDirective(ResolvedJavaMethod method) {
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
+        if (AnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
             return true;
         }
 
@@ -733,7 +739,7 @@ public class SVMHost extends HostVM {
             }
         }
 
-        Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
+        Platforms platformsAnnotation = AnnotationAccess.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
             return true;
         }
@@ -752,7 +758,7 @@ public class SVMHost extends HostVM {
     }
 
     public boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (!callee.canBeInlined() || GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+        if (!callee.canBeInlined() || AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
             return true;
         }
         for (var handler : neverInlineTrivialHandlers) {

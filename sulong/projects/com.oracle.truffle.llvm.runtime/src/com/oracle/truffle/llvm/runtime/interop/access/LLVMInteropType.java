@@ -161,6 +161,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         I64(ForeignToLLVMType.I64),
         FLOAT(ForeignToLLVMType.FLOAT),
         DOUBLE(ForeignToLLVMType.DOUBLE),
+        FP80(ForeignToLLVMType.FP80),
         POINTER(ForeignToLLVMType.POINTER);
 
         public final LLVMInteropType.Value type;
@@ -1050,6 +1051,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                             return ValueKind.FLOAT.type;
                         case 64:
                             return ValueKind.DOUBLE.type;
+                        case 128:
+                            return ValueKind.FP80.type;
                     }
                     break;
                 case SIGNED:

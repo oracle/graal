@@ -42,11 +42,12 @@ import com.oracle.svm.core.util.VMError;
 /**
  * A daemon thread that is created during JFR startup and torn down by
  * {@link SubstrateJVM#destroyJFR}.
- *
+ * <p>
  * It is used for persisting the {@link JfrGlobalMemory} buffers to a file and for processing the
  * pool of {@link SamplerBuffer}s collected in signal handler (see {@link SubstrateSigprofHandler}).
  * With that in mind, the thread is using {@link VMSemaphore} for a synchronization between threads
  * as it is async signal safe.
+ * </p>
  */
 public class JfrRecorderThread extends Thread {
     private static final int BUFFER_FULL_ENOUGH_PERCENTAGE = 50;

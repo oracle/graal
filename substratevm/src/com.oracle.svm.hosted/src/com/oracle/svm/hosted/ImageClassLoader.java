@@ -51,7 +51,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 public final class ImageClassLoader {
@@ -143,7 +142,7 @@ public final class ImageClassLoader {
 
     private boolean isInPlatform(AnnotatedElement element) {
         try {
-            Platforms platformAnnotation = GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, element, Platforms.class);
+            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(element, Platforms.class, false);
             return NativeImageGenerator.includedIn(platform, platformAnnotation);
         } catch (Throwable t) {
             handleClassLoadingError(t);
@@ -176,7 +175,7 @@ public final class ImageClassLoader {
         do {
             Platforms platformsAnnotation;
             try {
-                platformsAnnotation = GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, cur, Platforms.class);
+                platformsAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(cur, Platforms.class, false);
             } catch (Throwable t) {
                 handleClassLoadingError(t);
                 return;
@@ -271,8 +270,13 @@ public final class ImageClassLoader {
 
     /** Find class, return result encoding class or failure reason. */
     public TypeResult<Class<?>> findClass(String name) {
+        return findClass(name, true);
+    }
+
+    /** Find class, return result encoding class or failure reason. */
+    public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
         try {
-            if (name.indexOf('.') == -1) {
+            if (allowPrimitives && name.indexOf('.') == -1) {
                 switch (name) {
                     case "boolean":
                         return TypeResult.forClass(boolean.class);
@@ -369,7 +373,7 @@ public final class ImageClassLoader {
 
     private void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
         for (Class<?> systemClass : classes) {
-            if (GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, systemClass, annotationClass)) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(systemClass, annotationClass)) {
                 result.add(systemClass);
             }
         }
@@ -378,7 +382,7 @@ public final class ImageClassLoader {
     public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
         ArrayList<Method> result = new ArrayList<>();
         for (Method method : systemMethods) {
-            if (GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, method, annotationClass)) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(method, annotationClass)) {
                 result.add(method);
             }
         }
@@ -390,7 +394,7 @@ public final class ImageClassLoader {
         for (Method method : systemMethods) {
             boolean match = true;
             for (Class<? extends Annotation> annotationClass : annotationClasses) {
-                if (!GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, method, annotationClass)) {
+                if (!classLoaderSupport.annotationExtractor.hasAnnotation(method, annotationClass)) {
                     match = false;
                     break;
                 }
@@ -405,7 +409,7 @@ public final class ImageClassLoader {
     public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
-            if (GuardedAnnotationAccess.isAnnotationPresent(classLoaderSupport.annotationExtracter, field, annotationClass)) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(field, annotationClass)) {
                 result.add(field);
             }
         }
@@ -427,13 +431,13 @@ public final class ImageClassLoader {
     public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
         for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
-            result.add(GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, clazz, annotationClass));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(clazz, annotationClass, false));
         }
         for (Method method : findAnnotatedMethods(annotationClass)) {
-            result.add(GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, method, annotationClass));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(method, annotationClass, false));
         }
         for (Field field : findAnnotatedFields(annotationClass)) {
-            result.add(GuardedAnnotationAccess.getAnnotation(classLoaderSupport.annotationExtracter, field, annotationClass));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(field, annotationClass, false));
         }
         return result;
     }

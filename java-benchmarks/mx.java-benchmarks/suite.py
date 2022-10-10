@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.4.0",
+  "mxversion" : "6.8.0",
   "name": "java-benchmarks",
 
   "ignore_suite_commit_info": True,

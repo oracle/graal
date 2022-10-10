@@ -29,9 +29,9 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -47,7 +47,7 @@ public class SubstrateSafepointInsertionPhase extends LoopSafepointInsertionPhas
             /* Uninterruptible methods must not have a safepoint inserted. */
             return false;
         }
-        if (DirectAnnotationAccess.isAnnotationPresent(method, CFunction.class) || DirectAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
+        if (AnnotationAccess.isAnnotationPresent(method, CFunction.class) || AnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
             /*
              * Methods transferring from Java to C have an implicit safepoint check as part of the
              * transition from C back to Java. So no explicit end-of-method safepoint check needs to

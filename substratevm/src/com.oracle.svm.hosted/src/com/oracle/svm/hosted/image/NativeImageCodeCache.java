@@ -75,7 +75,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.EncodedReflectionMetadataSupplier;
@@ -224,14 +223,13 @@ public abstract class NativeImageCodeCache {
              */
             return;
         }
-        Object obj = SubstrateObjectConstant.asObject(constant);
 
-        if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
-            throw shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + obj.getClass().getName() + "." +
+        HostedType hostedType = imageHeap.getMetaAccess().lookupJavaType((JavaConstant) constant);
+        if (!hostedType.isInstantiated()) {
+            throw shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + hostedType.getName() + "." +
                             (reason != null ? " Method: " + reason : ""));
         }
-
-        imageHeap.addObject(obj, false, reason != null ? reason : constantReasons.get(constant));
+        imageHeap.addConstant((JavaConstant) constant, false, reason != null ? reason : constantReasons.get(constant));
     }
 
     protected int getConstantsSize() {
@@ -518,7 +516,7 @@ public abstract class NativeImageCodeCache {
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
-            writer.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), "VMConstant: " + constant);
+            writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
         });
     }
 

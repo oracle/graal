@@ -32,8 +32,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -49,7 +47,6 @@ import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -61,7 +58,9 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
+import com.oracle.svm.core.jfr.JfrRecorderThread;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
@@ -78,7 +77,7 @@ class SubstrateSigprofHandlerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJFRSupport() && SubstrateSigprofHandler.isProfilingSupported() && ImageInfo.isExecutable();
+        return JfrFeature.isInConfiguration(true);
     }
 
     @Override
@@ -88,21 +87,29 @@ class SubstrateSigprofHandlerFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(SubstrateSigprofHandler.class)) {
-            /* No sigprof handler. */
+        if (!SamplerHasSupport.get() && !HasJfrSupport.get()) {
+            /* No Sampler and JFR support. */
             return;
         }
-        VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
+
+        /* The common initialization part between Sampler and JFR. */
 
         /* Create stack visitor. */
         ImageSingletons.add(SamplerStackWalkVisitor.class, new SamplerStackWalkVisitor());
 
-        /* Add listeners. */
+        /* Add thread listener. */
         ThreadListenerSupport.get().register(new SamplerThreadLocal());
-        IsolateListenerSupport.singleton().register(new SamplerIsolateLocal());
 
         /* Add startup hook. */
         RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSigprofHandlerStartupHook());
+
+        /* The Sampler initialization part. */
+        if (SamplerHasSupport.get()) {
+            VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
+
+            /* Add isolate listener. */
+            IsolateListenerSupport.singleton().register(new SamplerIsolateLocal());
+        }
     }
 }
 
@@ -132,10 +139,9 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  *
  * <p>
  * The signal handler is as a <b>producer</b>. On the other side of relation is
- * {@link com.oracle.svm.core.jfr.JfrRecorderThread} that is <b>consumer</b>. The
- * {@link SamplerBuffer} that we are using in this consumer-producer communication is allocated
- * eagerly, in a part of the heap that is not accessible via GC, and there will always be more
- * available buffers that threads.
+ * {@link JfrRecorderThread} that is <b>consumer</b>. The {@link SamplerBuffer} that we are using in
+ * this consumer-producer communication is allocated eagerly, in a part of the heap that is not
+ * accessible via GC, and there will always be more available buffers that threads.
  * </p>
  *
  * <p>
@@ -172,7 +178,7 @@ public abstract class SubstrateSigprofHandler {
             }
         };
 
-        @Option(help = "Start sampling-based profiling with options.")//
+        @SuppressWarnings("unused") @Option(help = "Start sampling-based profiling with options.")//
         public static final RuntimeOptionKey<String> StartSamplingBasedProfiling = new RuntimeOptionKey<>("") {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
@@ -185,6 +191,7 @@ public abstract class SubstrateSigprofHandler {
     }
 
     private boolean enabled;
+    private volatile boolean isSignalHandlerGloballyDisabled;
     private final SamplerBufferStack availableBuffers;
     private final SamplerBufferStack fullBuffers;
     private SubstrateThreadMXBean threadMXBean;
@@ -205,22 +212,23 @@ public abstract class SubstrateSigprofHandler {
         return ImageSingletons.lookup(SamplerStackWalkVisitor.class);
     }
 
-    @Fold
-    static boolean isProfilingSupported() {
-        return isOSSupported() && isJDKSupported();
-    }
-
     private static boolean isOSSupported() {
         return Platform.includedIn(Platform.LINUX.class);
-    }
-
-    private static boolean isJDKSupported() {
-        return JavaVersionUtil.JAVA_SPEC < 19;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isProfilingEnabled() {
         return enabled;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean isSignalHandlerDisabled() {
+        return isSignalHandlerGloballyDisabled || SamplerThreadLocal.isSignalHandlerLocallyDisabled();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setSignalHandlerGloballyDisabled(boolean isDisabled) {
+        isSignalHandlerGloballyDisabled = isDisabled;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -242,14 +250,20 @@ public abstract class SubstrateSigprofHandler {
      * Installs the platform dependent sigprof handler.
      */
     void install() {
-        if (Options.SamplingBasedProfiling.getValue()) {
+        if (SubstrateOptions.FlightRecorder.getValue()) {
             threadMXBean = (SubstrateThreadMXBean) ManagementFactory.getThreadMXBean();
             /* Call VM operation to initialize the sampler and the threads. */
             InitializeSamplerOperation initializeSamplerOperation = new InitializeSamplerOperation();
             initializeSamplerOperation.enqueue();
 
-            /* After the VM operations finishes. Install handler and start profiling. */
-            install0();
+            if (Options.SamplingBasedProfiling.getValue()) {
+                if (isOSSupported()) {
+                    /* After the VM operations finishes. Install handler and start profiling. */
+                    install0();
+                } else {
+                    VMError.shouldNotReachHere("Sampling-based profiling is currently supported only on LINUX!");
+                }
+            }
         }
     }
 
@@ -304,10 +318,14 @@ public abstract class SubstrateSigprofHandler {
             }
         }
 
-        if (SubstrateSigprofHandler.singleton().availableBuffers().isLockedByCurrentThread() || SubstrateSigprofHandler.singleton().fullBuffers().isLockedByCurrentThread()) {
+        /* Test if the current thread's signal handler is disabled, or if holds the stack's lock. */
+        if (singleton().isSignalHandlerDisabled() || singleton().availableBuffers().isLockedByCurrentThread() || singleton().fullBuffers().isLockedByCurrentThread()) {
             /*
-             * The current thread already holds the stack lock, so we can't access it. It's way
+             * The current thread already holds the stack's lock, so we can't access it. It's way
              * better to lose one sample, then potentially the whole buffer.
+             * 
+             * In case of disabled signal handler, if we proceed forward it could pollute the JFR
+             * output.
              */
             SamplerThreadLocal.increaseMissedSamples();
             return;
