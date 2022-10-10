@@ -59,6 +59,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropInvokeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadMemberNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Buffer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMResolveForeignClassChainNode;
@@ -249,7 +250,7 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     static boolean isMemberReadable(LLVMPointerImpl receiver, String ident,
                     @Shared("isObject") @Cached ConditionProfile isObject) {
-        if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Clazz)) {
+        if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.CppClass)) {
             LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
             LLVMInteropType.StructMember member = clazz.findMember(ident);
             if (member == null) {
@@ -257,6 +258,9 @@ abstract class CommonPointerLibraries {
                 return method != null;
             }
             return member != null;
+        } else if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.SwiftClass)) {
+            String functionFound = ident.startsWith("$") ? ident : LLVMLanguage.getContext().getGlobalScopeChain().getMangledName(ident);
+            return functionFound != null;
         } else if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
@@ -268,12 +272,8 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static Object readMember(LLVMPointerImpl receiver, String ident,
-                    @Shared("getDirectClass") @Cached LLVMResolveForeignClassChainNode resolveClassChain,
-                    @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
-                    @Exclusive @Cached LLVMForeignReadNode read) throws UnsupportedMessageException, UnknownIdentifierException {
-        LLVMPointer correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());
-        LLVMPointer ptr = getElementPointer.execute(correctClassPtr.getExportType(), correctClassPtr, ident);
-        return read.execute(ptr, ptr.getExportType());
+                    @Cached LLVMInteropReadMemberNode read) throws UnsupportedMessageException, UnknownIdentifierException {
+        return read.execute(receiver, ident, receiver.getExportType());
     }
 
     @ExportMessage
@@ -347,8 +347,8 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static void writeMember(LLVMPointerImpl receiver, String ident, Object value,
-                    @Shared("getDirectClass") @Cached LLVMResolveForeignClassChainNode resolveClassChain,
-                    @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
+                    @Cached LLVMResolveForeignClassChainNode resolveClassChain,
+                    @Cached LLVMForeignGetMemberPointerNode getElementPointer,
                     @Exclusive @Cached LLVMForeignWriteNode write)
                     throws UnsupportedMessageException, UnknownIdentifierException {
         LLVMPointer correctClassPtr = resolveClassChain.execute(receiver, ident, receiver.getExportType());

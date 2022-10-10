@@ -140,4 +140,28 @@ public abstract class MDType extends MDName {
             return UNKNOWN;
         }
     }
+
+    // @see: https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/BinaryFormat/Dwarf.def
+    public enum DwarfLanguage {
+        UNKNOWN(-1),
+
+        SWIFT(0x1e);
+
+        private static final DwarfLanguage[] VALUES = values();
+
+        private final int id;
+
+        DwarfLanguage(int id) {
+            this.id = id;
+        }
+
+        static DwarfLanguage decode(long val) {
+            for (DwarfLanguage tag : VALUES) {
+                if (tag.id == val) {
+                    return tag;
+                }
+            }
+            return UNKNOWN;
+        }
+    }
 }

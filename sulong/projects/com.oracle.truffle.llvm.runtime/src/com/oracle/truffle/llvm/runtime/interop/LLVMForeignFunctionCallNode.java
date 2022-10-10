@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Structured;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
@@ -58,6 +59,8 @@ public class LLVMForeignFunctionCallNode extends LLVMForeignCallNode {
             LLVMInteropType returnType = ((LLVMInteropType.Function) functionType).getReturnType();
             if (returnType instanceof LLVMInteropType.Value) {
                 return ((LLVMInteropType.Value) returnType).baseType;
+            } else if (returnType instanceof LLVMInteropType.Structured) {
+                return (Structured) returnType;
             }
         }
         return null;

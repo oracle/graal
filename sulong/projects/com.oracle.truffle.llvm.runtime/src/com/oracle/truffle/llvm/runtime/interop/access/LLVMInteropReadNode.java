@@ -71,8 +71,9 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
     }
 
     @Specialization(guards = {"type == cachedType", "offset == 0", "cachedType != null", "cachedType.hasVirtualMethods()"})
-    Object doClazzCached(@SuppressWarnings("unused") LLVMInteropType.Clazz type, Object foreign, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") ForeignToLLVMType accessType,
-                    @Cached("type") @SuppressWarnings("unused") LLVMInteropType.Clazz cachedType,
+    Object doCppClassCached(@SuppressWarnings("unused") LLVMInteropType.CppClass type, Object foreign, @SuppressWarnings("unused") long offset,
+                    @SuppressWarnings("unused") ForeignToLLVMType accessType,
+                    @Cached("type") @SuppressWarnings("unused") LLVMInteropType.CppClass cachedType,
                     @Cached("cachedType.getVTable()") LLVMInteropType.VTable vTable) {
         // return an artificially created pointer pointing to vtable and foreign object
         LLVMInteropType.VTableObjectPair vTableObjectPair = LLVMInteropType.VTableObjectPair.create(vTable, foreign);
@@ -80,8 +81,8 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         return pointer;
     }
 
-    @Specialization(guards = {"type != null", "hasVirtualMethods(type)", "offset == 0"}, replaces = "doClazzCached")
-    Object doClazz(LLVMInteropType.Clazz type, Object foreign, long offset, ForeignToLLVMType accessType,
+    @Specialization(guards = {"type != null", "hasVirtualMethods(type)", "offset == 0"}, replaces = "doCppClassCached")
+    Object doCppClass(LLVMInteropType.CppClass type, Object foreign, long offset, ForeignToLLVMType accessType,
                     @Cached LLVMInteropAccessNode access,
                     @Cached ReadLocationNode read) {
         if (type.hasVirtualMethods() && offset == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,40 +28,32 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.oracle.truffle.llvm.runtime.interop.access;
+public class Parent {
+	public func get14() -> Int {
+		return 14
+	}
 
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+	public func get3P5() -> Double {
+		return 3.5
+	}
+	
+	public func square(n: Int) -> Int {
+		return n*n
+	}
+}
 
-@GenerateUncached
-public abstract class LLVMSelfArgumentPackNode extends LLVMNode {
-    public abstract Object[] execute(Object receiver, Object[] arguments, boolean addSelfFirst);
+public class Child : Parent {
+	public override func get14() -> Int {
+		return 214
+	}
+}
 
-    /**
-     * @param addSelfFirst
-     */
-    @Specialization(guards = "addSelfFirst")
-    public Object[] doPackFirst(Object receiver, Object[] arguments, boolean addSelfFirst) {
-        Object[] newArgs = new Object[arguments.length + 1];
-        newArgs[0] = receiver;
-        for (int i = 0; i < arguments.length; i++) {
-            newArgs[i + 1] = arguments[i];
-        }
-        return newArgs;
-    }
-
-    /**
-     * @param addSelfFirst
-     */
-    @Specialization(guards = "!addSelfFirst")
-    public Object[] doPackLast(Object receiver, Object[] arguments, boolean addSelfFirst) {
-        Object[] newArgs = new Object[arguments.length + 1];
-        for (int i = 0; i < arguments.length; i++) {
-            newArgs[i] = arguments[i];
-        }
-        newArgs[newArgs.length - 1] = receiver;
-        return newArgs;
-    }
-
+public class ObjectCreator {
+	public static func createParent() -> Parent {
+		return Parent()
+	}
+	
+	public static func createChild() -> Parent {
+		return Child()
+	}
 }

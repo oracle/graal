@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -121,7 +121,7 @@ void *allocNativeXtendPoint() {
     return polyglot_from_XtendPoint(ret);
 }
 
-void swap(Point *p, Point *q) {
+void swapThePoints(Point *p, Point *q) {
     Point tmp = *q;
     *q = *p;
     *p = tmp;

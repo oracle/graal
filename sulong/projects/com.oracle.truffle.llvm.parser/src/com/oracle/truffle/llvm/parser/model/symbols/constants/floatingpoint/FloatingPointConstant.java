@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,6 +50,9 @@ public abstract class FloatingPointConstant extends AbstractConstant {
 
     public static FloatingPointConstant create(Type type, RecordBuffer buffer) {
         switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case HALF:
+                // temp. solution: use 32bit type
+                return new FloatConstant(readHalfAsFloat(buffer));
             case FLOAT:
                 return new FloatConstant(Float.intBitsToFloat(buffer.readInt()));
 
@@ -62,6 +65,35 @@ public abstract class FloatingPointConstant extends AbstractConstant {
             default:
                 throw new LLVMParserException("Unsupported Floating Point Type: " + type);
         }
+    }
+
+    /**
+     * This method is designed to be used temporarily, and to be replaced by a real half-precision
+     * float type at a later point of time.
+     */
+    private static float readHalfAsFloat(RecordBuffer buffer) {
+        // half: s|eee ee|mm mmmm mmmm (s=sign, e=exponent, m=mantissa)
+        boolean sgn = buffer.readBoolean();
+        final int exponentBits = 5;
+        final int mantissaBits = 10;
+        final int exponentOffset = -15;
+        int exp = 0;
+        for (int i = 0; i < exponentBits; i++) {
+            exp <<= 1;
+            if (buffer.readBoolean()) {
+                exp++;
+            }
+        }
+        int mant = 0;
+        for (int i = 0; i < mantissaBits; i++) {
+            mant <<= 1;
+            if (buffer.readBoolean()) {
+                mant++;
+            }
+        }
+        double ret = mant / Math.pow(2, mantissaBits) + 1;
+        ret *= Math.pow(2, exp + exponentOffset);
+        return (float) (sgn ? -ret : ret);
     }
 
     @Override

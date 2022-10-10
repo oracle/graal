@@ -200,6 +200,7 @@ def _sulong_gate_runner(args, tasks):
     _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongCoverage'],
             extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>'])
     _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Swift', 'SULONG_EMBEDDED_TEST_SUITES', description="Sulong tests for running Swift-compiled LLVM bitcode", testClasses=['com.oracle.truffle.llvm.tests.swift.'], tags=['swift', 'sulongBasic', 'sulongCoverage'])
     _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
     _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcodeformat.'], tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])

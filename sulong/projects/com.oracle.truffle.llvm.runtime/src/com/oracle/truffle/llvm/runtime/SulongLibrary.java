@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,6 +58,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropSwiftClassAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -177,9 +178,16 @@ public final class SulongLibrary implements TruffleObject {
                     @Cached @Shared("notFound") BranchProfile notFound) throws UnknownIdentifierException {
         Object ret = lookup.execute(this, member);
         if (ret == null) {
-            notFound.enter();
-            throw UnknownIdentifierException.create(member);
+            final String swiftMember = SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member});
+            ret = lookup.execute(this, swiftMember);
+            if (ret == null) {
+                notFound.enter();
+                throw UnknownIdentifierException.create(member);
+            } else {
+                return new LLVMInteropSwiftClassAccess(this, (LLVMFunctionDescriptor) ret, member);
+            }
         }
+
         return ret;
     }
 
@@ -211,7 +219,7 @@ public final class SulongLibrary implements TruffleObject {
     @ExportMessage(name = "isMemberInvocable")
     boolean memberExists(String member,
                     @Shared("lookup") @Cached LookupNode lookup) {
-        return lookup.execute(this, member) != null;
+        return lookup.execute(this, member) != null || lookup.execute(this, SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member})) != null;
     }
 
     @ExportMessage

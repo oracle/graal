@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,12 +45,12 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
+public abstract class LLVMInteropCppMethodInvokeNode extends LLVMNode {
     abstract Object execute(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] argumentsWithSelf)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException;
 
-    public static LLVMInteropMethodInvokeNode create() {
-        return LLVMInteropMethodInvokeNodeGen.create();
+    public static LLVMInteropCppMethodInvokeNode create() {
+        return LLVMInteropCppMethodInvokeNodeGen.create();
     }
 
     static boolean isVirtual(long virtualIndex) {
@@ -66,10 +66,10 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
     @ExplodeLoop
     @Specialization(guards = {"isVirtual(virtualIndex)", "type==typeHash"})
     @GenerateAOT.Exclude
-    Object doVirtualCallCached(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type,
+    Object doVirtualCallCached(LLVMPointer receiver, String methodName, LLVMInteropType.CppClass type,
                     Method method, long virtualIndex, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached(value = "type") LLVMInteropType.Clazz typeHash,
+                    @Cached(value = "type") LLVMInteropType.CppClass typeHash,
                     @Cached(value = "type.getVtableAccessNames()", allowUncached = true, dimensions = 1) String[] vtableHelpNames,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException,
@@ -88,7 +88,7 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
     @ExplodeLoop
     @Specialization(guards = "isVirtual(virtualIndex)", replaces = "doVirtualCallCached")
     @GenerateAOT.Exclude
-    Object doVirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] arguments,
+    Object doVirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.CppClass type, Method method, long virtualIndex, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
@@ -104,7 +104,7 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
      * @param virtualIndex
      */
     @Specialization(guards = "!isVirtual(virtualIndex)")
-    Object doNonvirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] arguments,
+    Object doNonvirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.CppClass type, Method method, long virtualIndex, Object[] arguments,
                     @Cached LLVMInteropNonvirtualCallNode call)
                     throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
         return call.execute(receiver, type, methodName, method, arguments);

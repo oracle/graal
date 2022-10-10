@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,12 +56,12 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
 
     @Specialization
     @GenerateAOT.Exclude
-    Object doClazz(LLVMPointer receiver, LLVMInteropType.Clazz type, String method, Object[] arguments,
-                    @Cached LLVMInteropMethodInvokeNode invoke,
+    Object doCppClass(LLVMPointer receiver, LLVMInteropType.CppClass type, String method, Object[] arguments,
+                    @Cached LLVMInteropCppMethodInvokeNode invoke,
                     @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        Object[] selfArgs = selfPackNode.execute(receiver, arguments);
+        Object[] selfArgs = selfPackNode.execute(receiver, arguments, true);
         Method methodObject = type.findMethodByArgumentsWithSelf(method, selfArgs);
         if (methodObject == null) {
             return doStruct(receiver, type, method, arguments, interop);
@@ -73,7 +73,19 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     /**
      * @param type
      */
-    @Specialization(guards = "!isClass(type)")
+    @Specialization
+    @GenerateAOT.Exclude
+    Object doSwift(LLVMPointer receiver, LLVMInteropType.SwiftClass type, String member, Object[] arguments,
+                    @CachedLibrary(limit = "5") InteropLibrary interop)
+                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
+        Object methodAsMember = interop.readMember(receiver, member);
+        return interop.execute(methodAsMember, arguments);
+    }
+
+    /**
+     * @param type
+     */
+    @Specialization(guards = {"!isClass(type)"})
     @GenerateAOT.Exclude
     Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop)

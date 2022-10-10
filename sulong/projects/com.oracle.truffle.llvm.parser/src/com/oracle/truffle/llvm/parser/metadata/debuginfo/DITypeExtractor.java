@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
+import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -194,11 +195,28 @@ final class DITypeExtractor implements MetadataVisitor {
 
                 break;
             }
-
-            case DW_TAG_CLASS_TYPE: {
+            case DW_TAG_CLASS_TYPE:
+            case DW_TAG_UNION_TYPE:
+            case DW_TAG_STRUCTURE_TYPE: {
                 String name = MDNameExtractor.getName(mdType.getName());
+                DwLangNameRecord lang = DwLangNameRecord.decode(mdType.getRuntimeLanguage());
+                LLVMSourceStructLikeType tmpType;
 
-                final LLVMSourceClassLikeType type = new LLVMSourceClassLikeType(name, size, align, offset, location);
+                MDType.DwarfTag tag = mdType.getTag();
+                if (tag == MDType.DwarfTag.DW_TAG_STRUCTURE_TYPE && lang == DwLangNameRecord.DW_LANG_SWIFT) {
+                    // swift structs also contain methods, thus treat them as classes
+                    tag = MDType.DwarfTag.DW_TAG_CLASS_TYPE;
+                }
+                if (tag == MDType.DwarfTag.DW_TAG_CLASS_TYPE) {
+                    tmpType = new LLVMSourceClassLikeType(name, size, align, offset, location, lang);
+                } else if (tag == MDType.DwarfTag.DW_TAG_UNION_TYPE) {
+                    name = String.format("union %s", name);
+                    tmpType = new LLVMSourceStructLikeType(name, size, align, offset, location);
+                } else { // DW_TAG_STRUCTURE_TYPE: keep existing name
+                    name = String.format("struct %s", name);
+                    tmpType = new LLVMSourceStructLikeType(name, size, align, offset, location);
+                }
+                final LLVMSourceStructLikeType type = tmpType;
                 parsedTypes.put(mdType, type);
 
                 final List<LLVMSourceType> members = new ArrayList<>();
@@ -206,12 +224,15 @@ final class DITypeExtractor implements MetadataVisitor {
                 for (final LLVMSourceType member : members) {
                     if (member instanceof LLVMSourceMemberType) {
                         type.addDynamicMember((LLVMSourceMemberType) member);
+
                     } else if (member instanceof LLVMSourceStaticMemberType) {
                         type.addStaticMember((LLVMSourceStaticMemberType) member);
                     }
                 }
+
                 MDBaseNode mdMembers = mdType.getMembers();
-                if (mdMembers instanceof MDNode) {
+                if (mdMembers instanceof MDNode && type instanceof LLVMSourceClassLikeType) {
+                    final LLVMSourceClassLikeType classType = (LLVMSourceClassLikeType) type;
                     final MDNode elemListNode = (MDNode) mdMembers;
                     for (MDBaseNode elemNode : elemListNode) {
                         if (elemNode instanceof MDSubprogram) {
@@ -222,7 +243,7 @@ final class DITypeExtractor implements MetadataVisitor {
                                 final LLVMSourceFunctionType llvmSourceFunctionType = (LLVMSourceFunctionType) parsedTypes.get(mdSubprogram);
                                 final long virtualIndex = mdSubprogram.getVirtuality() > 0 ? mdSubprogram.getVirtualIndex() : -1L;
                                 if (llvmSourceFunctionType != null) {
-                                    type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType, virtualIndex);
+                                    classType.addMethod(methodName, methodLinkageName, llvmSourceFunctionType, virtualIndex);
                                 }
                             } else {
                                 /*
@@ -233,30 +254,6 @@ final class DITypeExtractor implements MetadataVisitor {
 
                             }
                         }
-                    }
-                }
-                break;
-            }
-            case DW_TAG_UNION_TYPE:
-            case DW_TAG_STRUCTURE_TYPE: {
-                String name = MDNameExtractor.getName(mdType.getName());
-                if (mdType.getTag() == MDType.DwarfTag.DW_TAG_STRUCTURE_TYPE) {
-                    name = String.format("struct %s", name);
-                } else if (mdType.getTag() == MDType.DwarfTag.DW_TAG_UNION_TYPE) {
-                    name = String.format("union %s", name);
-                }
-
-                final LLVMSourceStructLikeType type = new LLVMSourceStructLikeType(name, size, align, offset, location);
-                parsedTypes.put(mdType, type);
-
-                final List<LLVMSourceType> members = new ArrayList<>();
-                getElements(mdType.getMembers(), members, false);
-                for (final LLVMSourceType member : members) {
-                    if (member instanceof LLVMSourceMemberType) {
-                        type.addDynamicMember((LLVMSourceMemberType) member);
-
-                    } else if (member instanceof LLVMSourceStaticMemberType) {
-                        type.addStaticMember((LLVMSourceStaticMemberType) member);
                     }
                 }
                 break;

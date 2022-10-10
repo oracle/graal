@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 /*
  * source: https://github.com/llvm-mirror/llvm/blob/release_32/include/llvm/Support/Dwarf.h
+ * https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/BinaryFormat/Dwarf.def
  */
 public enum DwLangNameRecord {
 
@@ -57,6 +58,7 @@ public enum DwLangNameRecord {
     DW_LANG_UPC(0x0012),
     DW_LANG_D(0x0013),
     DW_LANG_PYTHON(0x0014),
+    DW_LANG_SWIFT(0x001e),
     DW_LANG_LO_USER(0x8000), // lower boundary for user defined tags
     DW_LANG_MIPS_ASSEMBLER(0x8001),
     DW_LANG_HI_USER(0xFFFF); // upper boundary for user defined tags

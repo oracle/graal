@@ -33,11 +33,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -70,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 import org.graalvm.collections.EconomicMap;
@@ -396,19 +395,19 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static final class ClazzInheritance implements Comparable<ClazzInheritance> {
-        public final Clazz superClass;
+    public static final class CppClassInheritance implements Comparable<CppClassInheritance> {
+        public final CppClass superClass;
         public final long offset;
         public final boolean virtual;
 
-        public ClazzInheritance(Clazz superClass, long offset, boolean virtual) {
+        public CppClassInheritance(CppClass superClass, long offset, boolean virtual) {
             this.superClass = superClass;
             this.offset = offset;
             this.virtual = virtual;
         }
 
         @Override
-        public int compareTo(ClazzInheritance other) {
+        public int compareTo(CppClassInheritance other) {
             if (this.virtual == other.virtual) {
                 return Long.compare(this.offset, other.offset);
             } else {
@@ -417,50 +416,27 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static final class Clazz extends Struct {
+    public static final class CppClass extends Clazz {
 
-        @CompilationFinal(dimensions = 1) final Method[] methods;
-        private SortedSet<ClazzInheritance> superclasses;
+        private SortedSet<CppClassInheritance> superclasses;
         private VTable vtable;
         private boolean virtualMethodsInitialized;
         private boolean virtualMethods;
 
-        Clazz(String name, StructMember[] members, Method[] methods, long size) {
-            super(name, members, size);
-            this.methods = methods;
+        CppClass(String name, StructMember[] members, Method[] methods, long size) {
+            super(name, members, methods, size);
+            this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
             this.vtable = null;
             this.virtualMethodsInitialized = false;
-            this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
         }
 
-        public void addSuperClass(Clazz superclass, long offset, boolean virtual) {
-            superclasses.add(new ClazzInheritance(superclass, offset, virtual));
+        public void addSuperClass(CppClass superclass, long offset, boolean virtual) {
+            superclasses.add(new CppClassInheritance(superclass, offset, virtual));
         }
 
-        public Method getMethod(int i) {
-            return methods[i];
-        }
-
-        public int getMethodCount() {
-            return methods.length;
-        }
-
-        @TruffleBoundary
-        public Method findMethod(String memberName) {
-            for (Method method : methods) {
-                if (method.getName().equals(memberName)) {
-                    return method;
-                } else if (method.getLinkageName().equals(memberName)) {
-                    return method;
-                }
-            }
-            for (ClazzInheritance ci : superclasses) {
-                Method method = ci.superClass.findMethod(memberName);
-                if (method != null) {
-                    return method;
-                }
-            }
-            return null;
+        @Override
+        public Clazz[] getSuperClasses() {
+            return superclasses.stream().map(ci -> ci.superClass).toArray(Clazz[]::new);
         }
 
         /**
@@ -486,13 +462,13 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         @TruffleBoundary
-        private Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new LinkedList<>(), this);
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
+            for (CppClassInheritance ci : superclasses) {
                 Pair<LinkedList<Long>, Struct> pair = ci.superClass.getMemberAccessList(ident);
                 if (pair != null) {
                     for (StructMember member : members) {
@@ -504,23 +480,6 @@ public abstract class LLVMInteropType implements TruffleObject {
                             return pair;
                         }
                     }
-                }
-            }
-            return null;
-        }
-
-        @Override
-        @TruffleBoundary
-        public StructMember findMember(String memberName) {
-            for (StructMember member : members) {
-                if (member.name.equals(memberName)) {
-                    return member;
-                }
-            }
-            for (ClazzInheritance ci : superclasses) {
-                StructMember member = ci.superClass.findMember(memberName);
-                if (member != null) {
-                    return member;
                 }
             }
             return null;
@@ -546,10 +505,6 @@ public abstract class LLVMInteropType implements TruffleObject {
             return list.toArray(new String[0]);
         }
 
-        public Set<Clazz> getSuperClasses() {
-            return new HashSet<>(superclasses.stream().map(ci -> ci.superClass).collect(Collectors.toSet()));
-        }
-
         @TruffleBoundary
         private void initVirtualMethods() {
             virtualMethodsInitialized = true;
@@ -559,7 +514,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
+            for (CppClassInheritance ci : superclasses) {
                 if (ci.superClass.hasVirtualMethods()) {
                     virtualMethods = true;
                     return;
@@ -568,6 +523,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             virtualMethods = false;
         }
 
+        @Override
         public boolean hasVirtualMethods() {
             if (!virtualMethodsInitialized) {
                 initVirtualMethods();
@@ -586,12 +542,99 @@ public abstract class LLVMInteropType implements TruffleObject {
         public void buildVTable() {
             virtualMethodsInitialized = false;
             if (vtable == null && hasVirtualMethods()) {
-                for (ClazzInheritance ci : superclasses) {
+                for (CppClassInheritance ci : superclasses) {
                     ci.superClass.buildVTable();
                 }
                 vtable = new VTable(this);
             }
         }
+
+    }
+
+    public static final class SwiftClass extends Clazz {
+
+        private SwiftClass superClass;
+
+        SwiftClass(String name, StructMember[] members, Method[] methods, long size) {
+            super(name, members, methods, size);
+            this.superClass = null;
+        }
+
+        @Override
+        public Clazz[] getSuperClasses() {
+            if (superClass == null) {
+                return new Clazz[0];
+            }
+            return new Clazz[]{superClass};
+        }
+
+        @Override
+        public boolean hasVirtualMethods() {
+            return methods.length > 0;
+        }
+
+        public void setSuperClass(SwiftClass superClass) {
+            if (this.superClass == null) {
+                this.superClass = superClass;
+            }
+        }
+
+    }
+
+    public static abstract class Clazz extends Struct {
+
+        @CompilationFinal(dimensions = 1) final Method[] methods;
+
+        Clazz(String name, StructMember[] members, Method[] methods, long size) {
+            super(name, members, size);
+            this.methods = methods;
+
+        }
+
+        public Method getMethod(int i) {
+            return methods[i];
+        }
+
+        public int getMethodCount() {
+            return methods.length;
+        }
+
+        @TruffleBoundary
+        public Method findMethod(String memberName) {
+            for (Method method : methods) {
+                if (method.getName().equals(memberName)) {
+                    return method;
+                } else if (method.getLinkageName().equals(memberName)) {
+                    return method;
+                }
+            }
+            for (Clazz superClass : getSuperClasses()) {
+                Method method = superClass.findMethod(memberName);
+                if (method != null) {
+                    return method;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        @TruffleBoundary
+        public StructMember findMember(String memberName) {
+            for (StructMember member : members) {
+                if (member.name.equals(memberName)) {
+                    return member;
+                }
+            }
+            for (Clazz superClass : getSuperClasses()) {
+                StructMember member = superClass.findMember(memberName);
+                if (member != null) {
+                    return member;
+                }
+            }
+            return null;
+        }
+
+        public abstract Clazz[] getSuperClasses();
 
         @TruffleBoundary
         public Method findMethodByArgumentsWithSelf(String memberName, Object[] arguments) throws ArityException {
@@ -609,8 +652,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Method m = ci.superClass.findMethodByArgumentsWithSelf(memberName, arguments);
+            for (Clazz c : getSuperClasses()) {
+                Method m = c.findMethodByArgumentsWithSelf(memberName, arguments);
                 if (m != null) {
                     return m;
                 }
@@ -620,6 +663,8 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
             return null;
         }
+
+        public abstract boolean hasVirtualMethods();
 
     }
 
@@ -631,11 +676,13 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.clazz = clazz;
             int maxIndex = -1;
             HashMap<Integer, Method> map = new HashMap<>();
-            List<Clazz> list = new LinkedList<>(clazz.getSuperClasses());
+            List<Clazz> list = new LinkedList<>(Arrays.asList(clazz.getSuperClasses()));
             list.add(0, clazz);
             do {
                 Clazz c = list.remove(0);
-                list.addAll(c.getSuperClasses());
+                for (Clazz superClass : c.getSuperClasses()) {
+                    list.add(superClass);
+                }
                 for (Method m : c.methods) {
                     if (m != null && m.getVirtualIndex() >= 0) {
                         int idx = Type.toUnsignedInt(m.virtualIndex);
@@ -914,6 +961,15 @@ public abstract class LLVMInteropType implements TruffleObject {
                 return convertPointer((LLVMSourcePointerType) type);
             } else if (type instanceof LLVMSourceBasicType) {
                 return convertBasic((LLVMSourceBasicType) type);
+            } else if (type instanceof LLVMSourceClassLikeType && ((LLVMSourceClassLikeType) type).getSourceLanguage() == DwLangNameRecord.DW_LANG_SWIFT) {
+                switch (((LLVMSourceClassLikeType) type).getName()) {
+                    case "Int":
+                        return LLVMInteropType.ValueKind.I64.type;
+                    case "Double":
+                        return LLVMInteropType.ValueKind.DOUBLE.type;
+                    default:
+                        return convertStructured(type);
+                }
             } else {
                 return convertStructured(type);
             }
@@ -989,8 +1045,24 @@ public abstract class LLVMInteropType implements TruffleObject {
             return ret;
         }
 
+        interface ClazzConstructor {
+            Clazz create(String name, StructMember[] structMembers, Method[] methods, long size);
+        }
+
         private Clazz convertClass(LLVMSourceClassLikeType type) {
-            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8);
+            final String typeName = type.getName();
+            final StructMember[] structMembers = new StructMember[type.getDynamicElementCount()];
+            final Method[] methods = new Method[type.getMethodCount()];
+
+            if (type.getSourceLanguage() == DwLangNameRecord.DW_LANG_SWIFT) {
+                return convertSwiftClass(type, typeName, structMembers, methods);
+            } else {
+                return convertCppClass(type, typeName, structMembers, methods);
+            }
+        }
+
+        private CppClass convertCppClass(LLVMSourceClassLikeType type, String typeName, StructMember[] structMembers, Method[] methods) {
+            CppClass ret = new CppClass(typeName, structMembers, methods, type.getSize() / 8);
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
@@ -1002,7 +1074,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                     if (!typeCache.containsKey(sourceSuperClazz)) {
                         convertClass(sourceSuperClazz);
                     }
-                    Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
+                    CppClass superClazz = (CppClass) typeCache.get(sourceSuperClazz);
                     ret.addSuperClass(superClazz, member.getOffset(), ((LLVMSourceInheritanceType) member).isVirtual());
                 }
                 long startOffset = member.getOffset() / 8;
@@ -1013,6 +1085,24 @@ public abstract class LLVMInteropType implements TruffleObject {
                 ret.methods[i] = convertMethod(type.getMethod(i), ret);
             }
             ret.buildVTable();
+
+            return ret;
+        }
+
+        private SwiftClass convertSwiftClass(LLVMSourceClassLikeType type, String typeName, StructMember[] structMembers, Method[] methods) {
+            SwiftClass ret = new SwiftClass(typeName, structMembers, methods, type.getSize() / 8);
+            typeCache.put(type, ret);
+            for (int i = 0; i < ret.members.length; i++) {
+                LLVMSourceMemberType member = type.getDynamicElement(i);
+                LLVMSourceType memberType = member.getElementType();
+                final boolean isInheritanceType = member instanceof LLVMSourceInheritanceType;
+                long startOffset = member.getOffset() / 8;
+                long endOffset = startOffset + (memberType.getSize() + 7) / 8;
+                ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType), isInheritanceType);
+            }
+            for (int i = 0; i < ret.methods.length; i++) {
+                ret.methods[i] = convertMethod(type.getMethod(i), ret);
+            }
             return ret;
         }
 

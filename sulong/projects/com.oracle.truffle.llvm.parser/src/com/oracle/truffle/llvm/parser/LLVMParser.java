@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerC
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
@@ -49,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
+import com.oracle.truffle.llvm.runtime.SwiftDemangler;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -57,6 +60,8 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -221,11 +226,46 @@ public final class LLVMParser {
     }
 
     private void defineExpressionSymbol(String aliasName, boolean isAliasExported, GetElementPointerConstant elementPointerConstant, DataLayout targetDataLayout) {
-        LLVMSymbol baseSymbol = runtime.getFileScope().get(elementPointerConstant.getBasePointer().toString());
+        SymbolImpl impl = elementPointerConstant;
+        int index = -1;
+        while (impl instanceof GetElementPointerConstant) {
+            impl = ((GetElementPointerConstant) impl).getBasePointer();
+        }
+        if (impl instanceof GlobalSymbol) {
+            index = ((GlobalSymbol) impl).getIndex();
+        }
+
         Supplier<LLVMExpressionNode> createElemPtrNode = () -> elementPointerConstant.createNode(runtime, targetDataLayout, GetStackSpaceFactory.createAllocaFactory());
-        LLVMElemPtrSymbol expressionSymbol = new LLVMElemPtrSymbol(aliasName, runtime.getBitcodeID(), -1, isAliasExported,
-                        elementPointerConstant.getType(), baseSymbol, createElemPtrNode);
+        LLVMElemPtrSymbol expressionSymbol = new LLVMElemPtrSymbol(aliasName, runtime.getBitcodeID(), index, isAliasExported,
+                        elementPointerConstant.getType(), createElemPtrNode);
         runtime.getFileScope().register(expressionSymbol);
+        runtime.getPublicFileScope().register(expressionSymbol);
+        final Type baseType = elementPointerConstant.getBasePointer().getType();
+
+        if (expressionSymbol.getName().endsWith(SwiftDemangler.FUNCTION_DESCRIPTOR_SUFFIX)) {
+            int subStringLength = expressionSymbol.getName().length() - SwiftDemangler.FUNCTION_DESCRIPTOR_SUFFIX.length();
+            String methodName = expressionSymbol.getName().substring(0, subStringLength);
+            SymbolImpl[] indices = elementPointerConstant.getIndices();
+            long[] indexVals = new long[indices.length];
+            for (int i = 0; i < indexVals.length - 1; i++) {
+                indexVals[i] = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indices[i]);
+            }
+
+            try {
+                long lastIndexVal = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indices[indices.length - 1]);
+                StructureType structBase = (StructureType) ((PointerType) baseType).getPointeeType();
+                long offset = 0;
+                for (int i = 0; i < lastIndexVal; i++) {
+                    Type t = structBase.getElementType(i);
+                    offset += t.getSize(targetDataLayout);
+                }
+                // alignment: round up (ceiling): add 4, divide by 8
+                indexVals[indexVals.length - 1] = (offset + 4) / 8;
+            } catch (TypeOverflowException e) {
+                throw new IllegalArgumentException(e);
+            }
+            runtime.getPublicFileScope().setSymbolOffsets(methodName, indexVals);
+        }
     }
 
     private void defineAlias(String existingName, String newName, boolean newExported) {

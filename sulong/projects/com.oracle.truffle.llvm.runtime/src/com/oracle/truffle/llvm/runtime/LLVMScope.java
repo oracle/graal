@@ -32,27 +32,34 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
     private final HashMap<String, String> linkageNames;
+    private final HashMap<String, long[]> symbolOffsets;
+    private final HashMap<String, HashMap<String, String>> linkageScopeNames;
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
         this.functionKeys = new ArrayList<>();
         this.linkageNames = new HashMap<>();
+        this.linkageScopeNames = new HashMap<>();
+        this.symbolOffsets = new HashMap<>();
     }
 
-    public LLVMScope(HashMap<String, LLVMSymbol> symbols, ArrayList<String> functionKeys, HashMap<String, String> linkageNames) {
+    public LLVMScope(HashMap<String, LLVMSymbol> symbols, ArrayList<String> functionKeys, HashMap<String, String> linkageNames, HashMap<String, HashMap<String, String>> linkageScopeNames,
+                    HashMap<String, long[]> symbolOffsets) {
         this.symbols = symbols;
         this.functionKeys = functionKeys;
         this.linkageNames = linkageNames;
+        this.linkageScopeNames = linkageScopeNames;
+        this.symbolOffsets = symbolOffsets;
     }
 
     @TruffleBoundary
@@ -78,7 +85,7 @@ public class LLVMScope implements TruffleObject {
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        final String newName = linkageNames.get(name);
+        final String newName = getMangledName(name);
         if (newName != null) {
             symbol = get(newName);
             if (symbol != null && symbol.isFunction()) {
@@ -86,6 +93,38 @@ public class LLVMScope implements TruffleObject {
             }
         }
         return null;
+    }
+
+    public String getMangledName(String name) {
+        for (HashMap<String, String> scope : linkageScopeNames.values()) {
+            if (scope.containsKey(name)) {
+                return scope.get(name);
+            }
+        }
+        return linkageNames.get(name);
+    }
+
+    public String getMangledName(String scope, String name) {
+        HashMap<String, String> scopeMap = linkageScopeNames.get(scope);
+        if (scopeMap == null) {
+            return null;
+        }
+        return scopeMap.get(name);
+    }
+
+    public Collection<String> getMangledNames(String scope) {
+        HashSet<String> result = new HashSet<>();
+        linkageScopeNames.getOrDefault(scope, new HashMap<>()).values().forEach(result::add);
+        symbolOffsets.keySet().forEach(result::add);
+        return result;
+    }
+
+    public long[] getSymbolOffsets(String symbolName) {
+        return symbolOffsets.get(symbolName);
+    }
+
+    public void setSymbolOffsets(String symbolName, long[] offsets) {
+        symbolOffsets.put(symbolName, offsets);
     }
 
     /**
@@ -97,6 +136,17 @@ public class LLVMScope implements TruffleObject {
      */
     public void registerLinkageName(String name, String linkageName) {
         linkageNames.put(name, linkageName);
+    }
+
+    public void registerLinkageName(String scope, String name, String linkageName) {
+        if (scope == null) {
+            registerLinkageName(name, linkageName);
+        } else {
+            if (linkageScopeNames.get(scope) == null) {
+                linkageScopeNames.put(scope, new HashMap<>());
+            }
+            linkageScopeNames.get(scope).put(name, linkageName);
+        }
     }
 
     /**

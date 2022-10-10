@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.debug.type;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
