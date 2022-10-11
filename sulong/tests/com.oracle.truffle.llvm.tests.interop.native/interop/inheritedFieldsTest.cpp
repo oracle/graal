@@ -66,3 +66,37 @@ void *prepareB() {
     b->b = 4;
     return polyglot_from_B(b);
 }
+
+//----------
+
+struct C {
+    int c;
+};
+
+POLYGLOT_DECLARE_TYPE(C);
+
+class D : public C {
+public:
+    int d;
+    D();
+};
+
+D::D() {
+	c = 3;
+	d = 4;
+}
+
+POLYGLOT_DECLARE_TYPE(D);
+
+void *prepareC() {
+    C *c = (C *) malloc(sizeof(C));
+    c->c = 3;
+    return polyglot_from_C(c);
+}
+
+void *prepareD() {
+    D *d = (D *) malloc(sizeof(D));
+    d->c = 3;
+    d->d = 4;
+    return polyglot_from_D(d);
+}
