@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -181,7 +182,7 @@ public interface DynamicConstant extends PoolConstant {
 
         @Override
         public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            BytecodeNode.putObject(frame, top, resolved);
+            EspressoFrame.putObject(frame, top, resolved);
         }
 
         @Override
@@ -204,7 +205,7 @@ public interface DynamicConstant extends PoolConstant {
 
         @Override
         public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            BytecodeNode.putInt(frame, top, resolved);
+            EspressoFrame.putInt(frame, top, resolved);
         }
 
         @Override
@@ -227,7 +228,7 @@ public interface DynamicConstant extends PoolConstant {
 
         @Override
         public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            BytecodeNode.putLong(frame, top, resolved);
+            EspressoFrame.putLong(frame, top, resolved);
         }
 
         @Override
@@ -250,7 +251,7 @@ public interface DynamicConstant extends PoolConstant {
 
         @Override
         public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            BytecodeNode.putDouble(frame, top, resolved);
+            EspressoFrame.putDouble(frame, top, resolved);
         }
 
         @Override
@@ -273,7 +274,7 @@ public interface DynamicConstant extends PoolConstant {
 
         @Override
         public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-            BytecodeNode.putFloat(frame, top, resolved);
+            EspressoFrame.putFloat(frame, top, resolved);
         }
 
         @Override

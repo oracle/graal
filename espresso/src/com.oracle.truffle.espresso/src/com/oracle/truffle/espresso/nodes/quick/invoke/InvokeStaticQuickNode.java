@@ -27,7 +27,8 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStatic;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStaticNodeGen;
@@ -42,6 +43,8 @@ public final class InvokeStaticQuickNode extends QuickNode {
     final boolean callsDoPrivileged;
 
     final int resultAt;
+
+    final JavaKind returnKind;
     final boolean returnsPrimitiveType;
 
     public InvokeStaticQuickNode(Method method, int top, int curBCI) {
@@ -53,6 +56,7 @@ public final class InvokeStaticQuickNode extends QuickNode {
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
                                                                                           // receiver
         this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
+        this.returnKind = method.getReturnKind();
         this.invokeStatic = InvokeStaticNodeGen.create(method);
     }
 
@@ -66,12 +70,12 @@ public final class InvokeStaticQuickNode extends QuickNode {
                 rootNode.setFrameId(frame, VM.GlobalFrameIDs.getID());
             }
         }
-        Object[] args = BytecodeNode.popArguments(frame, top, false, method.getMethod().getParsedSignature());
+        Object[] args = EspressoFrame.popArguments(frame, top, false, method.getMethod().getParsedSignature());
         Object result = invokeStatic.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + EspressoFrame.putKind(frame, getResultAt(), result, returnKind);
     }
 
     private int getResultAt() {

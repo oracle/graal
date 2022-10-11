@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,34 +28,30 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.Method;
 
-/*
- All methods in this class that can be overridden in subclasses must be abstract.
- If a generic implementation should be provided it should be in EspressoMethodNode.
+/**
+ * All methods in this class that can be overridden in subclasses must be abstract. If a generic
+ * implementation should be provided it should be in {@link EspressoInstrumentableRootNodeImpl}.
  */
 @GenerateWrapper
-public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode {
-    @Override
-    public abstract Object execute(VirtualFrame frame);
+public abstract class EspressoInstrumentableRootNode extends EspressoInstrumentableNode {
 
-    @SuppressWarnings("unused")
-    public void initializeFrame(VirtualFrame frame) {
-        // nop
-    }
+    abstract Object execute(VirtualFrame frame);
 
-    public abstract Method.MethodVersion getMethodVersion();
+    abstract Method.MethodVersion getMethodVersion();
 
     // the wrapper must delegate this
+
     @Override
     public abstract SourceSection getSourceSection();
 
-    public abstract boolean canSplit();
+    abstract boolean canSplit();
 
-    public abstract EspressoBaseMethodNode split();
+    abstract EspressoInstrumentableRootNode split();
+
+    abstract boolean isTrivial();
 
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {
-        return new EspressoBaseMethodNodeWrapper(this, probeNode);
+        return new EspressoInstrumentableRootNodeWrapper(this, probeNode);
     }
-
-    protected abstract boolean isTrivial();
 }
