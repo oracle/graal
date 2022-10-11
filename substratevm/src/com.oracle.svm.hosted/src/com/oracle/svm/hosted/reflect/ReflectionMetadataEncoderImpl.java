@@ -65,6 +65,8 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
@@ -124,6 +126,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder {
 
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
         public ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {
@@ -417,7 +420,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
         AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
         ReflectParameterMetadata[] reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
-        AccessibleObject holder = getHolder(object);
+        AccessibleObject holder = ReflectionMetadataEncoder.getHolder(object);
         JavaConstant heapObjectConstant = SubstrateObjectConstant.forObject(holder);
         encoders.objectConstants.addObject(heapObjectConstant);
 
@@ -433,17 +436,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             registerField((HostedType) metaAccess.lookupJavaType(((Field) object).getDeclaringClass()), holder, (FieldMetadata) metadata);
         }
         heapData.add(metadata);
-    }
-
-    private static final Method getRoot = ReflectionUtil.lookupMethod(AccessibleObject.class, "getRoot");
-
-    private static AccessibleObject getHolder(AccessibleObject accessibleObject) {
-        try {
-            AccessibleObject root = (AccessibleObject) getRoot.invoke(accessibleObject);
-            return root == null ? accessibleObject : root;
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
     }
 
     private HostedType[] registerClassValues(MetaAccessProvider metaAccess, Class<?>[] classes) {

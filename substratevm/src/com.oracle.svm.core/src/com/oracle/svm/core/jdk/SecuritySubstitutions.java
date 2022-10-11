@@ -51,11 +51,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -65,6 +65,7 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.reflect.Reflection;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 
@@ -79,13 +80,13 @@ final class Target_java_security_AccessController {
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     public static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
-        return executePrivileged(action, null, Target_jdk_internal_reflect_Reflection.getCallerClass());
+        return executePrivileged(action, null, Reflection.getCallerClass());
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     public static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
-        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        Class<?> caller = Reflection.getCallerClass();
         AccessControlContext acc = checkContext(context, caller);
         return executePrivileged(action, acc, caller);
     }
@@ -93,14 +94,14 @@ final class Target_java_security_AccessController {
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     public static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
-        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        Class<?> caller = Reflection.getCallerClass();
         return executePrivileged(action, null, caller);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
-        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        Class<?> caller = Reflection.getCallerClass();
         AccessControlContext acc = checkContext(context, caller);
         return executePrivileged(action, acc, caller);
     }

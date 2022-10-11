@@ -267,7 +267,7 @@ public class NativeImage {
          */
         private static final Method isModulePathBuild = ReflectionUtil.lookupMethod(ModuleSupport.class, "isModulePathBuild");
 
-        boolean modulePathBuild;
+        protected boolean modulePathBuild;
         String imageBuilderModeEnforcer;
 
         protected final Path workDir;
@@ -323,10 +323,14 @@ public class NativeImage {
         }
 
         /**
-         * @return the name of the image generator main class.
+         * @return The image generator main class entry point.
          */
-        public String getGeneratorMainClass() {
-            return DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX;
+        public List<String> getGeneratorMainClass() {
+            if (modulePathBuild) {
+                return Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME);
+            } else {
+                return List.of(DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX);
+            }
         }
 
         /**
@@ -1305,11 +1309,8 @@ public class NativeImage {
             arguments.addAll(strings);
         }
 
-        if (config.modulePathBuild) {
-            arguments.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
-        } else {
-            arguments.add(config.getGeneratorMainClass());
-        }
+        arguments.addAll(config.getGeneratorMainClass());
+
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected

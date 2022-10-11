@@ -29,6 +29,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -92,6 +94,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
@@ -246,9 +249,7 @@ public abstract class NativeImageCodeCache {
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-            final HostedMethod method = pair.getLeft();
-            final CompilationResult compilation = pair.getRight();
-            codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset(), codeSizeFor(method));
+            encodeMethod(codeInfoEncoder, pair);
         }
 
         ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
@@ -385,6 +386,12 @@ public abstract class NativeImageCodeCache {
         assert verifyMethods(codeInfoEncoder, imageCodeInfo);
     }
 
+    protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
+        final HostedMethod method = pair.getLeft();
+        final CompilationResult compilation = pair.getRight();
+        codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset(), codeSizeFor(method));
+    }
+
     private void verifyDeoptEntries(CodeInfo codeInfo) {
         boolean hasError = false;
         List<Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>>> deoptEntries = new ArrayList<>(SubstrateCompilationDirectives.singleton().getDeoptEntries().entrySet());
@@ -494,7 +501,7 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+    protected boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             HostedMethod method = pair.getLeft();
             CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo);
@@ -667,6 +674,17 @@ public abstract class NativeImageCodeCache {
         void addReachableExecutableMetadata(HostedMethod method);
 
         void encodeAllAndInstall();
+
+        Method getRoot = ReflectionUtil.lookupMethod(AccessibleObject.class, "getRoot");
+
+        static AccessibleObject getHolder(AccessibleObject accessibleObject) {
+            try {
+                AccessibleObject root = (AccessibleObject) getRoot.invoke(accessibleObject);
+                return root == null ? accessibleObject : root;
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
 
     }
 
