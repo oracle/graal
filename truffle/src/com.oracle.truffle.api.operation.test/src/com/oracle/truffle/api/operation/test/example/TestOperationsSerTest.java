@@ -71,12 +71,12 @@ public class TestOperationsSerTest {
             Assert.fail();
         }
 
-        return (TestOperations) nodes2.getNodes().get(0);
+        return nodes2.getNodes().get(0);
     }
 
     private static byte[] createByteArray() {
 
-        OperationNodes nodes = TestOperationsGen.create(OperationConfig.DEFAULT, b -> {
+        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, b -> {
             b.beginRoot(null);
 
             b.beginReturn();
