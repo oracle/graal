@@ -49,7 +49,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
     private boolean interruptedFound = false;
     private boolean simpleWaitFound = false;
-    static volatile boolean waiting = false;
+    static volatile boolean inCritical = false;
 
     @Override
     public String[] getTestedEvents() {
@@ -74,7 +74,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
             if (!struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
-            assertTrue("Event is wrong duration.", event.getDuration().toMillis() >= MILLIS);
+            assertTrue("Event is wrong duration." + event.getDuration().toMillis(), event.getDuration().toMillis() >= MILLIS);
             assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
 
             if (eventThread.equals(interruptedThread.getName())) {
@@ -93,7 +93,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable interrupted = () -> {
             try {
-                helper.interrupted();
+                helper.interrupt();// must enter first
                 throw new RuntimeException("Was not interrupted!!");
             } catch (InterruptedException e) {
                 // should get interrupted
@@ -103,13 +103,13 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable interrupter = () -> {
             try {
-                while (!interruptedThread.getState().equals(Thread.State.WAITING) || !waiting) {
+                while (!inCritical) {
                     Thread.sleep(10);
                 }
-            } catch (Exception e) {
+                helper.interrupt();
+            } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
             }
-            helper.interrupt();
         };
 
         interrupterThread = new Thread(interrupter);
@@ -117,17 +117,20 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         interrupterThread.start();
         interruptedThread.join();
         interrupterThread.join();
-        waiting = false;
     }
 
     private static void testWaitNotify() throws Exception {
         Runnable simpleWaiter = () -> {
-            helper.simpleWait();
+            try {
+                helper.simpleNotify();
+            } catch (InterruptedException e) {
+                Assert.fail(e.getMessage());
+            }
         };
 
         Runnable simpleNotifier = () -> {
             try {
-                while (!simpleWaitThread.getState().equals(Thread.State.WAITING) || !waiting) {
+                while (!inCritical) {
                     Thread.sleep(10);
                 }
                 helper.simpleNotify();
@@ -148,38 +151,32 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
     @Test
     public void test() throws Exception {
         testInterruption();
+        inCritical = false; // reset
         testWaitNotify();
     }
 
     static class Helper {
         public Thread interrupted;
 
-        public synchronized void interrupted() throws InterruptedException {
-            waiting = true;
-            wait();
-        }
-
-        public synchronized void interrupt() {
-            try {
+        public synchronized void interrupt() throws InterruptedException {
+            if (Thread.currentThread().equals(interruptedThread)) {
+                inCritical = true; // Ensure T1 enters critical section first
+                wait(); // allow T2 to enter section
+            } else if (Thread.currentThread().equals(interrupterThread)) {
+                // If T2 is in the critical section T1 is already waiting.
                 Thread.sleep(MILLIS);
                 interruptedThread.interrupt();
-            } catch (Exception e) {
-                Assert.fail(e.getMessage());
-            }
-        }
-
-        public synchronized void simpleWait() {
-            try {
-                waiting = true;
-                wait();
-            } catch (Exception e) {
-                Assert.fail(e.getMessage());
             }
         }
 
         public synchronized void simpleNotify() throws InterruptedException {
-            Thread.sleep(MILLIS);
-            notify();
+            if (Thread.currentThread().equals(simpleWaitThread)) {
+                inCritical = true;
+                wait();
+            } else if (Thread.currentThread().equals(simpleNotifyThread)) {
+                Thread.sleep(MILLIS);
+                notify();
+            }
         }
     }
 }

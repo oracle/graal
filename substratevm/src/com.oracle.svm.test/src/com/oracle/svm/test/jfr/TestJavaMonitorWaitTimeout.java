@@ -48,7 +48,7 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
     static Thread simpleNotifyThread;
     private boolean timeoutFound = false;
     private boolean simpleWaitFound = false;
-    static volatile boolean waiting = false;
+    static volatile boolean inCritical = false;
 
     @Override
     public String[] getTestedEvents() {
@@ -115,16 +115,20 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
 
     private static void testWaitNotify() throws Exception {
         Runnable simpleWaiter = () -> {
-            helper.simpleWait();
+            try {
+                helper.simpleNotify();
+            } catch (InterruptedException e) {
+                Assert.fail(e.getMessage());
+            }
         };
 
         Runnable simpleNotifier = () -> {
             try {
-                while (!simpleWaitThread.getState().equals(Thread.State.WAITING) || !waiting) {
+                while (!inCritical) {
                     Thread.sleep(10);
                 }
                 helper.simpleNotify();
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 Assert.fail(e.getMessage());
             }
         };
@@ -153,18 +157,14 @@ public class TestJavaMonitorWaitTimeout extends JfrTest {
             notify();
         }
 
-        public synchronized void simpleWait() {
-            try {
-                waiting = true;
-                wait();
-            } catch (Exception e) {
-                Assert.fail(e.getMessage());
-            }
-        }
-
         public synchronized void simpleNotify() throws InterruptedException {
-            Thread.sleep(MILLIS);
-            notify();
+            if (Thread.currentThread().equals(simpleWaitThread)) {
+                inCritical = true;
+                wait();
+            } else if (Thread.currentThread().equals(simpleNotifyThread)) {
+                Thread.sleep(MILLIS);
+                notify();
+            }
         }
     }
 }

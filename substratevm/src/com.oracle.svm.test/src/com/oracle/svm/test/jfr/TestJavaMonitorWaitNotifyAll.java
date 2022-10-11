@@ -90,7 +90,7 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
     public void test() throws Exception {
         Runnable producer = () -> {
             try {
-                helper.produce();
+                helper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -100,10 +100,10 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
         producerThread2 = new Thread(producer);
         Runnable consumer = () -> {
             try {
-                while (!producerThread1.getState().equals(Thread.State.WAITING) || !producerThread2.getState().equals(Thread.State.WAITING) || waiting < 2) {
+                while (waiting < 2) {
                     Thread.sleep(10);
                 }
-                helper.consume();
+                helper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -120,14 +120,14 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
     }
 
     static class Helper {
-        public synchronized void produce() throws InterruptedException {
-            waiting++;
-            wait();
-        }
-
-        public synchronized void consume() throws InterruptedException {
-            wait(MILLIS);
-            notifyAll(); // should wake up both producers
+        public synchronized void doWork() throws InterruptedException {
+            if (Thread.currentThread().equals(consumerThread)) {
+                wait(MILLIS);
+                notifyAll(); // should wake up both producers
+            } else {
+                waiting++;
+                wait();
+            }
         }
     }
 }
