@@ -239,7 +239,7 @@ The `java.math.Bigdecimal` part of the option declares the fully qualified meta 
 
 If there are no dedicated `java.PolyglotTypeConverters` for a host object flowing into an embedded Java on Truffle context, automatic interface type mapping kicks in. `java.PolyglotInterfaceMappings` enables seamless interface type sharing between the host and the embedded context. 
 
-The following example shows how this option can be used to allow passing common JDK collection types by interface to an embedded Truffle on Java context:
+The following example shows how this option can be used to allow passing common JDK collection types by interface to an embedded Java on Truffle context:
 
 ```java
 // host java
