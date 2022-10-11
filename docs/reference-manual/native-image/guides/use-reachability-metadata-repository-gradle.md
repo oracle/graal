@@ -165,10 +165,10 @@ We recommend that you follow the instructions and create the application step-by
 The Native Image Gradle plugin simplifies generation of the required metadata by injecting the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#agent-support) (later *the agent*) automatically for you at compile time. 
 To enable the agent, just pass the `-Pagent` option to any Gradle tasks that extends `JavaForkOptions` (for example, `test` or `run`).
 
-<!-- The agent can run in multiple modes:
+The agent can run in multiple modes:
 - **Standard**: Collects metadata without conditions. This is recommended if you are building an executable.
 - **Conditional**: Collects metadata with conditions. This is recommended if you are creating conditional metadata for a library intended for further use.
-- **Direct**: For advanced users only. This mode allows directly controlling the command line passed to the agent. -->
+- **Direct**: For advanced users only. This mode allows directly controlling the command line passed to the agent.
 
 You can configure the agent either passing the options on the command line, or in the _build.gradle_ file. See below how to configure the Native Image Gradle plugin, collect metadata with the tracing agent, and build a native executable applying the provided configuration.
 
