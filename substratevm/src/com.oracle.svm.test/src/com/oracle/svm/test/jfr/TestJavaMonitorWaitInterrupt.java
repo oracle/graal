@@ -93,7 +93,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable interrupted = () -> {
             try {
-                helper.interrupt();// must enter first
+                helper.interrupt(); // must enter first
                 throw new RuntimeException("Was not interrupted!!");
             } catch (InterruptedException e) {
                 // should get interrupted

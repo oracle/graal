@@ -37,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class TestThreadSleep extends JfrTest {
-    private String sleepingThreadName;
+    private Thread sleepingThread;
     private static final int MILLIS = 50;
 
     @Override
@@ -57,7 +57,7 @@ public class TestThreadSleep extends JfrTest {
         for (RecordedEvent event : events) {
             RecordedObject struct = event;
             String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            if (!eventThread.equals(sleepingThreadName)) {
+            if (!eventThread.equals(sleepingThread.getName())) {
                 continue;
             }
             if (event.getDuration().toMillis() < MILLIS) {
@@ -71,7 +71,7 @@ public class TestThreadSleep extends JfrTest {
 
     @Test
     public void test() throws Exception {
-        sleepingThreadName = Thread.currentThread().getName();
+        sleepingThread = Thread.currentThread();
         Thread.sleep(MILLIS);
     }
 }

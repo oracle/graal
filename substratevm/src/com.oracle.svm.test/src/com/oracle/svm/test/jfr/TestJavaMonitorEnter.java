@@ -29,7 +29,6 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;

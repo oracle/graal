@@ -85,7 +85,6 @@ public abstract class JfrTest {
         } catch (Exception e) {
             Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
         }
-        checkEvents();
         try {
             validateEvents();
         } catch (Throwable throwable) {
@@ -109,8 +108,6 @@ public abstract class JfrTest {
             }
         }
     }
-
-    public abstract String[] getTestedEvents();
 
     public void validateEvents() throws Throwable {
     }
