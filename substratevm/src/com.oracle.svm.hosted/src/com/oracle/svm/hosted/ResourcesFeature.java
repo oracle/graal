@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -215,11 +216,10 @@ public final class ResourcesFeature implements InternalFeature {
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
         private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
         private final Runnable heartbeatCallback;
-        private volatile int reachedResourceEntries;
+        private final LongAdder reachedResourceEntries;
         private boolean initialReport;
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
-
 
         private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<String> includedResourcesModules,
                         Runnable heartbeatCallback) {
@@ -229,7 +229,7 @@ public final class ResourcesFeature implements InternalFeature {
             this.includedResourcesModules = includedResourcesModules;
 
             this.heartbeatCallback = heartbeatCallback;
-            this.reachedResourceEntries = 0;
+            this.reachedResourceEntries = new LongAdder();
             this.initialReport = true;
             this.currentlyProcessedEntry = null;
         }
@@ -258,8 +258,8 @@ public final class ResourcesFeature implements InternalFeature {
         public boolean isIncluded(String moduleName, String resourceName, URI resource) {
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
-            this.reachedResourceEntries++;
-            if (this.reachedResourceEntries % WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES == 0) {
+            this.reachedResourceEntries.increment();
+            if (this.reachedResourceEntries.longValue() % WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES == 0) {
                 this.heartbeatCallback.run();
             }
 
