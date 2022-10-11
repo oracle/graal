@@ -56,8 +56,8 @@ import jdk.jfr.consumer.RecordingFile;
 
 /** Base class for JFR unit tests. */
 public abstract class JfrTest {
-    protected Jfr jfr;
-    protected Recording recording;
+    private Jfr jfr;
+    private Recording recording;
     private final ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
 
     @BeforeClass
@@ -112,7 +112,7 @@ public abstract class JfrTest {
     public void validateEvents() throws Throwable {
     }
 
-    protected void checkEvents() {
+    private void checkEvents() {
         HashSet<String> seenEvents = new HashSet<>();
         try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
             while (recordingFile.hasMoreEvents()) {
