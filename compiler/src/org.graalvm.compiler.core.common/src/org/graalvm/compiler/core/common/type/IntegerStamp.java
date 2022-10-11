@@ -25,7 +25,6 @@
 package org.graalvm.compiler.core.common.type;
 
 import static jdk.vm.ci.code.CodeUtil.isPowerOf2;
-import static jdk.vm.ci.code.CodeUtil.log2;
 import static org.graalvm.compiler.core.common.calc.FloatConvert.I2D;
 import static org.graalvm.compiler.core.common.calc.FloatConvert.I2F;
 import static org.graalvm.compiler.core.common.calc.FloatConvert.L2D;
@@ -99,7 +98,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     private final boolean canBeZero;
 
     /**
-     * Build empty or unrestricted stamp.
+     * Build the empty or unrestricted stamp.
      */
     private IntegerStamp(int bits, boolean empty) {
         super(bits, OPS);
@@ -119,12 +118,15 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     /**
-     * Build a stamp for a constant.
+     * Create a stamp for a constant.
      */
     private IntegerStamp(int bits, long constant) {
         this(bits, constant, constant, constant & CodeUtil.mask(bits), constant & CodeUtil.mask(bits), constant == 0);
     }
 
+    /**
+     * Create a stamp for a range.
+     */
     private IntegerStamp(int bits, long lowerBound, long upperBound) {
         super(bits, OPS);
         int sameBitCount = Long.numberOfLeadingZeros(lowerBound ^ upperBound);
@@ -137,7 +139,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         this.mayBeSet = defaultMask & (lowerBound | sameBitMask);
 
         this.canBeZero = contains(0, true);
-        assert check();
+        assert checkInvariants();
     }
 
     private IntegerStamp(int bits, long lowerBound, long upperBound, long mustBeSet, long mayBeSet, boolean canBeZero) {
@@ -150,10 +152,10 @@ public final class IntegerStamp extends PrimitiveStamp {
 
         // use ctor param because canBeZero is not set yet
         this.canBeZero = contains(0, canBeZero);
-        assert check();
+        assert checkInvariants();
     }
 
-    private boolean check() {
+    private boolean checkInvariants() {
         assert lowerBound >= CodeUtil.minValue(getBits()) : this;
         assert upperBound <= CodeUtil.maxValue(getBits()) : this;
         assert (mustBeSet & CodeUtil.mask(getBits())) == mustBeSet : this;
@@ -167,8 +169,33 @@ public final class IntegerStamp extends PrimitiveStamp {
         return true;
     }
 
+    /**
+     * Create a stamp for a constant value.
+     */
     public static IntegerStamp createConstant(int bits, long value) {
         return new IntegerStamp(bits, value);
+    }
+
+    /**
+     * Return the unrestricted stamp.
+     */
+    public static IntegerStamp create(int bits) {
+        return unrestrictedStamps[CodeUtil.log2(bits)];
+    }
+
+    /**
+     * Return a stamp covering the input range with the default masks.
+     */
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
+        if (lowerBoundInput > upperBoundInput) {
+            return createEmptyStamp(bits);
+        }
+
+        if (lowerBoundInput == upperBoundInput) {
+            return createConstant(bits, lowerBoundInput);
+        }
+
+        return new IntegerStamp(bits, lowerBoundInput, upperBoundInput);
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long mustBeSet, long mayBeSet) {
@@ -265,22 +292,10 @@ public final class IntegerStamp extends PrimitiveStamp {
         throw GraalError.shouldNotReachHere("More than " + ITERATION_LIMIT + "iterations required to reach a stable stamp");
     }
 
-    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
-        if (lowerBoundInput > upperBoundInput) {
-            return createEmptyStamp(bits);
-        }
-
-        if (lowerBoundInput == upperBoundInput) {
-            return createConstant(bits, lowerBoundInput);
-        }
-
-        return new IntegerStamp(bits, lowerBoundInput, upperBoundInput);
-    }
-
     /**
      * A stamp is empty if the lower bound is greater than the upper bound, the mustBeSet contains
-     * bits which are not part of the mayBeSet, or there are no bits set and the bound doesn't contain
-     * 0.
+     * bits which are not part of the mayBeSet, or there are no bits set and the bound doesn't
+     * contain 0.
      */
     private static boolean isEmpty(long lowerBound, long upperBound, long mustBeSet, long mayBeSet) {
         return lowerBound > upperBound || (mustBeSet & (~mayBeSet)) != 0 || (mayBeSet == 0 && (lowerBound > 0 || upperBound < 0));
@@ -447,7 +462,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public IntegerStamp unrestricted() {
-        return unrestrictedStamps[log2(getBits())];
+        return create(getBits());
     }
 
     @Override
@@ -457,7 +472,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     static IntegerStamp createEmptyStamp(int bits) {
         assert isPowerOf2(bits);
-        return emptyStamps[log2(bits)];
+        return emptyStamps[CodeUtil.log2(bits)];
     }
 
     @Override
@@ -469,7 +484,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                 // Need to special case booleans as integer stamps are always signed values.
                 value = -1;
             }
-            Stamp returnedStamp = StampFactory.forInteger(getBits(), value, value);
+            Stamp returnedStamp = createConstant(getBits(), value);
             assert returnedStamp.hasValues();
             return returnedStamp;
         }
@@ -997,11 +1012,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             int bits = stamp.getBits();
                             if (stamp.lowerBound == stamp.upperBound) {
                                 long value = CodeUtil.convert(-stamp.lowerBound(), stamp.getBits(), false);
-                                return StampFactory.forInteger(stamp.getBits(), value, value);
+                                return createConstant(stamp.getBits(), value);
                             }
                             if (stamp.lowerBound() != CodeUtil.minValue(bits)) {
                                 // TODO(ls) check if the mask calculation is correct...
-                                return StampFactory.forInteger(bits, -stamp.upperBound(), -stamp.lowerBound());
+                                return create(bits, -stamp.upperBound(), -stamp.lowerBound());
                             } else {
                                 return stamp.unrestricted();
                             }
@@ -1034,7 +1049,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                             if (a.lowerBound == a.upperBound && b.lowerBound == b.upperBound) {
                                 long value = CodeUtil.convert(a.lowerBound() + b.lowerBound(), a.getBits(), false);
-                                return StampFactory.forInteger(a.getBits(), value, value);
+                                return createConstant(a.getBits(), value);
                             }
 
                             if (a.isUnrestricted()) {
@@ -1064,7 +1079,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 newLowerBound = CodeUtil.signExtend((a.lowerBound() + b.lowerBound()) & defaultMask, bits);
                                 newUpperBound = CodeUtil.signExtend((a.upperBound() + b.upperBound()) & defaultMask, bits);
                             }
-                            IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+                            IntegerStamp limit = create(bits, newLowerBound, newUpperBound);
                             newMayBeSet &= limit.mayBeSet();
                             newUpperBound = CodeUtil.signExtend(newUpperBound & newMayBeSet, bits);
                             newMustBeSet |= limit.mustBeSet();
@@ -1133,7 +1148,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                             if (a.lowerBound == a.upperBound && b.lowerBound == b.upperBound) {
                                 long value = CodeUtil.convert(a.lowerBound() * b.lowerBound(), a.getBits(), false);
-                                return StampFactory.forInteger(a.getBits(), value, value);
+                                return createConstant(a.getBits(), value);
                             }
 
                             // if a==0 or b==0 result of a*b is always 0
@@ -1497,11 +1512,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             assert a.getBits() == b.getBits();
                             if (a.lowerBound == a.upperBound && b.lowerBound == b.upperBound && b.lowerBound != 0) {
                                 long value = CodeUtil.convert(a.lowerBound() / b.lowerBound(), a.getBits(), false);
-                                return StampFactory.forInteger(a.getBits(), value, value);
+                                return createConstant(a.getBits(), value);
                             } else if (b.isStrictlyPositive()) {
                                 long newLowerBound = a.lowerBound() < 0 ? a.lowerBound() / b.lowerBound() : a.lowerBound() / b.upperBound();
                                 long newUpperBound = a.upperBound() < 0 ? a.upperBound() / b.upperBound() : a.upperBound() / b.lowerBound();
-                                return StampFactory.forInteger(a.getBits(), newLowerBound, newUpperBound);
+                                return create(a.getBits(), newLowerBound, newUpperBound);
                             } else {
                                 return a.unrestricted();
                             }
@@ -1541,7 +1556,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                             if (a.lowerBound == a.upperBound && b.lowerBound == b.upperBound && b.lowerBound != 0) {
                                 long value = CodeUtil.convert(a.lowerBound() % b.lowerBound(), a.getBits(), false);
-                                return StampFactory.forInteger(a.getBits(), value, value);
+                                return createConstant(a.getBits(), value);
                             }
 
                             // zero is always possible
@@ -1564,7 +1579,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return stamp1.unrestricted();
                             }
 
-                            return StampFactory.forInteger(a.getBits(), newLowerBound, newUpperBound);
+                            return create(a.getBits(), newLowerBound, newUpperBound);
                         }
                     },
 
@@ -1906,13 +1921,13 @@ public final class IntegerStamp extends PrimitiveStamp {
                             int bits = stamp.getBits();
                             if (stamp.lowerBound == stamp.upperBound) {
                                 long value = CodeUtil.convert(Math.abs(stamp.lowerBound()), stamp.getBits(), false);
-                                return StampFactory.forInteger(stamp.getBits(), value, value);
+                                return createConstant(stamp.getBits(), value);
                             }
                             if (stamp.lowerBound() == CodeUtil.minValue(bits)) {
                                 return input.unrestricted();
                             } else {
                                 long limit = Math.max(-stamp.lowerBound(), stamp.upperBound());
-                                return StampFactory.forInteger(bits, 0, limit);
+                                return create(bits, 0, limit);
                             }
                         }
                     },
@@ -2052,7 +2067,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long inputMask = CodeUtil.mask(inputBits);
                             if (inputBits < stamp.getBits() && (stamp.contains(CodeUtil.minValue(inputBits) - 1) || stamp.contains(CodeUtil.maxValue(inputBits) + 1))) {
                                 // Truncation will cause this value to wrap around
-                                return StampFactory.forInteger(inputBits).unrestricted();
+                                return create(inputBits).unrestricted();
                             }
                             return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
                         }
@@ -2122,7 +2137,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return StampFactory.forInteger(x.getBits(), Math.max(x.lowerBound(), y.lowerBound()), Math.max(x.upperBound(), y.upperBound()));
+                            return create(x.getBits(), Math.max(x.lowerBound(), y.lowerBound()), Math.max(x.upperBound(), y.upperBound()));
                         }
 
                         @Override
@@ -2152,7 +2167,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return StampFactory.forInteger(x.getBits(), Math.min(x.lowerBound(), y.lowerBound()), Math.min(x.upperBound(), y.upperBound()));
+                            return create(x.getBits(), Math.min(x.lowerBound(), y.lowerBound()), Math.min(x.upperBound(), y.upperBound()));
                         }
 
                         @Override
@@ -2327,8 +2342,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     });
 
-    static final IntegerStamp[] emptyStamps = new IntegerStamp[log2(64) + 1];
-    static final IntegerStamp[] unrestrictedStamps = new IntegerStamp[log2(64) + 1];
+    static final IntegerStamp[] emptyStamps = new IntegerStamp[CodeUtil.log2(64) + 1];
+    static final IntegerStamp[] unrestrictedStamps = new IntegerStamp[CodeUtil.log2(64) + 1];
 
     static {
         for (int logBits = 0; logBits < emptyStamps.length; logBits++) {
