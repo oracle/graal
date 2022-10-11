@@ -285,7 +285,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateFieldLocationIdentity dest = fieldLocationIdentities.get(original);
         if (dest == null) {
             SubstrateField destField = createField(original.getField());
-            dest = new SubstrateFieldLocationIdentity(destField);
+            dest = new SubstrateFieldLocationIdentity(destField, original.isImmutable());
             fieldLocationIdentities.put(original, dest);
         }
         return dest;

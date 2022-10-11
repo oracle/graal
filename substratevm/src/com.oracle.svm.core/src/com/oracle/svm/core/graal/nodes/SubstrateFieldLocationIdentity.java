@@ -32,12 +32,16 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class SubstrateFieldLocationIdentity extends FieldLocationIdentity {
 
-    public SubstrateFieldLocationIdentity(ResolvedJavaField field) {
-        super(field);
+    public SubstrateFieldLocationIdentity(ResolvedJavaField field, boolean immutable) {
+        super(field, immutable);
+    }
+
+    public SubstrateFieldLocationIdentity(FieldLocationIdentity identity) {
+        super(identity.getField(), identity.isImmutable());
     }
 
     @Override
     public boolean isImmutable() {
-        return getField() instanceof SharedField && !((SharedField) getField()).isWritten();
+        return super.isImmutable() || (getField() instanceof SharedField && !((SharedField) getField()).isWritten());
     }
 }

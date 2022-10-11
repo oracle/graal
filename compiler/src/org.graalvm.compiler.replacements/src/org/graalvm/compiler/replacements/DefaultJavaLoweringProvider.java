@@ -465,7 +465,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         assert address != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
         BarrierType barrierType = barrierSet.fieldLoadBarrierType(field, getStorageKind(field));
-        ReadNode memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType, loadField.getMemoryOrder()));
+        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()), loadStamp, barrierType, loadField.getMemoryOrder()));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
@@ -481,7 +481,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         assert address != null;
 
         BarrierType barrierType = barrierSet.fieldStoreBarrierType(field, getStorageKind(field));
-        WriteNode memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, barrierType, storeField.getMemoryOrder()));
+        WriteNode memoryWrite = graph.add(new WriteNode(address, overrideFieldLocationIdentity(storeField.getLocationIdentity()), value, barrierType, storeField.getMemoryOrder()));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
     }
@@ -1088,8 +1088,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public abstract int fieldOffset(ResolvedJavaField field);
 
-    public FieldLocationIdentity fieldLocationIdentity(ResolvedJavaField field) {
-        return new FieldLocationIdentity(field);
+    public FieldLocationIdentity overrideFieldLocationIdentity(FieldLocationIdentity fieldIdentity) {
+        return fieldIdentity;
     }
 
     public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
