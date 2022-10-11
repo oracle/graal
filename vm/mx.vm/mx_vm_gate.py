@@ -259,8 +259,6 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
-        "-Dpolyglot.engine.TraceCompilation=true",
-        "-Dpolyglot.log.file={0}".format(compiler_log_file),
         "-Dgraalvm.locatorDisabled=true",
         "truffle"])
     if exists(compiler_log_file):
