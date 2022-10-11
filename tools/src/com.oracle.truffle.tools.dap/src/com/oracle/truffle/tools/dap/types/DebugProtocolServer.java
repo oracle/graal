@@ -714,7 +714,7 @@ public class DebugProtocolServer {
         private void sendEvent(Event event) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending event '%s'\nBody: %s";
-                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), event.getType(), getJSONData(event.getBody())));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), event.getEvent(), getJSONData(event.getBody())));
             }
             writeMessage(getJSONData(event).toString());
         }
