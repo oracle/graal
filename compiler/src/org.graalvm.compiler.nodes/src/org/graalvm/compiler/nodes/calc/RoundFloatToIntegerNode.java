@@ -31,7 +31,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_32;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -64,9 +63,9 @@ public final class RoundFloatToIntegerNode extends UnaryNode implements Arithmet
         if (stamp.getBits() == 32) {
             long lowerBound = Math.round((float) min);
             long upperBound = Math.round((float) max);
-            IntegerStamp newStamp = StampFactory.forInteger(32, lowerBound, upperBound);
+            IntegerStamp newStamp = IntegerStamp.create(32, lowerBound, upperBound);
             if (stamp.canBeNaN()) {
-                return (IntegerStamp) newStamp.meet(StampFactory.forInteger(32, 0, 0));
+                return (IntegerStamp) newStamp.meet(IntegerStamp.create(32, 0, 0));
             } else {
                 return newStamp;
             }
@@ -74,9 +73,9 @@ public final class RoundFloatToIntegerNode extends UnaryNode implements Arithmet
             assert stamp.getBits() == 64;
             long lowerBound = Math.round(min);
             long upperBound = Math.round(max);
-            IntegerStamp newStamp = StampFactory.forInteger(64, lowerBound, upperBound);
+            IntegerStamp newStamp = IntegerStamp.create(64, lowerBound, upperBound);
             if (stamp.canBeNaN()) {
-                return (IntegerStamp) newStamp.meet(StampFactory.forInteger(64, 0, 0));
+                return (IntegerStamp) newStamp.meet(IntegerStamp.create(64, 0, 0));
             } else {
                 return newStamp;
             }

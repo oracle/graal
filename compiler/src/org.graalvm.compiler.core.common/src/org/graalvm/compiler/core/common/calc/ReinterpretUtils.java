@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticStamp;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -126,7 +125,7 @@ public class ReinterpretUtils {
             lowerBound = negativeZero;
         }
 
-        return StampFactory.forInteger(bits, lowerBound, upperBound);
+        return IntegerStamp.create(bits, lowerBound, upperBound);
     }
 
     /**

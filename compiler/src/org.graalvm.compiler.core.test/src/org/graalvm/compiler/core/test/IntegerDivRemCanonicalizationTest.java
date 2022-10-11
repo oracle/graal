@@ -27,7 +27,6 @@ package org.graalvm.compiler.core.test;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -62,11 +61,11 @@ public class IntegerDivRemCanonicalizationTest extends GraalCompilerTest {
         assert a.getBits() == b.getBits();
         if (a.lowerBound() == a.upperBound() && b.lowerBound() == b.upperBound() && b.lowerBound() != 0) {
             long value = CodeUtil.convert(a.lowerBound() / b.lowerBound(), a.getBits(), false);
-            return StampFactory.forInteger(a.getBits(), value, value);
+            return IntegerStamp.create(a.getBits(), value, value);
         } else if (b.isStrictlyPositive()) {
             long newLowerBound = a.lowerBound() < 0 ? a.lowerBound() / b.lowerBound() : a.lowerBound() / b.upperBound();
             long newUpperBound = a.upperBound() < 0 ? a.upperBound() / b.upperBound() : a.upperBound() / b.lowerBound();
-            return StampFactory.forInteger(a.getBits(), newLowerBound, newUpperBound);
+            return IntegerStamp.create(a.getBits(), newLowerBound, newUpperBound);
         } else {
             return a.unrestricted();
         }

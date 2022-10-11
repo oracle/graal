@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.test;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,9 +36,6 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
-
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 
 @RunWith(Suite.class)
 @SuiteClasses({IntegerStampMulFoldTest.OverflowTest.class, IntegerStampMulFoldTest.FoldTest.class})
@@ -148,8 +146,8 @@ public class IntegerStampMulFoldTest extends GraalCompilerTest {
 
         @Test
         public void computeStamp() {
-            IntegerStamp a = StampFactory.forInteger(bits, lowerBound1, upperBound1);
-            IntegerStamp b = StampFactory.forInteger(bits, lowerBound2, upperBound2);
+            IntegerStamp a = IntegerStamp.create(bits, lowerBound1, upperBound1);
+            IntegerStamp b = IntegerStamp.create(bits, lowerBound2, upperBound2);
             IntegerStamp result = foldMul(a, b);
             for (long l1 = lowerBound1; l1 <= upperBound1; l1++) {
                 for (long l2 = lowerBound2; l2 <= upperBound2; l2++) {

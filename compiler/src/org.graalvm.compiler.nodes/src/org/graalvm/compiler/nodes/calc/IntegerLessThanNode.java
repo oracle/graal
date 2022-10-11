@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -305,7 +304,7 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
 
         @Override
         protected IntegerStamp forInteger(int bits, long min, long max) {
-            return StampFactory.forInteger(bits, cast(min, bits), cast(max, bits));
+            return IntegerStamp.create(bits, cast(min, bits), cast(max, bits));
         }
     }
 

@@ -32,7 +32,6 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.GenerateStub;
@@ -90,7 +89,7 @@ public final class EncodeArrayNode extends MemoryKillStubIntrinsicNode {
     }
 
     private EncodeArrayNode(ValueNode src, ValueNode dst, ValueNode len, CharsetName charset, EnumSet<?> runtimeCheckedCPUFeatures, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forInteger(32, 0, ((IntegerStamp) len.stamp(NodeView.DEFAULT)).upperBound()), runtimeCheckedCPUFeatures, locationIdentity);
+        super(TYPE, IntegerStamp.create(32, 0, ((IntegerStamp) len.stamp(NodeView.DEFAULT)).upperBound()), runtimeCheckedCPUFeatures, locationIdentity);
         this.src = src;
         this.dst = dst;
         this.len = len;

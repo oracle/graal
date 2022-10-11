@@ -145,16 +145,12 @@ public class StampFactory {
     }
 
     public static IntegerStamp forInteger(JavaKind kind, long lowerBound, long upperBound) {
-        return forInteger(kind.getBitCount(), lowerBound, upperBound);
+        return IntegerStamp.create(kind.getBitCount(), lowerBound, upperBound);
     }
 
     public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, long newMustBeSet, long newMayBeSet) {
-        IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+        IntegerStamp limit = IntegerStamp.create(bits, newLowerBound, newUpperBound);
         return IntegerStamp.create(bits, newLowerBound, newUpperBound, limit.mustBeSet() | newMustBeSet, limit.mayBeSet() & newMayBeSet);
-    }
-
-    public static IntegerStamp forInteger(int bits) {
-        return IntegerStamp.create(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits));
     }
 
     public static IntegerStamp forUnsignedInteger(int bits) {
@@ -177,10 +173,6 @@ public class StampFactory {
         }
         long mask = CodeUtil.mask(bits);
         return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet & mask, mayBeSet & mask);
-    }
-
-    public static IntegerStamp forInteger(int bits, long lowerBound, long upperBound) {
-        return IntegerStamp.create(bits, lowerBound, upperBound);
     }
 
     public static FloatStamp forFloat(JavaKind kind, double lowerBound, double upperBound, boolean nonNaN) {

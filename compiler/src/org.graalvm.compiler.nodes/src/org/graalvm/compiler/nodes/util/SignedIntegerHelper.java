@@ -26,7 +26,6 @@ package org.graalvm.compiler.nodes.util;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -83,7 +82,7 @@ public class SignedIntegerHelper extends IntegerHelper {
 
     @Override
     public IntegerStamp stamp(long min, long max) {
-        return StampFactory.forInteger(bits, cast(min), cast(max));
+        return IntegerStamp.create(bits, cast(min), cast(max));
     }
 
     @Override
