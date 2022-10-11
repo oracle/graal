@@ -94,11 +94,11 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         }
 
         if (!ElementUtils.isAssignable(typeElement.asType(), types.RootNode)) {
-            data.addError(typeElement, "Operation class must directly or indirectly subclass RootNode");
+            data.addError(typeElement, "Operations class must directly or indirectly subclass RootNode.");
         }
 
         if (!ElementUtils.isAssignable(typeElement.asType(), types.OperationRootNode)) {
-            data.addError(typeElement, "Operation class must directly or indirectly implement OperationRootNode");
+            data.addError(typeElement, "Operations class must directly or indirectly implement OperationRootNode.");
         }
 
         for (ExecutableElement ctor : ElementFilter.constructorsIn(typeElement.getEnclosedElements())) {
@@ -120,12 +120,12 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             if (!isValid) {
-                data.addError(ctor, "Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder)");
+                data.addError(ctor, "Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder).");
             }
         }
 
         if (data.fdConstructor == null) {
-            data.addError(typeElement, "Operation class requires a (TruffleLanguage, FrameDescriptor) constructor.");
+            data.addError(typeElement, "Operations class requires a (TruffleLanguage, FrameDescriptor) constructor.");
         }
 
         if (data.hasErrors()) {
@@ -181,7 +181,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             if (UNBOXABLE_TYPE_KINDS.contains(mir.getKind())) {
                 beTypes.add(mir.getKind());
             } else {
-                data.addError("Cannot perform boxing elimination on %s", mir);
+                data.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list.", mir);
             }
         }
 
@@ -231,7 +231,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         }
 
         if (opProxies.isEmpty() && operationTypes.isEmpty()) {
-            data.addWarning("No operations found");
+            data.addWarning("No operations found.");
         }
 
         if (data.hasErrors()) {

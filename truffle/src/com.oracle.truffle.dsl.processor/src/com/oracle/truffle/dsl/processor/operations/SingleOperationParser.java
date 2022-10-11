@@ -121,7 +121,8 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             TypeMirror proxyType = (TypeMirror) proxyTypeValue.getValue();
             if (proxyType.getKind() != TypeKind.DECLARED) {
-                parentData.addError(proxyMirror, proxyTypeValue, "@OperationProxy'ed type must be a class, not %s", proxyType);
+                parentData.addError(proxyMirror, proxyTypeValue, "@OperationProxy'ed type must be a class, not %s.", proxyType);
+                return null;
             }
 
             te = context.getTypeElement((DeclaredType) proxyType);
@@ -172,11 +173,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             // @Operation annotated type
 
             if (!te.getModifiers().containsAll(Set.of(Modifier.STATIC, Modifier.FINAL))) {
-                data.addError("@Operation annotated class must be declared static and final");
+                data.addError("@Operation annotated class must be declared static and final.");
             }
 
             if (te.getModifiers().contains(Modifier.PRIVATE)) {
-                data.addError("@Operation annotated class must not be declared private");
+                data.addError("@Operation annotated class must not be declared private.");
             }
 
             if (!ElementUtils.isObject(te.getSuperclass()) || !te.getInterfaces().isEmpty()) {
@@ -190,7 +191,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 }
 
                 if (el.getKind() != ElementKind.CONSTRUCTOR && !el.getModifiers().contains(Modifier.STATIC)) {
-                    data.addError(el, "@Operation annotated class must not contain non-static members");
+                    data.addError(el, "@Operation annotated class must not contain non-static members.");
                 }
 
                 operationFunctions.addAll(findSpecializations(te.getEnclosedElements()));
@@ -208,7 +209,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         }
 
         if (operationFunctions.isEmpty()) {
-            data.addError("Operation contains no specializations");
+            data.addError("Operation contains no specializations.");
             return data;
         }
 
@@ -294,7 +295,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
 
         if (nodeData == null) {
-            data.addError("Could not parse invalid node: " + te.getSimpleName());
+            data.addError("Could not parse invalid node: " + te.getSimpleName() + ". Fix errors in the node first.");
             return data;
         }
 
@@ -432,10 +433,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         for (VariableElement param : method.getParameters()) {
             if (isVariadicParameter(param)) {
                 if (isVariadic) {
-                    data.addError(method, "Multiple @Variadic arguments not allowed");
+                    data.addError(method, "Multiple @Variadic arguments not allowed.");
                 }
                 if (numLocalSetters != 0) {
-                    data.addError(param, "Value arguments after LocalSetter not allowed");
+                    data.addError(param, "Value arguments after LocalSetter not allowed.");
                 }
                 isVariadic = true;
                 parameters.add(ParameterKind.VARIADIC);
@@ -445,15 +446,15 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetterRange)) {
                 parameters.add(ParameterKind.LOCAL_SETTER_ARRAY);
                 if (numLocalSetters != 0) {
-                    data.addError(param, "Mixing regular and array local setters not allowed");
+                    data.addError(param, "Mixing regular and range local setters not allowed.");
                 }
                 numLocalSetters = -1;
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
-                    data.addError(method, "Value arguments after @Variadic not allowed");
+                    data.addError(method, "Value arguments after @Variadic not allowed.");
                 }
                 if (numLocalSetters > 0) {
-                    data.addError(param, "Value arguments after LocalSetter not allowed");
+                    data.addError(param, "Value arguments after LocalSetter not allowed.");
                 }
                 if (ElementUtils.typeEquals(param.asType(), types.Frame) || ElementUtils.typeEquals(param.asType(), types.VirtualFrame)) {
                     parameters.add(ParameterKind.VIRTUAL_FRAME);
