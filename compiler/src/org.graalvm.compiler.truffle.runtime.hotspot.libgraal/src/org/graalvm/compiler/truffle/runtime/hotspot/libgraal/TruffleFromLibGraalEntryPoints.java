@@ -103,6 +103,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
@@ -131,8 +132,15 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
-    static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, Object dep) {
-        consumer.accept((OptimizedAssumptionDependency) dep);
+    static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, Object target, long installedCode) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
+        OptimizedAssumptionDependency dependency;
+        if (callTarget == null) {
+            dependency = null;
+        } else {
+            dependency = new TruffleCompilerAssumptionDependency(callTarget, LibGraal.unhand(InstalledCode.class, installedCode));
+        }
+        consumer.accept(dependency);
     }
 
     @TruffleFromLibGraal(CountInlinedCalls)

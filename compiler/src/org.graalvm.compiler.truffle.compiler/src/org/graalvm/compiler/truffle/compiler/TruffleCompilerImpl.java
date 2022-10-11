@@ -91,6 +91,7 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
@@ -618,15 +619,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     protected abstract InstalledCode createInstalledCode(CompilableTruffleAST compilable);
 
     /**
-     * @see OptimizedAssumptionDependency#soleExecutionEntryPoint()
-     *
-     * @param installedCode
-     */
-    protected boolean soleExecutionEntryPoint(InstalledCode installedCode) {
-        return true;
-    }
-
-    /**
      * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
      * different runtime than Graal's runtime in the case of libgraal.
      */
@@ -800,43 +792,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         @Override
         public void postProcess(CompilationResult compilationResult, InstalledCode installedCode) {
             afterCodeInstallation(compilationResult, installedCode);
+
             if (!optimizedAssumptions.isEmpty()) {
                 OptimizedAssumptionDependency dependency;
                 if (installedCode instanceof OptimizedAssumptionDependency) {
+                    /*
+                     * On SVM the installed code can be an assumption dependency. On HotSpot we
+                     * cannot subclass HotSpotNmethod therefore that is not an option.
+                     */
                     dependency = (OptimizedAssumptionDependency) installedCode;
-                } else if (installedCode instanceof OptimizedAssumptionDependency.Access) {
-                    dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
                 } else {
                     CompilableTruffleAST compilable = getCompilable(compilationResult);
-                    if (compilable instanceof OptimizedAssumptionDependency) {
-                        dependency = (OptimizedAssumptionDependency) compilable;
-                    } else {
-                        // This handles the case where a normal Graal compilation
-                        // inlines a call to a compile-time constant Truffle node.
-                        dependency = new OptimizedAssumptionDependency() {
-                            @Override
-                            public void onAssumptionInvalidated(Object source, CharSequence reason) {
-                                installedCode.invalidate();
-                            }
-
-                            @Override
-                            public boolean isValid() {
-                                return installedCode.isValid();
-                            }
-
-                            @Override
-                            public boolean soleExecutionEntryPoint() {
-                                return TruffleCompilerImpl.this.soleExecutionEntryPoint(installedCode);
-                            }
-
-                            @Override
-                            public String toString() {
-                                return installedCode.toString();
-                            }
-                        };
-                    }
+                    dependency = new TruffleCompilerAssumptionDependency(compilable, installedCode);
                 }
-
                 notifyAssumptions(dependency);
             }
         }
