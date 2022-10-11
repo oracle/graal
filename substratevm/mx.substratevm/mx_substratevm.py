@@ -100,7 +100,16 @@ if mx.primary_suite() == suite:
 def classpath(args):
     if not args:
         return [] # safeguard against mx.classpath(None) behaviour
-    return mx.classpath(args, jdk=mx_compiler.jdk)
+
+    transitive_excludes = set()
+    def include_in_excludes(dep, dep_edge):
+        if dep.isJavaProject() or dep.isDistribution():
+            transitive_excludes.add(dep)
+
+    implicit_excludes_deps = [mx.dependency(entry) for entry in mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes]
+    mx.walk_deps(implicit_excludes_deps, visit=include_in_excludes)
+    cpEntries = mx.classpath_entries(names=args, includeSelf=True, preferProjects=False, excludes=transitive_excludes)
+    return mx._entries_to_classpath(cpEntries=cpEntries, resolve=True, includeBootClasspath=False, jdk=mx_compiler.jdk, unique=False, ignoreStripped=False)
 
 def platform_name():
     return mx.get_os() + "-" + mx.get_arch()
