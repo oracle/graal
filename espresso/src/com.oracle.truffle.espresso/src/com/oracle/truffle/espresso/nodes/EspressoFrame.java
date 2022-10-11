@@ -346,6 +346,7 @@ public final class EspressoFrame {
         // Use basic types
         CompilerAsserts.partialEvaluationConstant(Signatures.parameterCount(signature));
         CompilerAsserts.partialEvaluationConstant(signature);
+        int extraParam = hasReceiver ? 1 : 0;
         int argAt = top - 1;
         for (int i = Signatures.parameterCount(signature) - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
@@ -355,12 +356,12 @@ public final class EspressoFrame {
                 case 'B' : // fall through
                 case 'S' : // fall through
                 case 'C' : // fall through
-                case 'I' : args[i] = popInt(frame, argAt);    break;
-                case 'F' : args[i] = popFloat(frame, argAt);  break;
-                case 'J' : args[i] = popLong(frame, argAt);   --argAt; break;
-                case 'D' : args[i] = popDouble(frame, argAt); --argAt; break;
+                case 'I' : args[i + extraParam] = popInt(frame, argAt);    break;
+                case 'F' : args[i + extraParam] = popFloat(frame, argAt);  break;
+                case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
                 case '[' : // fall through
-                case 'L' : args[i] = popObject(frame, argAt); break;
+                case 'L' : args[i + extraParam] = popObject(frame, argAt); break;
                 default  :
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
