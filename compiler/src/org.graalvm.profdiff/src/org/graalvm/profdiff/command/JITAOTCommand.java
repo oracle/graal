@@ -86,8 +86,8 @@ public class JITAOTCommand implements Command {
 
         writer.writeln();
         Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
-        jit.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(jit);
+        jit.writeExperimentSummary(writer);
 
         writer.writeln();
         Experiment aot = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.AOT, null, aotOptimizationLogArgument.getValue(), writer);

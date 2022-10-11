@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,8 +60,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about
- * optimizations performed in a single compilation and dumps them to the standard output, a JSON
- * file and/or IGV.
+ * optimizations performed in a single compilation and dumps them to the standard output, JSON
+ * files, and/or IGV.
  *
  * This is the "slow" implementation of the interface that performs the actual logging. If none of
  * the logging features is enabled, the dummy implementation should be used to reduce runtime
@@ -518,11 +519,16 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     /**
      * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
-     * optimization tree to the standard output, a JSON file and/or dumps it. If the optimization
+     * optimization tree to the standard output, JSON files and/or dumps it. If the optimization
      * tree is printed to a file, the directory is either specified by the
      * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option or it is printed to
      * {@link DebugOptions#DumpPath DumpPath}/optimization_log (the former having precedence).
      * Directories are created if they do not exist.
+     *
+     * When the logs are printed to files, the filename is set to the current thread ID. The
+     * optimization log in the form of a single-line JSON is appended to the file. This way, the
+     * number of files is reduced, which significantly speeds up reading. It is also not necessary
+     * to coordinate with other compilation threads, because they write to a different file.
      *
      * @param methodNameFormatter a function that formats method names
      * @throws IOException failed to create a directory or the file
@@ -535,24 +541,29 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (targets.contains(DebugOptions.OptimizationLogTarget.Dump)) {
             graph.getDebug().dump(DebugContext.ENABLED_LEVEL, optimizationTree, "Optimization tree");
         }
-        List<PrintStream> streams = new ArrayList<>();
-        if (targets.contains(DebugOptions.OptimizationLogTarget.Stdout)) {
-            streams.add(TTY.out);
+        boolean printToStdout = targets.contains(DebugOptions.OptimizationLogTarget.Stdout);
+        boolean printToFile = targets.contains(DebugOptions.OptimizationLogTarget.Directory);
+        if (!printToStdout && !printToFile) {
+            return;
         }
-        if (targets.contains(DebugOptions.OptimizationLogTarget.Directory)) {
+        String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
+        if (printToStdout) {
+            TTY.out().println(json);
+        }
+        if (printToFile) {
             String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
             if (pathOptionValue == null) {
                 pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), "optimization_log");
             }
             PathUtilities.createDirectories(pathOptionValue);
-            String filePath = PathUtilities.getPath(pathOptionValue, String.valueOf(Thread.currentThread().getId()));
-            streams.add(new PrintStream(PathUtilities.openOutputStream(filePath, true)));
-        }
-        if (!streams.isEmpty()) {
-            String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
-            for (PrintStream stream : streams) {
-                stream.println(json);
-                stream.close();
+            @SuppressWarnings("deprecation")
+            String fileName = String.valueOf(Thread.currentThread().getId());
+            String filePath = PathUtilities.getPath(pathOptionValue, fileName);
+            try (OutputStream outputStream = PathUtilities.openOutputStream(filePath, true);
+                            PrintStream printStream = new PrintStream(outputStream)) {
+                printStream.print(json);
+                printStream.print('\n');
+                printStream.flush();
             }
         }
     }
@@ -562,7 +573,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         String compilationMethodName = methodNameFormatter.apply(graph.method());
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
-        map.put("inliningTreeRoot", inliningTreeAsJsonMap(methodNameFormatter));
+        map.put("inliningTreeRoot", inliningTreeAsJSONMap(methodNameFormatter));
         map.put("rootPhase", currentPhase.asJsonMap(methodNameFormatter));
         return map;
     }
@@ -582,11 +593,11 @@ public class OptimizationLogImpl implements OptimizationLog {
         return fullCompilationId.substring(dash + 1);
     }
 
-    private EconomicMap<String, Object> inliningTreeAsJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+    private EconomicMap<String, Object> inliningTreeAsJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
         if (graph.getInliningLog() == null) {
             return null;
         }
-        return callsiteAsJsonMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter);
+        return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter);
     }
 
     /**
@@ -600,7 +611,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @param methodNameFormatter a function that formats method names
      * @return inlining subtree as a JSON map
      */
-    private EconomicMap<String, Object> callsiteAsJsonMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
+    private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
                     Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
         map.put("targetMethodName", callsite.target == null ? null : methodNameFormatter.apply(callsite.target));
@@ -629,7 +640,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             if (inlinees == null) {
                 inlinees = new ArrayList<>();
             }
-            inlinees.add(callsiteAsJsonMap(child, childIsInlined, childReason, methodNameFormatter));
+            inlinees.add(callsiteAsJSONMap(child, childIsInlined, childReason, methodNameFormatter));
         }
         map.put("inlinees", inlinees);
         return map;

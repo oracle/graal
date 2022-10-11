@@ -47,8 +47,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about
- * optimizations performed in a single compilation and dumps them to the standard output, a JSON
- * file and/or IGV.
+ * optimizations performed in a single compilation and dumps them to the standard output, JSON
+ * files, and/or IGV.
  */
 public interface OptimizationLog extends CompilationListener {
 

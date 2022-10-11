@@ -83,8 +83,8 @@ public class ReportCommand implements Command {
         VerbosityLevel verbosity = writer.getVerbosityLevel();
         writer.writeln();
         Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
-        experiment.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
+        experiment.writeExperimentSummary(writer);
 
         for (Method method : experiment.getMethodsByDescendingPeriod()) {
             writer.writeln();

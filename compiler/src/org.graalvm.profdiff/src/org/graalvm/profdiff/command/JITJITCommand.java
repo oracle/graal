@@ -88,13 +88,13 @@ public class JITJITCommand implements Command {
 
         writer.writeln();
         Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
-        jit1.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(jit1);
+        jit1.writeExperimentSummary(writer);
 
         writer.writeln();
         Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
-        jit1.writeExperimentSummary(writer);
         hotCompilationUnitPolicy.markHotCompilationUnits(jit2);
+        jit2.writeExperimentSummary(writer);
 
         ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit1, jit2));
