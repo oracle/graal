@@ -33,9 +33,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(java.lang.invoke.MethodType.class)
 final class Target_java_lang_invoke_MethodType {
@@ -106,33 +104,6 @@ final class Target_java_lang_invoke_Invokers {
 
     @Alias
     static native WrongMethodTypeException newWrongMethodTypeException(MethodType actual, MethodType expected);
-}
-
-@TargetClass(className = "java.lang.invoke.VarHandle")
-final class Target_java_lang_invoke_VarHandle {
-
-    /**
-     * JDK 11 does not have an override of toString(), but later JDK versions do. The implementation
-     * collects details about the MemberName, which are method handle internals that must not be
-     * reachable.
-     */
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    @Substitute
-    @Override
-    public String toString() {
-        return "VarHandle[printing VarHandle details is not supported on Substrate VM]";
-    }
-
-    @Alias
-    native MethodHandle getMethodHandle(int mode);
-}
-
-@TargetClass(className = "java.lang.invoke.VarHandle", innerClass = "AccessDescriptor")
-final class Target_java_lang_invoke_VarHandle_AccessDescriptor {
-    @Alias//
-    MethodType symbolicMethodTypeInvoker;
-    @Alias//
-    int mode;
 }
 
 @TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator")
