@@ -94,11 +94,7 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
                 if (order != 0) {
                     return order;
                 }
-                order = PROPERTIES_COMPARATOR.compare(self.getProperties(), other.getProperties());
-                if (order != 0) {
-                    return order;
-                }
-                return order;
+                return PROPERTIES_COMPARATOR.compare(self.getProperties(), other.getProperties());
             }
         }
     }
