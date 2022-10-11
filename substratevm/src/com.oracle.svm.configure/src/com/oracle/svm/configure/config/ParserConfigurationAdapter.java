@@ -47,7 +47,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(ConfigurationCondition condition, String typeName) {
+    public TypeResult<ConfigurationType> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
         ConfigurationType type = configuration.get(condition, typeName);
         ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName);
         return TypeResult.forType(typeName, result);

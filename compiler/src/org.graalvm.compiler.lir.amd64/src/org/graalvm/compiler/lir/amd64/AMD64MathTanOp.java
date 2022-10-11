@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -130,11 +130,11 @@ import jdk.vm.ci.amd64.AMD64;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_tan.cpp",
-          lineStart = 34,
-          lineEnd   = 1020,
-          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
-          sha1      = "8a617c23d7eb9c1687a19b01d15b661cd636fe2e")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_tan.cpp",
+          lineStart = 31,
+          lineEnd   = 1029,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "cdc6bf440397d248ddcc480cd3cdc762d29c2426")
 // @formatter:on
 public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
 

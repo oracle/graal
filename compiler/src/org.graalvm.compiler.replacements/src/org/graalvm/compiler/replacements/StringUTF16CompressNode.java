@@ -29,19 +29,18 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 
+import java.util.EnumSet;
+
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.replacements.nodes.MemoryKillStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
@@ -57,57 +56,72 @@ import jdk.vm.ci.meta.Value;
  * </ul>
  */
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN, cyclesRationale = "depends on length")
-public final class StringUTF16CompressNode extends FixedWithNextNode implements LIRLowerable, MultiMemoryKill, MemoryAccess {
+public final class StringUTF16CompressNode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<StringUTF16CompressNode> TYPE = NodeClass.create(StringUTF16CompressNode.class);
+
+    private static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
+
+    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("stringUTF16Compress", int.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
+                    false, KILLED_LOCATIONS, false, false);
 
     /** pointer to src[srcOff]. */
     @Input private ValueNode src;
     /** pointer to dst[dstOff]. */
     @Input private ValueNode dst;
     @Input private ValueNode len;
-    final JavaKind readKind;
-
-    @OptionalInput(Memory) private MemoryKill lla; // Last access location registered.
 
     public StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind readKind) {
-        super(TYPE, StampFactory.forInteger(32));
+        this(src, dst, len, null, NamedLocationIdentity.getArrayLocation(readKind));
+    }
+
+    /**
+     * Constructor for stub compilation. We set {@code locationIdentity} to
+     * {@link LocationIdentity#any()} here, because we want to re-use the same stub for all call
+     * sites.
+     */
+    public StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len) {
+        this(src, dst, len, null, LocationIdentity.any());
+    }
+
+    public StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(src, dst, len, runtimeCheckedCPUFeatures, LocationIdentity.any());
+    }
+
+    private StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures, LocationIdentity locationIdentity) {
+        super(TYPE, StampFactory.forInteger(32), runtimeCheckedCPUFeatures, locationIdentity);
         this.src = src;
         this.dst = dst;
         this.len = len;
-        this.readKind = readKind;
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        // Model read access via 'src' using:
-        return NamedLocationIdentity.getArrayLocation(readKind);
     }
 
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
         // Model write access via 'dst' using:
-        return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
+        return KILLED_LOCATIONS;
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
+    public ForeignCallDescriptor getForeignCallDescriptor() {
+        return STUB;
+    }
+
+    @Override
+    public ValueNode[] getForeignCallArguments() {
+        return new ValueNode[]{src, dst, len};
+    }
+
+    @Override
+    public void emitIntrinsic(NodeLIRBuilderTool gen) {
         LIRGeneratorTool lgt = gen.getLIRGeneratorTool();
-        Value res = lgt.emitStringUTF16Compress(gen.operand(src), gen.operand(dst), gen.operand(len));
+        Value res = lgt.emitStringUTF16Compress(runtimeCheckedCPUFeatures, gen.operand(src), gen.operand(dst), gen.operand(len));
         gen.setResult(this, res);
     }
 
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lla;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill newlla) {
-        updateUsages(ValueNodeUtil.asNode(lla), ValueNodeUtil.asNode(newlla));
-        lla = newlla;
-    }
+    @NodeIntrinsic
+    @GenerateStub
+    public static native int stringUTF16Compress(Pointer src, Pointer dst, int len);
 
     @NodeIntrinsic
-    public static native int compress(Pointer src, Pointer dst, int len, @ConstantNodeParameter JavaKind readKind);
+    public static native int stringUTF16Compress(Pointer src, Pointer dst, int len, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 }

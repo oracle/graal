@@ -50,6 +50,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
@@ -76,10 +77,9 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaType;
@@ -108,7 +108,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<AccessibleObject> heapReflectionObjects = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
 
-    private final Set<Type> processedTypes = new HashSet<>();
+    private final Map<Type, Integer> processedTypes = new HashMap<>();
     private final Set<DynamicHub> processedDynamicHubs = new HashSet<>();
     private final Map<AnalysisField, Set<AnalysisType>> processedHidingFields = new HashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisType>> processedHidingMethods = new HashMap<>();
@@ -121,10 +121,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
 
-    private final SubstrateAnnotationExtracter annotationExtracter;
+    private final SubstrateAnnotationExtractor annotationExtractor;
 
-    ReflectionDataBuilder(SubstrateAnnotationExtracter annotationExtracter) {
-        this.annotationExtracter = annotationExtracter;
+    ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
+        this.annotationExtractor = annotationExtractor;
     }
 
     @Override
@@ -476,7 +476,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as unsafe-accessible, whether they have been explicitly registered or their
          * Field object is reachable in the image heap.
          */
-        if (!analysisField.isUnsafeAccessed() && !GuardedAnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
+        if (!analysisField.isUnsafeAccessed() && !AnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
             analysisField.registerAsAccessed();
             analysisField.registerAsUnsafeAccessed();
         }
@@ -531,18 +531,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
+        makeTypeReachable(access, type, 0);
+    }
+
+    /*
+     * We need the dimension argument to keep track of how deep in the stack of GenericArrayType
+     * instances we are so we register the correct array type once we get to the leaf Class object.
+     */
+    private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type, int dimension) {
         try {
-            if (type == null || processedTypes.contains(type)) {
+            if (type == null || processedTypes.getOrDefault(type, -1) >= dimension) {
                 return;
             }
         } catch (TypeNotPresentException e) {
             /* Hash code computation can trigger an exception if the type is missing */
             return;
         }
-        processedTypes.add(type);
-        if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
+        processedTypes.put(type, dimension);
+        if (type instanceof Class<?> && !shouldExcludeClass(access, (Class<?>) type)) {
             Class<?> clazz = (Class<?>) type;
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz));
+            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz).getArrayClass(dimension));
 
             /*
              * Reflection signature parsing will try to instantiate classes via Class.forName().
@@ -556,13 +564,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 makeTypeReachable(access, bound);
             }
         } else if (type instanceof GenericArrayType) {
-            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType());
+            /*
+             * We only need to register the array type here, since it is the one that gets stored in
+             * the heap. The component type will be registered elsewhere if needed.
+             */
+            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType(), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
             for (Type actualType : parameterizedType.getActualTypeArguments()) {
                 makeTypeReachable(access, actualType);
             }
-            makeTypeReachable(access, parameterizedType.getRawType());
+            makeTypeReachable(access, parameterizedType.getRawType(), dimension);
             makeTypeReachable(access, parameterizedType.getOwnerType());
         } else if (type instanceof WildcardType) {
             WildcardType wildcardType = (WildcardType) type;
@@ -584,7 +596,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotatedElement != null) {
             filteredAnnotations.computeIfAbsent(annotatedElement, element -> {
                 List<AnnotationValue> includedAnnotations = new ArrayList<>();
-                for (AnnotationValue annotation : annotationExtracter.getDeclaredAnnotationData(element)) {
+                for (AnnotationValue annotation : annotationExtractor.getDeclaredAnnotationData(element)) {
                     if (includeAnnotation(access, annotation)) {
                         includedAnnotations.add(annotation);
                         registerTypes(access, annotation.getTypes());
@@ -598,7 +610,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerTypesForParameterAnnotations(DuringAnalysisAccessImpl access, AnalysisMethod executable) {
         if (executable != null) {
             filteredParameterAnnotations.computeIfAbsent(executable, element -> {
-                AnnotationValue[][] parameterAnnotations = annotationExtracter.getParameterAnnotationData(element);
+                AnnotationValue[][] parameterAnnotations = annotationExtractor.getParameterAnnotationData(element);
                 AnnotationValue[][] includedParameterAnnotations = new AnnotationValue[parameterAnnotations.length][];
                 for (int i = 0; i < includedParameterAnnotations.length; ++i) {
                     AnnotationValue[] annotations = parameterAnnotations[i];
@@ -620,7 +632,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotatedElement != null) {
             filteredTypeAnnotations.computeIfAbsent(annotatedElement, element -> {
                 List<TypeAnnotationValue> includedTypeAnnotations = new ArrayList<>();
-                for (TypeAnnotationValue typeAnnotation : annotationExtracter.getTypeAnnotationData(element)) {
+                for (TypeAnnotationValue typeAnnotation : annotationExtractor.getTypeAnnotationData(element)) {
                     if (includeAnnotation(access, typeAnnotation.getAnnotationData())) {
                         includedTypeAnnotations.add(typeAnnotation);
                         registerTypes(access, typeAnnotation.getAnnotationData().getTypes());
@@ -632,7 +644,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForAnnotationDefault(DuringAnalysisAccessImpl access, AnalysisMethod method) {
-        AnnotationMemberValue annotationDefault = annotationExtracter.getAnnotationDefaultData(method);
+        AnnotationMemberValue annotationDefault = annotationExtractor.getAnnotationDefaultData(method);
         if (annotationDefault != null) {
             registerTypes(access, annotationDefault.getTypes());
         }
@@ -689,8 +701,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
+    private static boolean shouldExcludeClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
+        if (clazz.isPrimitive()) {
+            return true; // primitives cannot be looked up by name and have no methods or fields
+        }
+        return SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse());
+    }
+
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
-        if (SubstitutionReflectivityFilter.shouldExclude(clazz, access.getMetaAccess(), access.getUniverse())) {
+        if (shouldExcludeClass(access, clazz)) {
             return;
         }
 
@@ -883,7 +902,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     public AnnotationMemberValue getAnnotationDefaultData(AnnotatedElement element) {
-        return annotationExtracter.getAnnotationDefaultData(element);
+        return annotationExtractor.getAnnotationDefaultData(element);
     }
 
     @Override

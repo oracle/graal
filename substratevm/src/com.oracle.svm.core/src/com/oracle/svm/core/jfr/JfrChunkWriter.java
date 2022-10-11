@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.core.heap.VMOperationInfos;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.IsolateThread;
@@ -38,12 +37,14 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -383,6 +384,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
+            /* Process all unprocessed sampler buffers before changing the epoch. */
+            SamplerBuffersAccess.processSamplerBuffers();
+
             // Write unflushed data from the thread local buffers but do *not* reinitialize them
             // The thread local code will handle space reclamation on their own time
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {

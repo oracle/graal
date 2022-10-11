@@ -60,6 +60,8 @@ import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -93,7 +95,11 @@ import com.oracle.svm.util.ReflectionUtil;
 public class GraalSupport {
 
     private RuntimeConfiguration runtimeConfig;
-    private Suites suites;
+
+    private Suites fullOptimizationSuites;
+    private Suites suitesWithoutSpeculation;
+    private Suites suitesWithExplicitExceptions;
+
     private LIRSuites lirSuites;
     private Suites firstTierSuites;
     private LIRSuites firstTierLirSuites;
@@ -189,11 +195,32 @@ public class GraalSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, Suites firstTierSuites, LIRSuites firstTierLirSuites) {
         get().runtimeConfig = runtimeConfig;
-        get().suites = suites;
+        get().fullOptimizationSuites = suites;
+        get().suitesWithoutSpeculation = getWithoutSpeculative(suites);
+        get().suitesWithExplicitExceptions = getWithExplicitExceptions(suites);
         get().lirSuites = lirSuites;
         get().firstTierSuites = firstTierSuites;
         get().firstTierLirSuites = firstTierLirSuites;
         get().firstTierProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
+    }
+
+    private static Suites getWithoutSpeculative(Suites s) {
+        Suites effectiveSuites = s.copy();
+        effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        return effectiveSuites;
+    }
+
+    private static Suites getWithExplicitExceptions(Suites s) {
+        Suites effectiveSuites = s.copy();
+        effectiveSuites.getHighTier().removeSubTypePhases(FloatingGuardPhase.class);
+        effectiveSuites.getMidTier().removeSubTypePhases(FloatingGuardPhase.class);
+        effectiveSuites.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
+        effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        return effectiveSuites;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -206,6 +233,29 @@ public class GraalSupport {
             result = true;
         }
         return result;
+    }
+
+    public static Suites getFullOptSuites() {
+        return get().fullOptimizationSuites;
+    }
+
+    public static Suites getWithoutSpeculativeSuites() {
+        return get().suitesWithoutSpeculation;
+    }
+
+    public static Suites getExplicitExceptionSuites() {
+        return get().suitesWithExplicitExceptions;
+    }
+
+    public static Suites getMatchingSuitesForGraph(StructuredGraph graph) {
+        Suites s = getFullOptSuites();
+        if (graph.getSpeculationLog() == null) {
+            s = getWithoutSpeculativeSuites();
+        }
+        if (graph.getGraphState().isExplicitExceptionsNoDeopt()) {
+            s = getExplicitExceptionSuites();
+        }
+        return s;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -283,10 +333,6 @@ public class GraalSupport {
 
     public static RuntimeConfiguration getRuntimeConfig() {
         return get().runtimeConfig;
-    }
-
-    public static Suites getSuites() {
-        return get().suites;
     }
 
     public static LIRSuites getLIRSuites() {

@@ -390,4 +390,19 @@ public final class Types {
         }
         return symbol.subSequence(1, lastSlash - 1);
     }
+
+    /**
+     * Returns the number of stack slots used by the specified type.
+     */
+    public static int slotCount(Symbol<Type> type) {
+        switch (type.byteAt(0)) {
+            case 'V': // void
+                return 0;
+            case 'D': // double
+            case 'J': // long
+                return 2;
+            default: // ZBCSIF[L
+                return 1;
+        }
+    }
 }

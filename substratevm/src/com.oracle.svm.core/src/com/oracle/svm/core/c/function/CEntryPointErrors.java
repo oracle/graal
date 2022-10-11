@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import com.oracle.svm.util.DirectAnnotationAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -146,7 +146,7 @@ public final class CEntryPointErrors {
                     continue;
                 }
                 int value = field.getInt(null);
-                String description = DirectAnnotationAccess.getAnnotation(field, CEntryPointErrors.Description.class).value();
+                String description = AnnotationAccess.getAnnotation(field, CEntryPointErrors.Description.class).value();
                 maxValue = Math.max(value, maxValue);
                 if (maxValue >= array.length) {
                     array = Arrays.copyOf(array, 2 * maxValue);

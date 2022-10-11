@@ -142,6 +142,9 @@ public class OptionProcessor extends AbstractProcessor {
         if (optionType.startsWith("java.lang.")) {
             optionType = optionType.substring("java.lang.".length());
         }
+        if (optionType.contains("<")) {
+            optionType = optionType.substring(0, optionType.indexOf("<"));
+        }
 
         Element enclosing = element.getEnclosingElement();
         String declaringClass = "";

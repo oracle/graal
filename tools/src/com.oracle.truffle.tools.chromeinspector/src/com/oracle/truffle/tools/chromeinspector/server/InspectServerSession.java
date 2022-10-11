@@ -57,6 +57,7 @@ import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.events.EventHandler;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
+import com.oracle.truffle.tools.utils.java_websocket.exceptions.WebsocketNotConnectedException;
 
 public final class InspectServerSession implements MessageEndpoint {
 
@@ -577,6 +578,8 @@ public final class InspectServerSession implements MessageEndpoint {
                     listener.sendText(event.toJSONString());
                 } catch (IOException ex) {
                     context.logException(ex);
+                } catch (WebsocketNotConnectedException ex) {
+                    // disconnected
                 }
             }
             JSONMessageListener jsonListener = jsonMessageListener;
@@ -656,6 +659,8 @@ public final class InspectServerSession implements MessageEndpoint {
                             listener.sendText(result.toString());
                         } catch (IOException ex) {
                             context.logException(ex);
+                        } catch (WebsocketNotConnectedException ex) {
+                            // disconnected
                         }
                     }
                     JSONMessageListener jsonListener = jsonMessageListener;

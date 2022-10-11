@@ -543,10 +543,6 @@ public class NativeImage {
             return false;
         }
 
-        public Path getAgentJAR() {
-            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar"));
-        }
-
         /**
          * ResourcesJar packs resources files needed for some jdk services such as xml
          * serialization.
@@ -1189,9 +1185,13 @@ public class NativeImage {
         }
 
         if (!agentOptions.isEmpty()) {
+            if (useDebugAttach()) {
+                throw NativeImage.showError(CmdLineOptionHandler.DEBUG_ATTACH_OPTION + " cannot be used with class initialization/object instantiation tracing (" + oHTraceClassInitialization +
+                                "/ + " + oHTraceObjectInstantiation + ").");
+            }
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
         }
-        args.add("-javaagent:" + config.getAgentJAR().toAbsolutePath() + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
+
         return args;
     }
 
@@ -1368,7 +1368,7 @@ public class NativeImage {
         }
     }
 
-    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> new NativeImage(config);
+    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
 
     public static void main(String[] args) {
         performBuild(new BuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);

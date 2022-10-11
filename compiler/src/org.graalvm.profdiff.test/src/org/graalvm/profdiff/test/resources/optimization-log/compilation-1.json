@@ -1,0 +1,24 @@
+{
+    "compilationId": "1",
+    "compilationMethodName": "foo.bar.Foo$Bar.methodName()", 
+    "rootPhase": { 
+        "phaseName": "RootPhase", 
+        "optimizations": [ 
+           { 
+               "phaseName": "SomeTier", 
+               "optimizations": [ 
+                   { 
+                       "optimizationName": "LoopTransformation", 
+                       "eventName": "PartialUnroll", 
+                       "position": {"foo.bar.Foo$Bar.innerMethod()": 30, "foo.bar.Foo$Bar.methodName()": 68}, 
+                       "unrollFactor": 1 
+                   }, 
+                   { 
+                       "phaseName": "EmptyPhase", 
+                       "optimizations": null 
+                   } 
+               ] 
+           } 
+       ] 
+   } 
+}

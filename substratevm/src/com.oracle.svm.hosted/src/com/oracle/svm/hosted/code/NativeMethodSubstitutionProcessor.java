@@ -28,6 +28,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.word.Word.Operation;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 
@@ -35,7 +36,6 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -64,9 +64,9 @@ public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
             assert !(method instanceof WrappedJavaMethod) : "Must not see AnalysisMethod or HostedMethod here";
             return method;
         }
-        assert !GuardedAnnotationAccess.isAnnotationPresent(method, CFunction.class) : "CFunction must have been handled by another SubstitutionProcessor";
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || GuardedAnnotationAccess.isAnnotationPresent(method, Operation.class) ||
-                        GuardedAnnotationAccess.isAnnotationPresent(method, CConstant.class)) {
+        assert !AnnotationAccess.isAnnotationPresent(method, CFunction.class) : "CFunction must have been handled by another SubstitutionProcessor";
+        if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || AnnotationAccess.isAnnotationPresent(method, Operation.class) ||
+                        AnnotationAccess.isAnnotationPresent(method, CConstant.class)) {
             return method;
         }
         boolean isHandledByPlugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, HostedOptionValues.singleton()) != null;

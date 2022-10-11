@@ -31,13 +31,15 @@ import java.security.AccessController;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -51,7 +53,6 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VirtualThreads;
-import com.oracle.svm.util.DirectAnnotationAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -145,11 +146,11 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+        if (DynamicHub.fromClass(clazz).isVMInternal()) {
             return false;
         }
 
-        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
+        if (!showLambdaFrames && DynamicHub.fromClass(clazz).isLambdaFormHidden()) {
             return false;
         }
 
@@ -184,11 +185,11 @@ public class StackTraceUtils {
         }
 
         ResolvedJavaType clazz = method.getDeclaringClass();
-        if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+        if (AnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
             return false;
         }
 
-        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
+        if (!showLambdaFrames && AnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
             return false;
         }
 

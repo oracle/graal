@@ -47,9 +47,9 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -810,11 +810,22 @@ public final class Deoptimizer {
         targetContentSize += FrameAccess.returnAddressSize();
 
         /* The source and target bytecode frame must match (as they stem from the same BCI). */
-        assert sourceFrame.getNumLocals() == targetFrame.getNumLocals();
-        assert sourceFrame.getNumStack() == targetFrame.getNumStack();
-        assert sourceFrame.getNumLocks() == targetFrame.getNumLocks();
-        assert targetFrame.getVirtualObjects().length == 0;
-        assert sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
+        boolean compatibleState = sourceFrame.getNumLocals() == targetFrame.getNumLocals() &&
+                        sourceFrame.getNumStack() == targetFrame.getNumStack() &&
+                        sourceFrame.getNumLocks() == targetFrame.getNumLocks() &&
+                        targetFrame.getVirtualObjects().length == 0 &&
+                        sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
+        if (!compatibleState) {
+            long encodedBci = targetFrame.getEncodedBci();
+            String message = "Deoptimization is not possible. Please report this error.\n" +
+                            String.format("Location - encodedBci: %s (bci %s) - method: %s\n", encodedBci, FrameInfoDecoder.readableBci(encodedBci), targetFrame.getSourceReference()) +
+                            String.format("Target Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s, virtual objects length-%s\n", targetFrame.getNumLocals(),
+                                            targetFrame.getNumStack(), targetFrame.getNumLocks(), targetFrame.getValueInfos().length, targetFrame.getVirtualObjects().length) +
+                            String.format("Source Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s\n", sourceFrame.getNumLocals(), sourceFrame.getNumStack(),
+                                            sourceFrame.getNumLocks(), sourceFrame.getValueInfos().length);
+            throw VMError.shouldNotReachHere(message);
+        }
+
         int numValues = targetFrame.getValueInfos().length;
 
         /*

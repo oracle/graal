@@ -1140,7 +1140,11 @@ public final class DebuggerSession implements Closeable {
             // Clear only those frames that correspond to the current root
             Object value = descriptor.getDefaultValue();
             for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
-                frame.setObject(slot, value);
+                if (frame.isStatic(slot)) {
+                    frame.setObjectStatic(slot, value);
+                } else {
+                    frame.setObject(slot, value);
+                }
             }
             for (int slot = 0; slot < descriptor.getNumberOfAuxiliarySlots(); slot++) {
                 frame.setAuxiliarySlot(slot, null);

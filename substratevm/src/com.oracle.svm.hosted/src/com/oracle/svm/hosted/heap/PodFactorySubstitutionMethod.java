@@ -62,19 +62,19 @@ import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
     private final ConcurrentMap<ResolvedJavaMethod, PodFactorySubstitutionMethod> substitutions = new ConcurrentHashMap<>();
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (method.isSynthetic() && GuardedAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), PodFactory.class) && !method.isConstructor()) {
+        if (method.isSynthetic() && AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), PodFactory.class) && !method.isConstructor()) {
             assert !(method instanceof CustomSubstitutionMethod);
             return substitutions.computeIfAbsent(method, PodFactorySubstitutionMethod::new);
         }

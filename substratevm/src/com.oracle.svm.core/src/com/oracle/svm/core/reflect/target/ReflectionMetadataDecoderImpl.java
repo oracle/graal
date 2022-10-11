@@ -43,10 +43,10 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 /**
@@ -57,6 +57,10 @@ import com.oracle.svm.core.util.ByteArrayReader;
  */
 @AutomaticallyRegisteredImageSingleton(ReflectionMetadataDecoder.class)
 public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
+    /**
+     * Error indices are less than {@link #NO_DATA}.
+     */
+    public static final int FIRST_ERROR_INDEX = NO_DATA - 1;
     public static final int NO_METHOD_METADATA = -1;
     public static final int NULL_OBJECT = -1;
     public static final int COMPLETE_FLAG_INDEX = 31;
@@ -73,7 +77,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     /**
      * Fields encoding.
-     * 
+     *
      * <pre>
      * FieldMetadata[] fields
      * </pre>
@@ -87,7 +91,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     /**
      * Methods encoding.
-     * 
+     *
      * <pre>
      * MethodMetadata[] methods
      * </pre>
@@ -101,7 +105,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     /**
      * Constructors encoding.
-     * 
+     *
      * <pre>
      * ConstructorMetadata[] constructors
      * </pre>
@@ -115,7 +119,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     /**
      * Inner classes encoding.
-     * 
+     *
      * <pre>
      * ClassIndex[] innerClasses
      * </pre>
@@ -129,7 +133,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     /**
      * Record components encoding.
-     * 
+     *
      * <pre>
      * RecordComponentMetadata[] recordComponents
      * </pre>
@@ -143,7 +147,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     /**
      * Parameters encoding for executables.
-     * 
+     *
      * <pre>
      * ParameterMetadata[] parameters
      * </pre>
@@ -168,6 +172,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      */
     @Override
     public Object[] parseEnclosingMethod(int index) {
+        if (isErrorIndex(index)) {
+            decodeAndThrowError(index);
+        }
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         Class<?> declaringClass = decodeType(reader, codeInfo);
@@ -192,8 +199,21 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
     }
 
+    public static boolean isErrorIndex(int index) {
+        return index < NO_DATA;
+    }
+
     /**
-     *
+     * Errors are encoded as negated indices of the frame info object constants array.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void decodeAndThrowError(int index) throws T {
+        assert isErrorIndex(index);
+        int decodedIndex = FIRST_ERROR_INDEX - index;
+        throw (T) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(CodeInfoTable.getImageCodeInfo()), decodedIndex);
+    }
+
+    /**
      * Complete field encoding.
      *
      * <pre>

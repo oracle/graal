@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static org.graalvm.compiler.options.OptionType.Expert;
 
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -95,6 +96,8 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
@@ -131,7 +134,6 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -139,8 +141,14 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 public class MethodTypeFlowBuilder {
+
+    public static class Options {
+        @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
+        public static final OptionKey<Boolean> PEABeforeAnalysis = new OptionKey<>(true);
+    }
 
     protected final PointsToAnalysis bb;
     protected final MethodFlowsGraph flowsGraph;
@@ -198,8 +206,10 @@ public class MethodTypeFlowBuilder {
                  */
                 new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
 
-                new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-                new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                if (Options.PEABeforeAnalysis.getValue(bb.getOptions())) {
+                    new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+                    new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                }
             }
 
             // Do it again after canonicalization changed type checks and field accesses.
@@ -325,7 +335,7 @@ public class MethodTypeFlowBuilder {
 
     protected void apply() {
         // assert method.getAnnotation(Fold.class) == null : method;
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
+        if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
             AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
             if (returnType.getJavaKind() == JavaKind.Object) {
@@ -420,7 +430,8 @@ public class MethodTypeFlowBuilder {
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
                         assert type.isInstantiated();
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
-                            ConstantTypeFlow constantSource = new ConstantTypeFlow(sourcePosition(node), type, TypeState.forConstant(this.bb, node.asJavaConstant(), type));
+                            JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(node.asJavaConstant());
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(sourcePosition(node), type, TypeState.forConstant(this.bb, heapConstant, type));
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });

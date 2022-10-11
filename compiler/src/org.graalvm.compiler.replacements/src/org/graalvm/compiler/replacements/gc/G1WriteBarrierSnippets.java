@@ -457,7 +457,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ReferentFieldReadBarrier barrier, LoweringTool tool) {
@@ -476,7 +476,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1PostWriteBarrier barrier, LoweringTool tool) {
@@ -505,7 +505,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePreWriteBarrier barrier, LoweringTool tool) {
@@ -514,7 +514,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePostWriteBarrier barrier, LoweringTool tool) {
@@ -523,7 +523,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         private static int traceStartCycle(StructuredGraph graph) {

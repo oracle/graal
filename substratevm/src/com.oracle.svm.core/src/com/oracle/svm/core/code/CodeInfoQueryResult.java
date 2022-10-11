@@ -122,6 +122,7 @@ public class CodeInfoQueryResult {
      * Stack frame information used, e.g., for deoptimization and printing of stack frames in debug
      * builds.
      */
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
     public FrameInfoQueryResult getFrameInfo() {
         return frameInfo;
     }

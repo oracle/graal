@@ -43,10 +43,14 @@ public final class Mangle {
 
     // Mangling
 
+    private static String mangle(String name) {
+        return mangle(name, false);
+    }
+
     /**
      * Mangles a given string such that it can be represented as (part of) a valid C function name.
      */
-    private static String mangle(String name) {
+    private static String mangle(String name, boolean isTruffleMangle) {
         final StringBuilder mangledName = new StringBuilder(100);
         final int length = name.length();
         for (int i = 0; i < length; i++) {
@@ -61,6 +65,8 @@ public final class Mangle {
                 mangledName.append("_2");
             } else if (ch == '[') {
                 mangledName.append("_3");
+            } else if (isTruffleMangle && ch == '$') {
+                mangledName.append(ch);
             } else {
                 mangledName.append(mangleChar(ch));
             }
@@ -132,10 +138,10 @@ public final class Mangle {
         final StringBuilder result = new StringBuilder(100);
         result.append(mangle(methodName)).append("__");
         final String sig = signature.toString();
-        final String returnType = sig.substring(sig.lastIndexOf(')') + 1).replace('/', '.').replace('$', '.');
-        result.append(mangle(returnType));
-        final String parametersSignature = sig.substring(1, sig.lastIndexOf(')')).replace('/', '.').replace('$', '.');
-        result.append(mangle(parametersSignature));
+        final String returnType = sig.substring(sig.lastIndexOf(')') + 1).replace('/', '.');
+        result.append(mangle(returnType, true));
+        final String parametersSignature = sig.substring(1, sig.lastIndexOf(')')).replace('/', '.');
+        result.append(mangle(parametersSignature, true));
         return result.toString();
     }
 

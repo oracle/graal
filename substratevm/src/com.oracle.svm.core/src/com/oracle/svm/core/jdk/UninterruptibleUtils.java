@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -32,6 +31,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -44,6 +44,41 @@ import jdk.internal.misc.Unsafe;
  * maintenance nightmare. Fortunately these methods are simple.
  */
 public class UninterruptibleUtils {
+
+    public static class AtomicBoolean {
+
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+        private static final long VALUE_OFFSET;
+
+        static {
+            try {
+                VALUE_OFFSET = UNSAFE.objectFieldOffset(AtomicBoolean.class.getDeclaredField("value"));
+            } catch (Throwable ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
+        private volatile boolean value;
+
+        public AtomicBoolean(boolean value) {
+            this.value = value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean get() {
+            return value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void set(boolean newValue) {
+            value = newValue;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean compareAndSet(boolean expected, boolean update) {
+            return UNSAFE.compareAndSetBoolean(this, VALUE_OFFSET, expected, update);
+        }
+    }
 
     public static class AtomicInteger {
 
@@ -382,6 +417,11 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int clamp(int value, int min, int max) {
             return min(max(value, min), max);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int abs(int a) {
+            return (a < 0) ? -a : a;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -75,7 +76,6 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -219,7 +219,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
         if (substitutionField != null) {
-            return GuardedAnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
+            return AnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
         }
         return false;
     }
@@ -324,7 +324,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                         targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
-                        assert !GuardedAnnotationAccess.isAnnotationPresent(targetField, Delete.class);
+                        assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
                         targetField.registerAsUnsafeAccessed();
                         break;
                 }
@@ -1084,7 +1084,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     protected <T extends Annotation> T lookupAnnotation(AnnotatedElement element, Class<T> annotationClass) {
         assert element instanceof Class || element instanceof Executable || element instanceof Field : element.getClass();
-        return GuardedAnnotationAccess.getAnnotation(element, annotationClass);
+        return AnnotationAccess.getAnnotation(element, annotationClass);
     }
 
     protected static String deleteErrorMessage(AnnotatedElement element, Delete deleteAnnotation, boolean hosted) {

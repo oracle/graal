@@ -56,7 +56,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
     private final boolean throwAllocatedObject;
 
     FactoryMethod(ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool, boolean throwAllocatedObject) {
-        super(SubstrateUtil.uniqueShortName(targetConstructor), declaringClass, signature, constantPool);
+        super(SubstrateUtil.uniqueStubName(targetConstructor), declaringClass, signature, constantPool);
         this.targetConstructor = targetConstructor;
         this.throwAllocatedObject = throwAllocatedObject;
 

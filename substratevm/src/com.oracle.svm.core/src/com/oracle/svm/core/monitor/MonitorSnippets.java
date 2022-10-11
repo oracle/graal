@@ -106,8 +106,14 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @NodeIntrinsic(value = ForeignCallNode.class)
     protected static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object obj);
 
+    private final SnippetInfo monitorEnter;
+    private final SnippetInfo monitorExit;
+
     protected MonitorSnippets(OptionValues options, Providers providers) {
         super(options, providers);
+
+        this.monitorEnter = snippet(providers, MonitorSnippets.class, "monitorEnterSnippet");
+        this.monitorExit = snippet(providers, MonitorSnippets.class, "monitorExitSnippet");
     }
 
     protected void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -117,9 +123,6 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     }
 
     protected class MonitorLowering implements NodeLoweringProvider<AccessMonitorNode> {
-
-        private final SnippetInfo monitorEnter = snippet(MonitorSnippets.class, "monitorEnterSnippet");
-        private final SnippetInfo monitorExit = snippet(MonitorSnippets.class, "monitorExitSnippet");
 
         @Override
         public final void lower(AccessMonitorNode node, LoweringTool tool) {
@@ -157,7 +160,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("obj", node.object());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

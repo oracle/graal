@@ -60,7 +60,7 @@ public abstract class ConstantPoolParser {
         poolParser.expectedIds.add(id);
     }
 
-    public void compareFoundAndExceptedIds() {
+    public void compareFoundAndExpectedIds() {
         Assert.assertTrue("Error during parsing " + this + " constant pool!" +
                         " Expected IDs: " + expectedIds +
                         ". Found IDs: " + foundIds, foundIds.size() == 0 || foundIds.containsAll(expectedIds));

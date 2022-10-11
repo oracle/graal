@@ -78,10 +78,10 @@ import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
-import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -227,7 +227,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
                             .setIsSubstitution(true)
                             .build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
-                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true) {
+                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
 
                 private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
 
@@ -260,7 +260,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
-        assert DirectAnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
+        assert AnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
         assert builder.registered.add(method) : "snippet registered twice: " + method.getName();

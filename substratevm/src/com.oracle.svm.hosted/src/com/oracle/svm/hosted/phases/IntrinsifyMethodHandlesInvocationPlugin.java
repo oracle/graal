@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.hosted.meta.HostedType;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -102,7 +101,9 @@ import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.FrameAccess;
@@ -114,6 +115,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
@@ -179,7 +181,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private final ParsingReason reason;
     private final Providers parsingProviders;
-    private final Providers universeProviders;
+    private final HostedProviders universeProviders;
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
 
@@ -190,7 +192,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final ResolvedJavaType methodHandleType;
     private final ResolvedJavaType varHandleType;
 
-    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, HostedProviders providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.reason = reason;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
@@ -280,9 +282,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         return notAlwaysNullPhiInput;
     }
 
-    private static boolean hasMethodHandleArgument(ValueNode[] args) {
+    private boolean hasMethodHandleArgument(ValueNode[] args) {
         for (ValueNode argument : args) {
-            if (argument.isConstant() && argument.getStackKind() == JavaKind.Object && SubstrateObjectConstant.asObject(argument.asJavaConstant()) instanceof MethodHandle) {
+            if (argument.isConstant() && argument.getStackKind() == JavaKind.Object &&
+                            (((UniverseMetaAccess) universeProviders.getMetaAccess()).isInstanceOf(argument.asJavaConstant(), methodHandleType))) {
                 return true;
             }
         }

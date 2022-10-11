@@ -31,6 +31,7 @@ import java.util.Iterator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -468,6 +469,7 @@ public abstract class LoopFragment {
      * Merges the early exits (i.e. loop exits) that were duplicated as part of this fragment, with
      * the original fragment's exits.
      */
+    @SuppressWarnings("try")
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
@@ -480,9 +482,15 @@ public abstract class LoopFragment {
             if (newEarlyExit == null) {
                 continue;
             }
-            MergeNode merge = graph.add(new MergeNode());
-            EndNode originalEnd = graph.add(new EndNode());
-            EndNode newEnd = graph.add(new EndNode());
+
+            MergeNode merge;
+            EndNode originalEnd;
+            EndNode newEnd;
+            try (DebugCloseable position = earlyExit.withNodeSourcePosition()) {
+                merge = graph.add(new MergeNode());
+                originalEnd = graph.add(new EndNode());
+                newEnd = graph.add(new EndNode());
+            }
             merge.addForwardEnd(originalEnd);
             merge.addForwardEnd(newEnd);
             earlyExit.setNext(originalEnd);
@@ -532,6 +540,7 @@ public abstract class LoopFragment {
                     ValueNode newVpn = prim(newEarlyExitIsLoopExit ? vpn : vpn.value());
                     if (newVpn != null) {
                         PhiNode phi = vpn.createPhi(merge);
+                        phi.setNodeSourcePosition(merge.getNodeSourcePosition());
                         phi.addInput(vpn);
                         phi.addInput(newVpn);
                         replaceWith = phi;

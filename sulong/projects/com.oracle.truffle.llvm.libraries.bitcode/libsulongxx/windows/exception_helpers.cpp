@@ -34,8 +34,52 @@ typedef void *_ThrowInfo;
 #include <stdio.h>
 #include <typeinfo>
 
+typedef void *(__cdecl *eh_unwind_pfn)(void *);
+
+typedef void *(__cdecl *eh_copy_pfn)(void *, void *);
+
 extern "C" {
-bool sulong_eh_canCatch_windows(void *thrownObject, ThrowInfo *throwInfo, std::type_info *catchType, char *imageBase) {
+void __sulong_eh_unwind_windows(void *thrownObject, ThrowInfo *throwInfo, char *imageBase) {
+    PMFN relUnwind = throwInfo->pmfnUnwind;
+    if (relUnwind) {
+        eh_unwind_pfn unwind = reinterpret_cast<eh_unwind_pfn>(relUnwind + imageBase);
+        unwind(thrownObject);
+    }
+}
+
+void __sulong_eh_copy_windows(void *thrownObject, CatchableType *catchableType, char *imageBase, void *exceptionSlot, int32_t attributes) {
+    // if the exception slot is null, nothing needs to be done
+    if (!exceptionSlot) {
+        return;
+    }
+
+    if (attributes & HT_IsReference) {
+        *reinterpret_cast<void **>(exceptionSlot) = thrownObject;
+    } else if (catchableType->copyFunction) {
+        eh_copy_pfn copy = reinterpret_cast<eh_copy_pfn>(catchableType->copyFunction + imageBase);
+        copy(exceptionSlot, thrownObject);
+    } else {
+        switch (catchableType->sizeOrOffset) {
+            case 8:
+                *reinterpret_cast<int64_t *>(exceptionSlot) = *reinterpret_cast<int64_t *>(thrownObject);
+                break;
+            case 4:
+                *reinterpret_cast<int32_t *>(exceptionSlot) = *reinterpret_cast<int32_t *>(thrownObject);
+                break;
+            case 2:
+                *reinterpret_cast<int16_t *>(exceptionSlot) = *reinterpret_cast<int16_t *>(thrownObject);
+                break;
+            case 1:
+                *reinterpret_cast<int8_t *>(exceptionSlot) = *reinterpret_cast<int8_t *>(thrownObject);
+                break;
+            default:
+                fprintf(stderr, "__sulong_eh_copy_windows failed because %d is an unsupported size or offset value.\n", catchableType->sizeOrOffset);
+                abort();
+        }
+    }
+}
+
+CatchableType *__sulong_eh_canCatch_windows(void *thrownObject, ThrowInfo *throwInfo, std::type_info *catchType, char *imageBase) {
     CatchableTypeArray *catchableTypeArray = reinterpret_cast<CatchableTypeArray *>(imageBase + throwInfo->pCatchableTypeArray);
 
     for (int i = 0; i < catchableTypeArray->nCatchableTypes; i++) {
@@ -44,10 +88,10 @@ bool sulong_eh_canCatch_windows(void *thrownObject, ThrowInfo *throwInfo, std::t
         std::type_info *matchType = (std::type_info *) typeDescriptor;
 
         if (*matchType == *catchType) {
-            return true;
+            return catchableType;
         }
     }
 
-    return false;
+    return NULL;
 }
 }

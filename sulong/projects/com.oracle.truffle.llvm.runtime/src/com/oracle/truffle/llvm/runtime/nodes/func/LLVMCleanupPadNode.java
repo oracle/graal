@@ -45,6 +45,10 @@ public abstract class LLVMCleanupPadNode extends LLVMExpressionNode {
     long doCleanupPad(VirtualFrame frame) {
         LLVMStack stack = (LLVMStack) frame.getArguments()[0];
         LLVMUserExceptionWindows exception = (LLVMUserExceptionWindows) frame.getObject(getExceptionSlot());
+
+        getLanguage().contextThreadLocal.get().pushException(exception);
+
+        // also see LLVMCatchPadNode
         long oldStackPointer = stack.getStackPointer();
         stack.setStackPointer(exception.getStackPointer());
         return oldStackPointer;

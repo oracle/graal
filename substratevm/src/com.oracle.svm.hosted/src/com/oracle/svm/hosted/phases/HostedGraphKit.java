@@ -75,6 +75,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, boolean forceTrackNodeSourcePosition) {
         super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), forceTrackNodeSourcePosition);
+        graph.getGraphState().configureExplicitExceptionsNoDeopt();
     }
 
     @Override

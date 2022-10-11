@@ -61,6 +61,10 @@ public final class CatchSwitchInstruction extends ValueInstruction implements Te
         return cases[0];
     }
 
+    public boolean hasUnwindBlock() {
+        return unwind != null;
+    }
+
     public InstructionBlock getUnwindBlock() {
         return unwind;
     }
@@ -85,7 +89,7 @@ public final class CatchSwitchInstruction extends ValueInstruction implements Te
 
     @Override
     public int getSuccessorCount() {
-        return unwind == null ? cases.length : cases.length + 1;
+        return hasUnwindBlock() ? cases.length + 1 : cases.length;
     }
 
     @Override

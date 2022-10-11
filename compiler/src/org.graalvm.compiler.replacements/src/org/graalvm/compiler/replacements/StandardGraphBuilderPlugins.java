@@ -40,6 +40,7 @@ import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -218,14 +219,14 @@ public class StandardGraphBuilderPlugins {
                     Replacements replacements,
                     boolean allowDeoptimization,
                     boolean explicitUnsafeNullChecks,
-                    boolean arrayEqualsSubstitution,
+                    boolean supportsStubBasedPlugins,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
-        registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
+        registerStringPlugins(plugins, replacements, snippetReflection, supportsStubBasedPlugins);
         registerCharacterPlugins(plugins);
         registerCharacterDataLatin1Plugins(plugins);
         registerShortPlugins(plugins);
@@ -233,9 +234,6 @@ public class StandardGraphBuilderPlugins {
         registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
-        if (arrayEqualsSubstitution) {
-            registerArraysPlugins(plugins, replacements);
-        }
         registerArrayPlugins(plugins, replacements);
         registerUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks);
         registerEdgesPlugins(plugins);
@@ -247,8 +245,12 @@ public class StandardGraphBuilderPlugins {
         registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
 
-        registerAESPlugins(plugins, replacements, lowerer.getTarget().arch);
-        registerGHASHPlugin(plugins, replacements, lowerer.getTarget().arch);
+        if (supportsStubBasedPlugins) {
+            registerArraysPlugins(plugins, replacements);
+            registerAESPlugins(plugins, replacements, lowerer.getTarget().arch);
+            registerGHASHPlugin(plugins, replacements, lowerer.getTarget().arch);
+            registerBigIntegerPlugins(plugins, replacements);
+        }
     }
 
     public static final Field STRING_VALUE_FIELD;
@@ -265,7 +267,7 @@ public class StandardGraphBuilderPlugins {
         STRING_CODER_FIELD = coder;
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection, boolean arrayEqualsSubstitution) {
+    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection, boolean supportsStubBasedPlugins) {
         final Registration r = new Registration(plugins, String.class, replacements);
         r.register(new InvocationPlugin("hashCode", Receiver.class) {
             @Override
@@ -295,7 +297,7 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        if (arrayEqualsSubstitution) {
+        if (supportsStubBasedPlugins) {
             r.register(new StringEqualsInvocationPlugin());
         }
         final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
@@ -2248,5 +2250,16 @@ public class StandardGraphBuilderPlugins {
     private static void registerGHASHPlugin(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH", replacements);
         r.registerConditional(GHASHPlugin.isSupported(arch), new GHASHPlugin());
+    }
+
+    private static void registerBigIntegerPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, BigInteger.class, replacements);
+        r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
+                        "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
+                return templates.implMultiplyToLen;
+            }
+        });
     }
 }

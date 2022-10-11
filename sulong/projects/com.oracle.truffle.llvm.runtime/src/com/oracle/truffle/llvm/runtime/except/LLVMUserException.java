@@ -106,6 +106,10 @@ public class LLVMUserException extends LLVMException {
             this.stackOffset = stackOffset;
         }
 
+        public LLVMPointer getThrowInfo() {
+            return unwindHeader;
+        }
+
         public LLVMPointer getImageBase() {
             return imageBase;
         }

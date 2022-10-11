@@ -445,7 +445,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                 state = frameState;
             } else {
                 assert needOnlyOopMaps();
-                state = new LIRFrameState(null, null, null);
+                state = new LIRFrameState(null, null, null, false);
             }
         }
 
@@ -661,4 +661,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public int getArrayBaseOffset(JavaKind elementKind) {
         return getMetaAccess().getArrayBaseOffset(elementKind);
     }
+
+    /**
+     * Returns the register holding the heap base address for compressed pointer.
+     */
+    public abstract Register getHeapBaseRegister();
 }

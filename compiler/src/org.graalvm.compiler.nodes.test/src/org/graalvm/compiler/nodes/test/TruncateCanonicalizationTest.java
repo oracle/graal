@@ -29,15 +29,28 @@ package org.graalvm.compiler.nodes.test;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     // See ExactMathTest#testTruncateFloat and ExactMathTest#testTruncateDouble for values tests.
 
+    @Before
+    public void before() {
+        // Resolve these methods, otherwise we can run into Deopt Unresolved nodes in the graphs
+        // when running tests in isolation.
+        getResolvedJavaMethod(Math.class, "ceil");
+        getResolvedJavaMethod(Math.class, "floor");
+    }
+
+    public void testRoundNodes(String snippetName, int expected) {
+        Assert.assertEquals(expected, getFinalGraph(snippetName).getNodes().filter(RoundNode.class).count());
+    }
+
     @Test
     public void testTruncateFloatCanonicalized1() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat1").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat1", 1);
     }
 
     public static float truncateFloat1(float a) {
@@ -46,7 +59,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized1() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble1").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble1", 1);
     }
 
     public static double truncateDouble1(double a) {
@@ -56,7 +69,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized2() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat2").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat2", 1);
     }
 
     public static float truncateFloat2(float a) {
@@ -65,7 +78,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized2() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble2").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble2", 1);
     }
 
     public static double truncateDouble2(double a) {
@@ -75,7 +88,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized3() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat3").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat3", 1);
     }
 
     public static float truncateFloat3(float a) {
@@ -84,7 +97,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized3() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble3").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble3", 1);
     }
 
     public static double truncateDouble3(double a) {
@@ -94,7 +107,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized4() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat4").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat4", 1);
     }
 
     public static float truncateFloat4(float a) {
@@ -103,7 +116,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized4() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble4").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble4", 1);
     }
 
     public static double truncateDouble4(double a) {
@@ -113,7 +126,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized5() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat5").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat5", 1);
     }
 
     public static float truncateFloat5(float a) {
@@ -122,7 +135,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized5() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble5").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble5", 1);
     }
 
     public static double truncateDouble5(double a) {
@@ -132,7 +145,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized6() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat6").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat6", 1);
     }
 
     public static float truncateFloat6(float a) {
@@ -141,7 +154,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized6() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble6").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble6", 1);
     }
 
     public static double truncateDouble6(double a) {
@@ -151,7 +164,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized7() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat7").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat7", 1);
     }
 
     public static float truncateFloat7(float a) {
@@ -160,7 +173,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized7() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble7").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble7", 1);
     }
 
     public static double truncateDouble7(double a) {
@@ -170,7 +183,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized8() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat8").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat8", 1);
     }
 
     public static float truncateFloat8(float a) {
@@ -179,7 +192,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized8() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble8").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble8", 1);
     }
 
     public static double truncateDouble8(double a) {
@@ -189,7 +202,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized9() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat9").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat9", 1);
     }
 
     public static float truncateFloat9(float a) {
@@ -198,7 +211,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized9() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble9").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble9", 1);
     }
 
     public static double truncateDouble9(double a) {
@@ -214,7 +227,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateFloatCanonicalized10() {
-        Assert.assertEquals(1, getFinalGraph("truncateFloat10").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateFloat10", 1);
     }
 
     public static float truncateFloat10(float a) {
@@ -223,7 +236,7 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void testTruncateDoubleCanonicalized10() {
-        Assert.assertEquals(1, getFinalGraph("truncateDouble10").getNodes().filter(RoundNode.class).count());
+        testRoundNodes("truncateDouble10", 1);
     }
 
     public static double truncateDouble10(double a) {
@@ -237,4 +250,78 @@ public class TruncateCanonicalizationTest extends GraalCompilerTest {
         return result;
     }
 
+    @Test
+    public void testTruncateFloatCanonicalized11() {
+        testRoundNodes("truncateFloat11", 1);
+    }
+
+    public static double truncateFloat11(float a) {
+        // Unlike most other float tests, this does the comparison as float, not as double. The
+        // float is still converted to double for rounding.
+        return 0.0f > a ? Math.ceil(a) : Math.floor(a);
+    }
+
+    @Test
+    public void testTruncateFloatCanonicalized12() {
+        testRoundNodes("truncateFloat12", 1);
+    }
+
+    public static double truncateFloat12(float a) {
+        // Another test with the compare as float, even though the constant is formally a double.
+        return 0.0 > a ? Math.ceil(a) : Math.floor(a);
+    }
+
+    @Test
+    public void testDoNotCanonicalizeFloat1() {
+        testRoundNodes("doNotCanonicalizeFloat1", 2);
+    }
+
+    public static float doNotCanonicalizeFloat1(float a, float b) {
+        return (float) doNotCanonicalizeDouble1(a, b);
+    }
+
+    @Test
+    public void testDoNotCanonicalizeDouble1() {
+        testRoundNodes("doNotCanonicalizeDouble1", 2);
+    }
+
+    public static double doNotCanonicalizeDouble1(double a, double b) {
+        return a < 0.0 ? Math.ceil(b) : Math.floor(b);
+    }
+
+    @Test
+    public void testDoNotCanonicalizeFloat2() {
+        testRoundNodes("doNotCanonicalizeFloat2", 2);
+    }
+
+    public static float doNotCanonicalizeFloat2(float a, float b) {
+        return (float) doNotCanonicalizeDouble2(a, b);
+    }
+
+    @Test
+    public void testDoNotCanonicalizeDouble2() {
+        testRoundNodes("doNotCanonicalizeDouble2", 2);
+    }
+
+    public static double doNotCanonicalizeDouble2(double a, double b) {
+        return b < 0.0 ? Math.ceil(a) : Math.floor(b);
+    }
+
+    @Test
+    public void testDoNotCanonicalizeFloat3() {
+        testRoundNodes("doNotCanonicalizeFloat3", 2);
+    }
+
+    public static float doNotCanonicalizeFloat3(float a, float b) {
+        return (float) doNotCanonicalizeDouble3(a, b);
+    }
+
+    @Test
+    public void testDoNotCanonicalizeDouble3() {
+        testRoundNodes("doNotCanonicalizeDouble3", 2);
+    }
+
+    public static double doNotCanonicalizeDouble3(double a, double b) {
+        return b < 0.0 ? Math.ceil(b) : Math.floor(a);
+    }
 }

@@ -64,16 +64,11 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 5274,
-          lineEnd   = 5470,
-          commit    = "0c6094e79602fe85a88e3131710bb39813364ad2",
-          sha1      = "e14f719ca43804ed529ee5e2f3ad245d4ca1af9a")
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_aes.cpp",
-          lineStart = 490,
-          lineEnd   = 780,
-          commit    = "27af0144ea57e86d9b81c2b328fad66e4a046f61",
-          sha1      = "2fae9aba4278b89fff3021a5e14450541d21b52f")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_ghash.cpp",
+          lineStart = 35,
+          lineEnd   = 535,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "f76af2a4acc060dc34bd5c0597228a69145fd66c")
 // @formatter:on
 public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
 

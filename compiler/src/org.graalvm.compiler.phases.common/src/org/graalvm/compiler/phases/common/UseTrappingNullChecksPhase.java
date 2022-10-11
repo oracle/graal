@@ -28,8 +28,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullCheck
 
 import java.util.Optional;
 
-import org.graalvm.compiler.debug.CounterKey;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.CompressionNode;
@@ -134,8 +132,7 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
                         fixedAccessNode.setUsedAsNullCheck(true);
                         fixedAccessNode.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
                         graph.removeSplit(ifNode, nonTrappingContinuation);
-                        counterTrappingNullCheckExistingRead.increment(graph.getDebug());
-                        graph.getDebug().log("Added implicit null check to %s", fixedAccessNode);
+                        graph.getOptimizationLog().report(UseTrappingNullChecksPhase.class, "ImplicitNullCheck", isNullNode);
                         return fixedAccessNode;
                     }
                 }
@@ -143,8 +140,6 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
         }
         return null;
     }
-
-    private static final CounterKey counterTrappingNullCheckExistingRead = DebugContext.counter("TrappingNullCheckExistingRead");
 
     @Override
     public DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {

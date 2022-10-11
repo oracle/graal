@@ -36,6 +36,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
@@ -57,12 +58,15 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     private final Class<?> receiverType;
     /** The actual value is computed after static analysis using a field value transformer. */
     private int vtableOffset;
+    private final boolean callerSensitiveAdapter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke) {
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke,
+                    boolean callerSensitiveAdapter) {
         super(member, expandSignature, directTarget, initializeBeforeInvoke);
         this.receiverType = receiverType;
         this.vtableOffset = vtableOffset;
+        this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
     public int getVTableOffset() {
@@ -86,10 +90,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
         }
     }
 
-    @Override
-    public Object invoke(Object obj, Object[] args) {
-        preInvoke(obj);
-
+    private CFunctionPointer invokeTarget(Object obj) {
         /*
          * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
@@ -102,16 +103,33 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
         } else {
             target = directTarget;
         }
-        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
+        return target;
+    }
+
+    @Override
+    public Object invoke(Object obj, Object[] args) {
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+        }
+        preInvoke(obj);
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, invokeTarget(obj));
     }
 
     @Override
     public Object invoke(Object obj, Object[] args, Class<?> caller) {
-        // Handle caller sensitive invokes (GR-39586)
-        return invoke(obj, args);
+        if (callerSensitiveAdapter) {
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) expandSignature).invoke(obj, args, invokeTarget(obj), caller);
+        } else {
+            /* Not a @CallerSensitiveAdapter method, so we can ignore the caller argument. */
+            return invoke(obj, args);
+        }
     }
 
     public Object invokeSpecial(Object obj, Object[] args) {
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+        }
         preInvoke(obj);
 
         CFunctionPointer target = directTarget;

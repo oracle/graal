@@ -60,9 +60,9 @@ import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
 import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.ReusableTypeReader;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -957,7 +957,7 @@ public class SubstrateDiagnostics {
     }
 
     private static class ImageCodeLocationInfoPrinter {
-        private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
+        private final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
         private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
         private final FrameInfoState frameInfoState = new FrameInfoState();

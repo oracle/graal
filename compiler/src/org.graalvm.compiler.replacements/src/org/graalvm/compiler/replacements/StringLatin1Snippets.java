@@ -50,11 +50,13 @@ public class StringLatin1Snippets implements Snippets {
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
+        public final SnippetTemplate.SnippetInfo indexOf;
+
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
-        }
 
-        public final SnippetTemplate.SnippetInfo indexOf = snippet(StringLatin1Snippets.class, "indexOf");
+            this.indexOf = snippet(providers, StringLatin1Snippets.class, "indexOf");
+        }
     }
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
