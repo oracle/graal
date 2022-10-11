@@ -57,11 +57,18 @@
 
   test:: s.base(no_warning_as_error=true),
 
-  coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"]) + {
+  coverage_base(ctw):: s.base(tags="build,%s" % if ctw then "ctw" else "coverage",
+                              cmd_suffix=["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+                              extra_vm_args=if !ctw then "" else "-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) +
+  {
     teardown+: [
       ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
   },
+
+  coverage::      s.coverage_base(ctw=false),
+  coverage_avx3:: s.coverage_base(ctw=false) + s.avx3,
+  coverage_ctw::  s.coverage_base(ctw=true),
 
   test_javabase:: s.base("build,javabasetest"),
   test_jtt_phaseplan_fuzzing:: s.base("build,phaseplan-fuzz-jtt-tests"),
@@ -85,13 +92,6 @@
 
   ctw_economy:: s.base("build,ctweconomy", extra_vm_args="-Dgraal.CompilerConfiguration=economy"),
   ctw_phaseplan_fuzzing:: s.base("build,ctwphaseplanfuzzing"),
-
-  coverage_ctw:: s.base("build,ctw", ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"], extra_vm_args="-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) + {
-    teardown+: [
-      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
-    ],
-    timelimit : "1:30:00"
-  },
 
   # Runs some benchmarks as tests
   benchmarktest:: s.base("build,benchmarktest") + {
@@ -341,10 +341,11 @@
     ]
   ],
 
-  # Builds run on only on linux-amd64-jdk17
+  # Builds run on only on linux-amd64-jdk19
   local linux_amd64_jdk19_builds = [self.make_build("19", "linux-amd64", task).build
     for task in [
       "ctw_phaseplan_fuzzing",
+      "coverage_avx3",
       "test_vec16",
       "test_avx0",
       "test_avx1",
