@@ -49,6 +49,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
     private boolean interruptedFound = false;
     private boolean simpleWaitFound = false;
+    static volatile boolean waiting = false;
 
     @Override
     public String[] getTestedEvents() {
@@ -102,7 +103,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable interrupter = () -> {
             try {
-                while (!interruptedThread.getState().equals(Thread.State.WAITING)) {
+                while (!interruptedThread.getState().equals(Thread.State.WAITING) || !waiting) {
                     Thread.sleep(10);
                 }
             } catch (Exception e) {
@@ -116,6 +117,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         interrupterThread.start();
         interruptedThread.join();
         interrupterThread.join();
+        waiting = false;
     }
 
     private static void testWaitNotify() throws Exception {
@@ -125,7 +127,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable simpleNotifier = () -> {
             try {
-                while (!simpleWaitThread.getState().equals(Thread.State.WAITING)) {
+                while (!simpleWaitThread.getState().equals(Thread.State.WAITING) || !waiting) {
                     Thread.sleep(10);
                 }
                 helper.simpleNotify();
@@ -153,6 +155,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         public Thread interrupted;
 
         public synchronized void interrupted() throws InterruptedException {
+            waiting = true;
             wait();
         }
 
@@ -167,6 +170,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         public synchronized void simpleWait() {
             try {
+                waiting = true;
                 wait();
             } catch (Exception e) {
                 Assert.fail(e.getMessage());

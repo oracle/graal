@@ -47,6 +47,7 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
 
     private boolean notifierFound = false;
     private int waitersFound = 0;
+    static volatile int waiting = 0;
 
     @Override
     public String[] getTestedEvents() {
@@ -99,7 +100,7 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
         producerThread2 = new Thread(producer);
         Runnable consumer = () -> {
             try {
-                while (!producerThread1.getState().equals(Thread.State.WAITING) || !producerThread2.getState().equals(Thread.State.WAITING)) {
+                while (!producerThread1.getState().equals(Thread.State.WAITING) || !producerThread2.getState().equals(Thread.State.WAITING) || waiting < 2) {
                     Thread.sleep(10);
                 }
                 helper.consume();
@@ -120,6 +121,7 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
 
     static class Helper {
         public synchronized void produce() throws InterruptedException {
+            waiting++;
             wait();
         }
 

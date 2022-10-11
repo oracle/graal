@@ -29,6 +29,7 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;
@@ -40,7 +41,8 @@ import jdk.jfr.consumer.RecordedObject;
 public class TestJavaMonitorEnter extends JfrTest {
     private static final int MILLIS = 60;
 
-    static boolean inCritical = false;
+    static volatile boolean inCritical = false;
+    static volatile boolean blockedAtCritical = false;
     static Thread firstThread;
     static Thread secondThread;
     static final Helper helper = new Helper();
@@ -85,12 +87,12 @@ public class TestJavaMonitorEnter extends JfrTest {
                 while (!inCritical) {
                     Thread.sleep(10);
                 }
+                blockedAtCritical = true;
                 helper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         };
-
         firstThread = new Thread(first);
         secondThread = new Thread(second);
         firstThread.start();
@@ -109,7 +111,7 @@ public class TestJavaMonitorEnter extends JfrTest {
             }
 
             // spin until second thread blocks
-            while (!secondThread.getState().equals(Thread.State.BLOCKED)) {
+            while (!secondThread.getState().equals(Thread.State.BLOCKED) || !blockedAtCritical) {
                 Thread.sleep(10);
             }
 
