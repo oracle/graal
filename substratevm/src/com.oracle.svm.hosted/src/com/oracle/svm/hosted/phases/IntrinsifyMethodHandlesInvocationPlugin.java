@@ -50,9 +50,13 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -1027,5 +1031,22 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private JavaConstant toOriginal(JavaConstant constant) {
         return aUniverse.toHosted(constant);
+    }
+}
+
+@NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
+final class DirectMethodHandleEnsureInitializedNode extends FixedWithNextNode {
+
+    public static final NodeClass<DirectMethodHandleEnsureInitializedNode> TYPE = NodeClass.create(DirectMethodHandleEnsureInitializedNode.class);
+
+    private final ResolvedJavaType clazz;
+
+    public DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
+        super(TYPE, StampFactory.forVoid());
+        this.clazz = clazz;
+    }
+
+    public ResolvedJavaType instanceClass() {
+        return clazz;
     }
 }
