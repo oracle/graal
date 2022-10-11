@@ -35,8 +35,8 @@ local utils = import '../../../common-utils.libsonnet';
 
   libgraal_truffle_base(quickbuild_args=[]): self.libgraal_build(['-J-ea', '-ea'] + quickbuild_args) + {
     environment+: {
-      # The Truffle TCK tests run as a part of Truffle TCK gate
-      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.*'
+      # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
+      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*'
     },
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
