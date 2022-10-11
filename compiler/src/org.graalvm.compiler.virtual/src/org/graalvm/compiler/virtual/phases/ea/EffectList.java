@@ -27,10 +27,12 @@ package org.graalvm.compiler.virtual.phases.ea;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
@@ -124,6 +126,34 @@ public class EffectList implements Iterable<EffectList.Effect> {
         assert effect != null;
         enlarge(1);
         effects[size++] = effect;
+    }
+
+    /**
+     * Adds an effect that reports an optimization happened if the optimization log is enabled.
+     *
+     * @param optimizationLog the optimization log
+     * @param logConsumer the function that reports a transformation
+     */
+    public void addLog(OptimizationLog optimizationLog, Consumer<OptimizationLog> logConsumer) {
+        if (!optimizationLog.isOptimizationLogEnabled()) {
+            return;
+        }
+        add(new SimpleEffect("optimization log") {
+            @Override
+            public boolean isVisible() {
+                return false;
+            }
+
+            @Override
+            public void apply(StructuredGraph graph) {
+                logConsumer.accept(optimizationLog);
+            }
+
+            @Override
+            public void format(StringBuilder str) {
+
+            }
+        });
     }
 
     public void addAll(EffectList list) {

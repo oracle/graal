@@ -28,10 +28,10 @@ package com.oracle.svm.core.sampler;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.jfr.internal.Options;
 
 /**
  * The pool that maintains the desirable number of buffers in the system by allocating/releasing
@@ -39,10 +39,7 @@ import jdk.jfr.internal.Options;
  */
 class SamplerBufferPool {
 
-    private static final long THREAD_BUFFER_SIZE = Options.getThreadBufferSize();
-
     private static final VMMutex mutex = new VMMutex("SamplerBufferPool");
-
     private static long bufferCount;
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
@@ -102,7 +99,8 @@ class SamplerBufferPool {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean allocateAndPush() {
         VMError.guarantee(bufferCount >= 0);
-        SamplerBuffer buffer = SamplerBufferAccess.allocate(WordFactory.unsigned(THREAD_BUFFER_SIZE));
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
+        SamplerBuffer buffer = SamplerBufferAccess.allocate(WordFactory.unsigned(jfrThreadLocal.getThreadLocalBufferSize()));
         if (buffer.isNonNull()) {
             SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
             bufferCount++;

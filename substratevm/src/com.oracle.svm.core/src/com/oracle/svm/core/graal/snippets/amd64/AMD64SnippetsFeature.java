@@ -56,7 +56,7 @@ class AMD64SnippetsFeature implements InternalFeature {
         }
 
         AMD64ArithmeticSnippets.registerLowerings(options, providers, lowerings);
-        AMD64NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+        AMD64NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
         PosixAMD64VaListSnippets.registerLowerings(options, providers, lowerings);
     }
 }

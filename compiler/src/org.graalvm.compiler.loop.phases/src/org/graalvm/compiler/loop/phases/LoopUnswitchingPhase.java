@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
-    private static final CounterKey UNSWITCHED = DebugContext.counter("Unswitched");
     private static final CounterKey UNSWITCH_CANDIDATES = DebugContext.counter("UnswitchCandidates");
     private static final CounterKey UNSWITCH_EARLY_REJECTS = DebugContext.counter("UnswitchEarlyRejects");
 
@@ -81,8 +80,6 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
                                     logUnswitch(loop, splits);
                                 }
                                 LoopTransformations.unswitch(loop, splits, decision.isTrivial());
-                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", splits);
-                                UNSWITCHED.increment(debug);
                                 unswitched = true;
                                 break;
                             }

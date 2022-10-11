@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -111,11 +111,11 @@ import jdk.vm.ci.code.Register;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp",
-          lineStart = 35,
-          lineEnd   = 1881,
-          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
-          sha1      = "45d182416a75a945c13990e76ec07c604c78825a")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_pow.cpp",
+          lineStart = 32,
+          lineEnd   = 1863,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "5fb4d3fb54c31061660fd921a7c6b7a99f2f0dea")
 // @formatter:on
 public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
 

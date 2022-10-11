@@ -56,6 +56,7 @@ from mx_sulong_suite_constituents import BootstrapToolchainLauncherProject #pyli
 from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
+from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -489,6 +490,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     installable=True,
+    stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=0,  # this is the main component of the llvm installable
 ))
 

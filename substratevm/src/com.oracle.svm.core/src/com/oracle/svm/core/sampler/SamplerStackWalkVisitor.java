@@ -37,7 +37,37 @@ final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor<Void>
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Void voidData) {
-        return SamplerSampleWriter.putLong(SamplerThreadLocal.getWriterData(), ip.rawValue());
+        SamplerSampleWriterData writerData = SamplerThreadLocal.getWriterData();
+        boolean shouldSkipFrame = shouldSkipFrame(writerData);
+        boolean shouldContinueWalk = shouldContinueWalk(writerData);
+        if (!shouldSkipFrame && shouldContinueWalk) {
+            writerData.setHashCode(computeHash(writerData.getHashCode(), ip.rawValue()));
+            shouldContinueWalk = SamplerSampleWriter.putLong(writerData, ip.rawValue());
+        }
+        return shouldContinueWalk;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean shouldContinueWalk(SamplerSampleWriterData data) {
+        if (data.getNumFrames() >= data.getMaxDepth()) {
+            /* The stack size exceeds given depth. Stop walk! */
+            data.setTruncated(true);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean shouldSkipFrame(SamplerSampleWriterData data) {
+        data.setNumFrames(data.getNumFrames() + 1);
+        return data.getNumFrames() <= data.getSkipCount();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static int computeHash(int oldHash, long ip) {
+        int hash = (int) (ip ^ (ip >>> 32));
+        return 31 * oldHash + hash;
     }
 
     @Override

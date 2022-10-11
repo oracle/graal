@@ -35,8 +35,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Support of {@link VMMutex} and {@link VMCondition} in single-threaded environments. No real
- * locking is necessary.
+ * Support of {@link VMMutex}, {@link VMCondition} and {@link VMSemaphore} in single-threaded
+ * environments. No real locking is necessary.
  */
 final class SingleThreadedVMLockSupport extends VMLockSupport {
     @Override
@@ -46,6 +46,11 @@ final class SingleThreadedVMLockSupport extends VMLockSupport {
 
     @Override
     public VMCondition[] getConditions() {
+        return null;
+    }
+
+    @Override
+    public VMSemaphore[] getSemaphores() {
         return null;
     }
 }
@@ -67,6 +72,13 @@ final class SingleThreadedVMLockFeature implements InternalFeature {
         }
     };
 
+    private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
+        @Override
+        protected VMSemaphore createReplacement(VMSemaphore source) {
+            return new SingleThreadedVMSemaphore();
+        }
+    };
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return !SubstrateOptions.MultiThreaded.getValue();
@@ -77,6 +89,7 @@ final class SingleThreadedVMLockFeature implements InternalFeature {
         ImageSingletons.add(VMLockSupport.class, new SingleThreadedVMLockSupport());
         access.registerObjectReplacer(mutexReplacer);
         access.registerObjectReplacer(conditionReplacer);
+        access.registerObjectReplacer(semaphoreReplacer);
     }
 
     @Override
@@ -84,12 +97,13 @@ final class SingleThreadedVMLockFeature implements InternalFeature {
         /* Seal the lists. */
         mutexReplacer.getReplacements();
         conditionReplacer.getReplacements();
+        semaphoreReplacer.getReplacements();
     }
 }
 
 final class SingleThreadedVMMutex extends VMMutex {
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SingleThreadedVMMutex(String name) {
+    SingleThreadedVMMutex(String name) {
         super(name);
     }
 
@@ -175,5 +189,32 @@ final class SingleThreadedVMCondition extends VMCondition {
     @Override
     public void broadcast() {
         /* Nothing to do. */
+    }
+}
+
+final class SingleThreadedVMSemaphore extends VMSemaphore {
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected int init() {
+        /* Nothing to do here. */
+        return 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void destroy() {
+        /* Nothing to do here. */
+    }
+
+    @Override
+    public void await() {
+        VMError.shouldNotReachHere("Cannot wait in a single-threaded environment, because there is no other thread that could signal.");
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void signal() {
+        /* Nothing to do here. */
     }
 }

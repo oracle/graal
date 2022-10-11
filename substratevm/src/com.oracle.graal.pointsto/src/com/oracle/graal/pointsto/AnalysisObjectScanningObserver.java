@@ -63,7 +63,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     @Override
     public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
-        AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, fieldValue).getClass());
+        AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(fieldValue);
 
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
@@ -87,7 +87,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
              * constant object.
              */
             PointsToAnalysis analysis = getAnalysis();
-            AnalysisType receiverType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, receiver).getClass());
+            AnalysisType receiverType = analysis.getMetaAccess().lookupJavaType(receiver);
             AnalysisObject constantReceiverObj = analysis.analysisPolicy().createConstantObject(analysis, receiver, receiverType);
             return constantReceiverObj.getInstanceFieldFlow(analysis, field, true);
         }

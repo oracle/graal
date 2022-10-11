@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -139,7 +140,7 @@ public final class ListInterop extends IterableInterop {
 
         public Object listGet(StaticObject receiver, long index, BranchProfile error) throws InvalidArrayIndexException {
             try {
-                return unwrapForeign(getLanguage(), execute(receiver, (int) index));
+                return InteropUtils.unwrap(getLanguage(), execute(receiver, (int) index), getMeta());
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {

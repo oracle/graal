@@ -26,7 +26,6 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.Optional;
 
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
@@ -48,8 +47,6 @@ public class DeadCodeEliminationPhase extends Phase {
         public static final OptionKey<Boolean> ReduceDCE = new OptionKey<>(true);
         // @formatter:on
     }
-
-    private static final CounterKey counterNodesRemoved = DebugContext.counter("NodesRemoved");
 
     public enum Optionality {
         Optional,
@@ -143,12 +140,11 @@ public class DeadCodeEliminationPhase extends Phase {
             }
         };
 
-        DebugContext debug = graph.getDebug();
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
                 node.markDeleted();
                 node.applyInputs(consumer);
-                counterNodesRemoved.increment(debug);
+                graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, DeadCodeEliminationPhase.class, "NodeRemoval", node);
             }
         }
     }

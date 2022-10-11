@@ -183,6 +183,7 @@ public final class ExecutionContext {
             threadsHandler.dispose();
         }
         doRunIfWaitingForDebugger();
+        client = null; // Do not call the client after dispose.
     }
 
 }

@@ -61,9 +61,11 @@ public final class JfrEvent {
     public static final JfrEvent ExecuteVMOperation = create("jdk.ExecuteVMOperation");
     public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
     public static final JfrEvent ThreadSleep = create("jdk.ThreadSleep", JDK17OrEarlier.class);
+    public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
 
     private final long id;
+    private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static JfrEvent create(String name) {
@@ -83,10 +85,16 @@ public final class JfrEvent {
     @Platforms(Platform.HOSTED_ONLY.class)
     private JfrEvent(String name) {
         this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
+        this.name = name;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
         return id;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getName() {
+        return name;
     }
 }

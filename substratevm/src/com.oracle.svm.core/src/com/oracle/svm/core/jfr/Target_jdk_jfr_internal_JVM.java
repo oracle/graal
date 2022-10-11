@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ProcessProperties;
 
+import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -341,6 +342,20 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setRepositoryLocation(dirText);
     }
 
+    /** See {@code JVM#setDumpPath(String)}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public void setDumpPath(String dumpPathText) {
+        SubstrateJVM.get().setDumpPath(dumpPathText);
+    }
+
+    /** See {@code JVM#getDumpPath()}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public String getDumpPath() {
+        return SubstrateJVM.get().getDumpPath();
+    }
+
     /** See {@link JVM#abort}. */
     @Substitute
     public void abort(String errorMsg) {
@@ -428,7 +443,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class) //
-    public Target_jdk_jfr_internal_event_EventConfiguration getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
+    public Object getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
         return SubstrateJVM.get().getConfiguration(eventClass);
     }
 
@@ -437,6 +452,12 @@ public final class Target_jdk_jfr_internal_JVM {
     public boolean isInstrumented(Class<? extends jdk.internal.event.Event> eventClass) {
         // This should check for blessed commit methods in the event class [GR-41200]
         return true;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class) //
+    public boolean isContainerized() {
+        return Containers.isContainerized();
     }
 
     @Substitute

@@ -154,7 +154,7 @@ public class CompilationInfo {
         return graph;
     }
 
-    void encodeGraph(StructuredGraph graph) {
+    public void encodeGraph(StructuredGraph graph) {
         compilationGraph = CompilationGraph.encode(graph);
     }
 

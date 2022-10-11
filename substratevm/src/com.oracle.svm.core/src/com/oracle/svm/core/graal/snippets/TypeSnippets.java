@@ -51,11 +51,11 @@ import org.graalvm.compiler.replacements.InstanceOfSnippetsTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.Snippets;
 
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.word.DynamicHubAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
@@ -163,20 +163,27 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
     final KnownOffsets knownOffsets;
 
+    final SnippetTemplate.SnippetInfo instanceOf;
+    final SnippetTemplate.SnippetInfo instanceOfDynamic;
+    final SnippetTemplate.SnippetInfo typeEquality;
+    final SnippetTemplate.SnippetInfo assignableTypeCheck;
+
     private TypeSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
         this.knownOffsets = KnownOffsets.singleton();
+
+        this.instanceOf = snippet(providers, TypeSnippets.class, "instanceOfSnippet");
+        this.instanceOfDynamic = snippet(providers, TypeSnippets.class, "instanceOfDynamicSnippet");
+        this.typeEquality = snippet(providers, TypeSnippets.class, "typeEqualitySnippet");
+        this.assignableTypeCheck = snippet(providers, TypeSnippets.class, "classIsAssignableFromSnippet");
 
         lowerings.put(InstanceOfNode.class, new InstanceOfLowering(options, providers));
         lowerings.put(InstanceOfDynamicNode.class, new InstanceOfDynamicLowering(options, providers));
         lowerings.put(ClassIsAssignableFromNode.class, new ClassIsAssignableFromLowering(options, providers));
     }
 
-    final SnippetTemplate.SnippetInfo typeEquality = snippet(TypeSnippets.class, "typeEqualitySnippet");
-
     protected class InstanceOfLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
-
-        private final SnippetTemplate.SnippetInfo instanceOf = snippet(TypeSnippets.class, "instanceOfSnippet");
 
         public InstanceOfLowering(OptionValues options, Providers providers) {
             super(options, providers);
@@ -224,8 +231,6 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
     protected class InstanceOfDynamicLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
 
-        private final SnippetTemplate.SnippetInfo instanceOfDynamic = snippet(TypeSnippets.class, "instanceOfDynamicSnippet");
-
         public InstanceOfDynamicLowering(OptionValues options, Providers providers) {
             super(options, providers);
         }
@@ -265,7 +270,6 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
     }
 
     protected class ClassIsAssignableFromLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
-        private final SnippetTemplate.SnippetInfo assignableTypeCheck = snippet(TypeSnippets.class, "classIsAssignableFromSnippet");
 
         public ClassIsAssignableFromLowering(OptionValues options, Providers providers) {
             super(options, providers);

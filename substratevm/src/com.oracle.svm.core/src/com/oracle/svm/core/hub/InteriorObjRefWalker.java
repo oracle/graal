@@ -101,7 +101,7 @@ public class InteriorObjRefWalker {
         if (!Pod.RuntimeSupport.isPresent()) {
             throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
         }
-        return PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
+        return walkInstance(obj, visitor, objHub, objPointer) && PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
     }
 
     @AlwaysInline("Performance critical version")

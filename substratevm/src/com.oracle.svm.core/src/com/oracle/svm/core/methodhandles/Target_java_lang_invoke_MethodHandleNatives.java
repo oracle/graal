@@ -222,7 +222,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         Class<?> declaringClass = self.getDeclaringClass();
         Target_java_lang_invoke_MemberName resolved = Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
         assert resolved == null || resolved.reflectAccess != null || resolved.intrinsic != null;
-        if (resolved != null && resolved.reflectAccess != null &&
+        if (resolved != null && resolved.reflectAccess != null && caller != null &&
                         !Util_java_lang_invoke_MethodHandleNatives.verifyAccess(declaringClass, resolved.reflectAccess.getDeclaringClass(), resolved.reflectAccess.getModifiers(), caller,
                                         lookupMode)) {
             throw new IllegalAccessError(resolved + " is not accessible from " + caller);

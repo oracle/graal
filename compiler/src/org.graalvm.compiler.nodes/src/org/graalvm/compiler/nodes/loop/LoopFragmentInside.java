@@ -625,6 +625,7 @@ public class LoopFragmentInside extends LoopFragment {
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
             PhiNode newPhi = phi.duplicateOn(loopBegin);
+            newPhi.setNodeSourcePosition(phi.getNodeSourcePosition());
             peel.old2NewPhi.put(phi, newPhi);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
@@ -777,6 +778,7 @@ public class LoopFragmentInside extends LoopFragment {
                     continue;
                 }
                 final PhiNode firstPhi = phi.duplicateOn(newExitMerge);
+                firstPhi.setNodeSourcePosition(newExitMerge.getNodeSourcePosition());
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));

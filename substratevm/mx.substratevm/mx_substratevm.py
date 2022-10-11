@@ -408,23 +408,21 @@ def svm_gate_body(args, tasks):
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
+                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods',
-                                        '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
+                                        '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
     with Task('Run Truffle NFI unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
+                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods'] + DEVMODE_FLAGS + [
-                                            '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
+                                            '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
     with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
@@ -1192,7 +1190,6 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
         mx_sdk_vm.LibraryConfig(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
-            jlink_copyfiles=True,
             jar_distributions=libgraal_jar_distributions,
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
         ),
@@ -1634,8 +1631,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def __init__(self):
         mx.ArchivableProject.__init__(self, suite, 'svm-compiler-flags-builder', [], None, None)
         self.buildDependencies = list(SubstrateCompilerFlagsBuilder.flags_build_dependencies)
-        if llvm_supported:
-            self.buildDependencies += ['substratevm:SVM_LLVM']
 
     def config_file(self, ver):
         return 'graal-compiler-flags-' + str(ver) + '.config'

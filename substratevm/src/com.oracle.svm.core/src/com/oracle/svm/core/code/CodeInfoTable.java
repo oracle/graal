@@ -110,6 +110,17 @@ public class CodeInfoTable {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodeInfoQueryResult lookupCodeInfoQueryResultUninterruptible(CodeInfo info, CodePointer absoluteIP, CodeInfoQueryResult result) {
+        counters().lookupCodeInfoCount.inc();
+        if (info.isNull()) {
+            return null;
+        }
+        result.ip = absoluteIP;
+        CodeInfoAccess.lookupCodeInfoUninterruptible(info, CodeInfoAccess.relativeIP(info, absoluteIP), result);
+        return result;
+    }
+
     public static CodeInfoQueryResult lookupDeoptimizationEntrypoint(int deoptOffsetInImage, long encodedBci) {
         counters().lookupDeoptimizationEntrypointCount.inc();
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */

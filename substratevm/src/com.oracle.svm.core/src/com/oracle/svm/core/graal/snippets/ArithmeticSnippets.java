@@ -214,14 +214,14 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         super(options, providers);
         this.layout = ConfigurationValues.getObjectLayout();
 
-        idiv = snippet(ArithmeticSnippets.class, "idivSnippet");
-        ldiv = snippet(ArithmeticSnippets.class, "ldivSnippet");
-        irem = snippet(ArithmeticSnippets.class, "iremSnippet");
-        lrem = snippet(ArithmeticSnippets.class, "lremSnippet");
-        uidiv = snippet(ArithmeticSnippets.class, "uidivSnippet");
-        uldiv = snippet(ArithmeticSnippets.class, "uldivSnippet");
-        uirem = snippet(ArithmeticSnippets.class, "uiremSnippet");
-        ulrem = snippet(ArithmeticSnippets.class, "ulremSnippet");
+        idiv = snippet(providers, ArithmeticSnippets.class, "idivSnippet");
+        ldiv = snippet(providers, ArithmeticSnippets.class, "ldivSnippet");
+        irem = snippet(providers, ArithmeticSnippets.class, "iremSnippet");
+        lrem = snippet(providers, ArithmeticSnippets.class, "lremSnippet");
+        uidiv = snippet(providers, ArithmeticSnippets.class, "uidivSnippet");
+        uldiv = snippet(providers, ArithmeticSnippets.class, "uldivSnippet");
+        uirem = snippet(providers, ArithmeticSnippets.class, "uiremSnippet");
+        ulrem = snippet(providers, ArithmeticSnippets.class, "ulremSnippet");
 
         lowerings.put(SignedDivNode.class, new DivRemLowering(divRemNeedsSignedBoundsCheck));
         lowerings.put(SignedRemNode.class, new DivRemLowering(divRemNeedsSignedBoundsCheck));
@@ -270,7 +270,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
                 args.addConst("needsBoundsCheck", needsSignedBoundsCheck);
             }
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

@@ -117,6 +117,28 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
                         return benchNode.execute(args[0], args[1]);
                     }
                 };
+            case "codePointIndexToByteIndexUTF8":
+                return new RootNode(this) {
+
+                    @Child CodePointIndexToByteIndexBenchNode benchNode = TStringTestDummyLanguageFactory.CodePointIndexToByteIndexBenchNodeGen.create();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object[] args = frame.getArguments();
+                        return benchNode.execute(args[0], args[1], args[2], TruffleString.Encoding.UTF_8);
+                    }
+                };
+            case "codePointIndexToByteIndexUTF16":
+                return new RootNode(this) {
+
+                    @Child CodePointIndexToByteIndexBenchNode benchNode = TStringTestDummyLanguageFactory.CodePointIndexToByteIndexBenchNodeGen.create();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object[] args = frame.getArguments();
+                        return benchNode.execute(args[0], args[1], args[2], TruffleString.Encoding.UTF_16);
+                    }
+                };
             case "calcStringAttributesUTF8":
                 return new RootNode(this) {
 
@@ -239,6 +261,17 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
         int bench(TruffleString a, byte b,
                         @Cached TruffleString.ByteIndexOfAnyByteNode compareNode) {
             return compareNode.execute(a, 0, a.byteLength(TruffleString.Encoding.UTF_8), new byte[]{b}, TruffleString.Encoding.UTF_8);
+        }
+    }
+
+    abstract static class CodePointIndexToByteIndexBenchNode extends Node {
+
+        abstract int execute(Object a, Object offset, Object index, Object encoding);
+
+        @Specialization
+        int bench(TruffleString a, int offset, int index, TruffleString.Encoding encoding,
+                        @Cached TruffleString.CodePointIndexToByteIndexNode codePointIndexToByteIndexNode) {
+            return codePointIndexToByteIndexNode.execute(a, offset, index, encoding);
         }
     }
 

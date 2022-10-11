@@ -45,7 +45,6 @@ import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
-import static jdk.vm.ci.amd64.AMD64.valueRegistersAVX512;
 import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
@@ -118,7 +117,13 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         boolean haveAVX512 = ((AMD64) target.arch).getFeatures().contains(AMD64.CPUFeature.AVX512F);
         ArrayList<Register> regs;
         if (haveAVX512) {
-            regs = new ArrayList<>(valueRegistersAVX512.asList());
+            /*
+             * GR-40969: We would like to use valueRegistersAVX512. However, we emit a mix of VEX
+             * and EVEX encoded instructions, and the VEX variants cannot address the extended
+             * AVX-512 registers (XMM16-31). For now, limit ourselves to XMM0-15.
+             */
+            regs = new ArrayList<>(valueRegistersSSE.asList());
+            regs.addAll(MASK_REGISTERS.asList());
         } else {
             regs = new ArrayList<>(valueRegistersSSE.asList());
             if (SubstrateUtil.HOSTED && AMD64CalleeSavedRegisters.isRuntimeCompilationEnabled()) {

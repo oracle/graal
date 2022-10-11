@@ -27,12 +27,12 @@ package com.oracle.svm.core.jfr.events;
 import java.util.Map;
 import java.util.Properties;
 
-import com.oracle.svm.core.jfr.JfrEventWriteStatus;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrEventWriteStatus;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
@@ -55,7 +55,7 @@ public class EndChunkNativePeriodicEvents extends Event {
     }
 
     public static void emit() {
-        emitClassLoadingStatistics(Heap.getHeap().getClassCount(), 0);
+        emitClassLoadingStatistics(Heap.getHeap().getClassCount());
         emitJVMInformation(JVMInformation.getJVMInfo());
         emitOSInformation(formatOSInformation());
         emitInitialEnvironmentVariables(getEnvironmentVariables());
@@ -113,7 +113,7 @@ public class EndChunkNativePeriodicEvents extends Event {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitClassLoadingStatistics(long loadedClassCount, long unloadedClassCount) {
+    private static void emitClassLoadingStatistics(long loadedClassCount) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ClassLoadingStatistics)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -121,7 +121,7 @@ public class EndChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ClassLoadingStatistics);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, loadedClassCount);
-            JfrNativeEventWriter.putLong(data, unloadedClassCount);
+            JfrNativeEventWriter.putLong(data, 0); /* unloadedClassCount */
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

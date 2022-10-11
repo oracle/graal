@@ -981,6 +981,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
+    @Override
     public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         cachedNonTrivialNodeCount = -1;
         if (wasActive) {

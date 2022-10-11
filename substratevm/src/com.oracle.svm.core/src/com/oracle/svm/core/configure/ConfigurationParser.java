@@ -39,13 +39,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.util.json.JSONParser;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.util.json.JSONParser;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -91,20 +92,25 @@ public abstract class ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> asMap(Object data, String errorMessage) {
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
+    public static EconomicMap<String, Object> asMap(Object data, String errorMessage) {
+        if (data instanceof EconomicMap) {
+            return (EconomicMap<String, Object>) data;
         }
         throw new JSONParserException(errorMessage);
     }
 
-    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+    protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
         Set<String> unseenRequired = new HashSet<>(requiredAttrs);
-        unseenRequired.removeAll(map.keySet());
+        for (String key : map.getKeys()) {
+            unseenRequired.remove(key);
+        }
         if (!unseenRequired.isEmpty()) {
             throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
-        Set<String> unknownAttributes = new HashSet<>(map.keySet());
+        Set<String> unknownAttributes = new HashSet<>();
+        for (String key : map.getKeys()) {
+            unknownAttributes.add(key);
+        }
         unknownAttributes.removeAll(requiredAttrs);
         unknownAttributes.removeAll(optionalAttrs);
 
@@ -128,7 +134,7 @@ public abstract class ConfigurationParser {
         }
     }
 
-    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
+    protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs) {
         checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
@@ -167,10 +173,10 @@ public abstract class ConfigurationParser {
         throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected ConfigurationCondition parseCondition(Map<String, Object> data) {
+    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
-            Map<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
+            EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
             Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
             if (conditionType instanceof String) {
                 return ConfigurationCondition.create((String) conditionType);

@@ -267,7 +267,7 @@ public class NativeImage {
          */
         private static final Method isModulePathBuild = ReflectionUtil.lookupMethod(ModuleSupport.class, "isModulePathBuild");
 
-        boolean modulePathBuild;
+        protected boolean modulePathBuild;
         String imageBuilderModeEnforcer;
 
         protected final Path workDir;
@@ -323,10 +323,14 @@ public class NativeImage {
         }
 
         /**
-         * @return the name of the image generator main class.
+         * @return The image generator main class entry point.
          */
-        public String getGeneratorMainClass() {
-            return DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX;
+        public List<String> getGeneratorMainClass() {
+            if (modulePathBuild) {
+                return Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME);
+            } else {
+                return List.of(DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX);
+            }
         }
 
         /**
@@ -541,10 +545,6 @@ public class NativeImage {
          */
         public boolean buildFallbackImage() {
             return false;
-        }
-
-        public Path getAgentJAR() {
-            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar"));
         }
 
         /**
@@ -1189,9 +1189,13 @@ public class NativeImage {
         }
 
         if (!agentOptions.isEmpty()) {
+            if (useDebugAttach()) {
+                throw NativeImage.showError(CmdLineOptionHandler.DEBUG_ATTACH_OPTION + " cannot be used with class initialization/object instantiation tracing (" + oHTraceClassInitialization +
+                                "/ + " + oHTraceObjectInstantiation + ").");
+            }
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
         }
-        args.add("-javaagent:" + config.getAgentJAR().toAbsolutePath() + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
+
         return args;
     }
 
@@ -1305,11 +1309,8 @@ public class NativeImage {
             arguments.addAll(strings);
         }
 
-        if (config.modulePathBuild) {
-            arguments.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
-        } else {
-            arguments.add(config.getGeneratorMainClass());
-        }
+        arguments.addAll(config.getGeneratorMainClass());
+
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
@@ -1368,7 +1369,7 @@ public class NativeImage {
         }
     }
 
-    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> new NativeImage(config);
+    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
 
     public static void main(String[] args) {
         performBuild(new BuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);

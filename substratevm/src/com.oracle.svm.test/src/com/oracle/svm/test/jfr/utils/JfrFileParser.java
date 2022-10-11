@@ -136,9 +136,9 @@ public class JfrFileParser {
         return deltaNext;
     }
 
-    private static void compareFoundAndExceptedIds() {
+    private static void compareFoundAndExpectedIds() {
         for (ConstantPoolParser parser : supportedConstantPools.values()) {
-            parser.compareFoundAndExceptedIds();
+            parser.compareFoundAndExpectedIds();
         }
     }
 
@@ -153,7 +153,7 @@ public class JfrFileParser {
                 Assert.assertNotNull("Unknown constant pool!", constantPoolParser);
                 constantPoolParser.parse(input);
             }
-            compareFoundAndExceptedIds();
+            compareFoundAndExpectedIds();
             currentConstantPoolPosition += deltaNext;
         } while (deltaNext != 0);
     }

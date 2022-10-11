@@ -26,7 +26,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeVirtual;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeVirtualNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -37,6 +38,8 @@ public final class InvokeVirtualQuickNode extends QuickNode {
     final Method.MethodVersion method;
     final int resultAt;
     final boolean returnsPrimitiveType;
+
+    final JavaKind returnKind;
     @Child InvokeVirtual.WithoutNullCheck invokeVirtual;
 
     public InvokeVirtualQuickNode(Method method, int top, int curBCI) {
@@ -44,6 +47,7 @@ public final class InvokeVirtualQuickNode extends QuickNode {
         assert !method.isStatic();
         this.method = method.getMethodVersion();
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
+        this.returnKind = method.getReturnKind();
         this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
         this.invokeVirtual = InvokeVirtualNodeGen.WithoutNullCheckNodeGen.create(method);
     }
@@ -54,13 +58,13 @@ public final class InvokeVirtualQuickNode extends QuickNode {
          * Method signature does not change across methods. Can safely use the constant signature
          * from `resolutionSeed` instead of the non-constant signature from the resolved method.
          */
-        Object[] args = BytecodeNode.popArguments(frame, top, true, method.getMethod().getParsedSignature());
+        Object[] args = EspressoFrame.popArguments(frame, top, true, method.getMethod().getParsedSignature());
         nullCheck((StaticObject) args[0]);
         Object result = invokeVirtual.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + EspressoFrame.putKind(frame, getResultAt(), result, returnKind);
     }
 
     @Override

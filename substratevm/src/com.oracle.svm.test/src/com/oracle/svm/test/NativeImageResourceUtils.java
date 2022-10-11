@@ -40,6 +40,7 @@ import org.junit.Assert;
 
 public class NativeImageResourceUtils {
 
+    public static final String ROOT_DIRECTORY = "/";
     public static final String RESOURCE_DIR = "/resources";
     public static final String RESOURCE_FILE_1 = RESOURCE_DIR + "/resource-test1.txt";
     public static final String RESOURCE_FILE_2 = RESOURCE_DIR + "/resource-test2.txt";

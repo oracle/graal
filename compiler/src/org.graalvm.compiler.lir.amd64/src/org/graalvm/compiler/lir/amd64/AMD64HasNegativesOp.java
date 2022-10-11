@@ -35,13 +35,15 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AVXKind;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -72,8 +74,8 @@ public final class AMD64HasNegativesOp extends AMD64ComplexVectorOp {
     @Temp({REG, ILLEGAL}) protected Value maskValue1;
     @Temp({REG, ILLEGAL}) protected Value maskValue2;
 
-    public AMD64HasNegativesOp(LIRGeneratorTool tool, Value result, Value array, Value length) {
-        super(TYPE, tool, null, supportsAVX512VLBW(tool.target(), null) && supports(tool.target(), null, CPUFeature.BMI2) ? ZMM : YMM);
+    public AMD64HasNegativesOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value array, Value length) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? ZMM : YMM);
 
         this.resultValue = result;
         this.originArrayValue = array;

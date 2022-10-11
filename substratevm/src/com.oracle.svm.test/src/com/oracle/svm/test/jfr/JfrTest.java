@@ -70,10 +70,7 @@ public abstract class JfrTest {
         try {
             jfr = new LocalJfr();
             recording = jfr.createRecording(getClass().getName());
-
-            String[] events = getTestedEvents();
-            enableEvents(events);
-
+            enableEvents();
             jfr.startRecording(recording);
         } catch (Exception e) {
             Assert.fail("Fail to start recording! Cause: " + e.getMessage());
@@ -84,6 +81,7 @@ public abstract class JfrTest {
     public void endRecording() {
         try {
             jfr.endRecording(recording);
+            checkRecording();
         } catch (Exception e) {
             Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
         }
@@ -92,9 +90,6 @@ public abstract class JfrTest {
             validateEvents();
         } catch (Throwable throwable) {
             Assert.fail("validateEvents failed: " + throwable.getMessage());
-        }
-        try {
-            checkRecording();
         } finally {
             try {
                 jfr.cleanupRecording(recording);
@@ -104,7 +99,10 @@ public abstract class JfrTest {
         }
     }
 
-    protected void enableEvents(String[] events) {
+    protected abstract String[] getTestedEvents();
+
+    private void enableEvents() {
+        String[] events = getTestedEvents();
         if (events != null) {
             for (String event : events) {
                 recording.enable(event);
@@ -131,14 +129,17 @@ public abstract class JfrTest {
 
         for (String name : getTestedEvents()) {
             if (!seenEvents.contains(name)) {
-                Assert.fail("Event: " + name + " not found in recording");
+                Assert.fail("Event: " + name + " not found in recording!");
             }
         }
     }
 
-    protected void checkRecording() throws AssertionError {
+    private void checkRecording() throws AssertionError {
         try {
+            /* Check if file header and constant pools are adequate. */
             JfrFileParser.parse(recording);
+            /* Check if all event are there. */
+            checkEvents();
         } catch (Exception e) {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }
@@ -172,13 +173,23 @@ public abstract class JfrTest {
 
 }
 
-class JFRTestFeature implements Feature {
+class JfrTestFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         /*
          * Use of org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC in
          * com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser.parse
          */
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JFRTestFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider");
+
+        /*
+         * Use of com.oracle.svm.core.sampler.SamplerBuffer,
+         * com.oracle.svm.core.sampler.SamplerBufferAccess.allocate,
+         * com.oracle.svm.core.sampler.SamplerBufferAccess.free,
+         * com.oracle.svm.core.sampler.SamplerBuffersAccess.processSamplerBuffer and
+         * com.oracle.svm.core.sampler.SamplerThreadLocal.setThreadLocalBuffer in
+         * com.oracle.svm.test.jfr.TestStackTraceEvent.test.
+         */
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.sampler");
     }
 }

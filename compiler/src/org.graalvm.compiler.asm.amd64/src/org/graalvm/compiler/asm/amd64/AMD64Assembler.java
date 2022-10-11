@@ -40,6 +40,7 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
@@ -49,8 +50,14 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmeti
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.DEC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.INC;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.MUL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADCX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADOX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z1;
@@ -449,6 +456,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // TEST is documented as MR operation, but it's symmetric, and using it as RM operation is more convenient.
         public static final AMD64RMOp TESTB  = new AMD64RMOp("TEST",               0x84, OpAssertion.ByteAssertion);
         public static final AMD64RMOp TEST   = new AMD64RMOp("TEST",               0x85, OpAssertion.WordOrLargerAssertion);
+
+        // ADX instructions
+        public static final AMD64RMOp ADCX   = new AMD64RMOp("ADCX", 0x66, P_0F38, 0xF6, OpAssertion.DwordOrLargerAssertion, CPUFeature.ADX);
+        public static final AMD64RMOp ADOX   = new AMD64RMOp("ADOX", 0xF3, P_0F38, 0xF6, OpAssertion.DwordOrLargerAssertion, CPUFeature.ADX);
         // @formatter:on
 
         protected AMD64RMOp(String opcode, int op, OpAssertion assertion) {
@@ -1191,10 +1202,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return assertion.supports(arch.getFeatures(), AVXKind.getRegisterSize(kind), false);
         }
 
-        public final boolean isSupported(AMD64 arch, AVXSize size, boolean useZMMRegisters) {
-            return assertion.supports(arch.getFeatures(), size, useZMMRegisters);
-        }
-
         @Override
         public String toString() {
             return opcode;
@@ -1416,6 +1423,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMIOp VPSHUFLW         = new VexRMIOp("VPSHUFLW",         P_F2, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, WIG);
         public static final VexRMIOp VPSHUFHW         = new VexRMIOp("VPSHUFHW",         P_F3, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, WIG);
         public static final VexRMIOp VPSHUFD          = new VexRMIOp("VPSHUFD",          P_66, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,    EVEXTuple.FVM, W0);
+        public static final VexRMIOp RORXQ            = new VexRMIOp("RORXQ",            P_F2, M_0F3A, W1,  0xF0, VEXOpAssertion.BMI2);
         // @formatter:on
 
         private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -3947,7 +3955,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshufb(Register dst, Register src) {
-        assert supports(CPUFeature.SSSE3);
+        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, dst, src, PD, P_0F38, false);
         emitByte(0x00);
@@ -3955,7 +3963,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshufb(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSSE3);
+        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
         assert inRC(XMM, dst);
         simdPrefix(dst, dst, src, PD, P_0F38, false);
         emitByte(0x00);
@@ -3963,7 +3971,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshuflw(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE2);
+        GraalError.guarantee(supports(CPUFeature.SSE2), "pshuflw requires SSE2");
         assert isUByte(imm8) : "invalid value";
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, SD, P_0F, false);
@@ -4188,6 +4196,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         XOR.rmOp.emit(this, DWORD, dst, src);
     }
 
+    public final void xorl(Register dst, int imm32) {
+        XOR.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
+    }
+
     public final void xorq(Register dst, Register src) {
         XOR.rmOp.emit(this, QWORD, dst, src);
     }
@@ -4250,6 +4262,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         ADD.mrOp.emit(this, QWORD, dst, src);
     }
 
+    public final void adcq(Register dst, int imm32) {
+        ADC.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
+    }
+
+    public final void adcxq(Register dst, Register src) {
+        ADCX.emit(this, QWORD, dst, src);
+    }
+
+    public final void adoxq(Register dst, Register src) {
+        ADOX.emit(this, QWORD, dst, src);
+    }
+
     public final void andq(Register dst, int imm32) {
         AND.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
@@ -4260,6 +4284,23 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void andq(Register dst, Register src) {
         AND.getRMOpcode(QWORD).emit(this, QWORD, dst, src);
+    }
+
+    public final void mulq(Register src) {
+        MUL.emit(this, QWORD, src);
+    }
+
+    public final void mulxq(Register dst1, Register dst2, Register src) {
+        MULX.emit(this, AVXSize.QWORD, dst1, dst2, src);
+    }
+
+    public final void rorq(Register dst, int imm8) {
+        assert isByte(imm8);
+        ROR.miOp.emit(this, QWORD, dst, (byte) imm8);
+    }
+
+    public final void rorxq(Register dst, Register src, int imm8) {
+        RORXQ.emit(this, AVXSize.QWORD, dst, src, (byte) imm8);
     }
 
     public final void bsrq(Register dst, Register src) {

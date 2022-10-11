@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 
 /**
@@ -181,6 +182,8 @@ public class OptionsParser {
                 value = valueString;
             } else if (Enum.class.isAssignableFrom(optionType)) {
                 value = ((EnumOptionKey<?>) desc.getOptionKey()).valueOf(valueString);
+            } else if (optionType == EconomicSet.class) {
+                value = ((EnumMultiOptionKey<?>) desc.getOptionKey()).valueOf(valueString);
             } else {
                 if (valueString.isEmpty()) {
                     throw new IllegalArgumentException("Non empty value required for option '" + desc.getName() + "'");

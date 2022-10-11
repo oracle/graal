@@ -26,7 +26,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -36,6 +37,8 @@ public final class InvokeSpecialQuickNode extends QuickNode {
 
     final Method.MethodVersion method;
     final int resultAt;
+
+    final JavaKind returnKind;
     final boolean returnsPrimitiveType;
     @Child InvokeSpecial.WithoutNullCheck invokeSpecial;
 
@@ -43,6 +46,7 @@ public final class InvokeSpecialQuickNode extends QuickNode {
         super(top, callerBCI);
         this.method = method.getMethodVersion();
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
+        this.returnKind = method.getReturnKind();
         this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
         this.invokeSpecial = InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method);
     }
@@ -53,13 +57,13 @@ public final class InvokeSpecialQuickNode extends QuickNode {
          * Method signature does not change across methods. Can safely use the constant signature
          * from `method` instead of the non-constant signature from the lookup.
          */
-        Object[] args = BytecodeNode.popArguments(frame, top, true, method.getMethod().getParsedSignature());
+        Object[] args = EspressoFrame.popArguments(frame, top, true, method.getMethod().getParsedSignature());
         nullCheck((StaticObject) args[0]);
         Object result = invokeSpecial.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + EspressoFrame.putKind(frame, getResultAt(), result, returnKind);
     }
 
     private int getResultAt() {

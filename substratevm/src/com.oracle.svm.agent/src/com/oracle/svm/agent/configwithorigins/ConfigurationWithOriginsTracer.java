@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.agent.configwithorigins;
 
-import java.util.Map;
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
 import com.oracle.svm.agent.tracing.core.Tracer;
@@ -54,15 +54,15 @@ public final class ConfigurationWithOriginsTracer extends Tracer {
     }
 
     @Override
-    public void traceEntry(Map<String, Object> entry) {
+    public void traceEntry(EconomicMap<String, Object> entry) {
         String tracer = (String) entry.get("tracer");
         if (tracer.equals("meta")) {
             processor.processEntry(entry, null);
         } else {
             assert entry.containsKey("stack_trace");
-            JNIMethodId[] rawStackTrace = (JNIMethodId[]) entry.remove("stack_trace");
+            JNIMethodId[] rawStackTrace = (JNIMethodId[]) entry.removeKey("stack_trace");
             MethodInfo[] stackTrace = methodInfoRecordKeeper.getStackTraceInfo(rawStackTrace);
-            Map<String, Object> transformedEntry = ConfigurationResultWriter.arraysToLists(entry);
+            EconomicMap<String, Object> transformedEntry = ConfigurationResultWriter.arraysToLists(entry);
 
             if (stackTrace == null) {
                 traceEntry(rootNode, transformedEntry);
@@ -76,7 +76,7 @@ public final class ConfigurationWithOriginsTracer extends Tracer {
         return rootNode;
     }
 
-    private void dispatchTraceEntry(MethodInfo[] stackTrace, Map<String, Object> entry) {
+    private void dispatchTraceEntry(MethodInfo[] stackTrace, EconomicMap<String, Object> entry) {
         MethodCallNode currentNode = rootNode;
         for (int i = stackTrace.length - 1; i >= 0; i--) {
             MethodInfo nextMethodInfo = stackTrace[i];
@@ -85,7 +85,7 @@ public final class ConfigurationWithOriginsTracer extends Tracer {
         traceEntry(currentNode, entry);
     }
 
-    private void traceEntry(MethodCallNode node, Map<String, Object> entry) {
+    private void traceEntry(MethodCallNode node, EconomicMap<String, Object> entry) {
         processor.processEntry(entry, node.getConfiguration());
     }
 }

@@ -25,13 +25,14 @@
 package org.graalvm.compiler.replacements.nodes.arithmetic;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
 @NodeInfo
-public abstract class BinaryIntegerExactArithmeticSplitNode extends IntegerExactArithmeticSplitNode {
+public abstract class BinaryIntegerExactArithmeticSplitNode extends IntegerExactArithmeticSplitNode implements IterableNodeType {
     public static final NodeClass<BinaryIntegerExactArithmeticSplitNode> TYPE = NodeClass.create(BinaryIntegerExactArithmeticSplitNode.class);
 
     @Input ValueNode x;

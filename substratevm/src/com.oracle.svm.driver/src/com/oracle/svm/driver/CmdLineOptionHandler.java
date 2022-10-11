@@ -43,6 +43,8 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String verboseServerOption = "--verbose-server";
     private static final String serverOptionPrefix = "--server-";
 
+    public static final String DEBUG_ATTACH_OPTION = "--debug-attach";
+
     private static final String javaRuntimeVersion = System.getProperty("java.runtime.version");
 
     boolean useDebugAttach = false;
@@ -148,14 +150,13 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
         }
 
-        String debugAttach = "--debug-attach";
-        if (headArg.startsWith(debugAttach)) {
+        if (headArg.startsWith(DEBUG_ATTACH_OPTION)) {
             if (useDebugAttach) {
-                throw NativeImage.showError("The " + debugAttach + " option can only be used once.");
+                throw NativeImage.showError("The " + DEBUG_ATTACH_OPTION + " option can only be used once.");
             }
             useDebugAttach = true;
             String debugAttachArg = args.poll();
-            String addressSuffix = debugAttachArg.substring(debugAttach.length());
+            String addressSuffix = debugAttachArg.substring(DEBUG_ATTACH_OPTION.length());
             String address = addressSuffix.isEmpty() ? "8000" : addressSuffix.substring(1);
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + address + ",suspend=y");

@@ -192,10 +192,15 @@ public abstract class ClangLikeBase extends Driver {
         return sulongArgs;
     }
 
-    protected void getCompilerArgs(List<String> sulongArgs) {
+    protected void getDebugCompilerArgs(List<String> sulongArgs) {
         // use -gdwarf-5 instead of -g to enable source file checksums
-        sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
+        sulongArgs.add("-gdwarf-5");
+    }
+
+    protected void getCompilerArgs(List<String> sulongArgs) {
+        sulongArgs.addAll(Arrays.asList("-flto=full", "-O1"));
         sulongArgs.addAll(getVectorInstructionSetFlags());
+        getDebugCompilerArgs(sulongArgs);
     }
 
     private List<String> getVectorInstructionSetFlags() {

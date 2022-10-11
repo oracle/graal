@@ -142,6 +142,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         // let the shape of the loop decide whether a guest safepoint is needed
                         onSafepointDisabledLoopBegin(loop);
                     }
+                    graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
                 }
             }
         }
@@ -158,6 +159,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         boolean disabledInSubclass = onCallInLoop(loopEnd, node);
                         if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();
+                            graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
 
                             // we can only stop if subclasses also say we can stop iterating blocks
                             if (disabledInSubclass) {

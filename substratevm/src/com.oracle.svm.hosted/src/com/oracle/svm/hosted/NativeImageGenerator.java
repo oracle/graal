@@ -91,7 +91,9 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
@@ -108,6 +110,7 @@ import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -124,6 +127,7 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
@@ -297,9 +301,7 @@ import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
-import com.oracle.svm.util.AnnotationExtracter;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -313,7 +315,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -324,7 +325,6 @@ public class NativeImageGenerator {
     protected final HostedOptionProvider optionProvider;
     private final ProgressReporter reporter;
 
-    private DeadlockWatchdog watchdog;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
     private Inflation bb;
@@ -526,17 +526,15 @@ public class NativeImageGenerator {
             ImageSingletons.add(ProgressReporter.class, reporter);
             ImageSingletons.add(TimerCollection.class, timerCollection);
             ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
-            ImageSingletons.add(AnnotationExtracter.class, loader.classLoaderSupport.annotationExtracter);
+            ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
             ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
             ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
             ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-            watchdog = new DeadlockWatchdog();
             try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
                 ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
                 doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
             } finally {
                 reporter.ensureCreationStageEndCompleted();
-                watchdog.close();
             }
         } finally {
             analysisExecutor.shutdownNow();
@@ -698,7 +696,7 @@ public class NativeImageGenerator {
                 }
             }
 
-            ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
+            ProgressReporter.singleton().createBreakdowns(hMetaAccess, compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
             int numCompilations = codeCache.getOrderedCompilations().size();
@@ -798,7 +796,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private boolean verifyAssignableTypes() {
+    protected boolean verifyAssignableTypes() {
         /*
          * This verification has quadratic complexity, so do it only once after the static analysis
          * has finished, and can be disabled with an option.
@@ -879,7 +877,7 @@ public class NativeImageGenerator {
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
-                bb = createBigBang(options, target, aUniverse, analysisExecutor, watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
+                bb = createBigBang(options, target, aUniverse, analysisExecutor, loader.watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
                                 annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders);
                 aUniverse.setBigBang(bb);
 
@@ -1183,7 +1181,7 @@ public class NativeImageGenerator {
         @Override
         public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
             if (Options.WarnMissingIntrinsic.getValue(options)) {
-                for (Class<?> annotationType : GuardedAnnotationAccess.getAnnotationTypes(targetMethod)) {
+                for (Class<?> annotationType : AnnotationAccess.getAnnotationTypes(targetMethod)) {
                     if (ClassUtil.getUnqualifiedName(annotationType).contains("IntrinsicCandidate")) {
                         String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
                                         targetMethod.getSignature().toMethodDescriptor());
@@ -1238,8 +1236,6 @@ public class NativeImageGenerator {
         ResolvedJavaType resolvedJavaType = providers.getMetaAccess().lookupJavaType(ClassInitializationTracking.class);
         if (resolvedJavaType instanceof AnalysisType) {
             ((AnalysisType) resolvedJavaType).registerAsReachable();
-            ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(ClassInitializationTracking.class, "IS_IMAGE_BUILD_TIME"));
-            ((AnalysisField) field).registerAsAccessed();
         }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());
@@ -1290,9 +1286,9 @@ public class NativeImageGenerator {
             }
         }
 
-        final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
+        final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
         registerInvocationPlugins(providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
-                        reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer());
+                        reason == ParsingReason.JITCompilation, true, supportsStubBasedPlugins, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
@@ -1318,7 +1314,8 @@ public class NativeImageGenerator {
                         plugins.getInvocationPlugins(),
                         replacements,
                         reason,
-                        architecture);
+                        architecture,
+                        supportsStubBasedPlugins);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins, reason));
 
@@ -1490,15 +1487,18 @@ public class NativeImageGenerator {
             highTier.findLastPhase().add(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_HIGH_TIER));
         }
 
-        removeSpeculativePhases(suites);
+        if (hosted) {
+            removePhases(suites, Speculative.class);
+            removePhases(suites, FloatingGuardPhase.class);
+        }
 
         return suites;
     }
 
-    private static void removeSpeculativePhases(Suites suites) {
-        suites.getHighTier().removeSpeculativePhases();
-        suites.getMidTier().removeSpeculativePhases();
-        suites.getLowTier().removeSpeculativePhases();
+    private static void removePhases(Suites suites, Class<?> c) {
+        suites.getHighTier().removeSubTypePhases(c);
+        suites.getMidTier().removeSubTypePhases(c);
+        suites.getLowTier().removeSubTypePhases(c);
     }
 
     @SuppressWarnings("unused")
@@ -1718,7 +1718,7 @@ public class NativeImageGenerator {
         nativeLibs.reportErrors();
     }
 
-    private static void initializeAtBuildTime(Class<?> clazz, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
+    protected static void initializeAtBuildTime(Class<?> clazz, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
         String message = "classes annotated with " + ClassUtil.getUnqualifiedName(annotationForMessage) + " are always initialized at image build time";
         classInitializationSupport.initializeAtBuildTime(clazz, message);
         classInitializationSupport.forceInitializeHosted(clazz, message, false);

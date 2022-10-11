@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -204,11 +204,11 @@ import jdk.vm.ci.amd64.AMD64;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_sin.cpp",
-          lineStart = 35,
-          lineEnd   = 636,
-          commit    = "f3be6731d3fa4fb1b7fc42c5bcbe6a64a50eaf42",
-          sha1      = "35e247db6760c377bb6694dfe98559b8b2eaf8c0")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_sin.cpp",
+          lineStart = 31,
+          lineEnd   = 649,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "c5b71d2dfc288ef6cdd9498329f92da4971c1181")
 // @formatter:on
 public final class AMD64MathSinOp extends AMD64MathIntrinsicUnaryOp {
 

@@ -26,7 +26,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterfaceNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -54,13 +54,13 @@ public final class InvokeInterfaceQuickNode extends QuickNode {
          * Method signature does not change across methods. Can safely use the constant signature
          * from `resolutionSeed` instead of the non-constant signature from the resolved method.
          */
-        final Object[] args = BytecodeNode.popArguments(frame, top, true, resolutionSeed.getParsedSignature());
+        final Object[] args = EspressoFrame.popArguments(frame, top, true, resolutionSeed.getParsedSignature());
         nullCheck((StaticObject) args[0]);
         Object result = invokeInterface.execute(args);
         if (!returnKind.isPrimitive()) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, returnKind);
+        return (getResultAt() - top) + EspressoFrame.putKind(frame, getResultAt(), result, returnKind);
     }
 
     private int getResultAt() {

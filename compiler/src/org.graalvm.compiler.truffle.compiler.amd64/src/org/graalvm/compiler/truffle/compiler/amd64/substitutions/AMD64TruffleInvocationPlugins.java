@@ -214,7 +214,7 @@ public class AMD64TruffleInvocationPlugins {
         return asBoolean(param);
     }
 
-    private static LocationIdentity inferLocationIdentity(ValueNode isNative) {
+    public static LocationIdentity inferLocationIdentity(ValueNode isNative) {
         if (isNative.isJavaConstant()) {
             return asBoolean(isNative) ? NamedLocationIdentity.OFF_HEAP_LOCATION : getArrayLocation(JavaKind.Byte);
         }

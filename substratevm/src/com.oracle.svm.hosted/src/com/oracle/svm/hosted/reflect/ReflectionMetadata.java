@@ -47,12 +47,12 @@ public class ReflectionMetadata {
 
     static class ClassMetadata extends AnnotatedElementMetadata {
         final HostedType[] classes;
-        final Object[] enclosingMethodInfo;
+        final Object enclosingMethodInfo;
         final RecordComponentMetadata[] recordComponents;
         final HostedType[] permittedSubclasses;
         final int classAccessFlags;
 
-        ClassMetadata(HostedType[] classes, Object[] enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, int classAccessFlags,
+        ClassMetadata(HostedType[] classes, Object enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, int classAccessFlags,
                         AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
             super(annotations, typeAnnotations);
             this.classes = classes;

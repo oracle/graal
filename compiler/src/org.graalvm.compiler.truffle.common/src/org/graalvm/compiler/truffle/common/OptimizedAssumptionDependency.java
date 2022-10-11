@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import jdk.vm.ci.code.InstalledCode;
-
 /**
  * Represents some machine code whose validity depends on an assumption. Valid machine code can
  * still be executed.
@@ -41,7 +39,7 @@ public interface OptimizedAssumptionDependency {
     /**
      * Determines if the machine code referenced by this object is valid.
      */
-    boolean isValid();
+    boolean isAlive();
 
     /**
      * Gets the Truffle AST whose machine code is represented by this object. May be {@code null}.
@@ -50,28 +48,4 @@ public interface OptimizedAssumptionDependency {
         return null;
     }
 
-    /**
-     * Determines if a reference to this object is the only way the machine code can be executed. If
-     * {@code true}, it means the assumption will use a weak reference to this object. Once the weak
-     * reference is cleared, assumption invalidation can ignore this object without posing the risk
-     * of invalid code remaining live.
-     *
-     * @return {@code true} if the referenced machine code is guaranteed never to be executed when
-     *         this object dies, {@code false} the referenced machine code can be still be executed
-     *         even when this object is dead
-     */
-    default boolean soleExecutionEntryPoint() {
-        return true;
-    }
-
-    /**
-     * Provides access to a {@link OptimizedAssumptionDependency}.
-     *
-     * Introduced when {@code OptimizedCallTarget} was changed to no longer extend
-     * {@link InstalledCode}. Prior to that change, {@code OptimizedAssumption} dependencies were
-     * {@link InstalledCode} objects.
-     */
-    interface Access {
-        OptimizedAssumptionDependency getDependency();
-    }
 }

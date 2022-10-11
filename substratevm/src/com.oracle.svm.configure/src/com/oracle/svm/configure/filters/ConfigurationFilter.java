@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.configure.filters;
 
-import java.util.Map;
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 
 public interface ConfigurationFilter extends JsonPrintable {
 
-    void parseFromJson(Map<String, Object> topJsonObject);
+    void parseFromJson(EconomicMap<String, Object> topJsonObject);
 
     boolean includes(String qualifiedName);
 

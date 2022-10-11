@@ -86,18 +86,22 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
     }
 
     public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, MemoryOrderMode memoryOrder) {
-        super(TYPE, StampFactory.forVoid(), object, field, memoryOrder);
+        super(TYPE, StampFactory.forVoid(), object, field, memoryOrder, false);
         this.value = value;
     }
 
     public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
-        super(TYPE, StampFactory.forVoid(), object, field, MemoryOrderMode.getMemoryOrder(field));
+        super(TYPE, StampFactory.forVoid(), object, field, MemoryOrderMode.getMemoryOrder(field), false);
         this.value = value;
         this.stateAfter = stateAfter;
     }
 
     public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter, MemoryOrderMode memoryOrder) {
-        super(TYPE, StampFactory.forVoid(), object, field, memoryOrder);
+        this(object, field, value, stateAfter, memoryOrder, false);
+    }
+
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter, MemoryOrderMode memoryOrder, boolean immutable) {
+        super(TYPE, StampFactory.forVoid(), object, field, memoryOrder, immutable);
         this.value = value;
         this.stateAfter = stateAfter;
     }

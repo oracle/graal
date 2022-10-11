@@ -56,7 +56,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
     private static final String END_POINT_SIMPLE_NAME = "EndPoint";
     private static final String END_POINT_CLASS_FIELD = "endPointClass";
     private static final String START_POINT_SIMPLE_NAME = "StartPoint";
-    static final String START_POINT_FACTORY_NAME = "createNativeToHotSpot";
+    static final String START_POINT_FACTORY_NAME = "createNativeToHS";
     private static final String REFERENCE_ISOLATE_ADDRESS_NAME = "referenceIsolateAddress";
 
     private final TypeCache typeCache;
@@ -575,7 +575,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
     }
 
     private CharSequence callHotSpot(CodeBuilder builder, MethodData methodData, CharSequence jniEnv, CharSequence args, MarshallerSnippets marshallerSnippets) {
-        CharSequence hsCallsInstance = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "getHotSpotCalls").build();
+        CharSequence hsCallsInstance = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "getJNICalls").build();
         TypeMirror retType = methodData.type.getReturnType();
         return new CodeBuilder(builder).invoke(hsCallsInstance, callHotSpotName(marshallerSnippets.getEndPointMethodParameterType(retType)),
                         jniEnv, "jniMethods_." + END_POINT_CLASS_FIELD, "jniMethods_." + jMethodIdField(methodData), args).build();

@@ -1,6 +1,6 @@
 local composable = (import "common-utils.libsonnet").composable;
 
-local mx_version = (import "graal-common.json").mx_version;
+local mx_version = (import "common.json").mx_version;
 local common_json = composable(import "common.json");
 local repo_config = import 'repo-configuration.libsonnet';
 local jdks = common_json.jdks;
@@ -70,6 +70,14 @@ local add_jdk_version(name) =
   },
   monthly:: {
     targets+: ["monthly"],
+  },
+
+  # Add a guard to `build` that prevents it from running in the gate
+  # for a PR that only touches *.md files, the docs, are config files for GitHub
+  add_excludes_guard(build):: build + {
+    guard+: {
+      excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**"]
+    }
   },
 
   // Heap settings

@@ -29,6 +29,7 @@ import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
 
 public final class TruffleCommunityCompilerConfiguration extends CommunityCompilerConfiguration {
 
@@ -36,6 +37,7 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
     public HighTier createHighTier(OptionValues options) {
         HighTier highTier = super.createHighTier(options);
         TruffleHostInliningPhase.install(highTier, options);
+        TruffleInjectImmutableFrameFieldsPhase.install(highTier, options);
         return highTier;
     }
 

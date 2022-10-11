@@ -79,19 +79,22 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
         new EnsureClassInitializedSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo ensureClassIsInitialized;
+
     private EnsureClassInitializedSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
+        this.ensureClassIsInitialized = snippet(providers, EnsureClassInitializedSnippets.class, "ensureClassIsInitializedSnippet", LocationIdentity.any());
+
         lowerings.put(EnsureClassInitializedNode.class, new EnsureClassInitializedNodeLowering());
     }
 
     class EnsureClassInitializedNodeLowering implements NodeLoweringProvider<EnsureClassInitializedNode> {
-        private final SnippetInfo ensureClassIsInitialized = snippet(EnsureClassInitializedSnippets.class, "ensureClassIsInitializedSnippet", LocationIdentity.any());
-
         @Override
         public void lower(EnsureClassInitializedNode node, LoweringTool tool) {
             Arguments args = new Arguments(ensureClassIsInitialized, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("hub", node.getHub());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

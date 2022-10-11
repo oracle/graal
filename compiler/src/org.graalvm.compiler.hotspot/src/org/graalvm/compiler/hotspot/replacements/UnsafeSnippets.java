@@ -77,11 +77,15 @@ public class UnsafeSnippets implements Snippets {
     }
 
     public static class Templates extends AbstractTemplates {
-        private final SnippetInfo copyMemory = snippet(UnsafeSnippets.class, "copyMemory");
-        private final SnippetInfo copyMemoryGuarded = snippet(UnsafeSnippets.class, "copyMemoryGuarded");
+
+        private final SnippetInfo copyMemory;
+        private final SnippetInfo copyMemoryGuarded;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.copyMemory = snippet(providers, UnsafeSnippets.class, "copyMemory");
+            this.copyMemoryGuarded = snippet(providers, UnsafeSnippets.class, "copyMemoryGuarded");
         }
 
         public void lower(UnsafeCopyMemoryNode copyMemoryNode, LoweringTool tool) {
@@ -93,8 +97,8 @@ public class UnsafeSnippets implements Snippets {
             args.add("destBase", copyMemoryNode.destBase);
             args.add("destOffset", copyMemoryNode.desOffset);
             args.add("bytes", copyMemoryNode.bytes);
-            SnippetTemplate template = template(copyMemoryNode, args);
-            template.instantiate(providers.getMetaAccess(), copyMemoryNode, DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, copyMemoryNode, args);
+            template.instantiate(tool.getMetaAccess(), copyMemoryNode, DEFAULT_REPLACER, args);
         }
     }
 }

@@ -76,12 +76,12 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     private final Stamp uncheckedStamp;
 
-    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field) {
-        this(stamp, object, field, MemoryOrderMode.getMemoryOrder(field));
+    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, boolean immutable) {
+        this(stamp, object, field, MemoryOrderMode.getMemoryOrder(field), immutable);
     }
 
-    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder) {
-        super(TYPE, stamp.getTrustedStamp(), object, field, memoryOrder);
+    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder, boolean immutable) {
+        super(TYPE, stamp.getTrustedStamp(), object, field, memoryOrder, immutable);
         this.uncheckedStamp = stamp.getUncheckedStamp();
     }
 
@@ -90,22 +90,26 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder) {
-        return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field, memoryOrder);
+        return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field, memoryOrder, false);
     }
 
     public static ValueNode create(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
                     OptionValues options, Assumptions assumptions, ValueNode object, ResolvedJavaField field, boolean canonicalizeReads, boolean allUsagesAvailable) {
         return canonical(null, StampFactory.forDeclaredType(assumptions, field.getType(), false), object,
-                        field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable);
+                        field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable, false);
+    }
+
+    public static LoadFieldNode createOverrideImmutable(LoadFieldNode node) {
+        return new LoadFieldNode(StampPair.create(node.stamp, node.uncheckedStamp), node.object(), node.field(), true);
     }
 
     public static LoadFieldNode createOverrideStamp(StampPair stamp, ValueNode object, ResolvedJavaField field) {
-        return new LoadFieldNode(stamp, object, field);
+        return new LoadFieldNode(stamp, object, field, false);
     }
 
     public static ValueNode createOverrideStamp(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
                     OptionValues options, StampPair stamp, ValueNode object, ResolvedJavaField field, boolean canonicalizeReads, boolean allUsagesAvailable) {
-        return canonical(null, stamp, object, field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable);
+        return canonical(null, stamp, object, field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable, false);
     }
 
     @Override
@@ -133,12 +137,12 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             }
         }
         return canonical(this, StampPair.create(stamp, uncheckedStamp), forObject, field, tool.getConstantFieldProvider(),
-                        tool.getConstantReflection(), tool.getOptions(), tool.getMetaAccess(), tool.canonicalizeReads(), tool.allUsagesAvailable());
+                        tool.getConstantReflection(), tool.getOptions(), tool.getMetaAccess(), tool.canonicalizeReads(), tool.allUsagesAvailable(), false);
     }
 
     private static ValueNode canonical(LoadFieldNode loadFieldNode, StampPair stamp, ValueNode forObject, ResolvedJavaField field,
                     ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection,
-                    OptionValues options, MetaAccessProvider metaAccess, boolean canonicalizeReads, boolean allUsagesAvailable) {
+                    OptionValues options, MetaAccessProvider metaAccess, boolean canonicalizeReads, boolean allUsagesAvailable, boolean immutable) {
         LoadFieldNode self = loadFieldNode;
         if (canonicalizeReads && metaAccess != null) {
             ConstantNode constant = asConstant(constantFields, constantReflection, metaAccess, options, forObject, field);
@@ -157,7 +161,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             return new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
         if (self == null) {
-            self = new LoadFieldNode(stamp, forObject, field);
+            self = new LoadFieldNode(stamp, forObject, field, immutable);
         }
         return self;
     }

@@ -44,9 +44,9 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * Keeps a type-hierarchy dependency graph for {@link AnalysisType}s from {@code universe}. Each
@@ -250,7 +250,7 @@ final class TypeInitializerGraph {
         boolean isSubstituted = false;
         if (rt instanceof SubstitutionType) {
             SubstitutionType substitutionType = (SubstitutionType) rt;
-            isSubstituted = GuardedAnnotationAccess.isAnnotationPresent(substitutionType, Substitute.class) || GuardedAnnotationAccess.isAnnotationPresent(substitutionType, Delete.class);
+            isSubstituted = AnnotationAccess.isAnnotationPresent(substitutionType, Substitute.class) || AnnotationAccess.isAnnotationPresent(substitutionType, Delete.class);
         }
         types.put(t, isSubstituted ? Safety.UNSAFE : initialTypeInitializerSafety(t));
         dependencies.put(t, new HashSet<>());

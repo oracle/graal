@@ -57,6 +57,11 @@ import sun.misc.Unsafe;
  * More efficient implementation of the Truffle frame that has no safety checks for frame accesses
  * and therefore is much faster. Should not be used during debugging as potential misuses of the
  * frame object would show up very late and would be hard to identify.
+ *
+ * For host compilation all final instance fields of this case are treated as immutable in the
+ * Compiler IR. This allows frame array reads to move out of loops even if there are side-effects in
+ * them. In order to guarantee this, the frame must not escape a reference of <code>this</code> in
+ * the constructor to any other call.
  */
 public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame {
     private static final String UNEXPECTED_STATIC_WRITE = "Unexpected static write of non-static frame slot";
@@ -141,6 +146,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
+        /*
+         * Important note: Make sure this frame reference does not escape to any other method in
+         * this constructor, otherwise the immutable invariant for frame final fields may not hold.
+         * This may lead to very hard to debug bugs.
+         */
         final int indexedSize = descriptor.getNumberOfSlots();
         final int auxiliarySize = descriptor.getNumberOfAuxiliarySlots();
         Object defaultValue = descriptor.getDefaultValue();
