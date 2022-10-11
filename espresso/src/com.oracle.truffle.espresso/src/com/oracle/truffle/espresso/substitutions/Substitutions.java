@@ -274,7 +274,7 @@ public final class Substitutions extends ContextAccessImpl {
         StaticObject classLoader = method.getDeclaringKlass().getDefiningClassLoader();
         ClassLoadingEnv env = method.getContext().getClassLoadingEnv();
         if (env.loaderIsBootOrPlatform(classLoader)) {
-            return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(staticSubstitutionFactory, method));
+            return EspressoRootNode.createSubstitution(method.getMethodVersion(), staticSubstitutionFactory);
         }
         getLogger().warning(new Supplier<String>() {
             @Override
