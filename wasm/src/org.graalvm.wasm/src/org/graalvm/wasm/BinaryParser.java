@@ -57,7 +57,7 @@ import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmType.NULL_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_TYPE;
-import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARED_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 
@@ -1296,7 +1296,7 @@ public class BinaryParser extends BinaryStreamParser {
         readAlignHint(n); // align hint
         final long offset = readUnsignedInt64(); // 64-bit load offset
         if (idxType64) {
-            assertUnsignedLongLess(offset, MAX_MEMORY_64_DECLARED_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLess(offset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
         } else {
             assertUnsignedLongLess(offset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
         }
@@ -1870,10 +1870,10 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private boolean readMemoryLimits(long[] out) {
-        final boolean is64Bit = readLongLimits(out, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARED_SIZE);
+        final boolean is64Bit = readLongLimits(out, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARATION_SIZE);
         if (is64Bit) {
-            assertUnsignedLongLessOrEqual(out[0], MAX_MEMORY_64_DECLARED_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedLongLessOrEqual(out[1], MAX_MEMORY_64_DECLARED_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLessOrEqual(out[0], MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLessOrEqual(out[1], MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
             assertUnsignedLongLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         } else {
             assertUnsignedIntLessOrEqual((int) out[0], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
