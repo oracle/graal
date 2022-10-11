@@ -29,10 +29,12 @@ import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public final class DefaultParserKlassProvider implements ParserKlassProvider {
     @Override
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
-        return ClassfileParser.parse(env, new ClassfileStream(bytes, null), loader, typeOrNull, info);
+        boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+        return ClassfileParser.parse(env, new ClassfileStream(bytes, null), verifiable, typeOrNull, info);
     }
 }
