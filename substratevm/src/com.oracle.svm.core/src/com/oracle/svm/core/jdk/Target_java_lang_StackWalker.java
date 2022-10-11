@@ -34,20 +34,19 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -56,6 +55,7 @@ import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -63,11 +63,11 @@ import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_ContinuationScope;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(value = java.lang.StackWalker.class)
@@ -136,7 +136,7 @@ final class Target_java_lang_StackWalker {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        JavaStackWalk walk = UnsafeStackValue.get(JavaStackWalk.class);
         AbstractStackFrameSpliterator spliterator;
         if (LoomSupport.isEnabled() && continuation != null) {
             // walking a yielded continuation
@@ -144,8 +144,7 @@ final class Target_java_lang_StackWalker {
         } else {
             // walking a platform thread or mounted continuation
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
-            Thread thread = Thread.currentThread();
-            if (LoomSupport.isEnabled() && (contScope != null || VirtualThreads.singleton().isVirtual(thread))) {
+            if (LoomSupport.isEnabled() && (contScope != null || JavaThreads.isCurrentThreadVirtual())) {
                 var scope = (contScope != null) ? contScope : Target_java_lang_VirtualThread.continuationScope();
                 var top = Target_jdk_internal_vm_Continuation.getCurrentContinuation(scope);
                 if (top != null) { // has a delimitation scope
@@ -156,7 +155,7 @@ final class Target_java_lang_StackWalker {
             } else { // walking a platform thread
                 JavaStackWalker.initWalk(walk, sp);
             }
-            spliterator = new StackFrameSpliterator(walk, thread);
+            spliterator = new StackFrameSpliterator(walk, Thread.currentThread());
         }
 
         try {
@@ -244,7 +243,7 @@ final class Target_java_lang_StackWalker {
 
     final class ContinuationSpliterator extends AbstractStackFrameSpliterator {
         private final Target_jdk_internal_vm_ContinuationScope contScope;
-        private final JavaStackWalk walk;
+        private JavaStackWalk walk;
 
         private Target_jdk_internal_vm_Continuation continuation;
         private StoredContinuation stored;
@@ -322,7 +321,7 @@ final class Target_java_lang_StackWalker {
             CodePointer ip = walk.getPossiblyStaleIP();
             UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
             Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
+            SimpleCodeInfoQueryResult queryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
             try {
                 CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
                 VMError.guarantee(walk.getIPCodeInfo().equal(CodeInfoTable.getImageCodeInfo()));
@@ -356,11 +355,12 @@ final class Target_java_lang_StackWalker {
         protected void invalidate() {
             continuation = null;
             stored = null;
+            walk = WordFactory.nullPointer();
         }
 
         @Override
         protected void checkState() {
-            if (continuation == null) {
+            if (walk.isNull()) {
                 throw new IllegalStateException("Continuation traversal no longer valid");
             }
         }

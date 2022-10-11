@@ -321,9 +321,7 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
     helloworld(image_args + javac_command)
     helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
-    # JFR is currently not supported on JDK 19 [GR-39564] [GR-39642]
-    is_jdk_version_supported = mx.get_jdk().version < mx.VersionSpec("19")
-    if is_jdk_version_supported and not mx.is_windows() and flightrecorder:
+    if not mx.is_windows() and flightrecorder:
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
     cinterfacetutorial(extra_image_args)
     clinittest([])
@@ -1057,29 +1055,34 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 ))
 
+ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='Native Image LLVM Backend',
+    short_name='svml',
+    dir_name='svm',
+    installable_id='native-image-llvm-backend',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'SubstrateVM',
+        'LLVM.org toolchain',
+    ],
+    builder_jar_distributions=[
+        'substratevm:SVM_LLVM',
+        'substratevm:LLVM_WRAPPER_SHADOWED',
+        'substratevm:JAVACPP_SHADOWED',
+        'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+        'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
+    ],
+    stability="experimental-earlyadopter",
+    installable=True,
+    extra_installable_qualifiers=['ce'],
+    jlink=False,
+)
 # GR-34811
 llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64"))
 if llvm_supported:
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='SubstrateVM LLVM',
-        short_name='svml',
-        dir_name='svm',
-        installable_id='native-image',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        builder_jar_distributions=[
-            'substratevm:SVM_LLVM',
-            'substratevm:LLVM_WRAPPER_SHADOWED',
-            'substratevm:JAVACPP_SHADOWED',
-            'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
-            'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
-        ],
-        stability="experimental-earlyadopter",
-        jlink=False,
-        installable=True,
-    ))
+    mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -1189,6 +1192,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
         mx_sdk_vm.LibraryConfig(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
+            jlink_copyfiles=True,
             jar_distributions=libgraal_jar_distributions,
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
         ),
@@ -1308,8 +1312,7 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    config = GraalVMConfig.build(native_images=['native-image', 'lib:native-image-agent', 'lib:native-image-diagnostics-agent'])
-    with native_image_context(hosted_assertions=False, config=config) as native_image:
+    with native_image_context(hosted_assertions=False) as native_image:
         module_path_sep = ';' if mx.is_windows() else ':'
         moduletest_run_args = [
             '-ea',
@@ -1320,16 +1323,13 @@ def hellomodule(args):
         mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
         mx.run([
-            vm_executable_path('java', config),
-            # also test if native-image-agent works
-            '-agentlib:native-image-agent=config-output-dir=' + join(build_dir, 'config-output-dir-{pid}-{datetime}/'),
+            vm_executable_path('java'),
             ] + moduletest_run_args)
 
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         built_image = native_image([
             '--verbose', '-H:Path=' + build_dir,
-            '--trace-class-initialization=hello.lib.Greeter', # also test native-image-diagnostics-agent
             ] + moduletest_run_args)
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])

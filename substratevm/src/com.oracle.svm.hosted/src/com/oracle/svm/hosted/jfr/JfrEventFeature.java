@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -86,9 +87,11 @@ public class JfrEventFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
-        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
-        if (eventClass != null) {
-            access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, eventClass);
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
+            Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
+            if (eventClass != null) {
+                access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, eventClass);
+            }
         }
     }
 

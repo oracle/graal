@@ -217,6 +217,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         z = 7;
         for (int i = 0; i < d; i++) {
             for (int j = 0; injectBranchProbability(0.99, j < i); j++) {
+                GraalDirectives.neverWriteSink();
                 z += x;
             }
             y = x ^ z;

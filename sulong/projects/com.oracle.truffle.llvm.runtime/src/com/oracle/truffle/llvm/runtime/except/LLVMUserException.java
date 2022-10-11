@@ -45,7 +45,8 @@ public class LLVMUserException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
-    final LLVMPointer unwindHeader; // or throw info
+    // transient to shut up JDK19 warnings (this should never be serialized anyway)
+    final transient LLVMPointer unwindHeader; // or throw info
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
         super(location);
@@ -94,13 +95,15 @@ public class LLVMUserException extends LLVMException {
 
         private static final long serialVersionUID = 1L;
 
-        final LLVMPointer imageBase;
-        final LLVMPointer exceptionObject;
+        final transient LLVMPointer imageBase;
+        final transient LLVMPointer exceptionObject;
+        final transient long stackOffset;
 
-        public LLVMUserExceptionWindows(Node location, LLVMPointer imageBase, LLVMPointer exceptionObject, LLVMPointer throwInfo) {
+        public LLVMUserExceptionWindows(Node location, LLVMPointer imageBase, LLVMPointer exceptionObject, LLVMPointer throwInfo, long stackOffset) {
             super(location, throwInfo);
             this.exceptionObject = exceptionObject;
             this.imageBase = imageBase;
+            this.stackOffset = stackOffset;
         }
 
         public LLVMPointer getImageBase() {
@@ -111,5 +114,8 @@ public class LLVMUserException extends LLVMException {
             return exceptionObject;
         }
 
+        public long getStackPointer() {
+            return stackOffset;
+        }
     }
 }

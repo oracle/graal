@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -108,7 +109,7 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         -1);
 
-        @Option(help = "Maximum number of errounous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(
+        @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(
                         100);
     }
 
@@ -160,6 +161,11 @@ public class PermissionsFeature implements Feature {
     private AnalysisType reflectionFieldAccessorFactory;
 
     @Override
+    public String getDescription() {
+        return "Detects privileged calls in Truffle languages";
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
             UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", ClassUtil.getUnqualifiedName(getClass()));
@@ -204,6 +210,10 @@ public class PermissionsFeature implements Feature {
             // package but
             // can be directly used by a language. We need to include it into deniedMethods.
             deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
+            // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
+            // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
+            deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
+
             if (!deniedMethods.isEmpty()) {
                 Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bb, deniedMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();

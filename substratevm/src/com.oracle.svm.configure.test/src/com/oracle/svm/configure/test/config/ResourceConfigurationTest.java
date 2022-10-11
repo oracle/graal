@@ -94,6 +94,10 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
+                public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+                }
+
+                @Override
                 public void ignoreResources(ConfigurationCondition condition, String pattern) {
                     ignoredResources.add(pattern);
                 }

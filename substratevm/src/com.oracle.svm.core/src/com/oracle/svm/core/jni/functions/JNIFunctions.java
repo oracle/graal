@@ -32,15 +32,14 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -55,18 +54,19 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
@@ -106,6 +106,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -617,19 +618,15 @@ public final class JNIFunctions {
 
     @TargetClass(java.nio.Buffer.class)
     static final class Target_java_nio_Buffer {
+        @Alias int capacity;
         @Alias long address;
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static WordPointer GetDirectBufferAddress(JNIEnvironment env, JNIObjectHandle handle) {
-        WordPointer address = WordFactory.nullPointer();
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (obj instanceof Target_java_nio_Buffer) {
-            Target_java_nio_Buffer buf = (Target_java_nio_Buffer) obj;
-            address = WordFactory.pointer(buf.address);
-        }
-        return address;
+        Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
+        return (buf == null) ? WordFactory.nullPointer() : WordFactory.pointer(buf.address);
     }
 
     /*
@@ -638,9 +635,9 @@ public final class JNIFunctions {
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOneLong.class)
-    static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle hbuf) {
-        Buffer buffer = JNIObjectHandles.getObject(hbuf);
-        return buffer.capacity();
+    static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle handle) {
+        Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
+        return (buf == null) ? -1 : buf.capacity;
     }
 
     /*
@@ -881,7 +878,7 @@ public final class JNIFunctions {
          * instead.
          */
         NewObjectWithObjectArrayArgFunctionPointer newObjectA = (NewObjectWithObjectArrayArgFunctionPointer) env.getFunctions().getNewObjectA();
-        JNIValue array = StackValue.get(JNIValue.class);
+        JNIValue array = UnsafeStackValue.get(JNIValue.class);
         array.setObject(messageHandle);
         JNIObjectHandle exception = newObjectA.invoke(env, clazzHandle, ctor, array);
         throw (Throwable) JNIObjectHandles.getObject(exception);
@@ -1004,7 +1001,7 @@ public final class JNIFunctions {
             throw new NullPointerException();
         }
         boolean pinned = false;
-        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             // Acquiring monitors via JNI associates them with the carrier thread via
             // JNIThreadOwnedMonitors, so we must pin the virtual thread
             try {
@@ -1052,7 +1049,7 @@ public final class JNIFunctions {
         }
         MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
-        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             try {
                 VirtualThreads.singleton().unpinCurrent();
             } catch (IllegalStateException e) { // not pinned?
@@ -1332,6 +1329,22 @@ public final class JNIFunctions {
                 }
             }
             logHandler.fatalError();
+        }
+
+        /*
+         * Make sure the given handle identifies a direct buffer.
+         *
+         * The object is considered "a buffer" if it implements java.nio.Buffer. The buffer is
+         * considered "direct" if it implements sun.nio.ch.DirectBuffer.
+         */
+        @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "FindBugs does not understand substitution classes")
+        static Target_java_nio_Buffer directBufferFromJNIHandle(JNIObjectHandle handle) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (obj instanceof Target_java_nio_Buffer && obj instanceof sun.nio.ch.DirectBuffer) {
+                return (Target_java_nio_Buffer) obj;
+            } else {
+                return null;
+            }
         }
     }
 

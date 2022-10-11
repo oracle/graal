@@ -277,6 +277,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
+        crb.setMinDataSectionItemAlignment(getMinDataSectionItemAlignment());
+
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
         if (deoptimizationRescueSlot != null && stub == null) {
             crb.compilationResult.setCustomStackAreaOffset(deoptimizationRescueSlot);

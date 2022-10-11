@@ -31,8 +31,6 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -46,6 +44,8 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 
@@ -138,9 +138,43 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     public static ResolvedJavaMethod devirtualizeCall(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ResolvedJavaType contextType, Assumptions assumptions, Stamp receiverStamp) {
         TypeReference type = StampTool.typeReferenceOrNull(receiverStamp);
-        if (type == null && invokeKind == InvokeKind.Virtual) {
+        if (invokeKind == InvokeKind.Virtual) {
             // For virtual calls, we are guaranteed to receive a correct receiver type.
-            type = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
+            TypeReference declaringType = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
+            if (type == null) {
+                // Probably a word type, non-compatible stamp.
+                type = declaringType;
+            } else {
+                // @formatter:off
+                /* Consider the following hierarchy:
+                 *
+                 * abstract class Base {
+                 *     public String bar() { return "Base"; }
+                 * }
+                 *
+                 * abstract class AbstractBaseImpl extends Base {
+                 *     @Override public String bar() { return "AbstractBaseImpl"; }
+                 * }
+                 *
+                 * final class ConcreteImpl extends AbstractBaseImpl { }
+                 *
+                 * To de-virtualize virtual calls to Base::bar, Base.findUniqueConcreteMethod(bar) -> null won't work
+                 * because there are two possible concrete methods available: Base::bar and AbstractBaseImpl::bar.
+                 * To overcome this limitation, the lookup can be done from a concrete leaf type, if it exists.
+                 * e.g.
+                 *   Base.findLeafConcreteSubtype() -> ConcreteImpl
+                 *   then ConcreteImpl.findUniqueConcreteMethod(bar) -> AbstractBaseImpl::bar
+                 *
+                 * By doing the lookup from a concrete leaf type, de-virtualization is more effective since we are 
+                 * looking up in the class hierarchy rather than down.
+                 */
+                // @formatter:on
+                // Narrow the receiver type to a unique concrete subtype, if it exists.
+                Stamp improvedStamp = receiverStamp.tryImproveWith(StampFactory.object(declaringType));
+                if (improvedStamp != null) {
+                    type = StampTool.typeReferenceOrNull(improvedStamp);
+                }
+            }
         }
 
         if (type != null) {

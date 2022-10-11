@@ -541,6 +541,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> RUNTIME_ERROR = StaticSymbols.putName("RUNTIME_ERROR");
         public static final Symbol<Name> PARSE_ERROR = StaticSymbols.putName("PARSE_ERROR");
         public static final Symbol<Name> create = StaticSymbols.putName("create");
+        public static final Symbol<Name> toGuest = StaticSymbols.putName("toGuest");
 
         // Class redefinition plugin helpers
         public static final Symbol<Name> flushFromCaches = StaticSymbols.putName("flushFromCaches");

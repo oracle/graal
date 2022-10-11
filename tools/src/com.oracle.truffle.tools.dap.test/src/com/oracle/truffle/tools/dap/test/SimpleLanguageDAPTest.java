@@ -257,7 +257,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"threads\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":3,\"name\":\"main\",\"column\":20,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":3,\"name\":\"main\",\"column\":21,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
         // Step out to finish:
         tester.sendMessage("{\"command\":\"stepOut\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages(
@@ -711,7 +711,7 @@ public final class SimpleLanguageDAPTest {
         );
         // Try to evaluate not suspended:
         tester.sendMessage("{\"command\":\"evaluate\",\"arguments\":{\"expression\":\"app\",\"frameId\":2},\"type\":\"request\",\"seq\":8}");
-        tester.compareReceivedMessages("{\"success\":false,\"body\":{\"error\":{\"format\":\"Stack frame not valid\",\"id\":2020}},\"type\":\"response\",\"message\":\"com.oracle.truffle.tools.dap.types.DebugProtocolServer$ExceptionWithMessage: Stack frame not valid\",\"request_seq\":8,\"command\":\"evaluate\",\"seq\":15}");
+        tester.compareReceivedMessages("{\"success\":false,\"body\":{\"error\":{\"format\":\"Stack frame not valid\",\"id\":2020}},\"type\":\"response\",\"message\":\"Stack frame not valid\",\"request_seq\":8,\"command\":\"evaluate\",\"seq\":15}");
         tester.finish();
     }
 
@@ -774,7 +774,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"threads\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":13,\"name\":\"fn\",\"column\":1,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":13,\"name\":\"fn\",\"column\":2,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":4,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":5,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":16,\"command\":\"scopes\",\"seq\":28}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":4},\"type\":\"request\",\"seq\":17}");
@@ -792,7 +792,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":20}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":20,\"command\":\"threads\",\"seq\":34}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":21}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":11,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":21,\"command\":\"stackTrace\",\"seq\":35}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":21,\"command\":\"stackTrace\",\"seq\":35}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":22}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"scopes\",\"seq\":36}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":23}");
@@ -833,7 +833,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":33}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":33,\"command\":\"threads\",\"seq\":53}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":34}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":11,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":34,\"command\":\"stackTrace\",\"seq\":54}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":34,\"command\":\"stackTrace\",\"seq\":54}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":35}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":35,\"command\":\"scopes\",\"seq\":55}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":36}");
@@ -842,7 +842,8 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":37}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":37,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":37,\"command\":\"continue\"}",
+                "{\"event\":\"output\",\"body\":{\"output\":\"10000000002\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":59}"
         );
         tester.finish();
     }
@@ -1000,7 +1001,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":6}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":6,\"command\":\"threads\",\"seq\":12}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"invert\",\"column\":12,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":10,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":13}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"invert\",\"column\":13,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":10,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":13}");
         // Ask for the exception info:
         tester.sendMessage("{\"command\":\"exceptionInfo\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"exceptionId\":\"Error\",\"description\":\"Unsupported\",\"breakMode\":\"unhandled\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"exceptionInfo\",\"seq\":14}");
@@ -1087,6 +1088,56 @@ public final class SimpleLanguageDAPTest {
                 + "{\"name\":\"f\",\"variablesReference\":0,\"type\":\"Function\",\"value\":\"fn\"},"
                 + "{\"name\":\"f2\",\"variablesReference\":0,\"type\":\"Function\",\"value\":\"fn\"}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"variables\",\"seq\":27}");
         // Continue to finish:
+        tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":19}");
+        tester.compareReceivedMessages(
+                "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":19,\"command\":\"continue\"}"
+        );
+        tester.finish();
+    }
+
+    @Test
+    public void testEval() throws Exception {
+        tester = DAPTester.start(false);
+        File sourceFile = createTemporaryFile(CODE1);
+        Source source = Source.newBuilder("sl", sourceFile).build();
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
+        tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
+        tester.compareReceivedMessages(
+                "{\"event\":\"initialized\",\"type\":\"event\"}",
+                "{\"success\":true,\"type\":\"response\",\"body\":{\"supportsConditionalBreakpoints\":true,\"supportsLoadedSourcesRequest\":true,\"supportsFunctionBreakpoints\":true,\"supportsExceptionInfoRequest\":true,\"supportsBreakpointLocationsRequest\":true,\"supportsHitConditionalBreakpoints\":true,\"supportsLogPoints\":true,\"supportsSetVariable\":true,\"supportsConfigurationDoneRequest\":true,\"exceptionBreakpointFilters\":[{\"filter\":\"all\",\"label\":\"All Exceptions\"},{\"filter\":\"uncaught\",\"label\":\"Uncaught Exceptions\"}]},\"request_seq\":1,\"command\":\"initialize\"}"
+        );
+        tester.sendMessage("{\"command\":\"attach\",\"arguments\":{\"type\":\"graalvm\",\"request\":\"attach\",\"name\":\"Attach\",\"port\":9229,\"protocol\":\"chromeDevTools\"},\"type\":\"request\",\"seq\":2}");
+        tester.compareReceivedMessages("{\"event\":\"output\",\"body\":{\"output\":\"Debugger attached.\",\"category\":\"stderr\"},\"type\":\"event\"}", "{\"success\":true,\"type\":\"response\",\"request_seq\":2,\"command\":\"attach\"}");
+        tester.sendMessage("{\"command\":\"loadedSources\",\"type\":\"request\",\"seq\":3}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"sources\":[]},\"type\":\"response\",\"request_seq\":3,\"command\":\"loadedSources\",\"seq\":5}");
+        tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":" + sourceJson + ",\"lines\":[6],\"breakpoints\":[{\"line\":6}],\"sourceModified\":false},\"type\":\"request\",\"seq\":4}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"line\":6,\"verified\":false,\"id\":1}]},\"type\":\"response\",\"request_seq\":4,\"command\":\"setBreakpoints\",\"seq\":6}");
+        tester.sendMessage("{\"command\":\"configurationDone\",\"type\":\"request\",\"seq\":5}");
+        tester.compareReceivedMessages("{\"success\":true,\"type\":\"response\",\"request_seq\":5,\"command\":\"configurationDone\",\"seq\":7}");
+        tester.eval(source);
+        tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":8}");
+        tester.compareReceivedMessages(
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":9}",
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":" + sourceJson + "},\"type\":\"event\",\"seq\":10}"
+        );
+        tester.compareReceivedMessages("{\"event\":\"breakpoint\",\"body\":{\"reason\":\"changed\",\"breakpoint\":{\"endLine\":6,\"endColumn\":16,\"line\":6,\"verified\":true,\"column\":5,\"id\":1}},\"type\":\"event\",\"seq\":11}");
+        // Suspend at the breakpoint:
+        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":12}");
+        tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":6}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":6,\"command\":\"threads\",\"seq\":13}");
+        tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"main\",\"column\":5,\"id\":2,\"source\":" + sourceJson + "}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":14}");
+        // Evaluate:
+        tester.sendMessage("{\"command\":\"evaluate\",\"arguments\":{\"expression\":\"a\",\"frameId\":2},\"type\":\"request\",\"seq\":8}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"result\":\"10\",\"variablesReference\":0,\"type\":\"Number\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"evaluate\",\"seq\":15}");
+        tester.sendMessage("{\"command\":\"evaluate\",\"arguments\":{\"expression\":\"b\",\"frameId\":2},\"type\":\"request\",\"seq\":9}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"result\":\"2\",\"variablesReference\":0,\"type\":\"Number\"},\"type\":\"response\",\"request_seq\":9,\"command\":\"evaluate\",\"seq\":16}");
+        tester.sendMessage("{\"command\":\"evaluate\",\"arguments\":{\"expression\":\"unknown\",\"frameId\":2},\"type\":\"request\",\"seq\":10}");
+        tester.compareReceivedMessages("{\"success\":false,\"body\":{\"error\":{\"format\":\"Error(s) parsing script:\\n-- line 1 col 1: missing 'function' at 'unknown'\",\"id\":2025}},\"type\":\"response\",\"message\":\"Error(s) parsing script:\\n-- line 1 col 1: missing 'function' at 'unknown'\",\"request_seq\":10,\"command\":\"evaluate\",\"seq\":17}");
+        // Continue to finish:
+        tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":" + sourceJson + ",\"lines\":[],\"breakpoints\":[],\"sourceModified\":false},\"type\":\"request\",\"seq\":18}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[]},\"type\":\"response\",\"request_seq\":18,\"command\":\"setBreakpoints\"}");
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":19}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",

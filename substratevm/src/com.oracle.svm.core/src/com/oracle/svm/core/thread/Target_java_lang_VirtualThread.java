@@ -31,7 +31,9 @@ import java.util.Locale;
 import java.util.concurrent.Executor;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -184,6 +186,10 @@ public final class Target_java_lang_VirtualThread {
         }
         throw new InternalError();
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    native boolean isTerminated();
 
     @Substitute
     @Override

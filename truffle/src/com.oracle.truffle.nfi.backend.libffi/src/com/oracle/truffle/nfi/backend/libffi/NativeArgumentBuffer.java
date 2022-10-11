@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import java.lang.reflect.Field;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.memory.ByteArraySupport;
@@ -195,6 +196,20 @@ abstract class NativeArgumentBuffer {
             byteArraySupport.putDouble(prim, position, d);
             position += Double.BYTES;
         }
+
+        @Override
+        public NativeBuffer get(int size) {
+            byte[] ret;
+            if (position == 0 && size == prim.length) {
+                position += size;
+                ret = prim;
+            } else {
+                int oldPos = position;
+                position += size;
+                ret = Arrays.copyOfRange(prim, oldPos, position);
+            }
+            return new NativeBuffer.Array(ret);
+        }
     }
 
     // allocated by native code
@@ -322,6 +337,15 @@ abstract class NativeArgumentBuffer {
             UNSAFE.putDouble(buffer + position, d);
             position += Double.BYTES;
         }
+
+        @Override
+        public NativeBuffer get(int size) {
+            byte[] ret = new byte[size];
+            for (int i = 0; i < ret.length; i++) {
+                ret[i] = getInt8();
+            }
+            return new NativeBuffer.Array(ret);
+        }
     }
 
     int getPatchCount() {
@@ -375,6 +399,8 @@ abstract class NativeArgumentBuffer {
     public abstract double getDouble();
 
     public abstract void putDouble(double d);
+
+    public abstract NativeBuffer get(int size);
 
     public long getPointer(int size) {
         switch (size) {

@@ -462,13 +462,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class));
-        } else {
-            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                            method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
-        }
+        /*
+         * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the new
+         * signature first and fall back to the old one in case we're on a JDK without the change.
+         */
+        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                        optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
+                                        .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
         a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
                         method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
         a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
@@ -836,7 +836,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      * Need to synchronize the iteration of JceSecurity.verificationResults. In the
                      * original implementation verificationResults is always accessed and modified
                      * via the static synchronized JceSecurity.getVerificationResult().
-                     * 
+                     *
                      * Note that even if the value of the JceSecurity.verificationResults may be
                      * modified concurrently it doesn't affect the correctness of the substitution.
                      * Its value is never cached (by using RecomputeFieldValue.disableCaching) and

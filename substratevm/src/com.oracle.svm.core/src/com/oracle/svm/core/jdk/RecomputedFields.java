@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: stop
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.lang.ref.ReferenceQueue;
@@ -337,6 +338,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
     private static Unsafe U;
 
     @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @RecomputeFieldValue(kind = FieldOffset, name = "poolIds") //
     private static long POOLIDS;
 
     @Substitute
@@ -423,10 +425,6 @@ final class Target_java_util_concurrent_ForkJoinTask_JDK11OrEarlier {
 
 @TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode", onlyWith = JDK11OrEarlier.class)
 final class Target_java_util_concurrent_ForkJoinTask_ExceptionNode {
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK17OrLater.class)
-final class Target_java_util_concurrent_ForkJoinTask_JDK17OrLater {
 }
 
 /** Dummy class to have a class with the file's name. */

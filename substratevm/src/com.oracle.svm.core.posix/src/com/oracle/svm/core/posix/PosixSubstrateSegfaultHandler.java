@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
@@ -88,7 +88,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @Override
     protected void installInternal() {
         int structSigActionSize = SizeOf.get(sigaction.class);
-        sigaction structSigAction = StackValue.get(structSigActionSize);
+        sigaction structSigAction = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
         /* Register sa_sigaction signal handler */
         structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER());

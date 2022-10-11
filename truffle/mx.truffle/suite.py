@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "6.5.5",
   "name" : "truffle",
-  "version" : "22.3.0",
+  "version" : "23.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -726,6 +726,7 @@ suite = {
       "sourceDirs" : ["src"],
       "jniHeaders" : True,
       "dependencies" : [
+        "com.oracle.truffle.nfi.api",
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "requires" : [

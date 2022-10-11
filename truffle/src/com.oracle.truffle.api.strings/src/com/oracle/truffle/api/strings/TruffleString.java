@@ -4860,7 +4860,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
                         @Cached ConditionProfile lengthAndCodeRangeCheckProfile,
-                        @Cached ConditionProfile compareHashProfile,
+                        @Cached BranchProfile compareHashProfile,
                         @Cached ConditionProfile checkFirstByteProfile) {
             final int codeRangeA = getCodeRangeANode.execute(a);
             final int codeRangeB = getCodeRangeBNode.execute(b);
@@ -4875,7 +4875,7 @@ public final class TruffleString extends AbstractTruffleString {
                         ToIndexableNode toIndexableNodeA,
                         ToIndexableNode toIndexableNodeB,
                         ConditionProfile lengthAndCodeRangeCheckProfile,
-                        ConditionProfile compareHashProfile,
+                        BranchProfile compareHashProfile,
                         ConditionProfile checkFirstByteProfile,
                         EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
@@ -4883,8 +4883,11 @@ public final class TruffleString extends AbstractTruffleString {
             if (lengthAndCodeRangeCheckProfile.profile(lengthCMP != b.length() || codeRangeA != codeRangeB)) {
                 return false;
             }
-            if (compareHashProfile.profile(a.isHashCodeCalculated() && b.isHashCodeCalculated()) && a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
-                return false;
+            if (a.isHashCodeCalculated() && b.isHashCodeCalculated()) {
+                compareHashProfile.enter();
+                if (a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+                    return false;
+                }
             }
             if (lengthCMP == 0) {
                 return true;

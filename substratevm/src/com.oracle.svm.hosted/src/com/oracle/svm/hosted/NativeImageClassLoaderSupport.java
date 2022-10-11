@@ -403,6 +403,7 @@ public class NativeImageClassLoaderSupport {
 
     private static void processListModulesOption(ModuleLayer layer) {
         Class<?> launcherHelperClass = ReflectionUtil.lookupClass(false, "sun.launcher.LauncherHelper");
+        Method initOutputMethod = ReflectionUtil.lookupMethod(launcherHelperClass, "initOutput", boolean.class);
         Method showModuleMethod = ReflectionUtil.lookupMethod(launcherHelperClass, "showModule", ModuleReference.class);
 
         boolean first = true;
@@ -411,6 +412,11 @@ public class NativeImageClassLoaderSupport {
                             .sorted(Comparator.comparing(ResolvedModule::name))
                             .collect(Collectors.toList());
             if (first) {
+                try {
+                    initOutputMethod.invoke(null, false);
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere("Unable to use " + initOutputMethod + " to set printing with " + showModuleMethod + " to System.out.", e);
+                }
                 first = false;
             } else if (!resolvedModules.isEmpty()) {
                 System.out.println();
@@ -419,7 +425,7 @@ public class NativeImageClassLoaderSupport {
                 try {
                     showModuleMethod.invoke(null, resolvedModule.reference());
                 } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere("Unable to " + showModuleMethod + " for printing list of modules.", e);
+                    throw VMError.shouldNotReachHere("Unable to use " + showModuleMethod + " for printing list of modules.", e);
                 }
             }
         }

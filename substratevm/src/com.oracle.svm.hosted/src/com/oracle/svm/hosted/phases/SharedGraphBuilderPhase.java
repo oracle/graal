@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.List;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -32,17 +34,23 @@ import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -53,6 +61,11 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.UserError;
@@ -60,10 +73,11 @@ import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -87,6 +101,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
+        private int currentDeoptIndex;
+
         private final boolean explicitExceptionEdges;
         private final boolean linkAtBuildTime;
 
@@ -100,6 +116,37 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
             this.linkAtBuildTime = linkAtBuildTime;
+        }
+
+        @Override
+        protected BciBlockMapping generateBlockMap() {
+            // Double effort expended to handle irreducible loops in AOT compilation
+            // since failure means native-image fails.
+            int maxDuplicationBoost = 2;
+
+            if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
+                /*
+                 * Need to add blocks representing where deoptimization entrypoint nodes will be
+                 * inserted.
+                 */
+                return DeoptimizationTargetBciBlockMapping.create(stream, code, options, graph.getDebug(), false, maxDuplicationBoost);
+            } else {
+                return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness(), maxDuplicationBoost);
+            }
+        }
+
+        @Override
+        protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            super.build(startInstruction, startFrameState);
+
+            if (isMethodDeoptTarget()) {
+                /*
+                 * All DeoptProxyNodes should be valid.
+                 */
+                for (DeoptProxyNode deoptProxy : graph.getNodes(DeoptProxyNode.TYPE)) {
+                    assert deoptProxy.hasProxyPoint();
+                }
+            }
         }
 
         @Override
@@ -448,5 +495,143 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 super.clearNonLiveLocalsAtLoopExitCreation(block, state);
             }
         }
+
+        @Override
+        protected void createExceptionDispatch(BciBlockMapping.ExceptionDispatchBlock block) {
+            if (block instanceof DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) {
+                /*
+                 * If this block is an DeoptEntryInsertionPoint, then a DeoptEntry must be inserted.
+                 * Afterwards, this block should jump to either the original ExceptionDispatchBlock
+                 * or the UnwindBlock if there is no handler.
+                 */
+                assert block instanceof DeoptimizationTargetBciBlockMapping.DeoptExceptionDispatchBlock;
+                insertDeoptNode((DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) block);
+                List<BciBlockMapping.BciBlock> successors = block.getSuccessors();
+                assert successors.size() <= 1;
+                BciBlockMapping.BciBlock successor = successors.isEmpty() ? blockMap.getUnwindBlock() : successors.get(0);
+                appendGoto(successor);
+            } else {
+                super.createExceptionDispatch(block);
+            }
+        }
+
+        @Override
+        protected void iterateBytecodesForBlock(BciBlockMapping.BciBlock block) {
+            if (block instanceof DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) {
+                /*
+                 * If this block is an DeoptEntryInsertionPoint, then a DeoptEntry must be inserted.
+                 * Afterwards, this block should jump to the original BciBlock.
+                 */
+                assert block instanceof DeoptimizationTargetBciBlockMapping.DeoptBciBlock;
+                assert block.getSuccessors().size() == 1 || block.getSuccessors().size() == 2;
+                assert block.getSuccessor(0).isInstructionBlock();
+                stream.setBCI(block.getStartBci());
+                insertDeoptNode((DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) block);
+                appendGoto(block.getSuccessor(0));
+            } else {
+                super.iterateBytecodesForBlock(block);
+            }
+        }
+
+        /**
+         * Inserts either a DeoptEntryNode or DeoptProxyAnchorNode into the graph.
+         */
+        private void insertDeoptNode(DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint deopt) {
+            /*
+             * Ensuring current frameState matches the expectations of the DeoptEntryInsertionPoint.
+             */
+            if (deopt instanceof DeoptimizationTargetBciBlockMapping.DeoptBciBlock) {
+                assert !frameState.rethrowException();
+            } else {
+                assert deopt instanceof DeoptimizationTargetBciBlockMapping.DeoptExceptionDispatchBlock;
+                assert frameState.rethrowException();
+            }
+
+            DeoptEntrySupport deoptNode = graph.add(deopt.isProxy() ? new DeoptProxyAnchorNode() : new DeoptEntryNode());
+            FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
+            deoptNode.setStateAfter(stateAfter);
+            if (lastInstr != null) {
+                lastInstr.setNext(deoptNode.asFixedNode());
+            }
+
+            if (deopt.isProxy()) {
+                lastInstr = (DeoptProxyAnchorNode) deoptNode;
+            } else {
+                assert !deopt.duringCall() : "Implicit deopt entries from invokes cannot have explicit deopt entries.";
+                DeoptEntryNode deoptEntryNode = (DeoptEntryNode) deoptNode;
+                deoptEntryNode.setNext(graph.add(new DeoptEntryBeginNode()));
+
+                /*
+                 * DeoptEntries for positions not during an exception dispatch (rethrowException)
+                 * also must be linked to their exception target.
+                 */
+                if (!deopt.rethrowException()) {
+                    /*
+                     * Saving frameState so that different modifications can be made for next() and
+                     * exceptionEdge().
+                     */
+                    FrameStateBuilder originalFrameState = frameState.copy();
+
+                    /* Creating exception object and its state after. */
+                    ExceptionObjectNode newExceptionObject = graph.add(new ExceptionObjectNode(getMetaAccess()));
+                    frameState.clearStack();
+                    frameState.push(JavaKind.Object, newExceptionObject);
+                    frameState.setRethrowException(true);
+                    int bci = ((DeoptimizationTargetBciBlockMapping.DeoptBciBlock) deopt).getStartBci();
+                    newExceptionObject.setStateAfter(frameState.create(bci, newExceptionObject));
+                    deoptEntryNode.setExceptionEdge(newExceptionObject);
+
+                    /* Inserting proxies for the exception edge. */
+                    insertProxies(newExceptionObject, frameState);
+
+                    /* Linking exception object to exception target. */
+                    newExceptionObject.setNext(handleException(newExceptionObject, bci, false));
+
+                    /* Now restoring FrameState so proxies can be inserted for the next() edge. */
+                    frameState = originalFrameState;
+                } else {
+                    /* Otherwise, indicate that the exception edge is not reachable. */
+                    AbstractBeginNode newExceptionEdge = graph.add(new UnreachableBeginNode());
+                    newExceptionEdge.setNext(graph.add(new LoweredDeadEndNode()));
+                    deoptEntryNode.setExceptionEdge(newExceptionEdge);
+                }
+
+                /* Correctly setting last instruction. */
+                lastInstr = deoptEntryNode.next();
+            }
+
+            insertProxies(deoptNode.asFixedNode(), frameState);
+        }
+
+        private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {
+            /*
+             * At a deoptimization point we wrap non-constant locals (and java stack elements) with
+             * proxy nodes. This is to avoid global value numbering on locals (or derived
+             * expressions). The effect is that when a local is accessed after a deoptimization
+             * point it is really loaded from its location. This is similar to what happens in the
+             * GraphBuilderPhase if entryBCI is set for OSR.
+             */
+            state.insertProxies(value -> createProxyNode(value, deoptTarget));
+            currentDeoptIndex++;
+        }
+
+        private ValueNode createProxyNode(ValueNode value, FixedNode deoptTarget) {
+            ValueNode v = DeoptProxyNode.create(value, deoptTarget, currentDeoptIndex);
+            if (v.graph() != null) {
+                return v;
+            }
+            return graph.addOrUniqueWithInputs(v);
+        }
+
+        @Override
+        protected boolean forceLoopPhis() {
+            return isMethodDeoptTarget() || super.forceLoopPhis();
+        }
+
+        @Override
+        public boolean allowDeoptInPlugins() {
+            return super.allowDeoptInPlugins();
+        }
+
     }
 }

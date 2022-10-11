@@ -88,24 +88,24 @@ public interface PhasePlan<T> {
          * @return {@code buf}
          */
         public <T> Formatter printTo(PhasePlan<T> plan, Formatter buf) {
-            return printPlan(Printer.CHILD, Printer.LAST_CHILD, plan, buf);
+            return printPlan("", plan, buf);
         }
 
         /**
          * Prints {@code plan} to a string and returns it.
          */
         public <T> String toString(PhasePlan<T> plan) {
-            return printPlan(Printer.CHILD, Printer.LAST_CHILD, plan, new Formatter()).toString();
+            return printPlan("", plan, new Formatter()).toString();
         }
 
         @SuppressWarnings("unchecked")
-        private <T> Formatter printPlan(String indent, String indentLast, PhasePlan<T> plan, Formatter buf) {
+        private <T> Formatter printPlan(String indent, PhasePlan<T> plan, Formatter buf) {
             int index = 0;
             for (Iterator<T> iter = plan.getPhases().iterator(); iter.hasNext();) {
                 T phase = iter.next();
                 String className = plan.getPhaseName(phase);
                 boolean hasNext = iter.hasNext();
-                buf.format("%s%s", hasNext ? indent : indentLast, abbreviate(className));
+                buf.format("%s%s%s", indent, hasNext ? Printer.CHILD : Printer.LAST_CHILD, abbreviate(className));
 
                 String graphState = plan.getGraphStateDiff(index);
                 if (graphState != null) {
@@ -120,8 +120,8 @@ public interface PhasePlan<T> {
 
                 if (phase instanceof PhasePlan) {
                     PhasePlan<T> subPlan = (PhasePlan<T>) phase;
-                    String prefix = hasNext ? CONNECTING_INDENT : EMPTY_INDENT;
-                    printPlan(prefix + indent, prefix + indentLast, subPlan, buf);
+                    String nextLevel = hasNext ? CONNECTING_INDENT : EMPTY_INDENT;
+                    printPlan(indent + nextLevel, subPlan, buf);
                 }
 
                 index++;

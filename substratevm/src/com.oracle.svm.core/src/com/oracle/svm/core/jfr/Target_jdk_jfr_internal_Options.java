@@ -27,10 +27,11 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 
 import jdk.jfr.internal.SecuritySupport.SafePath;
 
-@TargetClass(value = jdk.jfr.internal.Options.class, onlyWith = HasJfrSupport.class)
+@TargetClass(value = jdk.jfr.internal.Options.class, onlyWith = {HasJfrSupport.class, JDK17OrEarlier.class})
 public final class Target_jdk_jfr_internal_Options {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static SafePath dumpPath;

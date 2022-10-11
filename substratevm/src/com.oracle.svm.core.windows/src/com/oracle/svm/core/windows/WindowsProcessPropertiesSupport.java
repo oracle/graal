@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -42,6 +41,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.Process;
@@ -53,7 +53,7 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public String getExecutableName() {
-        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
+        CCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, CCharPointer.class);
         WinBase.HMODULE hModule = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
         int result = LibLoaderAPI.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
@@ -123,13 +123,13 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     }
 
     private static String getObjectFile(PointerBase symbolAddress) {
-        WinBase.HMODULEPointer module = StackValue.get(WinBase.HMODULEPointer.class);
+        WinBase.HMODULEPointer module = UnsafeStackValue.get(WinBase.HMODULEPointer.class);
         if (LibLoaderAPI.GetModuleHandleExA(LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
                         (CCharPointer) symbolAddress, module) == 0) {
             return null;
         }
 
-        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
+        CCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, CCharPointer.class);
         int result = LibLoaderAPI.GetModuleFileNameA(module.read(), path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
     }

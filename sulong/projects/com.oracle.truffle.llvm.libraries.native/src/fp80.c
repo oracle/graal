@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,22 +29,43 @@
  */
 #include <math.h>
 
-void __sulong_fp80_add(long double *out, long double *x, long double *y) {
-    *out = *x + *y;
+long double __sulong_fp80_add(long double x, long double y) {
+    return x + y;
 }
 
-void __sulong_fp80_sub(long double *out, long double *x, long double *y) {
-    *out = *x - *y;
+long double __sulong_fp80_sub(long double x, long double y) {
+    return x - y;
 }
 
-void __sulong_fp80_mul(long double *out, long double *x, long double *y) {
-    *out = *x * *y;
+long double __sulong_fp80_mul(long double x, long double y) {
+    return x * y;
 }
 
-void __sulong_fp80_div(long double *out, long double *x, long double *y) {
-    *out = *x / *y;
+long double __sulong_fp80_div(long double x, long double y) {
+    return x / y;
 }
 
-void __sulong_fp80_mod(long double *out, long double *x, long double *y) {
-    *out = fmodl(*x, *y);
+long double __sulong_fp80_mod(long double x, long double y) {
+    return fmodl(x, y);
 }
+
+long double __sulong_fp80_pow(long double x, long double y) {
+    return powl(x, y);
+}
+
+#define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
+    long double __sulong_fp80_##fn(long double value) {                                                                                              \
+        return fn##l(value);                                                                                                                         \
+    }
+
+DECLARE_UNARY_INTRINSIC(sqrt)
+DECLARE_UNARY_INTRINSIC(log)
+DECLARE_UNARY_INTRINSIC(log2)
+DECLARE_UNARY_INTRINSIC(log10)
+DECLARE_UNARY_INTRINSIC(rint)
+DECLARE_UNARY_INTRINSIC(ceil)
+DECLARE_UNARY_INTRINSIC(floor)
+DECLARE_UNARY_INTRINSIC(exp)
+DECLARE_UNARY_INTRINSIC(exp2)
+DECLARE_UNARY_INTRINSIC(sin)
+DECLARE_UNARY_INTRINSIC(cos)

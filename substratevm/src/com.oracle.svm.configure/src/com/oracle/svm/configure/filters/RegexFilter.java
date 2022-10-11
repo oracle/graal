@@ -58,8 +58,6 @@ public class RegexFilter implements ConfigurationFilter {
 
         writer.unindent().newline();
         writer.append("]");
-        writer.unindent().newline();
-        writer.append("}");
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

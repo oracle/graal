@@ -62,7 +62,7 @@ resulting image file.
 - [Checking Debug Info on Linux](#checking-debug-info-on-linux)
 - [Debugging with Isolates](#debugging-with-isolates)
 - [Debugging Helper Methods](#debugging-helper-methods)
-- [Special Considerations for using perf and valgrind](#using perf and valgrind)
+- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
 
 ## Source File Caching
 

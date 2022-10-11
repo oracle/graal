@@ -44,6 +44,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
@@ -306,7 +307,7 @@ final class PthreadVMCondition extends VMCondition {
 
     @Override
     public long block(long waitNanos) {
-        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
+        Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         mutex.clearCurrentThreadOwner();

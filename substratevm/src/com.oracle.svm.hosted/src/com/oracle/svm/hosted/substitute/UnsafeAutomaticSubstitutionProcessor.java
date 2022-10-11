@@ -79,10 +79,10 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -899,8 +899,14 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 if (substitutionField instanceof ComputedValueField) {
                     ComputedValueField computedSubstitutionField = (ComputedValueField) substitutionField;
                     if (computedSubstitutionField.getRecomputeValueKind().equals(kind)) {
-                        if (computedSubstitutionField.getTargetField().equals(computedSubstitutionField.getJavaField())) {
-                            reportUnnecessarySubstitution(substitutionField, computedSubstitutionField);
+                        if (computedSubstitutionField.getTargetField().equals(computedValueField.getTargetField())) {
+                            /*
+                             * Skip the warning when the target field of the found manual
+                             * substitution differs from the target field of the discovered original
+                             * offset computation. This will avoid printing false positives for
+                             * substitutions like Target_java_lang_Class_Atomic.*Offset.
+                             */
+                            reportUnnecessarySubstitution(computedValueField, computedSubstitutionField);
                         }
                         return false;
                     } else if (computedSubstitutionField.getRecomputeValueKind().equals(Kind.None)) {

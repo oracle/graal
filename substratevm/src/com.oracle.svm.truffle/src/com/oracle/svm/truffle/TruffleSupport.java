@@ -50,7 +50,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.GraalSupport;
-import com.oracle.svm.graal.hosted.GraalFeature;
+import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
 import com.oracle.svm.truffle.api.SubstrateKnownTruffleTypes;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode;
@@ -104,10 +104,10 @@ public class TruffleSupport {
     }
 
     protected static TruffleCompilerConfiguration createSubstrateTruffleCompilerConfig(SubstrateTruffleRuntime runtime, String compilerConfigurationName, Method optimizedCallTargetMethod) {
-        GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
+        RuntimeCompilationFeature runtimeCompilationFeature = ImageSingletons.lookup(RuntimeCompilationFeature.class);
         SubstrateKnownTruffleTypes knownTruffleTypes = new SubstrateKnownTruffleTypes(GraalSupport.getRuntimeConfig().getProviders().getMetaAccess());
-        SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
-        final GraphBuilderConfiguration.Plugins graphBuilderPlugins = graalFeature.getHostedProviders().getGraphBuilderPlugins();
+        SnippetReflectionProvider snippetReflectionProvider = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
+        final GraphBuilderConfiguration.Plugins graphBuilderPlugins = runtimeCompilationFeature.getHostedProviders().getGraphBuilderPlugins();
         SubstrateBackend substrateBackend = GraalSupport.getRuntimeConfig().getBackendForNormalMethod();
         substrateBackend.setRuntimeToRuntimeInvokeMethod(optimizedCallTargetMethod);
         final TruffleTierConfiguration firstTier = new TruffleTierConfiguration(new EconomyPartialEvaluatorConfiguration(), substrateBackend,

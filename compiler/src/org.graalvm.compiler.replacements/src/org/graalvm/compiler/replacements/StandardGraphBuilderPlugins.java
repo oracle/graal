@@ -111,6 +111,7 @@ import org.graalvm.compiler.nodes.debug.BindToRegisterNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
 import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
+import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.debug.SideEffectNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -1633,6 +1634,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("neverWriteSink") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new NeverWriteSinkNode());
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("sideEffect") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -2171,7 +2179,7 @@ public class StandardGraphBuilderPlugins {
 
         protected abstract boolean canApply(GraphBuilderContext b);
 
-        protected abstract ValueNode getFieldOffset(InvocationPluginHelper helper, ResolvedJavaType type, String fieldName);
+        protected abstract ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field);
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode len, ValueNode out, ValueNode outOffset) {
@@ -2181,7 +2189,8 @@ public class StandardGraphBuilderPlugins {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
                 ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
-                ValueNode usedOffset = getFieldOffset(helper, receiverType, "used");
+                ResolvedJavaField used = helper.getField(receiverType, "used");
+                ValueNode usedOffset = getFieldOffset(b, used);
 
                 ValueNode nonNullReceiver = receiver.get();
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);

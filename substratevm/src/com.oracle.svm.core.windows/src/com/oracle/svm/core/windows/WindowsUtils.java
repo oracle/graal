@@ -42,11 +42,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -104,7 +105,7 @@ public class WindowsUtils {
                 return false;
             }
 
-            CIntPointer bytesWritten = StackValue.get(CIntPointer.class);
+            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
 
             int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, WordFactory.nullPointer());
 
@@ -148,7 +149,7 @@ public class WindowsUtils {
             /** Temp fix until we complete FileDescriptor substitutions. */
             int handle = FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
 
-            CIntPointer bytesWritten = StackValue.get(CIntPointer.class);
+            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
 
             int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, WordFactory.nullPointer());
 

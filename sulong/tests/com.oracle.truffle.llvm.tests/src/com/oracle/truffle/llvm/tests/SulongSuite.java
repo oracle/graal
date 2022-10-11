@@ -53,7 +53,7 @@ public class SulongSuite extends BaseSuiteHarness {
         return TestCaseCollector.collectTestCases(SulongSuite.class, suitesPath, SulongSuite::isReference);
     }
 
-    private static boolean isReference(Path path) {
+    protected static boolean isReference(Path path) {
         return path.endsWith(refExeName) && (!Platform.isDarwin() || pathStream(path).noneMatch(p -> p.endsWith("ref.out.dSYM")));
     }
 

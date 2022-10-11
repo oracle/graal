@@ -452,20 +452,45 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph.getNodeCount() - countUnusedConstants(graph);
     }
 
-    protected void assertEquals(StructuredGraph expected, StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
-        String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
-        String actualString = getCanonicalGraphString(graph, excludeVirtual, checkConstants);
-        String mismatchString = compareGraphStrings(expected, expectedString, graph, actualString);
+    protected void assertEquals(StructuredGraph expected, StructuredGraph actual, boolean excludeVirtual, boolean checkConstants) {
+        assertEquals(expected, actual, excludeVirtual, checkConstants, false);
+    }
 
-        if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
-            expected.getDebug().dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
-            graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Node count not matching - actual");
-            Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount() + "\n" + mismatchString);
-        }
-        if (!expectedString.equals(actualString)) {
-            expected.getDebug().dump(DebugContext.BASIC_LEVEL, expected, "mismatching graphs - expected");
-            graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "mismatching graphs - actual");
-            Assert.fail(mismatchString);
+    /**
+     * @param addGaphsToDebugContext if true, a scope is opened that contains {@code expected} and
+     *            {@code actual} in its context so that these graphs are dumped when the comparison
+     *            fails and {@code DumpOnError=true}
+     */
+    @SuppressWarnings("try")
+    protected void assertEquals(StructuredGraph expected,
+                    StructuredGraph actual,
+                    boolean excludeVirtual,
+                    boolean checkConstants,
+                    boolean addGaphsToDebugContext) {
+        String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
+        String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
+        String mismatchString = compareGraphStrings(expected, expectedString, actual, actualString);
+
+        // Open a scope so that `expected` and `actual` are dumped if DumpOnError=true
+        DebugContext debug = actual.getDebug();
+        try (DebugContext.Scope scope = addGaphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
+            if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(actual)) {
+                debug.dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
+                debug.dump(DebugContext.BASIC_LEVEL, actual, "Node count not matching - actual");
+                Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + actual.getNodeCount() + "\n" + mismatchString);
+            }
+            if (!expectedString.equals(actualString)) {
+                debug.dump(DebugContext.BASIC_LEVEL, expected, "mismatching graphs - expected");
+                debug.dump(DebugContext.BASIC_LEVEL, actual, "mismatching graphs - actual");
+                Assert.fail(mismatchString);
+            }
+        } catch (AssertionError e) {
+            if (!addGaphsToDebugContext) {
+                throw e;
+            }
+            throw debug.handle(e);
+        } catch (Throwable e) {
+            throw debug.handle(e);
         }
     }
 

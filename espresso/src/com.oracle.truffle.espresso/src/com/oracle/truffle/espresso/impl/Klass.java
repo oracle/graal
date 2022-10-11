@@ -410,12 +410,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     public Object getMetaQualifiedName() {
         assert isMetaObject();
-        return getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+        return getTypeName();
     }
 
     @ExportMessage
     Object getMetaSimpleName() {
         assert isMetaObject();
+        assert getContext().isInitialized();
         return getMeta().java_lang_Class_getSimpleName.invokeDirect(mirror());
     }
 
@@ -512,6 +513,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @CompilationFinal //
     private Class<?> dispatch;
+
+    @CompilationFinal //
+    private StaticObject typeName;
 
     protected Object prepareThread;
 
@@ -679,6 +683,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return result;
     }
 
+    @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                    justification = "espressoClass is deliberately non-volatile since it uses \"Unsafe Local DCL + Safe Singleton\" as described in https://shipilev.net/blog/2014/safe-public-construction\n" +
+                                    "A static hasFinalInstanceField(StaticObject.class) assertion ensures correctness.")
     public final StaticObject initializeEspressoClass() {
         CompilerAsserts.neverPartOfCompilation();
         StaticObject result = this.espressoClass;
@@ -691,6 +698,38 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
         return result;
+    }
+
+    private @JavaType(String.class) StaticObject computeTypeName() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!isArray()) {
+            return getVM().JVM_GetClassName(this.mirror());
+        }
+        // Cannot call Class.getTypeName safely during context initialization, so it's computed here
+        // manually.
+        StaticObject elementalName = getVM().JVM_GetClassName(getElementalType().mirror());
+        int dimensions = ((ArrayKlass) this).getDimension();
+        String result = Meta.toHostStringStatic(elementalName) + "[]".repeat(dimensions);
+        return getMeta().toGuestString(result);
+    }
+
+    public final @JavaType(String.class) StaticObject getTypeName() {
+        if (typeName == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            typeName = computeTypeName();
+        }
+        assert checkTypeName(typeName);
+        return typeName;
+    }
+
+    @TruffleBoundary
+    private boolean checkTypeName(@JavaType(String.class) StaticObject computedTypeName) {
+        if (!getContext().isInitialized()) {
+            // Skip check: cannot safely call Class.getTypeName.
+            return true;
+        }
+        StaticObject expected = (StaticObject) getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+        return getMeta().toHostString(computedTypeName).equals(getMeta().toHostString(expected));
     }
 
     /**
