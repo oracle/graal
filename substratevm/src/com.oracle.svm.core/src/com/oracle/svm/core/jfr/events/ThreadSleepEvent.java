@@ -26,7 +26,6 @@
 
 package com.oracle.svm.core.jfr.events;
 
-
 import jdk.jfr.Event;
 import org.graalvm.nativeimage.StackValue;
 
@@ -47,8 +46,7 @@ import jdk.jfr.Timespan;
 @Name("jdk.ThreadSleep")
 public class ThreadSleepEvent extends Event {
     @Label("Sleep Time")
-    @Timespan()
-    public long time;
+    @Timespan() public long time;
 
     public static void emit(long time, long startTicks) {
         if (com.oracle.svm.core.jfr.HasJfrSupport.get()) {

@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**

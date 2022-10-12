@@ -42,6 +42,7 @@ import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
 import jdk.jfr.internal.TypeLibrary;
 import com.oracle.svm.core.annotate.TargetClass;
+
 /**
  * This class caches all JFR metadata types. This is mainly necessary because
  * {@link TypeLibrary#getTypes()} isn't multi-threading safe.
@@ -52,7 +53,7 @@ public class JfrMetadataTypeLibrary {
     private static final TypeLibrary typeLibrary = TypeLibrary.getInstance();
     private static List<Long> mirrorEvents = new ArrayList<>();
 
-    private static void addMirrorEvent(Class<?> svmClass, Class<?> internalClass){
+    private static void addMirrorEvent(Class<?> svmClass, Class<?> internalClass) {
         PlatformEventType et = (PlatformEventType) TypeLibrary.createType(svmClass, Collections.emptyList(), Collections.emptyList());
         long id = Type.getTypeId(internalClass);
         et.setId(id);
@@ -60,16 +61,17 @@ public class JfrMetadataTypeLibrary {
         mirrorEvents.add(id);
     }
 
-    private static void addMirrorEvents(){
-        if(JavaVersionUtil.JAVA_SPEC > 17){
+    private static void addMirrorEvents() {
+        if (JavaVersionUtil.JAVA_SPEC > 17) {
             addMirrorEvent(com.oracle.svm.core.jfr.events.ThreadSleepEvent.class, Target_jdk_internal_event_ThreadSleepEvent.class);
         }
     }
 
-    public static void removeType(long id){
+    public static void removeType(long id) {
         typeLibrary.removeType(id);
     }
-    public static List<Long> getMirrorEvents(){
+
+    public static List<Long> getMirrorEvents() {
         return mirrorEvents;
     }
 
