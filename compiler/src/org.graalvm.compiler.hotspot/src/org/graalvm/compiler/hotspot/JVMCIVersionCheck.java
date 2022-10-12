@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,13 +57,9 @@ public final class JVMCIVersionCheck {
                     int major = Integer.parseInt(m.group(1));
                     int minor = Integer.parseInt(m.group(2));
                     int build = Integer.parseInt(m.group(3));
-                    String jvmciVersionFile = props.get("JVMCIVersionCheck.jvmci.version.file");
-                    if (jvmciVersionFile != null) {
-                        try {
-                            Files.write(Paths.get(jvmciVersionFile), String.format("%d,%d,%d", major, minor, build).getBytes());
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
+                    String jvmciVersionPrint = props.get("JVMCIVersionCheck.jvmci.version.print");
+                    if (Boolean.valueOf(jvmciVersionPrint)) {
+                        System.out.println(String.format("%d,%d,%d", major, minor, build));
                     }
                     return new Version(major, minor, build);
                 } catch (NumberFormatException e) {

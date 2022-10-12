@@ -123,13 +123,11 @@ def _check_jvmci_version(jdk):
                 fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
 
-    jvmci_version_file = join(binDir, 'jvmci_version.' + str(os.getpid()))
-    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.file=' + jvmci_version_file, '-cp', binDir, unqualified_name])
-    if exists(jvmci_version_file):
-        with open(jvmci_version_file) as fp:
-            global _jdk_jvmci_version
-            _jdk_jvmci_version = tuple((int(n) for n in fp.read().split(',')))
-        os.remove(jvmci_version_file)
+    out = mx.OutputCapture()
+    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.print=true', '-cp', binDir, unqualified_name], out=out)
+    global _jdk_jvmci_version
+    if out.data:
+        _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
