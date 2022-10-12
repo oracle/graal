@@ -37,6 +37,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -56,6 +58,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
  * See {@code ReflectionMetadataEncoderImpl} for details about the emission of the metadata.
  */
 @AutomaticallyRegisteredImageSingleton(ReflectionMetadataDecoder.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
     /**
      * Error indices are less than {@link #NO_DATA}.

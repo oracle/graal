@@ -104,7 +104,7 @@ meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public void startEval(org.graalvm.polyglot.Source)
 meth public void startExecute(java.util.function.Function<org.graalvm.polyglot.Context,org.graalvm.polyglot.Value>)
 supr java.lang.Object
-hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
+hfds TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
 hcls ExecutingLoop,ExecutingSource
 
 CLSS public abstract interface static com.oracle.truffle.tck.DebuggerTester$PositionPredicate

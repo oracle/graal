@@ -796,7 +796,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private boolean verifyAssignableTypes() {
+    protected boolean verifyAssignableTypes() {
         /*
          * This verification has quadratic complexity, so do it only once after the static analysis
          * has finished, and can be disabled with an option.
@@ -1718,7 +1718,7 @@ public class NativeImageGenerator {
         nativeLibs.reportErrors();
     }
 
-    private static void initializeAtBuildTime(Class<?> clazz, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
+    protected static void initializeAtBuildTime(Class<?> clazz, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
         String message = "classes annotated with " + ClassUtil.getUnqualifiedName(annotationForMessage) + " are always initialized at image build time";
         classInitializationSupport.initializeAtBuildTime(clazz, message);
         classInitializationSupport.forceInitializeHosted(clazz, message, false);

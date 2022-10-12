@@ -62,7 +62,7 @@ import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
 
 import jdk.internal.module.Modules;
 
-class ClassLoaderSupportImpl extends ClassLoaderSupport {
+public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
@@ -71,7 +71,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
+    public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
 
         imageClassLoader = classLoaderSupport.getClassLoader();
@@ -122,7 +122,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         try (ModuleReader moduleReader = moduleReference.open()) {
             String moduleName = resolvedModule.name();
             List<String> foundResources = moduleReader.list()
-                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName))
+                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName, moduleReference.location().orElse(null)))
                             .collect(Collectors.toList());
 
             for (String resName : foundResources) {
@@ -158,7 +158,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
             }
 
             if (Files.isDirectory(entry)) {
-                if (collector.isIncluded(null, relativeFilePath)) {
+                if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
@@ -169,7 +169,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     filtered.forEach(queue::push);
                 }
             } else {
-                if (collector.isIncluded(null, relativeFilePath)) {
+                if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     try (InputStream is = Files.newInputStream(entry)) {
                         collector.addResource(null, relativeFilePath, is, false);
                     }
@@ -199,12 +199,12 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 JarEntry entry = entries.nextElement();
                 if (entry.isDirectory()) {
                     String dirName = entry.getName().substring(0, entry.getName().length() - 1);
-                    if (collector.isIncluded(null, dirName)) {
+                    if (collector.isIncluded(null, dirName, jarPath.toUri())) {
                         // Register the directory with empty content to preserve Java behavior
                         collector.addDirectoryResource(null, dirName, "", true);
                     }
                 } else {
-                    if (collector.isIncluded(null, entry.getName())) {
+                    if (collector.isIncluded(null, entry.getName(), jarPath.toUri())) {
                         try (InputStream is = jf.getInputStream(entry)) {
                             collector.addResource(null, entry.getName(), is, true);
                         }
