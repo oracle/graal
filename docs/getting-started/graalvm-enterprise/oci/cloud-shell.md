@@ -122,7 +122,7 @@ Thus, you can easily use GraalVM Enterprise in OCI Cloud Shell to build and test
 
 ### Related Documentation
 
-- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-CS.md)
-- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-CS.md)
+- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-hello-world)
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
 - [GraalVM Enterprise in OCI Code Editor](code-editor.md)
 
