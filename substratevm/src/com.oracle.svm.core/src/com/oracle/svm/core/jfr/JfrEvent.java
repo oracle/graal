@@ -60,7 +60,7 @@ public final class JfrEvent {
     public static final JfrEvent SafepointEnd = create("jdk.SafepointEnd");
     public static final JfrEvent ExecuteVMOperation = create("jdk.ExecuteVMOperation");
     public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
-    public static final JfrEvent ThreadSleep = create("jdk.ThreadSleep", JDK17OrEarlier.class);
+    public static final JfrEvent ThreadSleep = create("jdk.ThreadSleep");
     public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
 

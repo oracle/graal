@@ -26,6 +26,8 @@
 
 package com.oracle.svm.core.jfr.events;
 
+
+import jdk.jfr.Event;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -35,8 +37,18 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import jdk.jfr.Category;
+import jdk.jfr.Label;
+import jdk.jfr.Name;
+import jdk.jfr.Timespan;
 
-public class ThreadSleepEvent {
+@Category("Java Application")
+@Label("Java Thread Sleep")
+@Name("jdk.ThreadSleep")
+public class ThreadSleepEvent extends Event {
+    @Label("Sleep Time")
+    @Timespan()
+    public long time;
 
     public static void emit(long time, long startTicks) {
         if (com.oracle.svm.core.jfr.HasJfrSupport.get()) {

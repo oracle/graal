@@ -92,6 +92,8 @@ public class SubstrateJVM {
             eventSettings[i] = new JfrNativeEventSetting();
         }
 
+        handleMirrorEvents();
+
         symbolRepo = new JfrSymbolRepository();
         typeRepo = new JfrTypeRepository();
         threadRepo = new JfrThreadRepository();
@@ -114,6 +116,13 @@ public class SubstrateJVM {
         initialized = false;
         recording = false;
         metadataDescriptor = null;
+    }
+
+    private void handleMirrorEvents(){
+        for (long id : com.oracle.svm.core.jfr.JfrMetadataTypeLibrary.getMirrorEvents()){
+            JfrMetadataTypeLibrary.removeType(id);
+            setEnabled(id,true);
+        }
     }
 
     @Fold

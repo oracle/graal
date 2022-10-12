@@ -24,19 +24,24 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 
 import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
 import jdk.jfr.internal.TypeLibrary;
-
+import com.oracle.svm.core.annotate.TargetClass;
 /**
  * This class caches all JFR metadata types. This is mainly necessary because
  * {@link TypeLibrary#getTypes()} isn't multi-threading safe.
@@ -44,6 +49,29 @@ import jdk.jfr.internal.TypeLibrary;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrMetadataTypeLibrary {
     private static final HashMap<String, Type> types = new HashMap<>();
+    private static final TypeLibrary typeLibrary = TypeLibrary.getInstance();
+    private static List<Long> mirrorEvents = new ArrayList<>();
+
+    private static void addMirrorEvent(Class<?> svmClass, Class<?> internalClass){
+        PlatformEventType et = (PlatformEventType) TypeLibrary.createType(svmClass, Collections.emptyList(), Collections.emptyList());
+        long id = Type.getTypeId(internalClass);
+        et.setId(id);
+        types.put(et.getName(), et);
+        mirrorEvents.add(id);
+    }
+
+    private static void addMirrorEvents(){
+        if(JavaVersionUtil.JAVA_SPEC > 17){
+            addMirrorEvent(com.oracle.svm.core.jfr.events.ThreadSleepEvent.class, Target_jdk_internal_event_ThreadSleepEvent.class);
+        }
+    }
+
+    public static void removeType(long id){
+        typeLibrary.removeType(id);
+    }
+    public static List<Long> getMirrorEvents(){
+        return mirrorEvents;
+    }
 
     private static synchronized HashMap<String, Type> getTypes() {
         if (types.isEmpty()) {
@@ -51,6 +79,7 @@ public class JfrMetadataTypeLibrary {
                 assert !types.containsKey(type.getName());
                 types.put(type.getName(), type);
             }
+            addMirrorEvents();
         }
         return types;
     }
@@ -103,4 +132,8 @@ public class JfrMetadataTypeLibrary {
         }
         return mostSimilar;
     }
+}
+
+@TargetClass(className = "jdk.internal.event.ThreadSleepEvent", onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_event_ThreadSleepEvent {
 }
