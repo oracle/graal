@@ -55,4 +55,12 @@ public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
                             "If omitting --static wasn't the intention, then --static should be used when compiling with --libc=musl");
         }
     }
+
+    @Override
+    public List<String> getAdditionalLinkerOptions(AbstractImage.NativeImageKind imageKind) {
+        if (imageKind != AbstractImage.NativeImageKind.EXECUTABLE) {
+            return List.of();
+        }
+        return List.of("-no-pie");
+    }
 }

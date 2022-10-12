@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -279,6 +280,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     // Drop global symbols in linked static libraries: not covered by --dynamic-list
                     additionalPreOptions.add("-Wl,--exclude-libs,ALL");
 
+                    additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
                 } catch (IOException e) {
                     VMError.shouldNotReachHere();
                 }

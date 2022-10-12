@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.c.libc;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -107,6 +106,11 @@ public interface HostedLibCBase extends LibCBase {
     String getTargetCompiler();
 
     List<String> getAdditionalQueryCodeCompilerOptions();
+
+    @SuppressWarnings("unused")
+    default List<String> getAdditionalLinkerOptions(AbstractImage.NativeImageKind imageKind) {
+        return List.of();
+    }
 
     /**
      * Checks if static JDK libraries compiled with the target libC are mandatory for building the
