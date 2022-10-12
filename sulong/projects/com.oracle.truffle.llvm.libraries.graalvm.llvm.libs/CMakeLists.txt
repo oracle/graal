@@ -54,13 +54,14 @@ add_library(graalvm-llvm SHARED
     src/polyglot.c
     src/polyglot-buffer.c
     src/polyglot-time.c
-    src/threads.c
     src/toolchain-api.c
     src/truffle-compat.c
 )
 
 if(WIN32)
-  target_sources(graalvm-llvm PRIVATE graalvm-llvm.def)
+  target_sources(graalvm-llvm PRIVATE
+    src/threads.c
+    graalvm-llvm.def)
 endif()
 
 target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})

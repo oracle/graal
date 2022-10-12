@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -46,6 +47,7 @@ public class LLVMWindowsInitThreadIntrinsics {
         abstract Object execute();
 
         @Specialization
+        @TruffleBoundary
         public Object doLock() {
             lock.lock();
             return null;
@@ -56,6 +58,7 @@ public class LLVMWindowsInitThreadIntrinsics {
         abstract Object execute();
 
         @Specialization
+        @TruffleBoundary
         public Object doUnlock() {
             lock.unlock();
             return null;
@@ -67,6 +70,7 @@ public class LLVMWindowsInitThreadIntrinsics {
         abstract Object execute(int timeout);
 
         @Specialization
+        @TruffleBoundary
         public Object doWait(int timeout) {
             try {
                 condition.await(timeout, TimeUnit.MILLISECONDS);
@@ -81,10 +85,15 @@ public class LLVMWindowsInitThreadIntrinsics {
         abstract Object execute();
 
         @Specialization
+        @TruffleBoundary
         public Object doWait() {
             lock.lock();
-            condition.signalAll();
-            lock.unlock();
+            try {
+                condition.signalAll();
+            } finally {
+                lock.unlock();
+            }
+
             return null;
         }
     }
