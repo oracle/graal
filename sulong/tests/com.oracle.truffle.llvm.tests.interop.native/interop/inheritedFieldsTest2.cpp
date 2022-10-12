@@ -120,4 +120,3 @@ bool checkB2(polyglot_value b2Obj) {
     B2 *b2 = polyglot_as_B2(b2Obj);
     return (b2->b0 == 0) && (b2->b1 == 1) && (b2->b2 == 2);
 }
-
