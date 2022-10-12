@@ -308,4 +308,8 @@ public final class PointsToAnalyzer {
         System.err.print("Exception:");
         e.printStackTrace();
     }
+
+    public ClassLoader getClassLoader() {
+        return analysisClassLoader;
+    }
 }

@@ -62,7 +62,7 @@ public class StandaloneImageHeapScanner extends ImageHeapScanner {
     @Override
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         ValueSupplier<JavaConstant> ret = super.readHostedFieldValue(field, receiver);
-        if (ret.get() == null) {
+        if (ret.get() == null && field.isStatic()) {
             JavaConstant constant = UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, value -> universe.getSnippetReflection().forObject(value));
             return ValueSupplier.eagerValue(constant);
         } else {

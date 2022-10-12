@@ -26,30 +26,19 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
-import org.junit.Test;
-
-public class StandaloneAnalyzerReachabilityTest {
-
-    @Test
-    public void testPointstoAnalyzer() throws NoSuchFieldException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(StandaloneAnalyzerReachabilityCase.class);
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-        Class<StandaloneAnalyzerReachabilityCase.C> classC = StandaloneAnalyzerReachabilityCase.C.class;
-        Class<StandaloneAnalyzerReachabilityCase.D> classD = StandaloneAnalyzerReachabilityCase.D.class;
-        tester.setExpectedReachableTypes(classC, StandaloneAnalyzerReachabilityCase.C1.class, StandaloneAnalyzerReachabilityCase.C2.class);
-        tester.setExpectedUnreachableTypes(classD);
-        tester.setExpectedReachableFields(classC.getDeclaredField("val"));
-        tester.setExpectedUnreachableFields(classD.getDeclaredField("val"));
-        tester.runAnalysisAndAssert();
+public class ClassEqualityCase {
+    static class C {
+        public static void foo() {
+        }
     }
 
-    @Test
-    public void testMultipleAnalysis() throws NoSuchFieldException {
-        int times = 5;
-        int i = 0;
-        while (i++ < times) {
-            testPointstoAnalyzer();
+    public static void main(String[] args) {
+        equals(C.class);
+    }
+
+    private static void equals(Class<?> clazz) {
+        if (clazz == C.class) {
+            C.foo();
         }
     }
 }

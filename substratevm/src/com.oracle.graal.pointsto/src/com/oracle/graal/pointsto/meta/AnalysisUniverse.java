@@ -539,8 +539,16 @@ public class AnalysisUniverse implements Universe {
         return fields.values();
     }
 
+    public AnalysisField getField(ResolvedJavaField resolvedJavaField) {
+        return fields.get(resolvedJavaField);
+    }
+
     public Collection<AnalysisMethod> getMethods() {
         return methods.values();
+    }
+
+    public AnalysisMethod getMethod(ResolvedJavaMethod resolvedJavaMethod) {
+        return methods.get(resolvedJavaMethod);
     }
 
     public Map<JavaConstant, BytecodePosition> getEmbeddedRoots() {
