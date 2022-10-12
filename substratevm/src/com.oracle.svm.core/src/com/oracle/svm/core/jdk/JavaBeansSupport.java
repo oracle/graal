@@ -74,10 +74,6 @@ public final class JavaBeansSupport {
         return ImageSingletons.lookup(JavaBeansSupport.class).COMPONENT_CLASS;
     }
 
-    private Class<?> getComponentClass() {
-        return COMPONENT_CLASS;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void enableComponentClass() {
         ImageSingletons.lookup(JavaBeansSupport.class).COMPONENT_CLASS = Component.class;
