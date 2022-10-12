@@ -131,6 +131,7 @@ The Code Editor allows you to accomplish quick coding tasks and run applications
 
 ### Related Documentation
 
-- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Code Editor](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
+- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-hello-world)
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
 - [Working with Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm)
 - [GraalVM Enterprise in OCI Cloud Shell](cloud-shell.md)
