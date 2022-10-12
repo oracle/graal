@@ -114,6 +114,10 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
       [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
   } + self.Description("Run mx gate --tags " + tags),
 
+  style:: common.eclipse + common.jdt + $.gateTags("style,fullbuild") + {
+    extra_gate_args+:: ["--strict-mode"],
+  },
+
   sulong_gateTest_default_tools:: {
     environment+: {
       CLANG_LLVM_AS: "llvm-as",
