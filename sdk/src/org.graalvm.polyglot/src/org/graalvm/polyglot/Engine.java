@@ -814,6 +814,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isMutableDefaultMappingsEnabled(HostAccess access) {
+            return access.isMutableDefaultMappingEnabled();
+        }
+
+        @Override
         public List<Object> getTargetMappings(HostAccess access) {
             return access.getTargetMappings();
         }

@@ -1337,19 +1337,22 @@ public final class Value extends AbstractValue {
      * target type mappings} specified in the {@link HostAccess} configuration with precedence
      * {@link TargetMappingPrecedence#LOW}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
-     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasHashEntries()}
-     * hash entries}, {@link #hasMembers() members} or {@link #hasArrayElements() array elements}.
-     * The returned map can be safely cast to Map<Object, Object>. For value with
-     * {@link #hasMembers() members} the key type is {@link String}. For value with
-     * {@link #hasArrayElements() array elements} the key type is {@link Long}. It is recommended to
-     * use {@link #as(TypeLiteral) type literals} to specify the expected collection component
-     * types. With type literals the value type can be restricted, for example to
-     * <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
-     * component type is used, then the return types of the the list are subject to Object target
-     * type mapping rules recursively.
-     * <li><code>{@link List}.class</code> is supported if the value has {@link #hasArrayElements()
-     * array elements} and it has an {@link Value#getArraySize() array size} that is smaller or
-     * equal than {@link Integer#MAX_VALUE}. The returned list can be safely cast to
+     * <li><code>{@link Map}.class</code> is supported if mutable default mappings are enabled (see
+     * {@link org.graalvm.polyglot.HostAccess.Builder#allowMutableDefaultMappings(boolean)}) and the
+     * value has {@link #hasHashEntries()} hash entries}, {@link #hasMembers() members} or
+     * {@link #hasArrayElements() array elements}. The returned map can be safely cast to
+     * Map<Object, Object>. For value with {@link #hasMembers() members} the key type is
+     * {@link String}. For value with {@link #hasArrayElements() array elements} the key type is
+     * {@link Long}. It is recommended to use {@link #as(TypeLiteral) type literals} to specify the
+     * expected collection component types. With type literals the value type can be restricted, for
+     * example to <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an
+     * Object component type is used, then the return types of the the list are subject to Object
+     * target type mapping rules recursively.
+     * <li><code>{@link List}.class</code> is supported if mutable default mappings are enabled (see
+     * {@link org.graalvm.polyglot.HostAccess.Builder#allowMutableDefaultMappings(boolean)}) and the
+     * value has {@link #hasArrayElements() array elements} and it has an
+     * {@link Value#getArraySize() array size} that is smaller or equal than
+     * {@link Integer#MAX_VALUE}. The returned list can be safely cast to
      * <code>List&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
      * literals} to specify the expected component type. With type literals the value type can be
      * restricted to any supported target type, for example to <code>List&lt;Integer&gt;</code>. If
@@ -1360,19 +1363,22 @@ public final class Value extends AbstractValue {
      * returned array will not be reflected in the original value. Since conversion to a Java array
      * might be an expensive operation it is recommended to use the `List` or `Collection` target
      * type if possible.
-     * <li><code>{@link Iterable}.class</code> is supported if the value has an
-     * {@link #hasIterator() iterator}. The returned iterable can be safely cast to
-     * <code>Iterable&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
+     * <li><code>{@link Iterable}.class</code> is supported if mutable default mappings are enabled
+     * (see {@link org.graalvm.polyglot.HostAccess.Builder#allowMutableDefaultMappings(boolean)})
+     * and the value has an {@link #hasIterator() iterator}. The returned iterable can be safely
+     * cast to <code>Iterable&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral)
+     * type literals} to specify the expected component type. With type literals the value type can
+     * be restricted to any supported target type, for example to
+     * <code>Iterable&lt;Integer&gt;</code>.
+     * <li><code>{@link Iterator}.class</code> is supported if mutable default mappings are enabled
+     * (see {@link org.graalvm.polyglot.HostAccess.Builder#allowMutableDefaultMappings(boolean)})
+     * and the value is an {@link #isIterator() iterator} The returned iterator can be safely cast
+     * to <code>Iterator&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
      * literals} to specify the expected component type. With type literals the value type can be
-     * restricted to any supported target type, for example to <code>Iterable&lt;Integer&gt;</code>.
-     * <li><code>{@link Iterator}.class</code> is supported if the value is an {@link #isIterator()
-     * iterator} The returned iterator can be safely cast to <code>Iterator&lt;Object&gt;</code>. It
-     * is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
-     * component type. With type literals the value type can be restricted to any supported target
-     * type, for example to <code>Iterator&lt;Integer&gt;</code>. If the raw
-     * <code>{@link Iterator}.class</code> or an Object component type is used, then the return
-     * types of the the iterator are recursively subject to Object target type mapping rules. The
-     * returned iterator's {@link Iterator#next() next} method may throw a
+     * restricted to any supported target type, for example to <code>Iterator&lt;Integer&gt;</code>.
+     * If the raw <code>{@link Iterator}.class</code> or an Object component type is used, then the
+     * return types of the the iterator are recursively subject to Object target type mapping rules.
+     * The returned iterator's {@link Iterator#next() next} method may throw a
      * {@link ConcurrentModificationException} when an underlying iterable has changed or
      * {@link UnsupportedOperationException} when the iterator's current element is not readable.
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
@@ -1486,6 +1492,9 @@ public final class Value extends AbstractValue {
      * those arguments. The returned function may also implement {@link List} or {@link Map} if the
      * value has {@link #hasArrayElements() array elements} or {@link #hasMembers() members},
      * respectively.
+     * <li>Mappings to {@link List}, {@link Map}, {@link Iterator} and {@link Iterable} are only
+     * available if mutable default mappings are enabled (see
+     * {@link org.graalvm.polyglot.HostAccess.Builder#allowMutableDefaultMappings(boolean)}).
      * <li>If none of the above rules apply then this {@link Value} instance is returned.
      * </ol>
      * Returned {@link #isHostObject() host objects}, {@link String}, {@link Number},

@@ -254,6 +254,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void engineClosed(Engine engine);
 
+        public abstract boolean isMutableDefaultMappingsEnabled(HostAccess access);
+
     }
 
     // shared SPI

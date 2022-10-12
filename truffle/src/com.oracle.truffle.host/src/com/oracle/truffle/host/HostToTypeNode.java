@@ -207,17 +207,17 @@ abstract class HostToTypeNode extends Node {
         }
         if (targetType.isInstance(value)) {
             convertedValue = value;
-        } else {
-            if (useCustomTargetTypes) {
-                Object result = targetMapping.execute(value, targetType, context, interop, false, LOOSE + 1, LOWEST);
-                if (result != HostTargetMappingNode.NO_RESULT) {
-                    return result;
-                }
-            }
-            error.enter();
-            throw HostInteropErrors.cannotConvertPrimitive(context, value, targetType);
+            return targetType.cast(convertedValue);
         }
-        return targetType.cast(convertedValue);
+
+        if (useCustomTargetTypes) {
+            Object result = targetMapping.execute(value, targetType, context, interop, false, LOOSE + 1, LOWEST);
+            if (result != HostTargetMappingNode.NO_RESULT) {
+                return result;
+            }
+        }
+        error.enter();
+        throw HostInteropErrors.cannotConvertPrimitive(context, value, targetType);
     }
 
     @SuppressWarnings({"unused"})
@@ -387,6 +387,9 @@ abstract class HostToTypeNode extends Node {
         } else if (targetType == Object.class) {
             obj = convertToObject(hostContext, value, interop);
         } else if (targetType == List.class) {
+            if (!hostContext.isMutableObjectMappingAllowed()) {
+                return null;
+            }
             if (interop.hasArrayElements(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
@@ -395,6 +398,9 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Map.class) {
+            if (!hostContext.isMutableObjectMappingAllowed()) {
+                return null;
+            }
             TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
             TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
             boolean hasHashEntries = interop.hasHashEntries(value);
@@ -410,6 +416,9 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have members, array elements or hash entries.");
             }
         } else if (targetType == Map.Entry.class) {
+            if (!hostContext.isMutableObjectMappingAllowed()) {
+                return null;
+            }
             if (interop.hasArrayElements(value)) {
                 TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
                 TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
@@ -527,6 +536,9 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be an exception.");
             }
         } else if (targetType == Iterable.class) {
+            if (!hostContext.isMutableObjectMappingAllowed()) {
+                return null;
+            }
             if (interop.hasIterator(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
@@ -537,6 +549,9 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have an iterator.");
             }
         } else if (targetType == Iterator.class) {
+            if (!hostContext.isMutableObjectMappingAllowed()) {
+                return null;
+            }
             if (interop.isIterator(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);

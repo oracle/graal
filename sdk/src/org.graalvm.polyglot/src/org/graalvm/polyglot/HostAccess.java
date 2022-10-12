@@ -106,11 +106,12 @@ public final class HostAccess {
     final boolean allowMapAccess;
     final boolean allowAccessInheritance;
     private final boolean methodScopingDefault;
+    private final boolean allowMutableDefaultMappings;
     private final EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
     private final EconomicSet<Executable> disableMethodScoping;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, false, null, null);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, false, false, null, null);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -169,11 +170,17 @@ public final class HostAccess {
      * <pre>
      * <code>
      * HostAccess.newBuilder()
-     *           .allowPublicAccess(true)
-     *           .allowAllImplementations(true)
-     *           .allowAllClassImplementations(true)
-     *           .allowArrayAccess(true)
-     *           .allowListAccess(true)
+     *           allowPublicAccess(true).
+     *           allowAllImplementations(true).
+     *           allowAllClassImplementations(true).
+     *           allowArrayAccess(true).
+     *           allowListAccess(true).
+     *           allowBufferAccess(true).
+     *           allowIterableAccess(true).
+     *           allowIteratorAccess(true).
+     *           allowMapAccess(true).
+     *           allowAccessInheritance(true).
+     *           allowMutableDefaultMappings(true).
      *           .build();
      * </code>
      * </pre>
@@ -187,6 +194,7 @@ public final class HostAccess {
                     allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
                     allowIterableAccess(true).allowIteratorAccess(true).allowMapAccess(true).//
                     allowAccessInheritance(true).//
+                    allowMutableDefaultMappings(true).//
                     name("HostAccess.ALL").build();
 
     /**
@@ -207,7 +215,7 @@ public final class HostAccess {
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
                     boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
-                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowAccessInheritance,
+                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowAccessInheritance, boolean allowMutableObjectMapping,
                     boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations, EconomicSet<Executable> disableMethodScoping) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
@@ -227,6 +235,7 @@ public final class HostAccess {
         this.allowMapAccess = allowMapAccess;
         this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowMapAccess || allowIteratorAccess;
         this.allowAccessInheritance = allowAccessInheritance;
+        this.allowMutableDefaultMappings = allowMutableObjectMapping;
         this.methodScopingDefault = methodScopingDefault;
         this.disableMethodScopingAnnotations = disableMethodScopingAnnotations;
         this.disableMethodScoping = disableMethodScoping;
@@ -462,6 +471,10 @@ public final class HostAccess {
         return methodScopingDefault;
     }
 
+    boolean isMutableDefaultMappingEnabled() {
+        return allowMutableDefaultMappings;
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -647,6 +660,7 @@ public final class HostAccess {
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
         private boolean allowAccessInheritance;
+        private boolean allowMutableDefaultMappings;
         private boolean methodScopingDefault;
         private EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
         private EconomicSet<Executable> disableMethodScoping;
@@ -673,6 +687,7 @@ public final class HostAccess {
             this.allowAllImplementations = access.allowAllInterfaceImplementations;
             this.allowAllClassImplementations = access.allowAllClassImplementations;
             this.allowAccessInheritance = access.allowAccessInheritance;
+            this.allowMutableDefaultMappings = access.allowMutableDefaultMappings;
             this.methodScopingDefault = access.methodScopingDefault;
             this.disableMethodScopingAnnotations = copySet(access.disableMethodScopingAnnotations, Equivalence.IDENTITY);
             this.disableMethodScoping = copySet(access.disableMethodScoping, Equivalence.IDENTITY);
@@ -956,6 +971,25 @@ public final class HostAccess {
         }
 
         /**
+         * Allows host object mappings of mutable target types, such as {@link java.util.List},
+         * {@link java.util.Map}, {@link java.util.Iterator} and {@link java.util.Iterable}.
+         *
+         * Mapping guest objects to well-known host object types such as {@link java.util.Map} is
+         * convenient on one hand. On the other hand it can lead to bugs as the guest code is free
+         * to provide an arbitrary backing implementation of such objects, which may not behave as
+         * expected of a {@link java.util.Map}.
+         *
+         * If mutable default mappings are disabled, attempting a corresponding type coercion leads
+         * to a {@link ClassCastException}.
+         *
+         * @since 23.0
+         */
+        public Builder allowMutableDefaultMappings(boolean mutableDefaultMappings) {
+            this.allowMutableDefaultMappings = mutableDefaultMappings;
+            return this;
+        }
+
+        /**
          * Adds a custom source to target type mapping for Java host calls, host field assignments
          * and {@link Value#as(Class) explicit value conversions}. Method is equivalent to calling
          * the targetTypeMapping method with precedence {@link TargetMappingPrecedence#HIGH}.
@@ -1161,7 +1195,7 @@ public final class HostAccess {
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
                             allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
-                            allowIteratorAccess, allowMapAccess, allowAccessInheritance, methodScopingDefault, disableMethodScopingAnnotations, disableMethodScoping);
+                            allowIteratorAccess, allowMapAccess, allowAccessInheritance, allowMutableDefaultMappings, methodScopingDefault, disableMethodScopingAnnotations, disableMethodScoping);
         }
     }
 

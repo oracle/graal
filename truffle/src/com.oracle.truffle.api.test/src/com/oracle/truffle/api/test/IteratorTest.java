@@ -60,6 +60,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
@@ -172,7 +173,7 @@ public class IteratorTest extends AbstractPolyglotTest {
     @Test
     public void testValues() {
         String[] values = {"a", "b"};
-        setupEnv(Context.create());
+        setupEnv(Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowMutableDefaultMappings(true).build()).build());
         Value iterable = context.asValue(new SimpleIterable((Object[]) values));
         verifyIterable(iterable, values, false);
     }
@@ -187,7 +188,7 @@ public class IteratorTest extends AbstractPolyglotTest {
                 expected[i] = items[i];
             }
         }
-        setupEnv(Context.create());
+        setupEnv(Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowMutableDefaultMappings(true).build()).build());
         Value iterable = context.asValue(new Array(items, expected.length, Array.UNLIMITED));
         verifyIterable(iterable, expected, true);
         iterable = context.asValue(new ExecutableProxyIterableImpl(items, expected.length));

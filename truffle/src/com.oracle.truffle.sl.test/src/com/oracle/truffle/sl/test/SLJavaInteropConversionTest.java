@@ -110,7 +110,7 @@ public class SLJavaInteropConversionTest {
                         "  obj.b = new();\n" +
                         "  return validator.validateObject(obj, obj);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator());
@@ -126,7 +126,7 @@ public class SLJavaInteropConversionTest {
                         "  obj.b = new();\n" +
                         "  return validator.validateMap(obj, obj);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator());

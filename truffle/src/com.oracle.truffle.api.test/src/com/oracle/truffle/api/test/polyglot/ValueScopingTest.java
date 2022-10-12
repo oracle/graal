@@ -187,7 +187,7 @@ public class ValueScopingTest {
 
     @Test
     public void testStoreAndPin() {
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).allowPublicAccess(true).build();
+        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).allowPublicAccess(true).allowMutableDefaultMappings(true).build();
         try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
             StoreAndPinTest o = new StoreAndPinTest();
             Map<String, Object> map = new HashMap<>();

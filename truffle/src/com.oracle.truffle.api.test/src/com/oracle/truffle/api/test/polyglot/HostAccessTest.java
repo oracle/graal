@@ -337,7 +337,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testArrayAccessEnabled() {
-        setupEnv(HostAccess.newBuilder().allowArrayAccess(true));
+        setupEnv(HostAccess.newBuilder().allowArrayAccess(true).allowMutableDefaultMappings(true));
         int[] array = new int[]{1, 2, 3};
         Value value = context.asValue(array);
         assertTrue(value.hasArrayElements());
@@ -362,13 +362,13 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testArrayAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowArrayAccess(false));
+        setupEnv(HostAccess.newBuilder().allowArrayAccess(false).allowMutableDefaultMappings(true));
         assertArrayAccessDisabled(context);
     }
 
     @Test
     public void testPublicAccessNoArrayAccess() {
-        setupEnv(HostAccess.newBuilder().allowPublicAccess(true));
+        setupEnv(HostAccess.newBuilder().allowPublicAccess(true).allowMutableDefaultMappings(true));
         assertArrayAccessDisabled(context);
     }
 
@@ -381,13 +381,13 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testBufferAccessEnabled() {
-        setupEnv(HostAccess.newBuilder().allowBufferAccess(true));
+        setupEnv(HostAccess.newBuilder().allowBufferAccess(true).allowMutableDefaultMappings(true));
         assertBufferAccessEnabled(context);
     }
 
     @Test
     public void testBufferAccessEnabledHostAccessCloned() {
-        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
+        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).allowMutableDefaultMappings(true).build();
         setupEnv(HostAccess.newBuilder(hostAccess));
         assertBufferAccessEnabled(context);
     }
@@ -407,7 +407,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testBufferAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowBufferAccess(false));
+        setupEnv(HostAccess.newBuilder().allowBufferAccess(false).allowMutableDefaultMappings(true));
         ByteBuffer buffer = ByteBuffer.allocate(2);
         Value value = context.asValue(buffer);
         assertSame(buffer, value.asHostObject());
@@ -440,7 +440,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testListAccessEnabled() {
-        setupEnv(HostAccess.newBuilder().allowListAccess(true));
+        setupEnv(HostAccess.newBuilder().allowListAccess(true).allowMutableDefaultMappings(true));
         List<Integer> array = new ArrayList<>(Arrays.asList(1, 2, 3));
         Value value = context.asValue(array);
         assertTrue(value.hasArrayElements());
@@ -467,13 +467,13 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testListAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowListAccess(false));
+        setupEnv(HostAccess.newBuilder().allowListAccess(false).allowMutableDefaultMappings(true));
         assertListAccessDisabled(context, false);
     }
 
     @Test
     public void testIterableAccessEnabled() {
-        setupEnv(HostAccess.newBuilder().allowIterableAccess(true));
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(true).allowMutableDefaultMappings(true));
         Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
         Value value = context.asValue(iterable);
         assertTrue(value.hasIterator());
@@ -494,13 +494,13 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testIterableAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(false).allowMutableDefaultMappings(true));
         assertIterableAccessDisabled(context);
     }
 
     @Test
     public void testIteratorAccessEnabled() {
-        setupEnv(HostAccess.newBuilder().allowIteratorAccess(true));
+        setupEnv(HostAccess.newBuilder().allowIteratorAccess(true).allowMutableDefaultMappings(true));
         Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
         Value value = context.asValue(iterator);
         assertTrue(value.hasIteratorNextElement());
@@ -520,7 +520,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testMapAccessEnabled() {
-        setupEnv(HostAccess.newBuilder().allowMapAccess(true));
+        setupEnv(HostAccess.newBuilder().allowMapAccess(true).allowMutableDefaultMappings(true));
         Map<Integer, String> map = new HashMap<>();
         map.put(1, Integer.toBinaryString(1));
         map.put(2, Integer.toBinaryString(2));
@@ -550,19 +550,19 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testMapAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        setupEnv(HostAccess.newBuilder().allowMapAccess(false).allowMutableDefaultMappings(true));
         assertMapAccessDisabled(context);
     }
 
     @Test
     public void testIteratorAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowIteratorAccess(false));
+        setupEnv(HostAccess.newBuilder().allowIteratorAccess(false).allowMutableDefaultMappings(true));
         assertIteratorAccessDisabled(context);
     }
 
     @Test
     public void testPublicAccessNoListAccess() {
-        setupEnv(HostAccess.newBuilder().allowPublicAccess(true).allowListAccess(false));
+        setupEnv(HostAccess.newBuilder().allowPublicAccess(true).allowListAccess(false).allowMutableDefaultMappings(true));
         assertListAccessDisabled(context, false);
     }
 
@@ -741,6 +741,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.allowArrayAccess(true);
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
+        builder.allowMutableDefaultMappings(true);
         setupEnv(builder);
 
         List<TargetClass1> list = context.asValue(new String[]{"42", "42"}).as(TARGET_CLASS_LIST);
@@ -760,6 +761,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         builder.allowArrayAccess(true);
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.startsWith("42"), (v) -> new TargetClass1(v));
+        builder.allowMutableDefaultMappings(true);
         setupEnv(builder);
 
         list = context.asValue(new String[]{"42", "422"}).as(TARGET_CLASS_LIST);
@@ -779,6 +781,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.allowArrayAccess(true);
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
+        builder.allowMutableDefaultMappings(true);
         setupEnv(builder);
 
         Map<Long, TargetClass1> map = context.asValue(new String[]{"42", "42"}).as(TARGET_CLASS_MAP_LONG);
@@ -798,6 +801,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         builder.allowArrayAccess(true);
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.startsWith("42"), (v) -> new TargetClass1(v));
+        builder.allowMutableDefaultMappings(true);
         setupEnv(builder);
 
         map = context.asValue(new String[]{"42", "422"}).as(TARGET_CLASS_MAP_LONG);
@@ -823,6 +827,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v != null && v.equals("42"), (v) -> new TargetClass1(v));
         builder.targetTypeMapping(TargetClass1.class, String.class, (v) -> v != null && v.o.equals("42"), (v) -> (String) v.o);
+        builder.allowMutableDefaultMappings(true);
         setupEnv(builder);
 
         ConverterMapTestObject testObj = new ConverterMapTestObject("42", "42");
@@ -851,6 +856,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         builder = HostAccess.newBuilder();
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.startsWith("42"), (v) -> new TargetClass1(v));
+        builder.allowMutableDefaultMappings(true);
         setupEnv(builder);
 
         map = context.asValue(new ConverterMapTestObject("42", "422")).as(TARGET_CLASS_MAP_STRING);
@@ -1172,23 +1178,23 @@ public class HostAccessTest extends AbstractHostAccessTest {
         Function<Void, String> convertedFunction = (a) -> "ConvertedFunction";
 
         setupEnv(HostAccess.ALL);
-        assertEquals("OriginalFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("OriginalFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.HIGHEST));
-        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("ConvertedFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.HIGH));
-        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("ConvertedFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.LOW));
-        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("ConvertedFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.LOWEST));
-        assertEquals("OriginalFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("OriginalFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
     }
 
     public static class NoCoercion {
@@ -1508,19 +1514,19 @@ public class HostAccessTest extends AbstractHostAccessTest {
         setupEnv(HostAccess.ALL);
         assertFails(() -> context.asValue(obj).invokeMember("m", arg), IllegalArgumentException.class);
 
-        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+        setupEnv(HostAccess.newBuilder().allowMutableDefaultMappings(true).targetTypeMapping(Map.class, TestObjectProxy2.class, null,
                         (v) -> null, TargetMappingPrecedence.HIGHEST));
         assertEquals("proxy2", context.asValue(obj).invokeMember("m", arg).asString());
 
-        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+        setupEnv(HostAccess.newBuilder().allowMutableDefaultMappings(true).targetTypeMapping(Map.class, TestObjectProxy2.class, null,
                         (v) -> null, TargetMappingPrecedence.HIGH));
         assertEquals("proxy2", context.asValue(obj).invokeMember("m", arg).asString());
 
-        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+        setupEnv(HostAccess.newBuilder().allowMutableDefaultMappings(true).targetTypeMapping(Map.class, TestObjectProxy2.class, null,
                         (v) -> null, TargetMappingPrecedence.LOW));
         assertEquals("proxy2", context.asValue(obj).invokeMember("m", arg).asString());
 
-        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+        setupEnv(HostAccess.newBuilder().allowMutableDefaultMappings(true).targetTypeMapping(Map.class, TestObjectProxy2.class, null,
                         (v) -> null, TargetMappingPrecedence.LOWEST));
         assertFails(() -> context.asValue(obj).invokeMember("m", arg), IllegalArgumentException.class);
     }
@@ -2204,5 +2210,86 @@ public class HostAccessTest extends AbstractHostAccessTest {
             assertEquals(BigInteger.class.getName() + ".add", cxt.asValue(BigInteger.ZERO).getMember("add").toString());
             assertEquals(int[].class.getName() + ".clone", cxt.asValue(new int[0]).getMember("clone").toString());
         }
+    }
+
+    public static class StringMapTestObject {
+
+        public String s0;
+        public String s1;
+
+        StringMapTestObject(String s0, String s1) {
+            this.s0 = s0;
+            this.s1 = s1;
+        }
+
+    }
+
+    public static class StringListTestObject {
+
+        public String s0;
+        public String s1;
+
+        StringListTestObject(String s0, String s1) {
+            this.s0 = s0;
+            this.s1 = s1;
+        }
+
+    }
+
+    static final TypeLiteral<Map<String, String>> MAP_STRING = new TypeLiteral<>() {
+    };
+    static final TypeLiteral<List<String>> LIST_STRING = new TypeLiteral<>() {
+    };
+
+    @Test
+    public void testMutableObjectMappingEnabled() {
+        setupEnv(HostAccess.newBuilder(HostAccess.ALL).build());
+        StringMapTestObject map = new StringMapTestObject("a", "b");
+        Value v2 = context.asValue(map);
+        Map<String, String> m = v2.as(MAP_STRING);
+        assertEquals("b", m.get("s1"));
+    }
+
+    @Test
+    public void testMutableObjectMappingDisabled() {
+        setupEnv(HostAccess.newBuilder(HostAccess.ALL).allowMutableDefaultMappings(false).build());
+        StringListTestObject list = new StringListTestObject("a", "b");
+        Value v1 = context.asValue(list);
+        assertFails(() -> v1.as(LIST_STRING), ClassCastException.class);
+
+        StringMapTestObject map = new StringMapTestObject("a", "b");
+        Value v2 = context.asValue(map);
+        assertFails(() -> v2.as(MAP_STRING), ClassCastException.class);
+    }
+
+    /**
+     * Target type mappings with lower precedence than default are still applied even if mutable
+     * default mappings are disabled.
+     */
+    @Test
+    public void testMutableObjectMappingDisabledWithLowestCustomTargetType() {
+        HostAccess.Builder habuilder = HostAccess.newBuilder(HostAccess.EXPLICIT);
+        habuilder.allowMutableDefaultMappings(false);
+        habuilder.targetTypeMapping(Value.class, Map.class, null, (s) -> {
+            return Map.of("replaced", "a");
+        }, TargetMappingPrecedence.LOWEST);
+
+        setupEnv(habuilder.build());
+        StringMapTestObject guestMap = new StringMapTestObject("a", "b");
+        Value v2 = context.asValue(guestMap);
+        assertTrue(v2.as(MAP_STRING).containsKey("replaced"));
+    }
+
+    @Test
+    public void testMutableObjectMappingEnabledWithLowestCustomTargetType() {
+        HostAccess.Builder habuilder = HostAccess.newBuilder(HostAccess.ALL);
+        habuilder.targetTypeMapping(Value.class, Map.class, null, (s) -> {
+            return Map.of("replaced", "a");
+        }, TargetMappingPrecedence.LOWEST);
+
+        setupEnv(habuilder.build());
+        StringMapTestObject guestMap = new StringMapTestObject("a", "b");
+        Value v2 = context.asValue(guestMap);
+        assertEquals("b", v2.as(MAP_STRING).get("s1"));
     }
 }

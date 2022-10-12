@@ -88,6 +88,7 @@ final class HostContext {
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
     private boolean hostLookupAllowed;
+    private boolean mutableObjectMappingAllowed;
     final TruffleLanguage.Env env;
     final AbstractHostAccess access;
 
@@ -117,7 +118,7 @@ final class HostContext {
      * preinitialization.
      */
     @SuppressWarnings("hiding")
-    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, boolean mutableObjectMappingAllowed) {
         if (classloader != null && this.classFilter != null || this.hostClassLoadingAllowed || this.hostLookupAllowed) {
             throw new AssertionError("must not be used during context preinitialization");
         }
@@ -126,6 +127,7 @@ final class HostContext {
         this.classFilter = clFilter;
         this.hostClassLoadingAllowed = hostCLAllowed;
         this.hostLookupAllowed = hostLookupAllowed;
+        this.mutableObjectMappingAllowed = mutableObjectMappingAllowed;
     }
 
     public HostClassCache getHostClassCache() {
@@ -260,6 +262,10 @@ final class HostContext {
             default:
                 return null;
         }
+    }
+
+    boolean isMutableObjectMappingAllowed() {
+        return mutableObjectMappingAllowed;
     }
 
     void addToHostClasspath(TruffleFile classpathEntry) {

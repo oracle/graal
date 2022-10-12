@@ -2803,7 +2803,7 @@ public class LanguageSPITest {
     public void testBindingsWithDefaultScope() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
 
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build();
         Value bindings = c.getBindings(ProxyLanguage.ID);
         assertTrue(bindings.hasMembers());
         assertFalse(bindings.hasMember(""));
@@ -2826,7 +2826,7 @@ public class LanguageSPITest {
     }
 
     private void testBindingsWithSimpleScope(TestScope scope) {
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build();
         assertEquals(0, findScopeInvokes);
         Value bindings = c.getBindings(ProxyLanguage.ID);
         c.getBindings(ProxyLanguage.ID);
@@ -2883,7 +2883,7 @@ public class LanguageSPITest {
 
     private void testBindingsWithMultipleScopes(TestScope[] scopes) {
 
-        Context c = Context.create();
+        Context c = Context.newBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build();
 
         assertEquals(0, findScopeInvokes);
         Value bindings = c.getBindings(ProxyLanguage.ID);
@@ -2960,7 +2960,7 @@ public class LanguageSPITest {
             }
         });
 
-        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build();
         Value languageBindings = c.eval(ProxyLanguage.ID, "");
         Value polyglotBindings = c.getPolyglotBindings();
 
