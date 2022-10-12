@@ -32,10 +32,10 @@ public final class InvokeInterfaceQuickNode extends InvokeQuickNode {
 
     @Child InvokeInterface.WithoutNullCheck invokeInterface;
 
-    public InvokeInterfaceQuickNode(Method resolutionSeed, int top, int curBCI) {
-        super(resolutionSeed, top, curBCI);
-        assert !resolutionSeed.isStatic();
-        this.invokeInterface = InvokeInterfaceNodeGen.WithoutNullCheckNodeGen.create(resolutionSeed);
+    public InvokeInterfaceQuickNode(Method method, int top, int curBCI) {
+        super(method, top, curBCI);
+        assert !method.isStatic();
+        this.invokeInterface = insert(InvokeInterfaceNodeGen.WithoutNullCheckNodeGen.create(method));
     }
 
     @Override

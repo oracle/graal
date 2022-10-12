@@ -40,7 +40,7 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
         assert method.isStatic();
         this.isDoPrivilegedCall = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
                         Name.doPrivileged.equals(method.getName());
-        this.invokeStatic = InvokeStaticNodeGen.create(method);
+        this.invokeStatic = insert(InvokeStaticNodeGen.create(method));
     }
 
     @Override
