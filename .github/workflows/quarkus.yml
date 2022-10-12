@@ -95,7 +95,7 @@ jobs:
       run: |
         json=$(tr -d '\n' < ${QUARKUS_PATH}/.github/native-tests.json )
         echo $json
-        echo "::set-output name=matrix::${json}"
+        echo "matrix=${json}" >> $GITHUB_OUTPUT
     - name: Tar Maven Repo
       shell: bash
       run: tar -czvf maven-repo.tgz -C ~ .m2/repository
