@@ -39,9 +39,7 @@ import jdk.jfr.consumer.RecordedObject;
 
 public class TestJavaMonitorEnter extends JfrTest {
     private static final int MILLIS = 60;
-
-    static volatile boolean inCritical = false;
-    static volatile boolean blockedAtCritical = false;
+    static volatile boolean passedCheckpoint = false;
     static Thread firstThread;
     static Thread secondThread;
     static final Helper helper = new Helper();
@@ -82,11 +80,7 @@ public class TestJavaMonitorEnter extends JfrTest {
 
         Runnable second = () -> {
             try {
-                // wait until lock is held
-                while (!inCritical) {
-                    Thread.sleep(10);
-                }
-                blockedAtCritical = true;
+                passedCheckpoint = true;
                 helper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -95,7 +89,6 @@ public class TestJavaMonitorEnter extends JfrTest {
         firstThread = new Thread(first);
         secondThread = new Thread(second);
         firstThread.start();
-        secondThread.start();
 
         firstThread.join();
         secondThread.join();
@@ -103,19 +96,17 @@ public class TestJavaMonitorEnter extends JfrTest {
 
     static class Helper {
         private synchronized void doWork() throws InterruptedException {
-            inCritical = true;
             if (Thread.currentThread().equals(secondThread)) {
-                inCritical = false;
                 return; // second thread doesn't need to do work.
             }
+            // ensure ordering of critical section entry
+            secondThread.start();
 
             // spin until second thread blocks
-            while (!secondThread.getState().equals(Thread.State.BLOCKED) || !blockedAtCritical) {
+            while (!secondThread.getState().equals(Thread.State.BLOCKED) || !passedCheckpoint) {
                 Thread.sleep(10);
             }
-
             Thread.sleep(MILLIS);
-            inCritical = false;
         }
     }
 }

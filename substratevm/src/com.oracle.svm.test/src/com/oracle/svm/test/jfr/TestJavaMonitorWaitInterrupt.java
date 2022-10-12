@@ -46,10 +46,8 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
     static Thread interrupterThread;
     static Thread simpleWaitThread;
     static Thread simpleNotifyThread;
-
     private boolean interruptedFound = false;
     private boolean simpleWaitFound = false;
-    static volatile boolean inCritical = false;
 
     @Override
     public String[] getTestedEvents() {
@@ -103,9 +101,6 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable interrupter = () -> {
             try {
-                while (!inCritical) {
-                    Thread.sleep(10);
-                }
                 helper.interrupt();
             } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
@@ -114,7 +109,6 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         interrupterThread = new Thread(interrupter);
         interruptedThread.start();
-        interrupterThread.start();
         interruptedThread.join();
         interrupterThread.join();
     }
@@ -130,9 +124,6 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         Runnable simpleNotifier = () -> {
             try {
-                while (!inCritical) {
-                    Thread.sleep(10);
-                }
                 helper.simpleNotify();
             } catch (Exception e) {
                 Assert.fail(e.getMessage());
@@ -143,7 +134,6 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
         simpleNotifyThread = new Thread(simpleNotifier);
 
         simpleWaitThread.start();
-        simpleNotifyThread.start();
         simpleWaitThread.join();
         simpleNotifyThread.join();
     }
@@ -151,7 +141,6 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
     @Test
     public void test() throws Exception {
         testInterruption();
-        inCritical = false; // reset
         testWaitNotify();
     }
 
@@ -160,7 +149,8 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         public synchronized void interrupt() throws InterruptedException {
             if (Thread.currentThread().equals(interruptedThread)) {
-                inCritical = true; // Ensure T1 enters critical section first
+                // Ensure T1 enters critical section first
+                interrupterThread.start();
                 wait(); // allow T2 to enter section
             } else if (Thread.currentThread().equals(interrupterThread)) {
                 // If T2 is in the critical section T1 is already waiting.
@@ -171,7 +161,7 @@ public class TestJavaMonitorWaitInterrupt extends JfrTest {
 
         public synchronized void simpleNotify() throws InterruptedException {
             if (Thread.currentThread().equals(simpleWaitThread)) {
-                inCritical = true;
+                simpleNotifyThread.start();
                 wait();
             } else if (Thread.currentThread().equals(simpleNotifyThread)) {
                 Thread.sleep(MILLIS);
