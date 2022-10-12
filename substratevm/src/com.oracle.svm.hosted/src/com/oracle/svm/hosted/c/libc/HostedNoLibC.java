@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux;
+package com.oracle.svm.hosted.c.libc;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.libc.LibCSpecific;
-import com.oracle.svm.core.posix.PosixLibCSupport;
-import com.oracle.svm.core.posix.headers.linux.LinuxErrno;
-import com.oracle.svm.core.c.libc.BionicLibC;
+import com.oracle.svm.core.c.libc.NoLibC;
+import com.oracle.svm.core.util.VMError;
 
-class LinuxLibCSupport extends PosixLibCSupport {
+import java.util.List;
+
+public class HostedNoLibC extends NoLibC implements HostedLibCBase {
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int errno() {
-        return LinuxErrno.__errno_location().read();
+    public String getTargetCompiler() {
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setErrno(int value) {
-        LinuxErrno.__errno_location().write(value);
-    }
-}
-
-@LibCSpecific(BionicLibC.class)
-class BionicLibCSupport extends PosixLibCSupport {
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int errno() {
-        return LinuxErrno.__errno().read();
+    public List<String> getAdditionalQueryCodeCompilerOptions() {
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setErrno(int value) {
-        LinuxErrno.__errno().write(value);
+    public boolean requiresLibCSpecificStaticJDKLibraries() {
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
+
 }

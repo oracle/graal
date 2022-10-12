@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import com.oracle.svm.core.posix.linux.libc.GLibC;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCSpecific;
 
 // Checkstyle: stop

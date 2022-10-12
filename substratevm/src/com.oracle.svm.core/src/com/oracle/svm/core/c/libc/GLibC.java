@@ -22,18 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
+package com.oracle.svm.core.c.libc;
 
-import java.util.Collections;
-import java.util.List;
+public class GLibC implements LibCBase {
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.util.UserError;
-
-public class MuslLibC implements LibCBase {
-
-    public static final String NAME = "musl";
+    public static final String NAME = "glibc";
 
     @Override
     public String getName() {
@@ -41,30 +34,7 @@ public class MuslLibC implements LibCBase {
     }
 
     @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        /* Avoid the dependency to muslc for builds cross compiling to muslc. */
-        return Collections.singletonList("--static");
-    }
-
-    @Override
-    public String getTargetCompiler() {
-        return "x86_64-linux-musl-gcc";
-    }
-
-    @Override
     public boolean hasIsolatedNamespaces() {
-        return false;
-    }
-
-    @Override
-    public boolean requiresLibCSpecificStaticJDKLibraries() {
         return true;
-    }
-
-    @Override
-    public void checkIfLibCSupported() {
-        if (!SubstrateOptions.StaticExecutable.getValue()) {
-            throw UserError.abort("Musl can only be used for statically linked executables.");
-        }
     }
 }

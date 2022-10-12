@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -46,6 +47,7 @@ import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -277,6 +279,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
                     // Drop global symbols in linked static libraries: not covered by --dynamic-list
                     additionalPreOptions.add("-Wl,--exclude-libs,ALL");
+
+                    additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
                 } catch (IOException e) {
                     VMError.shouldNotReachHere();
                 }
@@ -558,7 +562,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         Collection<String> libraries = nativeLibs.getLibraries();
-        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getName().equals("bionic")) {
+        if (Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(BionicLibC.class)) {
             // on Bionic LibC pthread.h and rt.h are included in standard library and adding them in
             // linker call produces error
             libraries = libraries.stream().filter(library -> !Arrays.asList("pthread", "rt").contains(library)).collect(Collectors.toList());

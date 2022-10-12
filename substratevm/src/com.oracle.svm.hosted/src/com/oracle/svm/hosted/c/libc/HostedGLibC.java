@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
+package com.oracle.svm.hosted.c.libc;
+
+import com.oracle.svm.core.c.libc.GLibC;
 
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.c.libc.LibCBase;
-
-public class GLibC implements LibCBase {
-
-    public static final String NAME = "glibc";
-
-    @Override
-    public String getName() {
-        return NAME;
-    }
-
+public class HostedGLibC extends GLibC implements HostedLibCBase {
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {
         return Collections.emptyList();
@@ -46,11 +38,6 @@ public class GLibC implements LibCBase {
     @Override
     public String getTargetCompiler() {
         return "gcc";
-    }
-
-    @Override
-    public boolean hasIsolatedNamespaces() {
-        return true;
     }
 
     @Override

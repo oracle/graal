@@ -48,10 +48,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.util.ClassUtil;
 
@@ -215,7 +215,7 @@ public abstract class CCompilerInvoker {
         @Override
         protected String getDefaultCompiler() {
             if (Platform.includedIn(Platform.LINUX.class)) {
-                return LibCBase.singleton().getTargetCompiler();
+                return HostedLibCBase.singleton().getTargetCompiler();
             }
             return "gcc";
         }

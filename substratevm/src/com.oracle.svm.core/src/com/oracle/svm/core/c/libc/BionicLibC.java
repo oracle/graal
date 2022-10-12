@@ -24,21 +24,17 @@
  */
 package com.oracle.svm.core.c.libc;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+public class BionicLibC implements LibCBase {
 
-public interface LibCBase {
-    @Fold
-    static boolean targetLibCIs(Class<? extends LibCBase> libCBase) {
-        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
-        return libCBase.isAssignableFrom(currentLibC.getClass());
+    public static final String NAME = "bionic";
+
+    @Override
+    public String getName() {
+        return NAME;
     }
 
-    String getName();
-
-    static LibCBase singleton() {
-        return ImageSingletons.lookup(LibCBase.class);
+    @Override
+    public boolean hasIsolatedNamespaces() {
+        return false;
     }
-
-    boolean hasIsolatedNamespaces();
 }
