@@ -29,24 +29,16 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
     ```shell
     csruntimectl java list
     ```
-    
-    The output is similar to:
-    
-    ```shell
-      graalvmeejdk-17.0.4           /usr/lib64/graalvm/graalvm22-ee-java17
-    * openjdk-11.0.15               /usr/lib/jvm/java-11-openjdk-11.0.15.0.9-2.0.1.el7_9.x86_64
-      openjdk-1.8.0.332             /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.332.b09-1.el7_9.x86_64
-    ```
-    The JDK marked with an asterisk is the current JDK.
+    The output lists the following JDKs: the latest GraalVM JDK for Java 17, OpenJDK for Java 11 and OpenJDK for Java 8. The JDK marked with an asterisk (OpenJDK Java 11) is the current JDK.
 
 2. Select GraalVM JDK as the current JDK:
 
     ```shell
-    csruntimectl java set graalvmeejdk-17.0.4
+    csruntimectl java set graalvmeejdk-17.x
     ```
     You will see the confirmation message printed:
     ```shell
-    The current managed java version is set to graalvmeejdk-17.0.4.
+    The current managed java version is set to graalvmeejdk-17.x
     ```
 
 3. (Optional) Check software version and environment variables:
@@ -100,27 +92,23 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 
 ### Quick Build Mode Enabled
 
-1. To enable the quick build mode, open _pom.xml_ in the Code Editor, find and uncomment this line:
-
-    ```xml
-    <buildArg>-Ob</buildArg>
-    ```
-2. Build a native executable using the `native` Maven profile:
+1. Build a native executable using the `native` Maven profile. The quick build mode is enabled for this run: notice the `<buildArg>-Ob</buildArg>` option in plugin's configuration in _pom.xml_.
 
     ```
     export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
     mvn clean -Pnative -DskipTests package
     ```
+
     This will generate a native executable for Linux in the _target_ directory, named _my-app_.
 
-3. Run the native executable:
+2. Run the native executable:
     ```shell
     ./target/my-app
     ```
 
 ### Quick Build Mode Disabled
 
-1. To disable the quick build mode, find and comment out this line in _pom.xml_:
+1. To disable the quick build mode, uncomment out this line in _pom.xml_:
  
     ```xml
     <!-- <buildArg>-Ob</buildArg> -->
