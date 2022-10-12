@@ -120,7 +120,6 @@ public class SubstrateJVM {
 
     private void handleMirrorEvents() {
         for (long id : com.oracle.svm.core.jfr.JfrMetadataTypeLibrary.getMirrorEvents()) {
-            JfrMetadataTypeLibrary.removeType(id);
             setEnabled(id, true);
         }
     }

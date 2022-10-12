@@ -50,25 +50,19 @@ import com.oracle.svm.core.annotate.TargetClass;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrMetadataTypeLibrary {
     private static final HashMap<String, Type> types = new HashMap<>();
-    private static final TypeLibrary typeLibrary = TypeLibrary.getInstance();
     private static List<Long> mirrorEvents = new ArrayList<>();
 
     private static void addMirrorEvent(Class<?> svmClass, Class<?> internalClass) {
         PlatformEventType et = (PlatformEventType) TypeLibrary.createType(svmClass, Collections.emptyList(), Collections.emptyList());
-        long id = Type.getTypeId(internalClass);
-        et.setId(id);
+        et.setId(Type.getTypeId(internalClass));
         types.put(et.getName(), et);
-        mirrorEvents.add(id);
+        mirrorEvents.add(et.getId());
     }
 
     private static void addMirrorEvents() {
         if (JavaVersionUtil.JAVA_SPEC > 17) {
             addMirrorEvent(com.oracle.svm.core.jfr.events.ThreadSleepEvent.class, Target_jdk_internal_event_ThreadSleepEvent.class);
         }
-    }
-
-    public static void removeType(long id) {
-        typeLibrary.removeType(id);
     }
 
     public static List<Long> getMirrorEvents() {
