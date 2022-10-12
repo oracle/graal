@@ -393,6 +393,11 @@ public abstract class NativeImageCodeCache {
         for (Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> entry : deoptEntries) {
             HostedMethod method = imageHeap.getUniverse().lookup(entry.getKey());
 
+            if (method.hasCalleeSavedRegisters()) {
+                System.out.println("DeoptEntry has callee saved registers: " + method.format("%H.%n(%p)"));
+                hasError = true;
+            }
+
             List<Entry<Long, DeoptSourceFrameInfo>> sourceFrameInfos = new ArrayList<>(entry.getValue().entrySet());
             sourceFrameInfos.sort(Comparator.comparingLong(Entry::getKey));
 
@@ -428,16 +433,23 @@ public abstract class NativeImageCodeCache {
         }
 
         /*
-         * DeoptEntries corresponding to explicit instructions must have registered exception
-         * handlers and DeoptEntries corresponding to exception objects cannot.
+         * All DeoptEntries not corresponding to exception objects must have an exception handler.
          */
-        if (!targetFrame.duringCall()) {
-            boolean hasExceptionHandler = result.getExceptionOffset() != 0;
-            if (!targetFrame.rethrowException() && !hasExceptionHandler) {
+        boolean hasExceptionHandler = result.getExceptionOffset() != 0;
+        if (!targetFrame.duringCall() && !targetFrame.rethrowException()) {
+            if (!hasExceptionHandler) {
                 return error(method, encodedBci, "no exception handler registered for deopt entry");
-            } else if (targetFrame.rethrowException() && hasExceptionHandler) {
+            }
+        } else if (!targetFrame.duringCall() && targetFrame.rethrowException()) {
+            if (hasExceptionHandler) {
                 return error(method, encodedBci, "exception handler registered for rethrowException");
             }
+        } else if (targetFrame.duringCall() && !targetFrame.rethrowException()) {
+            if (!hasExceptionHandler) {
+                return error(method, encodedBci, "no exception handler registered for deopt entry");
+            }
+        } else {
+            return error(method, encodedBci, "invalid encoded bci");
         }
 
         /*
