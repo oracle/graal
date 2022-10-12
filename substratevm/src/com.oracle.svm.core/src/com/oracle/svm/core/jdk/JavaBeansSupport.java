@@ -25,33 +25,41 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+
+import java.awt.Component;
+import java.beans.Customizer;
 import com.sun.beans.finder.ClassFinder;
 
 @SuppressWarnings({"static-method", "unused"})
-public final class JavaBeansSubstitutions {
+public final class JavaBeansSupport {
+
+    /** Remains null as long as the reachability handler has not triggered. */
+    private Class<?> COMPONENT_CLASS = null;
+
     // Checkstyle: stop
-
-    // Do not make string final to avoid class name interception
-    // in Class.forName(...) call
-    private static String COMPONENT_CLASS = "java.awt.Component";
-    private static String CUSTOMIZER_CLASS = "java.beans.Customizer";
-
     @TargetClass(className = "java.beans.Introspector")
     static final class Target_java_beans_Introspector {
 
-        /**
-         * Do not load java.awt.Component and java.beans.Customizer classes
-         * when they are not used
-         */
         @Substitute
         private static Class<?> findCustomizerClass(Class<?> type) {
             String name = type.getName() + "Customizer";
             try {
                 type = ClassFinder.findClass(name, type.getClassLoader());
-                if (Class.forName(COMPONENT_CLASS).isAssignableFrom(type)
-                        && Class.forName(CUSTOMIZER_CLASS).isAssignableFrom(type)) {
+                // Each customizer should inherit java.awt.Component and implement java.beans.Customizer
+                // according to the section 9.3 of JavaBeans specification
+                Class<?> componentClass = lookupComponentClass();
+                // The Customizer does not extend java.awt.Component because
+                // java.awt.Component class is not reachable.
+                if (componentClass == null) {
+                    return null;
+                }
+                if (componentClass.isAssignableFrom(type) && Customizer.class.isAssignableFrom(type)) {
                     return type;
                 }
             } catch (Exception exception) {
@@ -61,4 +69,17 @@ public final class JavaBeansSubstitutions {
         }
     }
     // Checkstyle: resume
+
+    private static Class<?> lookupComponentClass() {
+        return ImageSingletons.lookup(JavaBeansSupport.class).COMPONENT_CLASS;
+    }
+
+    private Class<?> getComponentClass() {
+        return COMPONENT_CLASS;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void enableComponentClass() {
+        ImageSingletons.lookup(JavaBeansSupport.class).COMPONENT_CLASS = Component.class;
+    }
 }
