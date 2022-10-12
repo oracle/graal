@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -294,8 +293,6 @@ public class HostedUniverse implements Universe {
     protected List<HostedField> orderedFields;
     protected List<HostedMethod> orderedMethods;
 
-    Map<String, Integer> uniqueHostedMethodNames = new ConcurrentHashMap<>();
-
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
     }
@@ -309,17 +306,6 @@ public class HostedUniverse implements Universe {
         HostedInstanceClass result = (HostedInstanceClass) kindToType.get(JavaKind.Object);
         assert result != null;
         return result;
-    }
-
-    public synchronized HostedMethod createDeoptTarget(HostedMethod deoptOrigin) {
-        assert !deoptOrigin.isDeoptTarget();
-        if (deoptOrigin.compilationInfo.getDeoptTargetMethod() == null) {
-            HostedMethod deoptTarget = HostedMethod.create(this, deoptOrigin.getWrapped(), deoptOrigin.getDeclaringClass(),
-                            deoptOrigin.getSignature(), deoptOrigin.getConstantPool(), deoptOrigin.getExceptionHandlers(), deoptOrigin);
-            assert deoptOrigin.staticAnalysisResults != null;
-            deoptTarget.staticAnalysisResults = deoptOrigin.staticAnalysisResults;
-        }
-        return deoptOrigin.compilationInfo.getDeoptTargetMethod();
     }
 
     public boolean contains(JavaType type) {
@@ -539,7 +525,7 @@ public class HostedUniverse implements Universe {
              * executed, and we do not want a deoptimization target as the first method (because
              * offset 0 means no deoptimization target available).
              */
-            int result = Boolean.compare(o1.compilationInfo.isDeoptTarget(), o2.compilationInfo.isDeoptTarget());
+            int result = Boolean.compare(o1.isDeoptTarget(), o2.isDeoptTarget());
             if (result != 0) {
                 return result;
             }

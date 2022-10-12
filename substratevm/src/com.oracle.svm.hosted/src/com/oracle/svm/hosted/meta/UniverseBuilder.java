@@ -172,7 +172,6 @@ public class UniverseBuilder {
 
             processFieldLocations();
 
-            hUniverse.uniqueHostedMethodNames.clear();
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
             Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
@@ -287,9 +286,9 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod sMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
+        HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers);
         assert !hUniverse.methods.containsKey(aMethod);
-        hUniverse.methods.put(aMethod, sMethod);
+        hUniverse.methods.put(aMethod, hMethod);
 
         boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
         boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
@@ -626,14 +625,13 @@ public class UniverseBuilder {
             list.add(method);
         }
 
-        HostedMethod[] noMethods = new HostedMethod[0];
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
                 Collections.sort(list, HostedUniverse.METHOD_COMPARATOR);
-                type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
+                type.allDeclaredMethods = list.toArray(HostedMethod.EMPTY_ARRAY);
             } else {
-                type.allDeclaredMethods = noMethods;
+                type.allDeclaredMethods = HostedMethod.EMPTY_ARRAY;
             }
         }
     }
@@ -737,7 +735,7 @@ public class UniverseBuilder {
             }
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
-                type.vtable = new HostedMethod[0];
+                type.vtable = HostedMethod.EMPTY_ARRAY;
             }
 
             HostedMethod[] vtableArray = type.vtable;
