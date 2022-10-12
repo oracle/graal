@@ -29,19 +29,19 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
     ```shell
     csruntimectl java list
     ```
-    The output lists the following JDKs: the latest GraalVM JDK for Java 17, OpenJDK for Java 11 and OpenJDK for Java 8. The JDK marked with an asterisk (OpenJDK Java 11) is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, OpenJDK for Java 11, and OpenJDK for Java 8. The JDK marked with an asterisk is the current JDK.
 
-2. Select GraalVM JDK as the current JDK:
+2. Select GraalVM JDK for Java 17 as the current JDK:
 
     ```shell
-    csruntimectl java set graalvmeejdk-17.x
+    csruntimectl java set graalvmeejdk-17
     ```
     You will see the confirmation message printed:
     ```shell
-    The current managed java version is set to graalvmeejdk-17.x
+    The current managed java version is set to graalvmeejdk-17
     ```
 
-3. (Optional) Check software version and environment variables:
+3. Confirm the values of the environment variables `JAVA_HOME` and `PATH`, and the version of `java`, the `native-image` generator:
     ```shell
     echo $JAVA_HOME
     echo $PATH
@@ -95,7 +95,8 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 1. Build a native executable using the `native` Maven profile. The quick build mode is enabled for this run: notice the `<buildArg>-Ob</buildArg>` option in plugin's configuration in _pom.xml_.
 
     ```
-    export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+    # export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+    
     mvn clean -Pnative -DskipTests package
     ```
 
@@ -116,7 +117,8 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 2. Build a native executable again:
 
     ```
-    export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+    # export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+    
     mvn clean -Pnative -DskipTests package
     ```
     This will generate a native executable, _my-app_, in the _target_ directory, replacing the previous one. You have probably noticed how the quick build mode reduce the time required to generate a native executable, making it easier to use Native Image in a typical development cycle (compile, test, and debug). However, the size of a generated executable gets larger and peak performance worse. The quick build mode is recommended for development purposes only. 
@@ -131,7 +133,7 @@ The Code Editor allows you to accomplish quick coding tasks and run applications
 
 ### Related Documentation
 
-- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-hello-world)
-- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
+- [Java Hello World with GraalVM Enterprise in OCI Code Editor](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-hello-world)
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Code Editor](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
 - [Working with Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm)
 - [GraalVM Enterprise in OCI Cloud Shell](cloud-shell.md)
