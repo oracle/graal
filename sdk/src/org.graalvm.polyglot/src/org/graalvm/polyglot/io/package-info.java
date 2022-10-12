@@ -48,9 +48,9 @@
  * <p>
  * The {@link org.graalvm.polyglot.io.FileSystem} allows an embedder to virtualize Input/Output
  * operations done by the {@code TruffleLanguage}s. A custom
- * {@link org.graalvm.polyglot.io.FileSystem filesystem} is registered using the
- * {@link org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)}
- * method.
+ * {@link org.graalvm.polyglot.io.FileSystem filesystem} is registered in a custom IO access
+ * configuration builder
+ * {@link org.graalvm.polyglot.io.IOAccess.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)}.
  *
  * @since 19.0
  */

@@ -40,12 +40,37 @@
  */
 package org.graalvm.polyglot.io;
 
+import org.graalvm.polyglot.Context;
+
 import java.util.Objects;
 
+/**
+ * Represents an IO access configuration of a polyglot context. The IO access configuration
+ * determines how a guest language can access the host IO. The access to host IO can be
+ * {@link IOAccess#NONE disabled}, {@link IOAccess#ALL enabled}, or virtualized using a custom file
+ * system.
+ *
+ * @since 23.0
+ */
 public final class IOAccess {
 
+    /**
+     * Provides guest language no access to host IO. Guest language only has read-only access to the
+     * language's home files. The {@code NONE} is a default value for {@link Context}s created
+     * without {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean) all access}.
+     *
+     * @since 23.0
+     */
     public static final IOAccess NONE = newBuilder().allowHostFileAccess(false).allowHostSocketAccess(false).build();
 
+    /**
+     * Provides guest language full access to host IO. Guest language have full access to host file
+     * system and host sockets. The {@code ALL} is a default value for {@link Context}s created with
+     * {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean) all access} set to
+     * {@code true}.
+     *
+     * @since 23.0
+     */
     public static final IOAccess ALL = newBuilder().allowHostFileAccess(true).allowHostSocketAccess(true).build();
 
     private final boolean allowHostFileAccess;
@@ -73,19 +98,43 @@ public final class IOAccess {
         return allowHostSocketAccess;
     }
 
+    /**
+     * Creates a new builder that allows to create a custom IO access configuration. The builder
+     * configuration needs to be completed using the {@link Builder#build() method}.
+     *
+     * @since 23.0
+     */
     public static Builder newBuilder() {
         return new Builder();
     }
 
+    /**
+     * Creates a new builder that allows to create a custom IO access configuration based of a
+     * preset configuration. The preset configuration is copied and used as a template for the
+     * returned builder. The builder configuration needs to be completed using the
+     * {@link Builder#build() method}.
+     *
+     * @since 23.0
+     */
     public static Builder newBuilder(IOAccess prototype) {
         return new Builder(prototype);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 23.0
+     */
     @Override
     public int hashCode() {
         return Objects.hash(allowHostFileAccess, allowHostSocketAccess, fileSystem);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 23.0
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof IOAccess) {
@@ -97,11 +146,21 @@ public final class IOAccess {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 23.0
+     */
     @Override
     public String toString() {
         return String.format("IOAccess[allow host file access: %b, allow host socket access: %b, file system %s]", allowHostFileAccess, allowHostSocketAccess, fileSystem);
     }
 
+    /**
+     * Builder to create a custom {@link IOAccess IO access configuration}.
+     *
+     * @since 23.0
+     */
     public static final class Builder {
         private boolean allowHostFileAccess;
         private boolean allowHostSocketAccess;
@@ -116,21 +175,47 @@ public final class IOAccess {
             this.customFileSystem = prototype.fileSystem;
         }
 
+        /**
+         * If {@code true}, it allows the guest language unrestricted access to files on the host
+         * system.
+         *
+         * @since 23.0
+         */
         public Builder allowHostFileAccess(boolean allow) {
             this.allowHostFileAccess = allow;
             return this;
         }
 
+        /**
+         * If {@code true}, it allows the guest language unrestricted access to host system sockets.
+         *
+         * @since 23.0
+         */
         public Builder allowHostSocketAccess(boolean allow) {
             this.allowHostSocketAccess = allow;
             return this;
         }
 
+        /**
+         * Sets a new {@link FileSystem}. Access to the file system in the guest language will be
+         * virtualized using the {@code fileSystem}.
+         *
+         * @param fileSystem the file system to use in the guest language
+         * @return the {@link Builder}
+         * @since 23.0
+         */
         public Builder fileSystem(FileSystem fileSystem) {
             this.customFileSystem = Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             return this;
         }
 
+        /**
+         * Creates an instance of the custom IO access configuration.
+         *
+         * @throws IllegalArgumentException if host file access is enabled and a custom file system
+         *             is set.
+         * @since 23.0
+         */
         public IOAccess build() {
             return new IOAccess(allowHostFileAccess, allowHostSocketAccess, customFileSystem);
         }

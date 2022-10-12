@@ -914,7 +914,7 @@ public final class TruffleContext implements AutoCloseable {
          * privilege from the outer context or <code>false</code> to deny access for this context.
          *
          * @see #inheritAllAccess(boolean)
-         * @see org.graalvm.polyglot.Context.Builder#allowIO(boolean)
+         * @see org.graalvm.polyglot.Context.Builder#allowIO(org.graalvm.polyglot.io.IOAccess)
          * @since 22.3
          */
         public Builder allowIO(boolean b) {

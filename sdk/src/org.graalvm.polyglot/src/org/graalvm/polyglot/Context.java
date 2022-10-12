@@ -1199,7 +1199,7 @@ public final class Context implements AutoCloseable {
          * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
-         * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
+         * <li>Unrestricted {@link #allowIO(IOAccess) IO operations} on host system.
          * <li>Passing {@link #allowExperimentalOptions(boolean) experimental options}.
          * <li>The {@link #allowCreateProcess(boolean) creation} and use of new sub-processes.
          * <li>The {@link #allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess) access} to
@@ -1220,7 +1220,7 @@ public final class Context implements AutoCloseable {
          * If host class loading is enabled, then the guest language is allowed to load new host
          * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
          * <code>true</code>, then the host class loading is enabled if it is not disallowed
-         * explicitly. For host class loading to be useful, {@link #allowIO(boolean) IO} operations
+         * explicitly. For host class loading to be useful, {@link #allowIO(IOAccess) IO} operations
          * {@link #allowHostClassLookup(Predicate) host class lookup}, and the
          * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
          * configured as well.
@@ -1490,6 +1490,19 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        /**
+         * Configures guest language access to host IO. Default is {@link IOAccess#NONE}. If
+         * {@link #allowAllAccess(boolean) all access} is set to {@code true}, then
+         * {@link IOAccess#ALL} is used unless explicitly set.
+         *
+         * @see IOAccess#ALL - to allow full host IO access
+         * @see IOAccess#NONE - to disable host IO access
+         * @see IOAccess#newBuilder() - to create a custom configuration.
+         *
+         * @param ioAccess the IO configuration
+         * @return the {@link Builder}
+         * @since 23.0
+         */
         public Builder allowIO(IOAccess ioAccess) {
             this.ioAccess = ioAccess;
             return this;
@@ -1509,7 +1522,7 @@ public final class Context implements AutoCloseable {
          *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())} to set
          *             a custom filesystem.
          */
-        @Deprecated
+        @Deprecated(since = "23.0")
         public Builder allowIO(final boolean enabled) {
             allowIO = enabled;
             return this;
@@ -1524,7 +1537,7 @@ public final class Context implements AutoCloseable {
          * @deprecated To migrate, use
          *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())}.
          */
-        @Deprecated
+        @Deprecated(since = "23.0")
         public Builder fileSystem(final FileSystem fileSystem) {
             Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             this.customFileSystem = fileSystem;
