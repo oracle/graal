@@ -121,14 +121,17 @@ public final class EspressoFrame {
     }
 
     private static void swapStatic(Frame frame, int top) {
+        assert top >= 2;
         frame.swapStatic(top - 1, top - 2);
     }
 
     private static void copyStatic(Frame frame, int src, int dst) {
+        assert src >= 0 && dst >= 0;
         frame.copyStatic(src, dst);
     }
 
     public static int popInt(Frame frame, int slot) {
+        assert slot >= 0;
         int result = frame.getIntStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -136,6 +139,7 @@ public final class EspressoFrame {
     }
 
     public static StaticObject peekObject(Frame frame, int slot) {
+        assert slot >= 0;
         Object result = frame.getObjectStatic(slot);
         assert result != null;
         return (StaticObject) result;
@@ -145,6 +149,7 @@ public final class EspressoFrame {
      * Reads and clear the operand stack slot.
      */
     public static StaticObject popObject(Frame frame, int slot) {
+        assert slot >= 0;
         // nulls-out the slot, use peekObject to read only
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
@@ -152,6 +157,7 @@ public final class EspressoFrame {
     }
 
     public static float popFloat(Frame frame, int slot) {
+        assert slot >= 0;
         float result = frame.getFloatStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -159,6 +165,7 @@ public final class EspressoFrame {
     }
 
     public static long popLong(Frame frame, int slot) {
+        assert slot >= 0;
         long result = frame.getLongStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -166,6 +173,7 @@ public final class EspressoFrame {
     }
 
     public static double popDouble(Frame frame, int slot) {
+        assert slot >= 0;
         double result = frame.getDoubleStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -173,6 +181,7 @@ public final class EspressoFrame {
     }
 
     static Object popReturnAddressOrObject(Frame frame, int slot) {
+        assert slot >= 0;
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
@@ -180,39 +189,48 @@ public final class EspressoFrame {
     }
 
     static void putReturnAddress(Frame frame, int slot, int targetBCI) {
+        assert slot >= 0;
         frame.setObjectStatic(slot, ReturnAddress.create(targetBCI));
     }
 
     public static void putObject(Frame frame, int slot, StaticObject value) {
+        assert slot >= 0;
         assert value != null;
         frame.setObjectStatic(slot, value);
     }
 
     public static void putInt(Frame frame, int slot, int value) {
+        assert slot >= 0;
         frame.setIntStatic(slot, value);
     }
 
     public static void putFloat(Frame frame, int slot, float value) {
+        assert slot >= 0;
         frame.setFloatStatic(slot, value);
     }
 
     public static void putLong(Frame frame, int slot, long value) {
+        assert slot >= 0;
         frame.setLongStatic(slot + 1, value);
     }
 
     public static void putDouble(Frame frame, int slot, double value) {
+        assert slot >= 0;
         frame.setDoubleStatic(slot + 1, value);
     }
 
     private static void clearReference(Frame frame, int slot) {
+        assert slot >= 0;
         frame.clearObjectStatic(slot);
     }
 
     private static void clearPrimitive(Frame frame, int slot) {
+        assert slot >= 0;
         frame.clearPrimitiveStatic(slot);
     }
 
     public static void clear(Frame frame, int slot) {
+        assert slot >= 0;
         frame.clearStatic(slot);
     }
 
@@ -221,10 +239,12 @@ public final class EspressoFrame {
     // region Local accessors
 
     public static void clearLocal(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         clear(frame, VALUES_START + localSlot);
     }
 
     public static void setLocalObject(Frame frame, int localSlot, StaticObject value) {
+        assert localSlot >= 0;
         assert value != null;
         frame.setObjectStatic(VALUES_START + localSlot, value);
     }
@@ -235,26 +255,32 @@ public final class EspressoFrame {
     }
 
     public static void setLocalInt(Frame frame, int localSlot, int value) {
+        assert localSlot >= 0;
         frame.setIntStatic(VALUES_START + localSlot, value);
     }
 
     public static void setLocalFloat(Frame frame, int localSlot, float value) {
+        assert localSlot >= 0;
         frame.setFloatStatic(VALUES_START + localSlot, value);
     }
 
     public static void setLocalLong(Frame frame, int localSlot, long value) {
+        assert localSlot >= 0;
         frame.setLongStatic(VALUES_START + localSlot, value);
     }
 
     public static void setLocalDouble(Frame frame, int localSlot, double value) {
+        assert localSlot >= 0;
         frame.setDoubleStatic(VALUES_START + localSlot, value);
     }
 
     public static int getLocalInt(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getIntStatic(VALUES_START + localSlot);
     }
 
     public static StaticObject getLocalObject(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         Object result = frame.getObjectStatic(VALUES_START + localSlot);
         assert result != null;
         return (StaticObject) result;
@@ -267,14 +293,17 @@ public final class EspressoFrame {
     }
 
     public static float getLocalFloat(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getFloatStatic(VALUES_START + localSlot);
     }
 
     public static long getLocalLong(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getLongStatic(VALUES_START + localSlot);
     }
 
     public static double getLocalDouble(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getDoubleStatic(VALUES_START + localSlot);
     }
 
@@ -295,7 +324,9 @@ public final class EspressoFrame {
     public static StaticObject peekReceiver(VirtualFrame frame, int top, Method m) {
         assert !m.isStatic();
         int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
-        StaticObject result = peekObject(frame, top - skipSlots - 1);
+        int slot = top - skipSlots - 1;
+        assert slot >= 0;
+        StaticObject result = peekObject(frame, slot);
         assert result != null;
         return result;
     }
@@ -385,6 +416,7 @@ public final class EspressoFrame {
      * @param kind kind to push
      */
     public static int putKind(VirtualFrame frame, int top, Object value, JavaKind kind) {
+        assert top >= 0;
         // @formatter:off
         switch (kind) {
             case Boolean : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
@@ -415,6 +447,7 @@ public final class EspressoFrame {
      * @param type type to push
      */
     public static int putType(VirtualFrame frame, int top, Object value, Symbol<Type> type) {
+        assert top >= 0;
         // @formatter:off
         switch (type.byteAt(0)) {
             case 'Z' : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
