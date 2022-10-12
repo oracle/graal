@@ -35,12 +35,13 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 
 @AutomaticallyRegisteredFeature
-public class HostedLibCFeature extends com.oracle.svm.core.c.libc.LibCFeature {
+public class HostedLibCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return HostedLibCBase.isPlatformEquivalent(Platform.LINUX.class);
