@@ -148,7 +148,7 @@ public class IOAccessTest {
         }
 
         // IOAccess#NONE with enabled socket access
-        IOAccess ioAccess = IOAccess.newBuilder(IOAccess.NONE).allowSocketAccess(true).build();
+        IOAccess ioAccess = IOAccess.newBuilder(IOAccess.NONE).allowHostSocketAccess(true).build();
         try (Context context = Context.newBuilder().allowIO(ioAccess).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(context, TestSocketAccessEnabledLanguage.class, "");
         }
@@ -166,7 +166,7 @@ public class IOAccessTest {
         }
 
         // IOAccess with custom file system and enabled socket access
-        ioAccess = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).allowSocketAccess(true).build();
+        ioAccess = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).allowHostSocketAccess(true).build();
         try (Context context = Context.newBuilder().allowIO(ioAccess).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(context, TestSocketAccessEnabledLanguage.class, "");
         }

@@ -44,20 +44,20 @@ import java.util.Objects;
 
 public final class IOAccess {
 
-    public static final IOAccess NONE = newBuilder().allowHostFileAccess(false).allowSocketAccess(false).build();
+    public static final IOAccess NONE = newBuilder().allowHostFileAccess(false).allowHostSocketAccess(false).build();
 
-    public static final IOAccess ALL = newBuilder().allowHostFileAccess(true).allowSocketAccess(true).build();
+    public static final IOAccess ALL = newBuilder().allowHostFileAccess(true).allowHostSocketAccess(true).build();
 
     private final boolean allowHostFileAccess;
-    private final boolean allowSocketAccess;
+    private final boolean allowHostSocketAccess;
     private final FileSystem fileSystem;
 
-    IOAccess(boolean allowHostFileAccess, boolean allowSocketAccess, FileSystem fileSystem) {
+    IOAccess(boolean allowHostFileAccess, boolean allowHostSocketAccess, FileSystem fileSystem) {
         if (allowHostFileAccess && fileSystem != null) {
             throw new IllegalArgumentException("The allow host file access and custom filesystem are mutually exclusive.");
         }
         this.allowHostFileAccess = allowHostFileAccess;
-        this.allowSocketAccess = allowSocketAccess;
+        this.allowHostSocketAccess = allowHostSocketAccess;
         this.fileSystem = fileSystem;
     }
 
@@ -69,8 +69,8 @@ public final class IOAccess {
         return allowHostFileAccess;
     }
 
-    boolean hasSocketAccess() {
-        return allowSocketAccess;
+    boolean hasHostSocketAccess() {
+        return allowHostSocketAccess;
     }
 
     public static Builder newBuilder() {
@@ -83,7 +83,7 @@ public final class IOAccess {
 
     @Override
     public int hashCode() {
-        return Objects.hash(allowHostFileAccess, allowSocketAccess, fileSystem);
+        return Objects.hash(allowHostFileAccess, allowHostSocketAccess, fileSystem);
     }
 
     @Override
@@ -91,7 +91,7 @@ public final class IOAccess {
         if (obj instanceof IOAccess) {
             IOAccess other = (IOAccess) obj;
             return allowHostFileAccess == other.allowHostFileAccess &&
-                            allowSocketAccess == other.allowSocketAccess &&
+                            allowHostSocketAccess == other.allowHostSocketAccess &&
                             Objects.equals(fileSystem, other.fileSystem);
         }
         return false;
@@ -99,12 +99,12 @@ public final class IOAccess {
 
     @Override
     public String toString() {
-        return String.format("IOAccess[allow host file access: %b, allow socket access: %b, file system %s]", allowHostFileAccess, allowSocketAccess, fileSystem);
+        return String.format("IOAccess[allow host file access: %b, allow host socket access: %b, file system %s]", allowHostFileAccess, allowHostSocketAccess, fileSystem);
     }
 
     public static final class Builder {
         private boolean allowHostFileAccess;
-        private boolean allowSocketAccess;
+        private boolean allowHostSocketAccess;
         private FileSystem customFileSystem;
 
         Builder() {
@@ -112,7 +112,7 @@ public final class IOAccess {
 
         Builder(IOAccess prototype) {
             this.allowHostFileAccess = prototype.allowHostFileAccess;
-            this.allowSocketAccess = prototype.allowSocketAccess;
+            this.allowHostSocketAccess = prototype.allowHostSocketAccess;
             this.customFileSystem = prototype.fileSystem;
         }
 
@@ -121,8 +121,8 @@ public final class IOAccess {
             return this;
         }
 
-        public Builder allowSocketAccess(boolean allow) {
-            this.allowSocketAccess = allow;
+        public Builder allowHostSocketAccess(boolean allow) {
+            this.allowHostSocketAccess = allow;
             return this;
         }
 
@@ -132,7 +132,7 @@ public final class IOAccess {
         }
 
         public IOAccess build() {
-            return new IOAccess(allowHostFileAccess, allowSocketAccess, customFileSystem);
+            return new IOAccess(allowHostFileAccess, allowHostSocketAccess, customFileSystem);
         }
     }
 }

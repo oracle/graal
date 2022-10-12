@@ -478,7 +478,7 @@ public abstract class Accessor {
 
         public abstract boolean hasNoAccess(FileSystem fs);
 
-        public abstract boolean hasSocketAccess(Object engineFileSystemContext);
+        public abstract boolean hasHostSocketAccess(Object engineFileSystemContext);
 
         public abstract boolean isInternal(TruffleFile file);
 
@@ -838,7 +838,7 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
-        public abstract boolean hasSocketAccess(Object fileSystemContext);
+        public abstract boolean hasHostSocketAccess(Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(Object context, String path);
 

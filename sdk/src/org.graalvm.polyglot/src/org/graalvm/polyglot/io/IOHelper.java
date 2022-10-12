@@ -227,8 +227,8 @@ final class IOHelper {
         }
 
         @Override
-        public boolean hasSocketAccess(IOAccess ioaccess) {
-            return ioaccess.hasSocketAccess();
+        public boolean hasHostSocketAccess(IOAccess ioaccess) {
+            return ioaccess.hasHostSocketAccess();
         }
     }
 }

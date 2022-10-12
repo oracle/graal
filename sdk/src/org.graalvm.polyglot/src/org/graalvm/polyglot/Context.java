@@ -1503,7 +1503,11 @@ public final class Context implements AutoCloseable {
          * @param enabled {@code true} to enable Input/Output
          * @return the {@link Builder}
          * @since 19.0
-         * @deprecated Use {@link #allowIO(IOAccess)}
+         * @deprecated To migrate, use {@code allowIO(IOAccess.ALL)} to enable unrestricted IO
+         *             operations on host system, {@code allowIO(IOAccess.NONE)} to disable IO
+         *             operations, and
+         *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())} to set
+         *             a custom filesystem.
          */
         @Deprecated
         public Builder allowIO(final boolean enabled) {
@@ -1517,7 +1521,8 @@ public final class Context implements AutoCloseable {
          * @param fileSystem the file system to be installed
          * @return the {@link Builder}
          * @since 19.0
-         * @deprecated Use {@link #allowIO(IOAccess)}
+         * @deprecated To migrate, use
+         *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())}.
          */
         @Deprecated
         public Builder fileSystem(final FileSystem fileSystem) {

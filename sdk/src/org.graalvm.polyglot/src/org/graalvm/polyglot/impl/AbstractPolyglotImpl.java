@@ -147,7 +147,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean hasHostFileAccess(IOAccess ioAccess);
 
-        public abstract boolean hasSocketAccess(IOAccess ioaccess);
+        public abstract boolean hasHostSocketAccess(IOAccess ioaccess);
     }
 
     public abstract static class APIAccess {
