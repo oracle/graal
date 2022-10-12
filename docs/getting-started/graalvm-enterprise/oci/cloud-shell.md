@@ -24,19 +24,19 @@ Cloud Shell has several pre-installed JDKs, including GraalVM Enterprise JDK.
     ```shell
     csruntimectl java list
     ```
-    The output lists the following JDKs: the latest GraalVM JDK for Java 17, OpenJDK for Java 11 and OpenJDK for Java 8. The JDK marked with an asterisk (OpenJDK Java 11) is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, OpenJDK for Java 11, and OpenJDK for Java 8. The JDK marked with an asterisk is the current JDK.
 
-3. Select GraalVM JDK as the current JDK:
+3. Select GraalVM JDK for Java 17 as the current JDK:
 
     ```shell
-    csruntimectl java set graalvmeejdk-17.x
+    csruntimectl java set graalvmeejdk-17
     ```
     You will see the confirmation message printed:
     ```shell
-    The current managed java version is set to graalvmeejdk-17.x
+    The current managed java version is set to graalvmeejdk-17
     ```
 
-4. Now check the version of `java`, the `native-image` generator, as well as the values of the environment variables `PATH` and `JAVA_HOME`:
+4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
 
     ```shell
     echo $JAVA_HOME
@@ -88,7 +88,7 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 4. Next build a native executable for this Spring Boot application using the [`native` Maven profile](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#quickstart).
 
     ```shell
-    export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+    # export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
     
     mvn package -Dnative
     ```
@@ -122,7 +122,8 @@ Thus, you can easily use GraalVM Enterprise in OCI Cloud Shell to build and test
 
 ### Related Documentation
 
-- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-hello-world)
-- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
+- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-Cloud-Shell.md)
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-Cloud-Shell.md)
+- [Spring Boot Microservice with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README-Cloud-Shell.md)
 - [GraalVM Enterprise in OCI Code Editor](code-editor.md)
 
