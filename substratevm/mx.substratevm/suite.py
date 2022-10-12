@@ -534,7 +534,8 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
-                    "jdk.internal.misc"
+                    "jdk.internal.misc",
+                    "jdk.internal.org.objectweb.asm",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
@@ -1879,7 +1880,7 @@ suite = {
                 "requires" : ["java.sql", "java.xml"],# workaround for GR-47773 on the module-path which requires java.sql (like truffle) or java.xml
                 "exports" : [
                     "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm,org.graalvm.nativeimage.common.configure",
-                    "com.oracle.svm.common",
+                    "com.oracle.svm.common                 to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler,org.graalvm.nativeimage.pointsto",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.phases",
