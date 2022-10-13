@@ -87,4 +87,15 @@
     }
   else
     build,
+
+  # std.get is not available in all versions
+  std_get(o, f, default=null, inc_hidden=true)::
+    local objectHas = if inc_hidden then std.objectHasAll else std.objectHas;
+    if objectHas(o, f) then o[f] else default
+  ,
+
+  # check that all non [gate, ondemand] entries have notify_emails or notify_groups defined
+  missing_notify(builds):: {
+    [x.name]: $.std_get(x, "defined_in") for x in builds if !std.objectHas(x, "notify_emails") && !std.objectHasAll(x, "notify_groups") && (std.member(x.targets, "daily") || std.member(x.targets, "weekly") || std.member(x.targets, "monthly"))
+  },
 }
