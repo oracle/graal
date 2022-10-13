@@ -179,7 +179,7 @@ public final class AccessAdvisor {
         }
         if (heuristicsEnabled && queriedClass.get() != null) {
             return (!processingSerializationEntry && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) ||
-                    PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
+                            PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
         }
         return false;
     }
