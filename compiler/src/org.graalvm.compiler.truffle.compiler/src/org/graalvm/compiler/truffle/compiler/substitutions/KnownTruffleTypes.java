@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField fieldEmptyLongArray = findField(classFrameClass, "EMPTY_LONG_ARRAY");
     public final ResolvedJavaField fieldEmptyByteArray = findField(classFrameClass, "EMPTY_BYTE_ARRAY");
 
-    public final ResolvedJavaField[] frameFields = classFrameClass.getInstanceFields(true);
+    public final ResolvedJavaField[] frameFields = getInstanceFields(classFrameClass, true);
 
     public final ResolvedJavaField fieldFrameDescriptorDefaultValue = findField(classFrameDescriptor, "defaultValue");
     public final ResolvedJavaField fieldFrameDescriptorMaterializeCalled = findField(classFrameDescriptor, "materializeCalled");
