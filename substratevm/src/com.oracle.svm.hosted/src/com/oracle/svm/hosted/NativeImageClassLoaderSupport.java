@@ -819,6 +819,7 @@ public class NativeImageClassLoaderSupport {
             var destinationMap = builderURILocations.contains(classesEntries.getKey()) ? builderClasses : applicationClasses;
             destinationMap.put(classesEntries.getKey(), classesEntries.getValue());
         }
+        boolean tolerateViolations = SubstrateOptions.TolerateBuilderClassesOnImageClasspath.getValue(parsedHostedOptions);
         MapCursor<URI, EconomicSet<String>> applicationClassesEntries = applicationClasses.getEntries();
         while (applicationClassesEntries.advance()) {
             var applicationClassContainer = applicationClassesEntries.getKey();
@@ -827,9 +828,13 @@ public class NativeImageClassLoaderSupport {
                 while (builderClassesEntries.advance()) {
                     var builderClassContainer = builderClassesEntries.getKey();
                     if (builderClassesEntries.getValue().contains(applicationClass)) {
-                        throw UserError.abort("Class-path entry %s contains class %s. This class is part of the image builder itself (in %s) and must not be passed via -cp. " +
-                                        "This can be caused by a fat-jar that illegally includes svm.jar (or graal-sdk.jar) due to its build-time dependency on it.%n",
+                        String message = String.format("Class-path entry %s contains class %s. This class is part of the image builder itself (in %s) and must not be passed via -cp.",
                                         applicationClassContainer, applicationClass, builderClassContainer);
+                        if (!tolerateViolations) {
+                            throw UserError.abort(message + " This can be caused by a fat-jar that illegally includes svm.jar (or graal-sdk.jar) due to its build-time dependency on it.%n");
+                        } else {
+                            System.out.println("Warning: " + message);
+                        }
                     }
                 }
             }
