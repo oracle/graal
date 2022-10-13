@@ -51,9 +51,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
@@ -240,6 +242,10 @@ public class OperationsStatistics {
         @Override
         public void traceSpecialization(int bci, int id, int specializationId, Object... values) {
         }
+
+        @Override
+        public void traceStartBasicBlock(int bci) {
+        }
     }
 
     private static class EnabledExecutionTracer extends ExecutionTracer {
@@ -351,30 +357,109 @@ public class OperationsStatistics {
             }
         }
 
+        private static class InstructionSequenceKey {
+            final int[] instructions;
+
+            InstructionSequenceKey(int[] instructions) {
+                this.instructions = instructions;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                return obj.getClass() == InstructionSequenceKey.class && Arrays.equals(((InstructionSequenceKey) obj).instructions, instructions);
+            }
+
+            @Override
+            public int hashCode() {
+                return Arrays.hashCode(instructions);
+            }
+
+            @Override
+            public String toString() {
+                return "InstructionSequenceKey " + Arrays.toString(instructions);
+            }
+
+            public String toKey() {
+                return String.join(",", Arrays.stream(instructions).mapToObj(Integer::toString).toArray(String[]::new));
+            }
+
+            public static InstructionSequenceKey fromKey(String key) {
+                int[] instructions = Arrays.stream(key.split(",")).mapToInt(Integer::parseInt).toArray();
+                return new InstructionSequenceKey(instructions);
+            }
+
+            public Object toString(String[] instrNames) {
+                return String.join(",", Arrays.stream(instructions).mapToObj(x -> instrNames[x]).toArray(String[]::new));
+            }
+        }
+
         private Map<SpecializationKey, Long> activeSpecializationsMap = new HashMap<>();
+        private Map<InstructionSequenceKey, Long> instructionSequencesMap = new HashMap<>();
+        private Map<Integer, Integer> numNodesWithInstruction = new HashMap<>();
+        private Map<Integer, Set<Node>> nodesWithInstruction = new HashMap<>();
+
+        private List<Node> nodes = new ArrayList<>();
+        private Node curNode;
+
+        private static final int MAX_SUPERINSTR_LEN = 8;
+        private int[] instrHistory = new int[MAX_SUPERINSTR_LEN];
+        private int instrHistoryLen = 0;
 
         @Override
         public void startFunction(Node node) {
+            if (curNode != null) {
+                nodes.add(curNode);
+            }
+            curNode = node;
         }
 
         @Override
         public void endFunction(Node node) {
+            if (nodes.size() > 0) {
+                curNode = nodes.remove(nodes.size() - 1);
+            } else {
+                curNode = null;
+            }
         }
 
         @Override
         public void traceInstruction(int bci, int id) {
+            nodesWithInstruction.computeIfAbsent(id, k -> new HashSet<>()).add(curNode);
+
+            // SI finding
+            if (instrHistoryLen == MAX_SUPERINSTR_LEN) {
+                System.arraycopy(instrHistory, 1, instrHistory, 0, MAX_SUPERINSTR_LEN - 1);
+                instrHistory[MAX_SUPERINSTR_LEN - 1] = id;
+            } else {
+                instrHistory[instrHistoryLen++] = id;
+            }
+
+            for (int i = 0; i < instrHistoryLen - 1; i++) {
+                int[] curHistory = Arrays.copyOfRange(instrHistory, i, instrHistoryLen);
+                InstructionSequenceKey key = new InstructionSequenceKey(curHistory);
+                instructionSequencesMap.merge(key, 1L, EnabledExecutionTracer::saturatingAdd);
+            }
+
+        }
+
+        private static long saturatingAdd(long x, long y) {
+            try {
+                return Math.addExact(x, y);
+            } catch (ArithmeticException e) {
+                return x;
+            }
+        }
+
+        private static int saturatingAdd(int x, int y) {
+            try {
+                return Math.addExact(x, y);
+            } catch (ArithmeticException e) {
+                return x;
+            }
         }
 
         @Override
         public void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations) {
-// boolean anyTrue = false;
-// for (int i = 0; i < activeSpecializations.length; i++) {
-// anyTrue |= activeSpecializations[i];
-// }
-// if (!anyTrue) {
-// return;
-// }
-
             SpecializationKey key = new SpecializationKey(id, activeSpecializations);
             Long l = activeSpecializationsMap.get(key);
             if (l == null) {
@@ -388,6 +473,11 @@ public class OperationsStatistics {
         public void traceSpecialization(int bci, int id, int specializationId, Object... values) {
         }
 
+        @Override
+        public void traceStartBasicBlock(int bci) {
+            instrHistoryLen = 0;
+        }
+
         private void merge(EnabledExecutionTracer other) {
             other.activeSpecializationsMap.forEach((k, v) -> {
                 Long existing = this.activeSpecializationsMap.get(k);
@@ -399,20 +489,49 @@ public class OperationsStatistics {
                     this.activeSpecializationsMap.put(k, Long.MAX_VALUE);
                 }
             });
+
+            other.nodesWithInstruction.forEach((k, v) -> {
+                nodesWithInstruction.computeIfAbsent(k, k2 -> new HashSet<>()).addAll(v);
+            });
+            other.numNodesWithInstruction.forEach((k, v) -> {
+                numNodesWithInstruction.merge(k, v, EnabledExecutionTracer::saturatingAdd);
+            });
+
+            other.instructionSequencesMap.forEach((k, v) -> {
+                instructionSequencesMap.merge(k, v, EnabledExecutionTracer::saturatingAdd);
+            });
+        }
+
+        private void calcNumNodesWithInstruction() {
+            nodesWithInstruction.forEach((k, v) -> {
+                numNodesWithInstruction.put(k, v.size() + numNodesWithInstruction.getOrDefault(k, 0));
+            });
+            nodesWithInstruction.clear();
         }
 
         private JSONObject serialize() {
             JSONObject result = new JSONObject();
 
             JSONArray activeSpecializationsData = new JSONArray();
-
             activeSpecializationsMap.forEach((k, v) -> {
                 JSONObject activeSpecData = k.serialize();
                 activeSpecData.put("c", v);
                 activeSpecializationsData.put(activeSpecData);
             });
-
             result.put("as", activeSpecializationsData);
+
+            JSONObject ni = new JSONObject();
+            calcNumNodesWithInstruction();
+            numNodesWithInstruction.forEach((k, v) -> {
+                ni.put(k.toString(), v);
+            });
+            result.put("ni", ni);
+
+            JSONObject instructionSequences = new JSONObject();
+            instructionSequencesMap.forEach((k, v) -> {
+                instructionSequences.put(k.toKey(), v);
+            });
+            result.put("is", instructionSequences);
 
             return result;
         }
@@ -428,6 +547,16 @@ public class OperationsStatistics {
                 inst.activeSpecializationsMap.put(key, count);
             }
 
+            JSONObject ni = obj.getJSONObject("ni");
+            for (String key : ni.keySet()) {
+                inst.numNodesWithInstruction.put(Integer.parseInt(key), ni.getInt(key));
+            }
+
+            JSONObject instructionSequences = obj.getJSONObject("is");
+            for (String key : instructionSequences.keySet()) {
+                inst.instructionSequencesMap.put(InstructionSequenceKey.fromKey(key), instructionSequences.getLong(key));
+            }
+
             return inst;
         }
 
@@ -436,11 +565,27 @@ public class OperationsStatistics {
             result.put("This file is autogenerated by the Operations DSL.");
             result.put("Do not modify, as it will be overwritten when running with tracing support.");
             result.put("Use the overrides file to alter the optimisation decisions.");
+
             int numDecisions = 100;
             activeSpecializationsMap.entrySet().stream().filter(e -> e.getKey().getCountActive() > 0).sorted((a, b) -> Long.compare(b.getValue(), a.getValue())).limit(numDecisions).forEachOrdered(
                             e -> {
                                 result.put(e.getKey().serializeDecision(stats));
                             });
+
+            calcNumNodesWithInstruction();
+
+            System.err.println("================================================");
+            System.err.println("Common instructions: ");
+            numNodesWithInstruction.entrySet().stream().sorted((a, b) -> Long.compare(b.getValue(), a.getValue())).forEachOrdered(x -> {
+                System.err.printf("%30s: %d%n", stats.instrNames[x.getKey()], x.getValue());
+            });
+            System.err.println();
+            System.err.println("Common superinstructions: ");
+            instructionSequencesMap.entrySet().stream().sorted((a, b) -> Long.compare(b.getValue(), a.getValue())).forEachOrdered(x -> {
+                System.err.printf("%60s: %d%n", x.getKey().toString(stats.instrNames), x.getValue());
+            });
+            System.err.println("================================================");
+
             return result;
         }
 

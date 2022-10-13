@@ -3,12 +3,30 @@
     "Do not modify, as it will be overwritten when running with tracing support.",
     "Use the overrides file to alter the optimisation decisions.",
     {
+        "specializations": ["FromBigNumber"],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": [
+            "FromLong",
+            "FromBigNumber"
+        ],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
         "specializations": ["FromLong"],
         "type": "Quicken",
         "operation": "SLUnbox"
     },
     {
-        "specializations": ["AddLong"],
+        "specializations": ["FromBoolean"],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": ["Add0"],
         "type": "Quicken",
         "operation": "SLAdd"
     },
@@ -18,24 +36,9 @@
         "operation": "SLReadProperty"
     },
     {
-        "specializations": ["FromBoolean"],
-        "type": "Quicken",
-        "operation": "SLUnbox"
-    },
-    {
         "specializations": ["Boolean"],
         "type": "Quicken",
         "operation": "SLToBoolean"
-    },
-    {
-        "specializations": ["LessOrEqual0"],
-        "type": "Quicken",
-        "operation": "SLLessOrEqual"
-    },
-    {
-        "specializations": ["Direct"],
-        "type": "Quicken",
-        "operation": "SLInvoke"
     },
     {
         "specializations": ["Perform"],
@@ -43,13 +46,92 @@
         "operation": "SLFunctionLiteral"
     },
     {
+        "specializations": ["Direct"],
+        "type": "Quicken",
+        "operation": "SLInvoke"
+    },
+    {
+        "specializations": [
+            "LessOrEqual0",
+            "LessOrEqual1"
+        ],
+        "type": "Quicken",
+        "operation": "SLLessOrEqual"
+    },
+    {
         "specializations": ["WriteSLObject0"],
         "type": "Quicken",
         "operation": "SLWriteProperty"
     },
     {
-        "specializations": ["LessThan0"],
+        "specializations": ["FromTruffleString"],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": [
+            "LessThan0",
+            "LessThan1"
+        ],
         "type": "Quicken",
         "operation": "SLLessThan"
+    },
+    {
+        "specializations": ["LessOrEqual1"],
+        "type": "Quicken",
+        "operation": "SLLessOrEqual"
+    },
+    {
+        "specializations": ["AddLong"],
+        "type": "Quicken",
+        "operation": "SLAdd"
+    },
+    {
+        "specializations": ["LessThan1"],
+        "type": "Quicken",
+        "operation": "SLLessThan"
+    },
+    {
+        "specializations": [
+            "FromTruffleString",
+            "FromBigNumber"
+        ],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": [
+            "FromTruffleString",
+            "FromLong"
+        ],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": [
+            "Add0",
+            "Add1"
+        ],
+        "type": "Quicken",
+        "operation": "SLAdd"
+    },
+    {
+        "specializations": [
+            "FromTruffleString",
+            "FromLong",
+            "FromBigNumber"
+        ],
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": ["Boolean"],
+        "type": "Quicken",
+        "operation": "SLLogicalNot"
+    },
+    {
+        "specializations": ["FromForeign0"],
+        "type": "Quicken",
+        "operation": "SLUnbox"
     }
 ]

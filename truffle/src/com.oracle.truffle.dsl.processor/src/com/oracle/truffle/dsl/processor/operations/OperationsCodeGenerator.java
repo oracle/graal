@@ -386,8 +386,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "_maxLocals")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "_maxStack")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "sourceInfo")));
+
         if (m.enableYield) {
             typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, arrayOf(new GeneratedTypeMirror("", "ContinuationRoot")), "yieldEntries")));
+        }
+
+        if (m.isTracing()) {
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(boolean[].class), "isBbStart")));
         }
 
         CodeVariableElement fldSwitchImpl = new CodeVariableElement(MOD_PRIVATE, typBytecodeBase.asType(), "switchImpl");
@@ -738,6 +743,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         if (m.getOperationsContext().hasBoxingElimination()) {
             b.statement("result._localTags = Arrays.copyOf(_localTags, _localTags.length)");
         }
+        if (m.isTracing()) {
+            b.statement("result.isBbStart = isBbStart");
+        }
         b.statement("result._handlers = _handlers");
         b.statement("result._conditionProfiles = Arrays.copyOf(_conditionProfiles, _conditionProfiles.length)");
         b.statement("result._maxLocals = _maxLocals");
@@ -998,6 +1006,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         if (m.enableYield) {
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "yieldCount"));
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, arrayOf(new GeneratedTypeMirror("", "ContinuationLocationImpl")), "yieldLocations = null"));
+        }
+        if (m.isTracing()) {
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(boolean[].class), "isBbStart = new boolean[65535]"));
         }
 
         CodeVariableElement fldConstPool = typBuilderImpl.add(
@@ -1400,6 +1411,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         b.statement("lbl.hasValue = true");
         b.statement("lbl.targetBci = bci");
+
+        if (m.isTracing()) {
+            b.statement("isBbStart[bci] = true");
+        }
 
         return mDoEmitLabel;
     }
@@ -2262,6 +2277,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("result._children = new Node[numChildNodes]");
         if (m.getOperationsContext().hasBoxingElimination()) {
             b.statement("result._localTags = new byte[numLocals]");
+        }
+        if (m.isTracing()) {
+            b.statement("result.isBbStart = Arrays.copyOf(isBbStart, bci)");
         }
         b.statement("result._handlers = exceptionHandlers.toArray(new ExceptionHandler[0])");
         b.statement("result._conditionProfiles = new int[numConditionProfiles]");

@@ -296,6 +296,14 @@ public class OperationsBytecodeCodeGenerator {
 
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
+        if (varTracer != null) {
+            b.startIf().string("$this.isBbStart[$bci]").end().startBlock();
+            b.startStatement().startCall(varTracer, "traceStartBasicBlock");
+            b.variable(vars.bci);
+            b.end(2);
+            b.end();
+        }
+
         b.startTryBlock();
 
         b.startAssert().variable(vars.sp).string(" >= maxLocals : \"stack underflow @ \" + $bci").end();
@@ -584,17 +592,19 @@ public class OperationsBytecodeCodeGenerator {
             cinstr.setPrepareAOTMethod(metPrepareForAOT);
 
             if (m.isTracing()) {
-                CodeExecutableElement metGetSpecBits = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), arrayOf(context.getType(boolean.class)),
-                                "doGetStateBits_" + cinstr.getUniqueName() + "_");
-                metGetSpecBits.setEnclosingElement(typEnclosingElement);
-                typEnclosingElement.add(metGetSpecBits);
+                OperationGeneratorUtils.createHelperMethod(typEnclosingElement, "doGetStateBits_" + cinstr.getUniqueName() + "_", () -> {
+                    CodeExecutableElement metGetSpecBits = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), arrayOf(context.getType(boolean.class)),
+                                    "doGetStateBits_" + cinstr.getUniqueName() + "_");
 
-                metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(short.class)), "$bc"));
-                metGetSpecBits.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
-                CodeTreeBuilder b = metGetSpecBits.createBuilder();
-                b.tree(plugs.createGetSpecializationBits());
+                    metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(short.class)), "$bc"));
+                    metGetSpecBits.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
+                    CodeTreeBuilder b = metGetSpecBits.createBuilder();
+                    b.tree(plugs.createGetSpecializationBits());
 
-                cinstr.setGetSpecializationBits(metGetSpecBits);
+                    cinstr.setGetSpecializationBits(metGetSpecBits);
+
+                    return metGetSpecBits;
+                });
             }
         }
 

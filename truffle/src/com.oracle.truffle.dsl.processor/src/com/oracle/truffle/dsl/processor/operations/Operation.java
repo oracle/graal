@@ -481,10 +481,19 @@ public abstract class Operation {
             b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varEndLabel)));
 
             b.tree(createEmitBranchInstruction(vars, context.commonBranchFalse, varEndLabel));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
+
             // }
             b.end().startElseBlock();
             // {
             b.tree(createPopLastChildCode(vars));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
 
             b.tree(createEmitLabel(vars, createGetAux(vars, 0, context.labelType)));
             // }
@@ -549,6 +558,10 @@ public abstract class Operation {
             b.tree(createSetAux(vars, 0, CodeTreeBuilder.singleVariable(varElseLabel)));
 
             b.tree(createEmitBranchInstruction(vars, context.commonBranchFalse, varElseLabel));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
             // }
             b.end();
             b.startElseIf().variable(vars.childIndex).string(" == 1").end();
@@ -567,6 +580,11 @@ public abstract class Operation {
             b.tree(createSetAux(vars, 1, CodeTreeBuilder.singleVariable(varEndLabel)));
 
             b.tree(createEmitBranchInstruction(vars, context.commonBranch, varEndLabel));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
+
             b.tree(createEmitLabel(vars, createGetAux(vars, 0, context.labelType)));
             // }
             b.end().startElseBlock();
@@ -576,6 +594,10 @@ public abstract class Operation {
                 b.startAssert().variable(vars.lastChildPushCount).string(" == 1").end();
             } else {
                 b.tree(createPopLastChildCode(vars));
+            }
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
             }
 
             b.tree(createEmitLabel(vars, createGetAux(vars, 1, context.labelType)));
@@ -611,6 +633,10 @@ public abstract class Operation {
             CodeVariableElement varStartLabel = new CodeVariableElement(context.labelType, "startLabel");
             b.declaration(context.labelType, varStartLabel.getName(), createCreateLabel());
 
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
+
             b.tree(createEmitLabel(vars, varStartLabel));
 
             b.tree(createSetAux(vars, AUX_START_LABEL, CodeTreeBuilder.singleVariable(varStartLabel)));
@@ -633,12 +659,21 @@ public abstract class Operation {
             b.tree(createSetAux(vars, AUX_END_LABEL, CodeTreeBuilder.singleVariable(varEndLabel)));
 
             b.tree(createEmitBranchInstruction(vars, context.commonBranchFalse, CodeTreeBuilder.singleVariable(varEndLabel)));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
+
             // }
             b.end().startElseBlock();
             // {
             b.tree(createPopLastChildCode(vars));
 
             b.tree(createEmitBranchInstruction(vars, context.commonBranch, createGetAux(vars, AUX_START_LABEL, context.labelType)));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
 
             b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, context.labelType)));
             // }
@@ -671,7 +706,15 @@ public abstract class Operation {
 
         @Override
         public CodeTree createEndCode(BuilderVariables vars) {
-            return createEmitLabel(vars, CodeTreeBuilder.singleString("arg0"));
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
+
+            b.tree(createEmitLabel(vars, CodeTreeBuilder.singleString("arg0")));
+
+            return b.build();
         }
 
         @Override
@@ -737,6 +780,10 @@ public abstract class Operation {
 
             b.tree(createEmitBranchInstruction(vars, context.commonBranch, createGetAux(vars, AUX_END_LABEL, context.labelType)));
 
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
+
             b.end().startElseBlock();
 
             b.end();
@@ -762,6 +809,10 @@ public abstract class Operation {
         @Override
         public CodeTree createEndCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
 
             b.tree(createEmitLabel(vars, createGetAux(vars, AUX_END_LABEL, context.labelType)));
 
@@ -888,6 +939,10 @@ public abstract class Operation {
             b.tree(createSetAux(vars, AUX_END_LABEL, CodeTreeBuilder.singleVariable(varEndLabel)));
 
             b.tree(createEmitBranchInstruction(vars, startInstruction, varCurInstrumentId));
+
+            if (context.getData().isTracing()) {
+                b.statement("isBbStart[bci] = true");
+            }
 
             b.tree(super.createBeginCode(vars));
             return b.build();
@@ -1053,6 +1108,9 @@ public abstract class Operation {
 
                 b.startBlock();
                 b.tree(OperationGeneratorUtils.createEmitBranchInstruction(vars, context.commonBranch, varEndLabel));
+                if (context.getData().isTracing()) {
+                    b.statement("isBbStart[bci] = true");
+                }
                 b.end();
 
                 b.declaration(context.exceptionType, "beh", createGetAux(vars, AUX_BEH, context.exceptionType));
