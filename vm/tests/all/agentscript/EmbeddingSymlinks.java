@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.io.IOAccess;
 
 public final class EmbeddingSymlinks {
     public static void main(String... args) throws IOException {
@@ -40,7 +41,7 @@ public final class EmbeddingSymlinks {
         }
 
         EnvironmentFileSystem fooFs = new EnvironmentFileSystem("foo", bazJs.toPath());
-        try (Context context = Context.newBuilder().allowIO(true).fileSystem(fooFs).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.newBuilder().fileSystem(fooFs).build()).build()) {
             enableInsight(context.getEngine());
             Source mainWithFoo = createMainSource("foo");
             Value fourtyTwo = context.eval(mainWithFoo);
@@ -48,7 +49,7 @@ public final class EmbeddingSymlinks {
         }
 
         EnvironmentFileSystem barFs = new EnvironmentFileSystem("bar", bazJs.toPath());
-        try (Context context = Context.newBuilder().allowIO(true).fileSystem(barFs).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.newBuilder().fileSystem(barFs).build()).build()) {
             enableInsight(context.getEngine());
             Source mainWithBar = createMainSource("bar");
             Value fourtyTwo = context.eval(mainWithBar);

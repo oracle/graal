@@ -1517,7 +1517,7 @@ public final class Context implements AutoCloseable {
          * @return the {@link Builder}
          * @since 19.0
          * @deprecated To migrate, use {@code allowIO(IOAccess.ALL)} to enable unrestricted IO
-         *             operations on host system, {@code allowIO(IOAccess.NONE)} to disable IO
+         *             operations on the host system, {@code allowIO(IOAccess.NONE)} to disable IO
          *             operations, and
          *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())} to set
          *             a custom filesystem.

@@ -47,10 +47,10 @@
  * Input/Output support for the GraalVM SDK polyglot API.
  * <p>
  * The {@link org.graalvm.polyglot.io.FileSystem} allows an embedder to virtualize Input/Output
- * operations done by the {@code TruffleLanguage}s. A custom
- * {@link org.graalvm.polyglot.io.FileSystem filesystem} is registered in a custom IO access
- * configuration builder
- * {@link org.graalvm.polyglot.io.IOAccess.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)}.
+ * operations done by the {@code TruffleLanguage}s. A custom filesystem is registered using an
+ * IOAccess configuration
+ * {@link org.graalvm.polyglot.io.IOAccess.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+ * builder}.
  *
  * @since 19.0
  */
