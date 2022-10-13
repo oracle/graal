@@ -41,6 +41,8 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -115,6 +117,7 @@ public class IOAccessTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertTrue(env.isIOAllowed());
             return env.getPublicTruffleFile("test").exists();
         }
     }
@@ -125,6 +128,7 @@ public class IOAccessTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertFalse(env.isIOAllowed());
             AbstractPolyglotTest.assertFails(() -> env.getPublicTruffleFile("test").exists(), SecurityException.class);
             return null;
         }
@@ -178,6 +182,7 @@ public class IOAccessTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertTrue(env.isSocketIOAllowed());
             URL resource = new URL("http://localhost:1234/test.js");
             try {
                 Source.newBuilder("TestJS", resource).build();
@@ -194,6 +199,7 @@ public class IOAccessTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertFalse(env.isSocketIOAllowed());
             URL resource = new URL("http://localhost:1234/test.js");
             AbstractPolyglotTest.assertFails(() -> Source.newBuilder("TestJS", resource).build(), SecurityException.class);
             return null;

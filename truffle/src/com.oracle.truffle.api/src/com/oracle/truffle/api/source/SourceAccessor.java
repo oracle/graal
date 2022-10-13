@@ -81,8 +81,8 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
     }
 
-    static boolean hasHostSocketAccess(Object fileSystemContext) {
-        return ACCESSOR.languageSupport().hasHostSocketAccess(fileSystemContext);
+    static boolean isSocketIOAllowed(Object fileSystemContext) {
+        return ACCESSOR.languageSupport().isSocketIOAllowed(fileSystemContext);
     }
 
     static void onSourceCreated(Source source) {

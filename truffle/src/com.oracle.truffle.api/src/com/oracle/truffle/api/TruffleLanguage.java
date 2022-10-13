@@ -2263,6 +2263,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns {@code true} if access to network sockets is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isSocketIOAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isSocketIOAllowed(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
          * Returns <code>true</code> if access to native code is generally allowed. If this method
          * returns <code>false</code> then loading native libraries with the Truffle NFI will fail.
          *

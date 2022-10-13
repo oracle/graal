@@ -1209,7 +1209,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean hasHostSocketAccess(Object engineFileSystemContext) {
+        public boolean isSocketIOAllowed(Object engineFileSystemContext) {
             if (engineFileSystemContext instanceof PolyglotLanguageContext) {
                 PolyglotLanguageContext languageContext = (PolyglotLanguageContext) engineFileSystemContext;
                 return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);

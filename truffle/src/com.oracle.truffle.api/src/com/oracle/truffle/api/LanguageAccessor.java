@@ -481,9 +481,9 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public boolean hasHostSocketAccess(Object fileSystemContext) {
+        public boolean isSocketIOAllowed(Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
-            return engineAccess().hasHostSocketAccess(ctx.engineObject);
+            return engineAccess().isSocketIOAllowed(ctx.engineObject);
         }
 
         @Override
