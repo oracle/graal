@@ -139,6 +139,7 @@ public final class AccessAdvisor {
     private boolean heuristicsEnabled = true;
     private boolean isInLivePhase = false;
     private int launchPhase = 0;
+    private boolean processingSerializationEntry = false;
 
     public void setHeuristicsEnabled(boolean enable) {
         heuristicsEnabled = enable;
@@ -154,6 +155,10 @@ public final class AccessAdvisor {
 
     public void setInLivePhase(boolean live) {
         isInLivePhase = live;
+    }
+
+    public void setProcessingSerializationEntry(boolean serialization) {
+        processingSerializationEntry = serialization;
     }
 
     public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
@@ -173,10 +178,8 @@ public final class AccessAdvisor {
             return true;
         }
         if (heuristicsEnabled && queriedClass.get() != null) {
-            if (queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ||
-                            PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches()) {
-                return true;
-            }
+            return (!processingSerializationEntry && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) ||
+                    PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
         }
         return false;
     }
