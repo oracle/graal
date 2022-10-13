@@ -57,12 +57,15 @@
 
   test:: s.base(no_warning_as_error=true),
 
+  jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+  upload_coverage:: ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+
   coverage_base(ctw):: s.base(tags="build,%s" % if ctw then "ctw" else "coverage",
-                              cmd_suffix=["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+                              cmd_suffix=s.jacoco_gate_args,
                               extra_vm_args=if !ctw then "" else "-DCompileTheWorld.MaxClasses=5000" /*GR-23372*/) +
   {
     teardown+: [
-      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+      s.upload_coverage,
     ],
   },
 

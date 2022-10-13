@@ -33,22 +33,28 @@ local utils = import '../../../common-utils.libsonnet';
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(['-Ob']),
 
-  libgraal_truffle_base(quickbuild_args=[]): self.libgraal_build(['-J-ea', '-ea'] + quickbuild_args) + {
+  libgraal_truffle_base(quickbuild_args=[], coverage=false): self.libgraal_build(['-J-ea', '-ea'] + quickbuild_args) + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
       TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*'
     },
     run+: [
-      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
+      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [],
     ],
     logs+: ['*/graal-compiler.log'],
     timelimit: '1:00:00',
+    teardown+: if coverage then [
+      g.upload_coverage
+    ] else []
   },
 
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
+
+  # Use economy mode for coverage testing
+  libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
@@ -67,7 +73,9 @@ local utils = import '../../../common-utils.libsonnet';
   },
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
-  local weeklies = {},
+  local weeklies = {
+    "weekly-vm-libgraal_truffle_coverage*": {}
+  },
 
   # See definition of `monthlies` local variable in ../../compiler/ci_common/gate.jsonnet
   local monthlies = {},
@@ -108,8 +116,36 @@ local utils = import '../../../common-utils.libsonnet';
     ]
   ],
 
+
+  # Builds run on only on linux-amd64-jdk19
+  local linux_amd64_jdk19_builds = [
+    c["gate_vm_" + underscore(os_arch)] +
+    svm_common(os_arch, jdk) +
+    vm["custom_vm_" + os(os_arch)] +
+    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+                 include_common_os_arch=false,
+                 gates_manifest=gates,
+                 dailies_manifest=dailies,
+                 weeklies_manifest=weeklies,
+                 monthlies_manifest=monthlies).build +
+    vm["vm_java_" + jdk]
+    for jdk in [
+      "19"
+    ]
+    for os_arch in [
+      "linux-amd64",
+      "darwin-aarch64",
+      "windows-amd64"
+    ]
+    for task in [
+      "libgraal_truffle_coverage"
+    ]
+  ],
+
   # Complete set of builds defined in this file
-  local all_builds = all_platforms_builds,
+  local all_builds =
+    all_platforms_builds +
+    linux_amd64_jdk19_builds,
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result
