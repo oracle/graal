@@ -88,7 +88,7 @@ public final class IntegerMulHighNode extends BinaryArithmeticNode<MulHigh> impl
             Constant c = forY.asConstant();
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long i = ((PrimitiveConstant) c).asLong();
-                if (i == 0 || i == 1) {
+                if (i == 0) {
                     return ConstantNode.forIntegerStamp(self.stamp(NodeView.DEFAULT), 0);
                 }
             }

@@ -1012,7 +1012,16 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.MulHigh(true, true) {
+                    /*
+                     * MulHigh is not associative, for example:
+                     *
+                     * mulHigh(mulHigh(-1, 1), 1) = mulHigh(-1, 1) = -1
+                     *
+                     * but
+                     *
+                     * mulHigh(-1, mulHigh(1, 1)) = mulHigh(-1, 0) = 0
+                     */
+                    new BinaryOp.MulHigh(false, true) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
@@ -1085,7 +1094,16 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.UMulHigh(true, true) {
+                    /*
+                     * UMulHigh is not associative, for example:
+                     *
+                     * uMulHigh(uMulHigh(-1L, Long.MAX_VALUE), 4L) = 1
+                     *
+                     * but
+                     *
+                     * uMulHigh(-1L, uMulHigh(Long.MAX_VALUE, 4L)) = 0
+                     */
+                    new BinaryOp.UMulHigh(false, true) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
