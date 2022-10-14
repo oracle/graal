@@ -327,11 +327,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("javax.crypto.SealedObject");
 
         /*
-         * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
-         */
-        access.ensureInitialized("java.io.Console");
-
-        /*
          * Ensure jdk.internal.access.SharedSecrets.javaSecuritySignatureAccess is initialized
          * before scanning.
          */

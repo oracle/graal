@@ -26,9 +26,10 @@ package com.oracle.svm.hosted.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 @AutomaticallyRegisteredFeature
 class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
@@ -41,6 +42,19 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory", "java.nio.file.TempFileHelper", "java.lang.Terminator");
         rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
+
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            /*
+             * The class initializer queries and caches state (like "is a tty") - some state on JDK
+             * 17 and even more after JDK 17.
+             */
+            rerunClassInit(a, "java.io.Console");
+        } else {
+            /*
+             * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
+             */
+            ((DuringSetupAccessImpl) a).ensureInitialized("java.io.Console");
+        }
 
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             /*
