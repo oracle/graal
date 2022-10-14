@@ -35,6 +35,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.inlining.InliningTree;
@@ -79,9 +80,9 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
             String line = reader.readLine();
             ExperimentJSONParser parser = new ExperimentJSONParser(experimentId, file, line);
             ExperimentJSONParser.JSONMap map = parser.parse().asMap();
-            ExperimentJSONParser.JSONLiteral inliningTreeNode = map.property("inliningTreeRoot");
+            ExperimentJSONParser.JSONLiteral inliningTreeNode = map.property(OptimizationLogImpl.INLINING_TREE_PROPERTY);
             InliningTree inliningTree = new InliningTree(inliningTreeNode.isNull() ? null : parseInliningTreeNode(inliningTreeNode.asMap()));
-            OptimizationTree optimizationTree = new OptimizationTree(parseOptimizationPhase(map.property("rootPhase").asMap()));
+            OptimizationTree optimizationTree = new OptimizationTree(parseOptimizationPhase(map.property(OptimizationLogImpl.OPTIMIZATION_TREE_PROPERTY).asMap()));
             return new CompilationUnit.TreePair(optimizationTree, inliningTree);
         } catch (IOException e) {
             throw new ExperimentParserError(experimentId, "compilation unit", e.getMessage());
@@ -89,37 +90,37 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
     }
 
     private static InliningTreeNode parseInliningTreeNode(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
-        String methodName = map.property("targetMethodName").asNullableString();
-        int bci = map.property("bci").asInt();
-        boolean positive = map.property("positive").asBoolean();
+        String methodName = map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asNullableString();
+        int bci = map.property(OptimizationLogImpl.CALLSITE_BCI_PROPERTY).asInt();
+        boolean positive = map.property(OptimizationLogImpl.INLINED_PROPERTY).asBoolean();
         List<String> reason = new ArrayList<>();
-        ExperimentJSONParser.JSONLiteral reasonObject = map.property("reason");
+        ExperimentJSONParser.JSONLiteral reasonObject = map.property(OptimizationLogImpl.REASON_PROPERTY);
         if (!reasonObject.isNull()) {
             for (ExperimentJSONParser.JSONLiteral reasonItem : reasonObject.asList()) {
                 reason.add(reasonItem.asString());
             }
         }
         InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason);
-        ExperimentJSONParser.JSONLiteral inlinees = map.property("inlinees");
-        if (inlinees.isNull()) {
+        ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
+        if (invokes.isNull()) {
             return inliningTreeNode;
         }
-        for (ExperimentJSONParser.JSONLiteral inlinee : inlinees.asList()) {
-            inliningTreeNode.addChild(parseInliningTreeNode(inlinee.asMap()));
+        for (ExperimentJSONParser.JSONLiteral invoke : invokes.asList()) {
+            inliningTreeNode.addChild(parseInliningTreeNode(invoke.asMap()));
         }
         return inliningTreeNode;
     }
 
     private OptimizationPhase parseOptimizationPhase(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
-        String phaseName = map.property("phaseName").asString();
+        String phaseName = map.property(OptimizationLogImpl.PHASE_NAME_PROPERTY).asString();
         OptimizationPhase optimizationPhase = new OptimizationPhase(phaseName);
-        ExperimentJSONParser.JSONLiteral optimizations = map.property("optimizations");
+        ExperimentJSONParser.JSONLiteral optimizations = map.property(OptimizationLogImpl.OPTIMIZATIONS_PROPERTY);
         if (optimizations.isNull()) {
             return optimizationPhase;
         }
         for (ExperimentJSONParser.JSONLiteral child : optimizations.asList()) {
             ExperimentJSONParser.JSONMap childMap = child.asMap();
-            ExperimentJSONParser.JSONLiteral subphaseName = childMap.property("phaseName");
+            ExperimentJSONParser.JSONLiteral subphaseName = childMap.property(OptimizationLogImpl.PHASE_NAME_PROPERTY);
             if (subphaseName.isNull()) {
                 optimizationPhase.addChild(parseOptimization(childMap));
             } else {
@@ -130,24 +131,24 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
     }
 
     private Optimization parseOptimization(ExperimentJSONParser.JSONMap optimization) throws ExperimentParserTypeError {
-        String optimizationName = optimization.property("optimizationName").asString();
-        String eventName = optimization.property("eventName").asString();
-        ExperimentJSONParser.JSONLiteral positionObject = optimization.property("position");
+        String optimizationName = optimization.property(OptimizationLogImpl.OPTIMIZATION_NAME_PROPERTY).asString();
+        String eventName = optimization.property(OptimizationLogImpl.EVENT_NAME_PROPERTY).asString();
+        ExperimentJSONParser.JSONLiteral positionObject = optimization.property(OptimizationLogImpl.POSITION_PROPERTY);
         EconomicMap<String, Integer> position = null;
         if (!positionObject.isNull()) {
             MapCursor<String, Object> cursor = positionObject.asMap().getInnerMap().getEntries();
             position = EconomicMap.create();
             while (cursor.advance()) {
                 if (!(cursor.getValue() instanceof Integer)) {
-                    throw new ExperimentParserTypeError(experimentId, file.getPath(), "bci", Integer.class, cursor.getValue());
+                    throw new ExperimentParserTypeError(experimentId, file.getPath(), OptimizationLogImpl.POSITION_PROPERTY, Integer.class, cursor.getValue());
                 }
                 position.put(cursor.getKey(), (Integer) cursor.getValue());
             }
         }
         EconomicMap<String, Object> properties = optimization.getInnerMap();
-        properties.removeKey("optimizationName");
-        properties.removeKey("eventName");
-        properties.removeKey("position");
+        properties.removeKey(OptimizationLogImpl.OPTIMIZATION_NAME_PROPERTY);
+        properties.removeKey(OptimizationLogImpl.EVENT_NAME_PROPERTY);
+        properties.removeKey(OptimizationLogImpl.POSITION_PROPERTY);
         return new Optimization(optimizationName, eventName, position, properties.isEmpty() ? null : properties);
     }
 }

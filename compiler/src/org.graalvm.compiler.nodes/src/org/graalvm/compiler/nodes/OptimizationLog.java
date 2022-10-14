@@ -70,7 +70,7 @@ public interface OptimizationLog extends CompilationListener {
          *
          * @return a representation of the optimization subtree that can be formatted as JSON
          */
-        abstract EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter);
+        abstract EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter);
     }
 
     /**

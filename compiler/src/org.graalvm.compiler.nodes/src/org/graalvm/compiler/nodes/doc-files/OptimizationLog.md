@@ -85,7 +85,7 @@ The context of the optimizations is also collected when `-Dgraal.OptimizationLog
 setting the graph's `OptimizationLog` as the `CompilationListener`. We establish parent-child relationships between
 optimization phases and optimization entries. The result is a tree of optimizations.
 
-- We create an artificial `RootPhase`, which is the root.
+- We create an artificial `optimizationTree`, which is the root.
 - When a phase is entered (`CompilationListener#enterPhase`), the new phase is a child of the phase that entered this
   phase.
 - When an optimization is logged via the `report` method, it is attributed to its parent phase.
@@ -93,7 +93,7 @@ optimization phases and optimization entries. The result is a tree of optimizati
 The ASCII art below is a snippet of an optimization tree.
 
 ```
-                                  RootPhase
+                                  optimizationTree
                     _____________/    |    \_____________
                    /                  |                  \
                 LowTier            MidTier            HighTier
@@ -151,42 +151,42 @@ Read `Profdiff.md` to learn how to use `profdiff` to view frequently-executed me
 ### Structure of the generated files
 
 In the `optimization_log` directory, we can find many files with numeric names (named after compilation thread IDs).
-Each file contains several compilation units. Each line is a JSON-encoded compilation unit.
-The structure of one compilation unit, after formatting, is the following:
+Each file contains several compilation units. Each line is a JSON-encoded compilation unit. The structure of one
+compilation unit, after formatting, is the following:
 
 ```json
 {
-  "compilationMethodName": "java.lang.String.hashCode()",
+  "methodName": "java.lang.String.hashCode()",
   "compilationId": "17697",
-  "inliningTreeRoot": {
-    "targetMethodName": "java.lang.String.hashCode()",
-    "bci": -1,
-    "positive": true,
+  "inliningTree": {
+    "methodName": "java.lang.String.hashCode()",
+    "callsiteBci": -1,
+    "inlined": true,
     "reason": null,
-    "inlinees": [
+    "invokes": [
       {
-        "targetMethodName": "java.lang.String.isLatin1()",
-        "bci": 17,
-        "positive": true,
+        "methodName": "java.lang.String.isLatin1()",
+        "callsiteBci": 17,
+        "inlined": true,
         "reason": [
           "bytecode parser did not replace invoke",
           "trivial (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=9)"
         ],
-        "inlinees": null
+        "invokes": null
       },
       {
-        "targetMethodName": "java.lang.StringLatin1.hashCode(byte[])",
-        "bci": 27,
-        "positive": true,
+        "methodName": "java.lang.StringLatin1.hashCode(byte[])",
+        "callsiteBci": 27,
+        "inlined": true,
         "reason": [
           "bytecode parser did not replace invoke",
           "relevance-based (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=27 <= 300.000000)"
         ],
-        "inlinees": null
+        "invokes": null
       }
     ]
   },
-  "rootPhase": {
+  "optimizationTree": {
     "phaseName": "RootPhase",
     "optimizations": [
       ...
@@ -195,16 +195,16 @@ The structure of one compilation unit, after formatting, is the following:
 }
 ```
 
-The `compilationMethodName` is the name of the root method in the compilation unit. `compilationId` is a unique
-identifier of the compilation unit.
+The `methodName` is the name of the root method in the compilation unit. `compilationId` is a unique identifier of the
+compilation unit.
 
-`inliningTreeRoot` contains the root of the inlining tree, i.e, the name of the root method matches `targetMethodName`.
-`inlinees` are the invoked methods which were considered for inlining. The final result of the inlining decisions is
-reflected by the `positive` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
-reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `bci` is the byte code
-index of the invoke node in the callsite.
+`inliningTree` contains the root of the inlining tree, i.e, the name of the root method matches `methodName`.
+`invokes` are the invoked methods which were considered for inlining. The final result of the inlining decisions is
+reflected by the `inlined` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
+reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `callsiteBci` is the
+byte code index of the invoke node in the callsite.
 
-`rootPhase` contains the root of the optimization tree. Each node in the optimization tree is either:
+`optimizationTree` contains the root of the optimization tree. Each node in the optimization tree is either:
 
 - a phase node, which contains a `phaseName` derived from the class name and a list of children (phases and optimization
   entries),

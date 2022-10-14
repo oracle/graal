@@ -35,6 +35,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.ProftoolMethod;
@@ -98,7 +99,8 @@ public class ExperimentParser {
     /**
      * A regex capturing the method name and the compilation ID of a serialized compilation unit.
      */
-    private static final String COMPILATION_UNIT_REGEX = "\\{\"compilationMethodName\": \"([^\"]*)\", \"compilationId\": \"([^\"]*)\"";
+    private static final String COMPILATION_UNIT_REGEX = String.format("\\{\"%s\": \"([^\"]*)\", \"%s\": \"([^\"]*)\"",
+                    OptimizationLogImpl.METHOD_NAME_PROPERTY, OptimizationLogImpl.COMPILATION_ID_PROPERTY);
 
     /**
      * The experiment files to be parsed.
@@ -179,6 +181,8 @@ public class ExperimentParser {
             try (FileReader fileReader = new FileReader(file); BufferedReader reader = new BufferedReader(fileReader)) {
                 String source;
                 while ((source = reader.readLine()) != null) {
+                    // assume that the beginning of the JSON has the exact format as described by
+                    // the regex
                     Matcher matcher = compilationUnitPattern.matcher(source);
                     if (matcher.find()) {
                         PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
@@ -191,6 +195,7 @@ public class ExperimentParser {
                         long lineNumber = lineIndex + 1;
                         warningWriter.writeln("Warning: Invalid compilation unit in file " + file.getPath() + " on line " + lineNumber);
                     }
+                    // assume that line separators are '\n' on all platforms
                     start += source.length() + 1;
                 }
             }
