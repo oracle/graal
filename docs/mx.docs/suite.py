@@ -1,5 +1,5 @@
 suite = {
-    "mxversion" : "6.4.0",
+    "mxversion" : "6.9.8",
     "name" : "docs",
 
     "ignore_suite_commit_info": True,
