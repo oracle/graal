@@ -76,14 +76,6 @@ suite = {
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "UPL",
-  "imports": {
-    "suites": [
-      {
-        "name": "docs",
-        "subdir": True,
-      },
-    ]
-  },
   "ignore_suite_commit_info": True,
   "libraries" : {
     "WRK_MULTIARCH": {
