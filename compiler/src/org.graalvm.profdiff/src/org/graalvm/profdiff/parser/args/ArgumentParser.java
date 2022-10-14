@@ -36,6 +36,16 @@ import org.graalvm.profdiff.command.Command;
  */
 public class ArgumentParser {
     /**
+     * Prefix of an optional argument in a usage string.
+     */
+    public static final char LEFT_BRACKET = '[';
+
+    /**
+     * Suffix of an optional argument in a usage string.
+     */
+    public static final char RIGHT_BRACKET = ']';
+
+    /**
      * The map of argument names to option arguments. Option argument names start with the "--"
      * prefix. They may be required or optional.
      */
@@ -121,20 +131,20 @@ public class ArgumentParser {
      */
     public String formatOptionUsage() {
         StringBuilder sb = new StringBuilder();
-        boolean isEmpty = true;
+        boolean isFirst = true;
         for (Argument argument : optionArguments.getValues()) {
-            if (!isEmpty) {
+            if (!isFirst) {
                 sb.append(' ');
             }
             if (!argument.isRequired()) {
-                sb.append('[');
+                sb.append(LEFT_BRACKET);
             }
             String dummyValue = argument.getName().substring(Argument.OPTION_PREFIX.length()).toUpperCase();
             sb.append(argument.getName()).append(' ').append(dummyValue);
             if (!argument.isRequired()) {
-                sb.append(']');
+                sb.append(RIGHT_BRACKET);
             }
-            isEmpty = false;
+            isFirst = false;
         }
         return sb.toString();
     }
@@ -144,13 +154,19 @@ public class ArgumentParser {
      */
     public String formatPositionalUsage() {
         StringBuilder sb = new StringBuilder();
-        boolean isEmpty = true;
+        boolean isFirst = true;
         for (Argument argument : positionalArguments) {
-            if (!isEmpty) {
+            if (!isFirst) {
                 sb.append(' ');
             }
+            if (!argument.isRequired()) {
+                sb.append(LEFT_BRACKET);
+            }
             sb.append(argument.getName().toUpperCase());
-            isEmpty = false;
+            if (!argument.isRequired()) {
+                sb.append(RIGHT_BRACKET);
+            }
+            isFirst = false;
         }
         return sb.toString();
     }
@@ -164,17 +180,23 @@ public class ArgumentParser {
      */
     public String formatPositionalUsage(Command command) {
         StringBuilder sb = new StringBuilder();
-        boolean isEmpty = true;
+        boolean isFirst = true;
         for (Argument argument : positionalArguments) {
-            if (!isEmpty) {
+            if (!isFirst) {
                 sb.append(' ');
+            }
+            if (!argument.isRequired()) {
+                sb.append(LEFT_BRACKET);
             }
             if (argument instanceof CommandGroup) {
                 sb.append(command.getName());
             } else {
                 sb.append(argument.getName().toUpperCase());
             }
-            isEmpty = false;
+            if (!argument.isRequired()) {
+                sb.append(RIGHT_BRACKET);
+            }
+            isFirst = false;
         }
         return sb.toString();
     }
