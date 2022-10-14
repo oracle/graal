@@ -61,7 +61,8 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     public Optional<NotApplicable> canApply(GraphState graphState) {
         return NotApplicable.combineConstraints(
                         super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.EXPAND_LOGIC, graphState));
+                        NotApplicable.canOnlyApplyOnce(this, StageFlag.EXPAND_LOGIC, graphState),
+                        NotApplicable.mustRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
     @Override
