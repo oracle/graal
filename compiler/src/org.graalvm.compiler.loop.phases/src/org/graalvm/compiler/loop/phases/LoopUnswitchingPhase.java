@@ -57,6 +57,7 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
     public Optional<NotApplicable> canApply(GraphState graphState) {
         return NotApplicable.combineConstraints(
                         super.canApply(graphState),
+                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
                         NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState));
     }
 
