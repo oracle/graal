@@ -25,22 +25,15 @@
 
 package com.oracle.svm.test.jfr;
 
-import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.sampler.SamplerBuffer;
-import com.oracle.svm.core.sampler.SamplerBufferAccess;
-import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.sampler.SamplerThreadLocal;
 import com.oracle.svm.test.jfr.events.StackTraceEvent;
 
 /**
  * Test if event ({@link StackTraceEvent}) with stacktrace payload is working.
  */
 public class TestStackTraceEvent extends JfrTest {
-    private static final int LOCAL_BUFFER_SIZE = 1024;
-
     @Override
     public String[] getTestedEvents() {
         return new String[]{
@@ -66,21 +59,11 @@ public class TestStackTraceEvent extends JfrTest {
             return;
         }
 
-        /* Set thread-local buffer before stack walk. */
-        SamplerBuffer buffer = SamplerBufferAccess.allocate(WordFactory.unsigned(LOCAL_BUFFER_SIZE));
-        SamplerThreadLocal.setThreadLocalBuffer(buffer);
-
         /*
          * Create and commit an event. This will trigger
          * com.oracle.svm.core.jfr.JfrStackTraceRepository.getStackTraceId(int) call and stack walk.
          */
         StackTraceEvent event = new StackTraceEvent();
         event.commit();
-
-        /* Call manually buffer processing. */
-        SamplerBuffersAccess.processSamplerBuffer(buffer);
-
-        /* We need to free memory manually as well afterward. */
-        SamplerBufferAccess.free(buffer);
     }
 }

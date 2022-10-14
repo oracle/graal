@@ -33,10 +33,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Comparator;
 
+import com.oracle.svm.util.ClassUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.After;
@@ -58,7 +59,6 @@ import jdk.jfr.consumer.RecordingFile;
 public abstract class JfrTest {
     private Jfr jfr;
     private Recording recording;
-    private final ChronologicalComparator chronologicalComparator = new ChronologicalComparator();
 
     @BeforeClass
     public static void checkForJFR() {
@@ -159,15 +159,14 @@ public abstract class JfrTest {
         return p;
     }
 
-    protected List<RecordedEvent> getEvents(String testName) throws IOException {
-        Path p = makeCopy(testName);
+    protected List<RecordedEvent> getEvents() throws IOException {
+        Path p = makeCopy(ClassUtil.getUnqualifiedName(getClass()));
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
-        Collections.sort(events, chronologicalComparator);
+        Collections.sort(events, new ChronologicalComparator());
         // remove events that are not in the list of tested events
         events.removeIf(event -> (Arrays.stream(getTestedEvents()).noneMatch(testedEvent -> (testedEvent.equals(event.getEventType().getName())))));
         return events;
     }
-
 }
 
 class JfrTestFeature implements Feature {

@@ -30,21 +30,19 @@ import static java.lang.Math.abs;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
-
-import jdk.jfr.consumer.RecordedClass;
 import org.junit.Test;
 
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedObject;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorWait extends JfrTest {
+public class TestJavaMonitorWaitEvent extends JfrTest {
     private static final int MILLIS = 50;
     private static final int COUNT = 10;
+
+    private final Helper helper = new Helper();
     private String producerName;
     private String consumerName;
-    static final Helper helper = new Helper();
 
     @Override
     public String[] getTestedEvents() {
@@ -53,24 +51,20 @@ public class TestJavaMonitorWait extends JfrTest {
 
     @Override
     public void validateEvents() throws Throwable {
-        List<RecordedEvent> events;
-        events = getEvents("jdk.JavaMonitorWait");
-
         int prodCount = 0;
         int consCount = 0;
         String lastEventThreadName = null; // should alternate if buffer is 1
-        for (RecordedEvent event : events) {
-            RecordedObject struct = event;
-            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
+        for (RecordedEvent event : getEvents()) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
             assertTrue("No event thread", eventThread != null);
             if ((!eventThread.equals(producerName) && !eventThread.equals(consumerName)) ||
-                            !struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+                            !event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
 
             assertTrue("Wrong event duration", event.getDuration().toMillis() >= MILLIS);
-            assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+            assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
 
             if (lastEventThreadName == null) {
                 lastEventThreadName = notifThread;
@@ -110,13 +104,15 @@ public class TestJavaMonitorWait extends JfrTest {
         Thread tp = new Thread(producer);
         producerName = tp.getName();
         consumerName = tc.getName();
+
         tp.start();
         tc.start();
+
         tp.join();
         tc.join();
     }
 
-    static class Helper {
+    private class Helper {
         private int count = 0;
         private final int bufferSize = 1;
 

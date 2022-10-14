@@ -29,24 +29,21 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
-
 import org.junit.Test;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedObject;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorWaitNotifyAll extends JfrTest {
+public class TestJavaMonitorWaitNotifyAllEvent extends JfrTest {
     private static final int MILLIS = 50;
-    static final Helper helper = new Helper();
-    static Thread producerThread1;
-    static Thread producerThread2;
-    static Thread consumerThread;
 
-    private boolean notifierFound = false;
-    private int waitersFound = 0;
+    private Helper helper = new Helper();
+    private Thread producerThread1;
+    private Thread producerThread2;
+    private Thread consumerThread;
+    private boolean notifierFound;
+    private int waitersFound;
 
     @Override
     public String[] getTestedEvents() {
@@ -55,27 +52,24 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
 
     @Override
     public void validateEvents() throws Throwable {
-        List<RecordedEvent> events = getEvents("TestJavaMonitorWaitNotifyAll");
-
-        for (RecordedEvent event : events) {
-            RecordedObject struct = event;
-            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            String notifThread = struct.<RecordedThread> getValue("notifier") != null ? struct.<RecordedThread> getValue("notifier").getJavaName() : null;
+        for (RecordedEvent event : getEvents()) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
             if (!eventThread.equals(producerThread1.getName()) &&
                             !eventThread.equals(producerThread2.getName()) &&
                             !eventThread.equals(consumerThread.getName())) {
                 continue;
             }
-            if (!struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+            if (!event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 continue;
             }
 
             assertTrue("Event is wrong duration.", event.getDuration().toMillis() >= MILLIS);
             if (eventThread.equals(consumerThread.getName())) {
-                assertTrue("Should have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+                assertTrue("Should have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
                 notifierFound = true;
             } else {
-                assertFalse("Should not have timed out.", struct.<Boolean> getValue("timedOut").booleanValue());
+                assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
                 assertTrue("Notifier thread name is incorrect", notifThread.equals(consumerThread.getName()));
                 waitersFound++;
             }
@@ -95,8 +89,6 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
             }
         };
 
-        producerThread1 = new Thread(producer);
-        producerThread2 = new Thread(producer);
         Runnable consumer = () -> {
             try {
                 helper.doWork();
@@ -105,22 +97,26 @@ public class TestJavaMonitorWaitNotifyAll extends JfrTest {
             }
         };
 
+        producerThread1 = new Thread(producer);
+        producerThread2 = new Thread(producer);
         consumerThread = new Thread(consumer);
+
         producerThread1.start();
+
         consumerThread.join();
         producerThread1.join();
         producerThread2.join();
     }
 
-    static class Helper {
+    private class Helper {
         public synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(consumerThread)) {
                 wait(MILLIS);
                 notifyAll(); // should wake up both producers
-            } else if (Thread.currentThread().equals(producerThread1)){
+            } else if (Thread.currentThread().equals(producerThread1)) {
                 producerThread2.start();
                 wait();
-            } else if (Thread.currentThread().equals(producerThread2)){
+            } else if (Thread.currentThread().equals(producerThread2)) {
                 consumerThread.start();
                 wait();
             }
