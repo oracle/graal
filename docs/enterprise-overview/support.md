@@ -1,6 +1,6 @@
 ---
 layout: ohc
-permalink: /overview/support/
+permalink: /support/
 ---
 
 ## Support
