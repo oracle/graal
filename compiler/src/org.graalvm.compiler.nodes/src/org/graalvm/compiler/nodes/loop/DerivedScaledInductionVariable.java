@@ -181,4 +181,9 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
         return new DerivedScaledInductionVariable(loop, newBase, scale, newValue);
     }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return mul(graph(), base.entryTripValue(), scale);
+    }
 }

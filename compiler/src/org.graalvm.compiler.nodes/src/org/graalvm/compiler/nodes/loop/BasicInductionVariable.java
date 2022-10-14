@@ -203,4 +203,9 @@ public class BasicInductionVariable extends InductionVariable {
     public String toString() {
         return String.format("BasicInductionVariable %s %s %s %s", initNode(), phi, op.getNodeClass().shortName(), strideNode());
     }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return init;
+    }
 }
