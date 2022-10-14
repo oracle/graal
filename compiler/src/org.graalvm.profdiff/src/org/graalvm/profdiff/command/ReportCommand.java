@@ -77,7 +77,8 @@ public class ReportCommand implements Command {
 
     @Override
     public void invoke(Writer writer) throws Exception {
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer);
+        boolean hasProftool = proftoolArgument.getValue() != null;
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, hasProftool);
         explanationWriter.explain();
 
         VerbosityLevel verbosity = writer.getVerbosityLevel();
@@ -87,11 +88,10 @@ public class ReportCommand implements Command {
         experiment.writeExperimentSummary(writer);
 
         for (Method method : experiment.getMethodsByDescendingPeriod()) {
-            writer.writeln();
-            if (proftoolArgument.getValue() != null && !method.isHot()) {
+            if (hasProftool && !method.isHot()) {
                 continue;
             }
-            writer.writeln("Method " + method.getMethodName());
+            writer.writeln("\nMethod " + method.getMethodName());
             writer.increaseIndent();
             method.writeCompilationList(writer);
             writer.increaseIndent();

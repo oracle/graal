@@ -24,8 +24,8 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.util.Writer;
 
@@ -34,10 +34,32 @@ import org.graalvm.profdiff.util.Writer;
  * the current {@link VerbosityLevel}.
  */
 public class ExplanationWriter {
+    /**
+     * The destination writer.
+     */
     private final Writer writer;
 
-    public ExplanationWriter(Writer writer) {
+    /**
+     * {@code true} if the output consists of only one experiment.
+     */
+    private final boolean singleExperiment;
+
+    /**
+     * {@code true} if only hot methods are displayed.
+     */
+    private final boolean onlyHotMethods;
+
+    /**
+     * Constructs an explanation writer.
+     *
+     * @param writer the destination writer
+     * @param singleExperiment the output consists of only one experiment
+     * @param onlyHotMethods only hot methods are displayed
+     */
+    public ExplanationWriter(Writer writer, boolean singleExperiment, boolean onlyHotMethods) {
         this.writer = writer;
+        this.singleExperiment = singleExperiment;
+        this.onlyHotMethods = onlyHotMethods;
     }
 
     /**
@@ -48,8 +70,12 @@ public class ExplanationWriter {
         writer.writeln("How to read the output");
         writer.setPrefixAfterIndent("- ");
         writer.increaseIndent();
-        writer.writeln("each method with a hot compilation is printed in a separate section below");
-        if (verbosityLevel.shouldDiffCompilations()) {
+        if (onlyHotMethods) {
+            writer.writeln("each method with a hot compilation is printed in a separate section below");
+        } else {
+            writer.writeln("each compiled method is printed in a separate section below");
+        }
+        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
             writer.writeln("hot compilation units are paired by their fraction of execution");
         }
         explainOptimizationTree();
@@ -68,11 +94,11 @@ public class ExplanationWriter {
         writer.increaseIndent();
         writer.writeln("the root of the tree is a virtual root phase that encompasses all phases");
         writer.writeln("the children of an optimization phase are either phases directly invoked inside the phase or individual optimizations");
-        writer.writeln("an optimization is described by an optimization name, event name, bci, and optionally properties");
+        writer.writeln("an optimization is described by an optimization name, event name, position, and optionally properties");
         writer.increaseIndent();
         writer.writeln("optimization name is derived from the name of the phase that performed it");
         writer.writeln("event name name is a more specific description of the optimization");
-        writer.writeln("bci is the byte code position of a significant node related to the transformation");
+        writer.writeln("position is the byte code position of a significant node related to the transformation");
         writer.increaseIndent();
         writer.writeln("in the presence of inlining, the position is a list of (method, bci) pairs");
         writer.writeln("the first pair is a position of a bytecode instruction in an inlined method");
@@ -80,7 +106,7 @@ public class ExplanationWriter {
         writer.decreaseIndent();
         writer.writeln("properties are key-value pairs that give additional information");
         writer.decreaseIndent();
-        if (verbosityLevel.shouldDiffCompilations()) {
+        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
             writer.writeln("the optimization trees of two paired compilation units are diffed");
             writer.writeln("a list of operations to transform the first optimization tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion and subtree insertion");
@@ -113,7 +139,7 @@ public class ExplanationWriter {
         } else {
             writer.writeln("the children of a node are in the order they appeared in the log");
         }
-        if (verbosityLevel.shouldDiffCompilations()) {
+        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
             writer.writeln("the inlining trees of two paired compilation units are diffed");
             writer.increaseIndent();
             writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but ultimately not inlined");

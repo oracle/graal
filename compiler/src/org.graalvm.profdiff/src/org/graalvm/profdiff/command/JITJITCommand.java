@@ -83,7 +83,7 @@ public class JITJITCommand implements Command {
 
     @Override
     public void invoke(Writer writer) throws Exception {
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer);
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true);
         explanationWriter.explain();
 
         writer.writeln();
