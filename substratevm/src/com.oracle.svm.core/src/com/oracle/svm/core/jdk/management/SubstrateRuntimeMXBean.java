@@ -48,7 +48,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 
 import sun.management.Util;
 
-final class SubstrateRuntimeMXBean implements RuntimeMXBean {
+public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     private final String managementSpecVersion;
     private long startMillis;
@@ -153,7 +153,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public long getUptime() {
-        return System.currentTimeMillis() - startMillis;
+        return Math.max(0, System.currentTimeMillis() - startMillis);
     }
 
     @Override

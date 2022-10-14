@@ -44,6 +44,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.collections.RingBuffer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -56,7 +57,6 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -902,7 +902,7 @@ public final class VMOperationControl {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOpHistory() {
-            history = new RingBuffer<>(15, VMOpStatusChange::new);
+            history = new RingBuffer<>(SubstrateOptions.DiagnosticBufferSize.getValue(), VMOpStatusChange::new);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
