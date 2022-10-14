@@ -57,7 +57,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -259,6 +258,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.OffsetOfSupportImpl;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -323,18 +323,18 @@ public class NativeImageGenerator {
     protected final FeatureHandler featureHandler;
     protected final ImageClassLoader loader;
     protected final HostedOptionProvider optionProvider;
-    private final ProgressReporter reporter;
+    protected final ProgressReporter reporter;
 
-    private AnalysisUniverse aUniverse;
-    private HostedUniverse hUniverse;
-    private Inflation bb;
-    private NativeLibraries nativeLibraries;
-    private AbstractImage image;
-    private AtomicBoolean buildStarted = new AtomicBoolean();
+    protected AnalysisUniverse aUniverse;
+    protected HostedUniverse hUniverse;
+    protected Inflation bb;
+    protected NativeLibraries nativeLibraries;
+    protected AbstractImage image;
+    protected AtomicBoolean buildStarted = new AtomicBoolean();
 
-    private Pair<Method, CEntryPointData> mainEntryPoint;
+    protected Pair<Method, CEntryPointData> mainEntryPoint;
 
-    private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
+    protected final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
         this.loader = loader;
@@ -728,7 +728,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private boolean runPointsToAnalysis(String imageName, OptionValues options, DebugContext debug) {
+    protected boolean runPointsToAnalysis(String imageName, OptionValues options, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("run analysis")) {
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
@@ -1111,7 +1111,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private NativeLibraries setupNativeLibraries(ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
+    protected NativeLibraries setupNativeLibraries(ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
                     SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport, DebugContext debug) {
         try (StopTimer ignored = TimerCollection.createTimerAndStart("(cap)")) {
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport,
@@ -1152,7 +1152,7 @@ public class NativeImageGenerator {
     /**
      * Record callees of methods that must not allocate.
      */
-    private static void recordRestrictHeapAccessCallees(Collection<AnalysisMethod> methods) {
+    protected static void recordRestrictHeapAccessCallees(Collection<AnalysisMethod> methods) {
         ((RestrictHeapAccessCalleesImpl) ImageSingletons.lookup(RestrictHeapAccessCallees.class)).aggregateMethods(methods);
     }
 
@@ -1662,7 +1662,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+    protected void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
 
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
             if (HostedLibCBase.isMethodProvidedInCurrentLibc(method)) {
