@@ -5,23 +5,19 @@ permalink: /overview/architecture/
 
 # Oracle GraalVM Enterprise Edition Architecture Overview
 
-Oracle GraalVM Enterprise Edition (GraalVM Enterprise) is a highly productive JDK distribution.
-It is designed to accelerate the execution of applications written in Java and other JVM languages while also providing a high-performance runtime for JavaScript, Ruby, Python, and a number of other popular languages.
+Oracle GraalVM Enterprise Edition (GraalVM Enterprise) is a high performance JDK distribution, built on the global standard for application development.
+It is designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Python, and a number of other popular languages. 
 GraalVM Enterprise's polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating any foreign language call costs.
 
-This page provides developers, solution architects, and infrastructure architects with an architectural overview of GraalVM Enterprise, as well as information about runtime modes, supported platforms, available distributions, core and additional functionalities, and support levels for various features.
+This page provides developers, solution architects, and infrastructure architects with an architectural overview of GraalVM Enterprise, as well as information about runtime modes, certified platforms, available distributions, core and additional components, and support levels for various features.
 The conceptual overview and advantages of GraalVM Enterprise are described on the [Solutions Overview](solutions-overview.md) page.
 
-* [GraalVM Enterprise Architecture](#graalvm-enterprise-architecture)
+* [Architecture](#graalvm-enterprise-architecture)
 * [Runtime Modes](#runtime-modes)
-* [Available Distributions](#available-distributions)
-* [Certified Platforms](#certified-platforms)
 * [Distribution Components List](#distribution-components-list)
-* [Licensing and Support](#licensing-and-support)
-* [Experimental and Early Adopter Features](#experimental-and-early-adopter-features)
 * [What to Read Next](#what-to-read-next)
 
-## GraalVM Enterprise Architecture
+## Architecture
 
 ![](/img/graalvm_architecture.png)
 
@@ -54,47 +50,19 @@ A generated self-contained native executable is specific to each individual oper
 It is a complete Java VM that includes all core components, implements the same API as the Java Runtime Environment library, and reuses all JARs and native libraries from GraalVM.
 Java on Trufle is an experimental technology in GraalVM, available as of version 21.0.0.
 
-## Available Distributions
-
-GraalVM Enterprise distributions are based on Oracle JDK 8, 11, and 17.
-GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
-
-GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The GraalVM Enterprise distribution based on Oracle JDK 17 is experimental with [several known limitations](https://docs.oracle.com/en/graalvm/enterprise/21/docs/overview/known-issues/).
-Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
-
-## Certified Platforms
-
-The following are the certified platforms for GraalVM Enterprise 21:
-
-| Operating System 	| Version 	| Architecture 	| Installation Guide 	|
-|------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/compute-instances.md) 	|
-| Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/installation-linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina)	| x86 64-bit 	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
-| Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/installation-windows.md) 	|
-
 ## Distribution Components List
 
 GraalVM Enterprise consists of core and additional functionalities.
 
 ### Core Components
-**Runtimes**
+
 * Java HotSpot VM
-* JavaScript runtime
-* LLVM runtime
-
-**Libraries (JAR files)**
-* GraalVM compiler - the top-tier JIT compiler
+* Graal compiler - the top-tier JIT compiler
 * Polyglot API – the APIs for combining programming languages in a shared runtime
-
-**Utilities**
-* JavaScript REPL with the JavaScript interpreter
-* `lli` tool to directly execute programs from LLVM bitcode
-* [GraalVM Updater](../reference-manual/graalvm-updater.md) to install additional functionalities
+* [GraalVM Updater](../reference-manual/graalvm-updater.md) - a utility to install additional functionalities
 
 ### Additional Functionalities
-GraalVM Enterprise core installation can be extended with more languages runtimes and utilities.
+GraalVM Enterprise JDK installation can be extended with more languages runtimes and utilities.
 
 Tools/Utilities:
 
@@ -109,37 +77,6 @@ Runtimes:
 * [Ruby](../reference-manual/ruby/README.md) -- Ruby 2.7.3 compatible
 * [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
 * [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
-
-## Licensing and Support
-
-Oracle GraalVM Enterprise Edition is licensed under the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) for developing, testing, prototyping, and demonstrating Your application.
-
-For production use, GraalVM Enterprise is available as part of the [Oracle Java SE Subscription](https://www.oracle.com/uk/java/java-se-subscription/) which includes 24x7x365 [Oracle premier support](https://www.oracle.com/support/premier/) and the access to [My Oracle Support (MOS)](https://www.oracle.com/support/).
-
-## Experimental and Early Adopter Features
-
-Oracle GraalVM Enterprise Edition features are distributed as fully supported, early adopter, and experimental.
-
-Experimental features are being considered for future versions of GraalVM Enterprise.
-They are not meant to be used in production and are not supported by Oracle.
-The development team welcomes feedback on experimental features, but users should be aware that experimental features might never be included in a final version, or might change significantly before being considered production-ready.
-
-For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
-
-The following table lists supported and experimental features in GraalVM Enterprise Edition 21 by platform.
-
-| Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
-|--------------------|---------------|---------------|---------------|
-| Native Image | early adopter | early adopter | early adopter | early adopter |
-| LLVM runtime | supported | supported | supported | not available |
-| LLVM toolchain | supported | supported | supported | not available |
-| JavaScript | supported | supported | supported | supported |
-| Node.js  | supported | supported | supported | supported |
-| Java on Truffle | experimental | experimental | experimental | experimental |
-| Python | experimental | not available | experimental | not available |
-| Ruby | experimental | experimental | experimental | not available |
-| R | experimental | not available | experimental | not available |
-| WebAssembly | experimental | experimental | experimental | experimental |
 
 ## What to Read Next
 
