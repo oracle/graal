@@ -69,13 +69,13 @@ public class StdoutWriter implements Writer {
     @Override
     public void writeln(String output) {
         printIndentIfNeeded();
-        System.out.println(output);
-        indentWritten = false;
+        System.out.print(output);
+        writeln();
     }
 
     @Override
     public void writeln() {
-        System.out.println();
+        System.out.print('\n');
         indentWritten = false;
     }
 
