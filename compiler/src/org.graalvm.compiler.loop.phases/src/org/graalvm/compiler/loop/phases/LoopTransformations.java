@@ -430,6 +430,10 @@ public abstract class LoopTransformations {
         } else {
             updatePreLoopLimit(preCounted);
         }
+
+	graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After updating preloop limit");
+
+
         double originalFrequency = loop.loopBegin().loopFrequency();
         preLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
         mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().decrementFrequency(2.0));
@@ -666,7 +670,12 @@ public abstract class LoopTransformations {
     private static void updatePreLoopLimit(CountedLoopInfo preCounted) {
         // Update the pre loops limit test
         // Make new limit one iteration
-        ValueNode newLimit = AddNode.add(preCounted.getBodyIVStart(), preCounted.getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
+        ValueNode newLimit = null;
+        if (preCounted.isInverted()) {
+            newLimit = preCounted.getBodyIVStart();
+        } else {
+            newLimit = AddNode.add(preCounted.getBodyIVStart(), preCounted.getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
+        }
         // Fetch the variable we are not replacing and configure the one we are
         ValueNode ub = preCounted.getLimit();
         IntegerHelper helper = preCounted.getCounterIntegerHelper();
