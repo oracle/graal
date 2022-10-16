@@ -170,42 +170,6 @@ public final class LibGraalScope implements AutoCloseable {
     }
 
     /**
-     * Enters a scope for making calls into an existing libgraal isolate. If there is no existing
-     * libgraal scope for the current thread, the current thread is attached to libgraal. When the
-     * outer most scope is closed, the current thread is detached from libgraal.
-     *
-     * This must be used in a try-with-resources statement.
-     *
-     * This cannot be called from {@linkplain LibGraal#inLibGraal() within} libgraal.
-     *
-     * @throws IllegalStateException if libgraal is {@linkplain LibGraal#isAvailable() unavailable}
-     *             or {@link LibGraal#inLibGraal()} returns true
-     */
-    public LibGraalScope(long isolateAddress) {
-        if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
-            throw new IllegalStateException();
-        }
-        id = nextId.getAndIncrement();
-        parent = currentScope.get();
-        if (parent == null) {
-            long isolateThread = getIsolateThreadIn(isolateAddress);
-            boolean alreadyAttached;
-            if (isolateThread == 0L) {
-                alreadyAttached = false;
-                isolateThread = attachThreadTo(isolateAddress);
-            } else {
-                alreadyAttached = true;
-            }
-            long isolateId = getIsolateId(isolateThread);
-            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId, isolateAddress);
-            shared = new Shared(alreadyAttached ? null : DetachAction.DETACH, isolate, isolateThread);
-        } else {
-            shared = parent.shared;
-        }
-        currentScope.set(this);
-    }
-
-    /**
      * Attaches the current thread to the isolate at {@code isolateAddress}.
      *
      * @return the address of the attached IsolateThread
@@ -270,18 +234,5 @@ public final class LibGraalScope implements AutoCloseable {
                 LibGraal.detachCurrentThread(shared.detachAction == DetachAction.DETACH_RUNTIME_AND_RELEASE);
             }
         }
-    }
-
-    /**
-     * Returns the nesting depth of this {@code LibGraalScope} object.
-     */
-    public int getDepth() {
-        int depth = 0;
-        LibGraalScope ancestor = parent;
-        while (ancestor != null) {
-            depth++;
-            ancestor = ancestor.parent;
-        }
-        return depth;
     }
 }

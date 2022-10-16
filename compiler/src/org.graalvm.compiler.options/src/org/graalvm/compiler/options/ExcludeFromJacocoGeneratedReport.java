@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.graphbuilderconf;
+package org.graalvm.compiler.options;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.CLASS;
 
 import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Denotes a class or method that should be ignored by JaCoCo. The "Generated" part of the name is a
- * restriction based on JaCoco's support for excluding by annotation.
+ * Denotes a class or method that should be ignored by JaCoCo.
  *
  * @see "https://github.com/jacoco/jacoco/releases/tag/v0.8.3"
  */
-@Retention(CLASS)
+@Retention(RetentionPolicy.CLASS)
 @Target({TYPE, METHOD})
-public @interface JacocoIgnoreGenerated {
+public @interface ExcludeFromJacocoGeneratedReport {
     /**
-     * Specifies the reason the annotated element should be excluded from JaCoCo analysis. If an
+     * Specifies the reason the annotated element should be excluded from a JaCoCo report. If an
      * issue has been opened for missing coverage, use the issue id as the reason.
      */
     String value();
