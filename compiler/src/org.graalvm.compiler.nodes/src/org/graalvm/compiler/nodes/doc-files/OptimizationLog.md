@@ -31,7 +31,7 @@ It suffices to insert a line like the one below (from `DeadCodeEliminationPhase`
 The `report` method creates an *optimization entry*.
 
 ```java
-graph.getOptimizationLog().report(DeadCodeEliminationPhase.class,"NodeRemoved",node);
+graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved", node);
 ```
 
 ## Compiler options
@@ -62,8 +62,8 @@ regular log. Consider the example from `LoopTransformations#peel`.
 
 ```java
 loop.loopBegin().graph().getOptimizationLog()
-        .withProperty("peelings",loop.loopBegin().peelings())
-        .report(LoopTransformations.class,"LoopPeeling",loop.loopBegin());
+        .withProperty("peelings", loop.loopBegin().peelings())
+        .report(LoopTransformations.class, "LoopPeeling", loop.loopBegin());
 ```
 
 The `withProperty` and `withLazyProperty` methods return an optimization entry that holds the provided named properties.
@@ -133,7 +133,7 @@ mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraa
 An equivalent set of commands for `native-image` is:
 
 ```sh
-cd graal/vm
+cd ../vm
 mx --env ni-ce build
 mx --env ni-ce benchmark renaissance-native-image:scrabble -- --jvm=native-image --jvm-config=default-ce \
   -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
@@ -267,7 +267,8 @@ with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.Track
 that optimizations can be linked with a source position.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump -Dgraal.PrintGraph=Network
+mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump \
+  -Dgraal.PrintGraph=Network
 ```
 
 Optimization trees for each compilation should now be available in IGV.
