@@ -416,6 +416,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @CompilationFinal(dimensions = 1) //
     private final int[] stackOverflowErrorInfo;
 
+    /**
+     * Outer array should be seen and used as a {@code @CompilationFinal volatile} array, while
+     * inner arrays can be seen as {@code final} arrays.
+     */
     @CompilationFinal(dimensions = 2) //
     private volatile int[][] jsrBci = null;
 
@@ -1059,14 +1063,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                 if (VolatileArrayAccess.volatileRead(jsrBci, retOpBci) != null) {
                                     return;
                                 }
-                                // Be very careful on updating the known target bcis, as if another
-                                // thread reads the not fully initialized array, it may consider 0
-                                // to be a valid RET target, completely breaking PE.
-                                int[] targets = new int[1];
-                                VolatileArrayAccess.volatileWrite(targets, 0, targetBCI);
+                                /*
+                                 * Be very careful on updating the known target bcis, as if another
+                                 * thread reads the not fully initialized array, it may consider 0
+                                 * to be a valid RET target, completely breaking PE.
+                                 */
+                                int[] targets = new int[]{targetBCI};
+                                // Also serves as a "final publication" barrier for the assignment
+                                // above.
                                 VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, targets);
                             });
-                            knownRets = knownTargets[retOpBci];
+                            knownRets = VolatileArrayAccess.volatileRead(knownTargets, retOpBci);
                         }
                         assert knownRets != null;
 
@@ -1093,10 +1100,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                 }
                             }
                             int[] updatedTargets = Arrays.copyOf(currentRets, currentRets.length + 1);
-                            // Be very careful on updating the known target bcis, as if another
-                            // thread reads the not fully initialized array, it may consider 0 to be
-                            // a valid RET target, completely breaking PE.
-                            VolatileArrayAccess.volatileWrite(updatedTargets, updatedTargets.length - 1, targetBCI);
+                            /*
+                             * Be very careful on updating the known target bcis, as if another
+                             * thread reads the not fully initialized array, it may consider 0 to be
+                             * a valid RET target, completely breaking PE.
+                             */
+                            updatedTargets[updatedTargets.length - 1] = targetBCI;
+                            // Also serves as a "final publication" barrier for the assignment
+                            // above.
                             VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, updatedTargets);
                         });
                         top += Bytecodes.stackEffectOf(RET);
@@ -1293,16 +1304,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                         if (VolatileArrayAccess.volatileRead(jsrBci, retOpBci) != null) {
                                             return;
                                         }
-                                        // Be very careful on updating the known target bcis, as if
-                                        // another
-                                        // thread reads the not fully initialized array, it may
-                                        // consider 0
-                                        // to be a valid RET target, completely breaking PE.
-                                        int[] targets = new int[1];
-                                        VolatileArrayAccess.volatileWrite(targets, 0, targetBCI);
+                                        /*
+                                         * Be very careful on updating the known target bcis, as if
+                                         * another thread reads the not fully initialized array, it
+                                         * may consider 0 to be a valid RET target, completely
+                                         * breaking PE.
+                                         */
+                                        int[] targets = new int[]{targetBCI};
+                                        // Also serves as a "final publication" barrier for the
+                                        // assignment above.
                                         VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, targets);
                                     });
-                                    knownRets = knownTargets[retOpBci];
+                                    knownRets = VolatileArrayAccess.volatileRead(knownTargets, retOpBci);
                                 }
                                 assert knownRets != null;
 
@@ -1329,12 +1342,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                         }
                                     }
                                     int[] updatedTargets = Arrays.copyOf(currentRets, currentRets.length + 1);
-                                    // Be very careful on updating the known target bcis, as if
-                                    // another
-                                    // thread reads the not fully initialized array, it may consider
-                                    // 0 to be
-                                    // a valid RET target, completely breaking PE.
-                                    VolatileArrayAccess.volatileWrite(updatedTargets, updatedTargets.length - 1, targetBCI);
+                                    /*
+                                     * Be very careful on updating the known target bcis, as if
+                                     * another thread reads the not fully initialized array, it may
+                                     * consider 0 to be a valid RET target, completely breaking PE.
+                                     */
+                                    updatedTargets[updatedTargets.length - 1] = targetBCI;
+                                    // Also serves as a "final publication" barrier for the
+                                    // assignment above.
                                     VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, updatedTargets);
                                 });
                                 top += Bytecodes.stackEffectOf(RET);
