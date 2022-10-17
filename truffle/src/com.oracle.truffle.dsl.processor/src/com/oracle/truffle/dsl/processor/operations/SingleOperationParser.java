@@ -121,7 +121,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             TypeMirror proxyType = (TypeMirror) proxyTypeValue.getValue();
             if (proxyType.getKind() != TypeKind.DECLARED) {
-                parentData.addError(proxyMirror, proxyTypeValue, "@OperationProxy'ed type must be a class, not %s.", proxyType);
+                parentData.addError(proxyMirror, proxyTypeValue, "Type referenced by @OperationProxy must be a class, not %s.", proxyType);
                 return null;
             }
 
@@ -201,7 +201,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             for (ExecutableElement cel : findSpecializations(te.getEnclosedElements())) {
                 if (!cel.getModifiers().contains(Modifier.STATIC)) {
-                    data.addError("@OperationProxy'ed class must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
+                    data.addError("Class referenced by @OperationProxy must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
                 }
 
                 operationFunctions.add(cel);
@@ -433,10 +433,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         for (VariableElement param : method.getParameters()) {
             if (isVariadicParameter(param)) {
                 if (isVariadic) {
-                    data.addError(method, "Multiple @Variadic arguments not allowed.");
+                    data.addError(method, "Multiple @Variadic arguments are not supported.");
                 }
                 if (numLocalSetters != 0) {
-                    data.addError(param, "Value arguments after LocalSetter not allowed.");
+                    data.addError(param, "Value arguments after LocalSetter are not supported.");
                 }
                 isVariadic = true;
                 parameters.add(ParameterKind.VARIADIC);
@@ -446,15 +446,15 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetterRange)) {
                 parameters.add(ParameterKind.LOCAL_SETTER_ARRAY);
                 if (numLocalSetters != 0) {
-                    data.addError(param, "Mixing regular and range local setters not allowed.");
+                    data.addError(param, "Mixing regular and range local setters is not supported.");
                 }
                 numLocalSetters = -1;
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
-                    data.addError(method, "Value arguments after @Variadic not allowed.");
+                    data.addError(method, "Value arguments after @Variadic are not supported.");
                 }
                 if (numLocalSetters > 0) {
-                    data.addError(param, "Value arguments after LocalSetter not allowed.");
+                    data.addError(param, "Value arguments after LocalSetter are not supported.");
                 }
                 if (ElementUtils.typeEquals(param.asType(), types.Frame) || ElementUtils.typeEquals(param.asType(), types.VirtualFrame)) {
                     parameters.add(ParameterKind.VIRTUAL_FRAME);

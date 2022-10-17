@@ -7,17 +7,21 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
-public class ByteBufferDataInput {
+public class SerializationUtils {
 
-    public static DataInput createDataInput(ByteBuffer buffer) {
-        return new Impl(buffer);
+    private SerializationUtils() {
     }
 
-    private static class Impl implements DataInput {
+    public static DataInput createDataInput(ByteBuffer buffer) {
+        return new ByteBufferDataInput(buffer);
+    }
+
+    private static class ByteBufferDataInput implements DataInput {
 
         private final ByteBuffer buffer;
+        private char[] lineBuffer;
 
-        private Impl(ByteBuffer buffer) {
+        private ByteBufferDataInput(ByteBuffer buffer) {
             this.buffer = buffer;
         }
 
@@ -125,50 +129,57 @@ public class ByteBufferDataInput {
             }
         }
 
+        private static int get(ByteBuffer buf) {
+            if (buf.position() >= buf.limit()) {
+                return -1;
+            } else {
+                return buf.get();
+            }
+        }
+
         /**
-         * Reads the next line of text from the input stream. It reads successive bytes, converting
-         * each byte separately into a character, until it encounters a line terminator or end of
-         * file; the characters read are then returned as a {@code String}. Note that because this
-         * method processes bytes, it does not support input of the full Unicode character set.
-         * <p>
-         * If end of file is encountered before even one byte can be read, then {@code null} is
-         * returned. Otherwise, each byte that is read is converted to type {@code char} by
-         * zero-extension. If the character {@code '\n'} is encountered, it is discarded and reading
-         * ceases. If the character {@code '\r'} is encountered, it is discarded and, if the
-         * following byte converts &#32;to the character {@code '\n'}, then that is discarded also;
-         * reading then ceases. If end of file is encountered before either of the characters
-         * {@code '\n'} and {@code '\r'} is encountered, reading ceases. Once reading has ceased, a
-         * {@code String} is returned that contains all the characters read and not discarded, taken
-         * in order. Note that every character in this string will have a value less than
-         * {@code \u005Cu0100}, that is, {@code (char)256}.
-         *
-         * @return the next line of text from the input stream, or {@code null} if the end of file
-         *         is encountered before a byte can be read.
-         * @exception IOException if an I/O error occurs.
+         * Modified from {@link DataInputStream#readLine()}.
          */
+        @Deprecated
         public String readLine() throws IOException {
-            int remaining = buffer.remaining();
-            if (remaining == 0) {
-                return null;
+            char[] buf = lineBuffer;
+
+            if (buf == null) {
+                buf = lineBuffer = new char[128];
             }
 
-            StringBuilder sb = new StringBuilder();
-            while (remaining > 0) {
-                char c = (char) buffer.get();
-                if (c == '\r') {
-                    if (remaining > 1 && (char) buffer.get() != '\n') {
-                        buffer.position(buffer.position() - 1);
-                    }
-                    break;
-                } else if (c == '\n') {
-                    break;
-                } else {
-                    sb.append(c);
-                    remaining--;
+            int room = buf.length;
+            int offset = 0;
+            int c;
+
+            loop: while (true) {
+                switch (c = get(buffer)) {
+                    case -1:
+                    case '\n':
+                        break loop;
+
+                    case '\r':
+                        int c2 = get(buffer);
+                        if ((c2 != '\n') && (c2 != -1)) {
+                            buffer.position(buffer.position() - 1);
+                        }
+                        break loop;
+
+                    default:
+                        if (--room < 0) {
+                            buf = new char[offset + 128];
+                            room = buf.length - offset - 1;
+                            System.arraycopy(lineBuffer, 0, buf, 0, offset);
+                            lineBuffer = buf;
+                        }
+                        buf[offset++] = (char) c;
+                        break;
                 }
             }
-
-            return sb.toString();
+            if ((c == -1) && (offset == 0)) {
+                return null;
+            }
+            return String.copyValueOf(buf, 0, offset);
         }
 
         public String readUTF() throws IOException {

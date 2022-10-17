@@ -105,7 +105,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError({"@OperationProxy'ed type must be a class, not int.", "Could not proxy operation"})
+    @ExpectError({"Type referenced by @OperationProxy must be a class, not int.", "Could not proxy operation"})
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
     public abstract class BadProxyType extends RootNode implements OperationRootNode {
@@ -114,7 +114,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("@OperationProxy'ed class must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.")
+    @ExpectError("Class referenced by @OperationProxy must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(TestNode.class)
     public static abstract class OperationErrorTests extends RootNode implements OperationRootNode {
@@ -145,7 +145,7 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("Multiple @Variadic arguments not allowed.")
+        @ExpectError("Multiple @Variadic arguments are not supported.")
         @Operation
         public static final class TestOperation5 {
             @Specialization
@@ -153,7 +153,7 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("Value arguments after LocalSetter not allowed.")
+        @ExpectError("Value arguments after LocalSetter are not supported.")
         @Operation
         public static final class TestOperation6 {
             @Specialization
@@ -161,7 +161,7 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("Mixing regular and range local setters not allowed.")
+        @ExpectError("Mixing regular and range local setters is not supported.")
         @Operation
         public static final class TestOperation7 {
             @Specialization
@@ -169,7 +169,7 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("Value arguments after @Variadic not allowed.")
+        @ExpectError("Value arguments after @Variadic are not supported.")
         @Operation
         public static final class TestOperation8 {
             @Specialization
@@ -177,7 +177,7 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("Value arguments after LocalSetter not allowed.")
+        @ExpectError("Value arguments after LocalSetter are not supported.")
         @Operation
         public static final class TestOperation9 {
             @Specialization
