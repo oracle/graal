@@ -116,21 +116,23 @@ jobs:
     - name: Checkout oracle/graal
       uses: actions/checkout@v3
       with:
-        fetch-depth: 1
+        ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
+        fetch-depth: "${{ contains(matrix.env.GATE, 'style') && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
       uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
-        fetch-depth: 1
         ref: ${{ env.MX_VERSION }}
+        fetch-depth: 1
         path: ${{ env.MX_PATH }}
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.8'
-    - uses: actions/cache@v3
+    - name: Update mx cache
+      uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -153,17 +155,15 @@ jobs:
         jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
         ${MX_PYTHON} -m pip install jsonschema==4.6.1
-
-        # Download Eclipse
+    - name: Download Eclipse
+      if: ${{ contains(matrix.env.GATE, 'style') }}
+      run: |
         ECLIPSE_TAR=eclipse.tar.gz
         ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
         ECLIPSE_ORG_TIMESTAMP=$(jq -r '.downloads.eclipse.eclipse_org.timestamp' common.json)
         wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-${ECLIPSE_ORG_VERSION}-${ECLIPSE_ORG_TIMESTAMP}/eclipse-SDK-${ECLIPSE_ORG_VERSION}-linux-gtk-x86_64.tar.gz -O $ECLIPSE_TAR
         tar -xzf ${ECLIPSE_TAR}
         echo "ECLIPSE_EXE=${PWD}/eclipse/eclipse" >> $GITHUB_ENV
-
-        # The style gate needs the full commit history for checking copyright years
-        git fetch --unshallow
     - name: Remove .git directory
       if: ${{ matrix.env.WITHOUT_VCS }}
       run: rm -rf .git
