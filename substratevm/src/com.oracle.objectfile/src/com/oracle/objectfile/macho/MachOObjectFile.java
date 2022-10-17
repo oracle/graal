@@ -230,6 +230,9 @@ public final class MachOObjectFile extends ObjectFile {
         EnumSet<SectionFlag> sectionFlags = EnumSet.noneOf(SectionFlag.class);
         if (executable) {
             sectionFlags.add(SectionFlag.SOME_INSTRUCTIONS);
+            // Magic flag for ld64 to actually identify it as section that contains code, see:
+            // https://github.com/apple-opensource/ld64/blob/e28c028b20af187a16a7161d89e91868a450cadc/src/ld/parsers/macho_relocatable_file.cpp#L4575-L4577
+            sectionFlags.add(SectionFlag.PURE_INSTRUCTIONS);
         }
         MachORegularSection regular = new MachORegularSection(this, name, alignment, (Segment64Command) segment, impl, sectionFlags);
         impl.setElement(regular);
