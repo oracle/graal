@@ -55,15 +55,21 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
      * Determine if the given loop can be peeled.
      */
     public static boolean canPeel(LoopEx loop) {
-        return loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
+        return stateAllowsPeeling(loop.loopBegin().graph().getGraphState()) && loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
     }
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
         return NotApplicable.combineConstraints(
                         super.canApply(graphState),
+                        // keep in sync with stateAllowsPeeling()
                         NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState),
                         NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
+    }
+
+    private static boolean stateAllowsPeeling(GraphState graphState) {
+        // keep in sync with canApply()
+        return graphState.isBeforeStage(StageFlag.FSA) && graphState.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL);
     }
 
     @Override
