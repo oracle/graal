@@ -49,7 +49,7 @@ permissions:
 
 jobs:
   build-graalvm:
-    name: ${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE }} ${{ matrix.env.JDK }} ${{ matrix.env.WITHOUT_VCS }}
+    name: ${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE }} JDK${{ matrix.env.JDK_VERSION }} ${{ matrix.env.WITHOUT_VCS }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -57,48 +57,48 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
           - env:
-              JDK: "labsjdk-ce-17" # espresso does not support JDK19 yet
+              JDK_VERSION: "17" # espresso does not support JDK19 yet
               GATE: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "build,test,helloworld"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "build,test,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "style,fullbuild,sulongBasic"
               MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
               PRIMARY: "sulong"
           # /vm
           - env:
-              JDK: "labsjdk-ce-19"
+              JDK_VERSION: "19"
               GATE: "build,sulong"
               MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
               PRIMARY: "vm"
@@ -106,7 +106,7 @@ jobs:
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK: "labsjdk-ce-17"
+              JDK_VERSION: "17"
               GATE: "build"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
@@ -137,7 +137,7 @@ jobs:
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
       if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
       run: sudo apt update
