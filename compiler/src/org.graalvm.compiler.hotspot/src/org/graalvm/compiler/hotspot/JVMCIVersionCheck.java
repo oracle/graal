@@ -57,10 +57,6 @@ public final class JVMCIVersionCheck {
                     int major = Integer.parseInt(m.group(1));
                     int minor = Integer.parseInt(m.group(2));
                     int build = Integer.parseInt(m.group(3));
-                    String jvmciVersionPrint = props.get("JVMCIVersionCheck.jvmci.version.print");
-                    if (Boolean.valueOf(jvmciVersionPrint)) {
-                        System.out.println(String.format("%d,%d,%d", major, minor, build));
-                    }
                     return new Version(major, minor, build);
                 } catch (NumberFormatException e) {
                     // ignore
@@ -155,9 +151,9 @@ public final class JVMCIVersionCheck {
         this.vmVersion = vmVersion;
     }
 
-    static void check(Map<String, String> props, boolean exitOnFailure) {
+    static void check(Map<String, String> props, boolean exitOnFailure, boolean quiet) {
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, props.get("java.specification.version"), props.get("java.vm.version"));
-        checker.run(exitOnFailure, JVMCI_MIN_VERSION);
+        checker.run(exitOnFailure, JVMCI_MIN_VERSION, quiet);
     }
 
     /**
@@ -168,10 +164,10 @@ public final class JVMCIVersionCheck {
                     String javaSpecVersion,
                     String javaVmVersion, boolean exitOnFailure) {
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, javaVmVersion);
-        checker.run(exitOnFailure, minVersion);
+        checker.run(exitOnFailure, minVersion, true);
     }
 
-    private void run(boolean exitOnFailure, Version minVersion) {
+    private void run(boolean exitOnFailure, Version minVersion, boolean quiet) {
         if (javaSpecVersion.compareTo("11") < 0) {
             failVersionCheck(exitOnFailure, "Graal requires JDK 11 or later.%n");
         } else {
@@ -186,6 +182,10 @@ public final class JVMCIVersionCheck {
                 // A "labsjdk"
                 Version v = Version.parse(vmVersion, props);
                 if (v != null) {
+                    String jvmciVersionPrint = props.get("JVMCIVersionCheck.jvmci.version.print");
+                    if (!quiet && Boolean.valueOf(jvmciVersionPrint)) {
+                        System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
+                    }
                     if (v.isLessThan(minVersion)) {
                         failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
                     }
@@ -208,6 +208,6 @@ public final class JVMCIVersionCheck {
         for (String name : sprops.stringPropertyNames()) {
             props.put(name, sprops.getProperty(name));
         }
-        check(props, true);
+        check(props, true, false);
     }
 }
