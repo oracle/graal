@@ -41,13 +41,13 @@
     <module name="RegexpSinglelineJava">
       <property name="severity" value="error"/>
       <property name="format" value="@AutomaticFeature"/>
-      <property name="message" value="Use of @AutomaticFeature annotation is not allowed in tests. Use '--feature=...' instead"/>
+      <property name="message" value="Use of @AutomaticFeature annotation is not allowed in tests. Use '--features=...' instead"/>
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="RegexpSinglelineJava">
       <property name="severity" value="error"/>
       <property name="format" value="@AutomaticallyRegisteredFeature"/>
-      <property name="message" value="Use of @AutomaticallyRegisteredFeature annotation is not allowed in tests. Use '--feature=...' instead"/>
+      <property name="message" value="Use of @AutomaticallyRegisteredFeature annotation is not allowed in tests. Use '--features=...' instead"/>
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="RegexpSinglelineJava">
