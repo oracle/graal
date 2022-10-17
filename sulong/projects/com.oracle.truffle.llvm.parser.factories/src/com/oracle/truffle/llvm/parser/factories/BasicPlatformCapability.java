@@ -146,8 +146,18 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     @Override
+    public String getLibraryPrefix() {
+        return NativeContextExtension.getNativeLibraryPrefix();
+    }
+
+    @Override
     public String getLibrarySuffix() {
         return NativeContextExtension.getNativeLibrarySuffix();
+    }
+
+    @Override
+    public String getLibrarySuffixVersioned(int version) {
+        return NativeContextExtension.getNativeLibrarySuffixVersioned(version);
     }
 
     protected abstract LLVMSyscallOperationNode createSyscallNode(S syscall);

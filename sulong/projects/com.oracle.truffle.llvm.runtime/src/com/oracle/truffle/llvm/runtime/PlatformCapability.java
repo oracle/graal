@@ -56,7 +56,19 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract String getBuiltinsLibrary();
 
+    public abstract String getLibraryPrefix();
+
     public abstract String getLibrarySuffix();
+
+    public abstract String getLibrarySuffixVersioned(int version);
+
+    public String getLibrary(String libname) {
+        return getLibraryPrefix() + libname + '.' + getLibrarySuffix();
+    }
+
+    public String getLibraryVersioned(String libname, int version) {
+        return getLibraryPrefix() + libname + '.' + getLibrarySuffixVersioned(version);
+    }
 
     public abstract boolean isGlobalDLOpenFlagSet(int flag);
 

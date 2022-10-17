@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,11 +36,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
@@ -49,9 +44,16 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 
 public class InteropTestBase {
 
@@ -72,6 +74,11 @@ public class InteropTestBase {
 
     protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
     public static final String TEST_FILE_NAME = "toolchain-plain.so";
+
+    protected static String getLibrary(String library) {
+        runWithPolyglot.getPolyglotContext().initialize("llvm");
+        return LLVMLanguage.get(null).getCapability(PlatformCapability.class).getLibrary(library);
+    }
 
     protected static File getTestBitcodeFile(String name) {
         return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();

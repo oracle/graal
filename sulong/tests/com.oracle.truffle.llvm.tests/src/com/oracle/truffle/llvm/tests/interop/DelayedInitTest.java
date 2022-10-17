@@ -61,8 +61,8 @@ public class DelayedInitTest extends InteropTestBase {
                             return 0;
                         });
         // first parse libFoo, then libBar (both depend on libBaz)
-        CallTarget targetFoo = getCallTarget("libFoo.so");
-        CallTarget targetBar = getCallTarget("libBar.so");
+        CallTarget targetFoo = getCallTarget(getLibrary("Foo"));
+        CallTarget targetBar = getCallTarget(getLibrary("Bar"));
         // execute them the other way round to ensure libBar also initializes libBaz
         targetBar.call();
         targetFoo.call();
