@@ -417,7 +417,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private final int[] stackOverflowErrorInfo;
 
     @CompilationFinal(dimensions = 2) //
-    private int[][] jsrBci = null;
+    private volatile int[][] jsrBci = null;
 
     private final BytecodeStream bs;
 
@@ -1033,31 +1033,74 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         continue loop;
                     }
                     case RET: {
-                        int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
+                        // Use final local variables to pass in lambdas.
+                        final int retOpBci = curBCI;
+                        final int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
-                        if (jsrBci == null) {
+
+                        // Safely obtain the known targets mappings.
+                        int[][] knownTargets = jsrBci;
+                        if (knownTargets == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            jsrBci = new int[bs.endBCI()][];
+                            atomic(() -> {
+                                // Double-checked locking.
+                                if (jsrBci == null) {
+                                    jsrBci = new int[bs.endBCI()][];
+                                }
+                            });
+                            knownTargets = jsrBci;
                         }
-                        if (jsrBci[curBCI] == null) {
+
+                        // Safely obtain the known targets for the current ret operation.
+                        int[] knownRets = VolatileArrayAccess.volatileRead(knownTargets, retOpBci);
+                        if (knownRets == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            jsrBci[curBCI] = new int[]{targetBCI};
+                            atomic(() -> {
+                                if (VolatileArrayAccess.volatileRead(jsrBci, retOpBci) != null) {
+                                    return;
+                                }
+                                // Be very careful on updating the known target bcis, as if another
+                                // thread reads the not fully initialized array, it may consider 0
+                                // to be a valid RET target, completely breaking PE.
+                                int[] targets = new int[1];
+                                VolatileArrayAccess.volatileWrite(targets, 0, targetBCI);
+                                VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, targets);
+                            });
+                            knownRets = knownTargets[retOpBci];
                         }
-                        for (int jsr : jsrBci[curBCI]) {
+                        assert knownRets != null;
+
+                        // Lookup in the known targets to transform the return address to a
+                        // constant.
+                        for (int jsr : knownRets) {
                             if (jsr == targetBCI) {
                                 CompilerAsserts.partialEvaluationConstant(jsr);
-                                targetBCI = jsr;
                                 top += Bytecodes.stackEffectOf(RET);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
-                                curBCI = targetBCI;
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, jsr, top, statementIndex, instrument, loopCount, skipLivenessActions);
+                                curBCI = jsr;
                                 continue loop;
                             }
                         }
+
+                        // Lookup failed: Add the current target to the known targets.
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
-                        jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
+                        atomic(() -> {
+                            int[] currentRets = VolatileArrayAccess.volatileRead(jsrBci, retOpBci);
+                            for (int jsr : currentRets) {
+                                if (jsr == targetBCI) {
+                                    // target has been added by another thread.
+                                    return;
+                                }
+                            }
+                            int[] updatedTargets = Arrays.copyOf(currentRets, currentRets.length + 1);
+                            // Be very careful on updating the known target bcis, as if another
+                            // thread reads the not fully initialized array, it may consider 0 to be
+                            // a valid RET target, completely breaking PE.
+                            VolatileArrayAccess.volatileWrite(updatedTargets, updatedTargets.length - 1, targetBCI);
+                            VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, updatedTargets);
+                        });
                         top += Bytecodes.stackEffectOf(RET);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
+                        nextStatementIndex = beforeJumpChecks(frame, retOpBci, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1224,31 +1267,78 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             case IINC: setLocalInt(frame, bs.readLocalIndex2(curBCI), getLocalInt(frame, bs.readLocalIndex2(curBCI)) + bs.readIncrement2(curBCI)); break;
                             // @formatter:on
                             case RET: {
-                                int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
+                                // Use final local variables to pass in lambdas.
+                                final int retOpBci = curBCI;
+                                final int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
                                 livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
-                                if (jsrBci == null) {
+
+                                // Safely obtain the known targets mappings.
+                                int[][] knownTargets = jsrBci;
+                                if (knownTargets == null) {
                                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                                    jsrBci = new int[bs.endBCI()][];
+                                    atomic(() -> {
+                                        // Double-checked locking.
+                                        if (jsrBci == null) {
+                                            jsrBci = new int[bs.endBCI()][];
+                                        }
+                                    });
+                                    knownTargets = jsrBci;
                                 }
-                                if (jsrBci[curBCI] == null) {
+
+                                // Safely obtain the known targets for the current ret operation.
+                                int[] knownRets = VolatileArrayAccess.volatileRead(knownTargets, retOpBci);
+                                if (knownRets == null) {
                                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                                    jsrBci[curBCI] = new int[]{targetBCI};
+                                    atomic(() -> {
+                                        if (VolatileArrayAccess.volatileRead(jsrBci, retOpBci) != null) {
+                                            return;
+                                        }
+                                        // Be very careful on updating the known target bcis, as if
+                                        // another
+                                        // thread reads the not fully initialized array, it may
+                                        // consider 0
+                                        // to be a valid RET target, completely breaking PE.
+                                        int[] targets = new int[1];
+                                        VolatileArrayAccess.volatileWrite(targets, 0, targetBCI);
+                                        VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, targets);
+                                    });
+                                    knownRets = knownTargets[retOpBci];
                                 }
-                                for (int jsr : jsrBci[curBCI]) {
+                                assert knownRets != null;
+
+                                // Lookup in the known targets to transform the return address to a
+                                // constant.
+                                for (int jsr : knownRets) {
                                     if (jsr == targetBCI) {
                                         CompilerAsserts.partialEvaluationConstant(jsr);
-                                        targetBCI = jsr;
                                         top += Bytecodes.stackEffectOf(RET);
-                                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
-                                        curBCI = targetBCI;
+                                        nextStatementIndex = beforeJumpChecks(frame, curBCI, jsr, top, statementIndex, instrument, loopCount, skipLivenessActions);
+                                        curBCI = jsr;
                                         continue loop;
                                     }
                                 }
+
+                                // Lookup failed: Add the current target to the known targets.
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                                jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
-                                jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
+                                atomic(() -> {
+                                    int[] currentRets = VolatileArrayAccess.volatileRead(jsrBci, retOpBci);
+                                    for (int jsr : currentRets) {
+                                        if (jsr == targetBCI) {
+                                            // target has been added by another thread.
+                                            return;
+                                        }
+                                    }
+                                    int[] updatedTargets = Arrays.copyOf(currentRets, currentRets.length + 1);
+                                    // Be very careful on updating the known target bcis, as if
+                                    // another
+                                    // thread reads the not fully initialized array, it may consider
+                                    // 0 to be
+                                    // a valid RET target, completely breaking PE.
+                                    VolatileArrayAccess.volatileWrite(updatedTargets, updatedTargets.length - 1, targetBCI);
+                                    VolatileArrayAccess.volatileWrite(jsrBci, retOpBci, updatedTargets);
+                                });
                                 top += Bytecodes.stackEffectOf(RET);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
+                                nextStatementIndex = beforeJumpChecks(frame, retOpBci, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
