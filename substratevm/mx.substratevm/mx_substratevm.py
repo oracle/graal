@@ -103,6 +103,8 @@ def classpath(args):
 
     transitive_excludes = set()
     def include_in_excludes(dep, dep_edge):
+        # We need to exclude on the granularity of mx.Project entries so that classpath()
+        # can also give us a builder-free classpath if args contains mx.Project entries.
         if dep.isJavaProject() or dep.isDistribution():
             transitive_excludes.add(dep)
 
