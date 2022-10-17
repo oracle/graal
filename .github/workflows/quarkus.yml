@@ -20,7 +20,7 @@ env:
   LANG: en_US.UTF-8 # Workaround testsuite locale issue
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
-  MX_PYTHON: python3.9
+  MX_PYTHON: python3.8
   NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
 
@@ -49,7 +49,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.8'
     - name: Get latest Quarkus release
       run: |
         export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
