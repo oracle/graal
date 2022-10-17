@@ -57,13 +57,14 @@ public class JfrTypeRepository implements JfrConstantPool {
     public int write(JfrChunkWriter writer, boolean flush) {
         // Visit all used classes, and collect their packages, modules, classloaders and possibly
         // referenced classes.
+
         TypeInfo typeInfo = collectTypeInfo(flush);
 
         // The order of writing matters as following types can be tagged during the write process
-        int count = writeClasses(writer, typeInfo);
-        count += writePackages(writer, typeInfo);
-        count += writeModules(writer, typeInfo);
-        count += writeClassLoaders(writer, typeInfo);
+        int count = writeClasses(writer, typeInfo, flush);
+        count += writePackages(writer, typeInfo, flush);
+        count += writeModules(writer, typeInfo, flush);
+        count += writeClassLoaders(writer, typeInfo, flush);
         count += writeGCCauses(writer);
         count += writeGCNames(writer);
         count += writeVMOperations(writer);
@@ -112,7 +113,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         }
     }
 
-    public int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo) {
+    public int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         if (typeInfo.getClasses().isEmpty()) {
             return EMPTY;
         }
@@ -120,16 +121,17 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedInt(typeInfo.getClasses().size());
 
         for (Class<?> clazz : typeInfo.getClasses()) {
-            writeClass(writer, typeInfo, clazz);
+            writeClass(writer, typeInfo, clazz, flush);
         }
         return NON_EMPTY;
     }
 
-    private static void writeClass(JfrChunkWriter writer, TypeInfo typeInfo, Class<?> clazz) {
+    private static void writeClass(JfrChunkWriter writer, TypeInfo typeInfo, Class<?> clazz, boolean flush) {
+        System.out.println("*** --- Writing Class:"+clazz.getName());
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));  // key
         writer.writeCompressedLong(typeInfo.getClassLoaderId(clazz.getClassLoader()));
-        writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), true, true));
+        writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), !flush, true));
         writer.writeCompressedLong(typeInfo.getPackageId(clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
@@ -137,7 +139,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         }
     }
 
-    private static int writePackages(JfrChunkWriter writer, TypeInfo typeInfo) {
+    private static int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         Map<String, PackageInfo> packages = typeInfo.getPackages();
         if (packages.isEmpty()) {
             return EMPTY;
@@ -146,20 +148,20 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedInt(packages.size());
 
         for (Map.Entry<String, PackageInfo> pkgInfo : packages.entrySet()) {
-            writePackage(writer, typeInfo, pkgInfo.getKey(), pkgInfo.getValue());
+            writePackage(writer, typeInfo, pkgInfo.getKey(), pkgInfo.getValue(), flush);
         }
         return NON_EMPTY;
     }
 
-    private static void writePackage(JfrChunkWriter writer, TypeInfo typeInfo, String pkgName, PackageInfo pkgInfo) {
+    private static void writePackage(JfrChunkWriter writer, TypeInfo typeInfo, String pkgName, PackageInfo pkgInfo, boolean flush) {
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(pkgInfo.id);  // id
-        writer.writeCompressedLong(symbolRepo.getSymbolId(pkgName, true, true));
+        writer.writeCompressedLong(symbolRepo.getSymbolId(pkgName, !flush, true));
         writer.writeCompressedLong(typeInfo.getModuleId(pkgInfo.module));
         writer.writeBoolean(false); // exported
     }
 
-    private static int writeModules(JfrChunkWriter writer, TypeInfo typeInfo) {
+    private static int writeModules(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         Map<Module, Long> modules = typeInfo.getModules();
         if (modules.isEmpty()) {
             return EMPTY;
@@ -168,21 +170,21 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedInt(modules.size());
 
         for (Map.Entry<Module, Long> modInfo : modules.entrySet()) {
-            writeModule(writer, typeInfo, modInfo.getKey(), modInfo.getValue());
+            writeModule(writer, typeInfo, modInfo.getKey(), modInfo.getValue(), flush);
         }
         return NON_EMPTY;
     }
 
-    private static void writeModule(JfrChunkWriter writer, TypeInfo typeInfo, Module module, long id) {
+    private static void writeModule(JfrChunkWriter writer, TypeInfo typeInfo, Module module, long id, boolean flush) {
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(id);
-        writer.writeCompressedLong(symbolRepo.getSymbolId(module.getName(), true));
+        writer.writeCompressedLong(symbolRepo.getSymbolId(module.getName(), !flush));
         writer.writeCompressedLong(0); // Version, e.g. "11.0.10-internal"
         writer.writeCompressedLong(0); // Location, e.g. "jrt:/java.base"
         writer.writeCompressedLong(typeInfo.getClassLoaderId(module.getClassLoader()));
     }
 
-    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo) {
+    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         Map<ClassLoader, Long> classLoaders = typeInfo.getClassLoaders();
         if (classLoaders.isEmpty()) {
             return EMPTY;
@@ -191,7 +193,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedInt(classLoaders.size());
 
         for (Map.Entry<ClassLoader, Long> clInfo : classLoaders.entrySet()) {
-            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue());
+            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue(), flush);
         }
         return NON_EMPTY;
     }
@@ -245,15 +247,15 @@ public class JfrTypeRepository implements JfrConstantPool {
         return NON_EMPTY;
     }
 
-    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id) {
+    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(id);
         if (cl == null) {
             writer.writeCompressedLong(0);
-            writer.writeCompressedLong(symbolRepo.getSymbolId("bootstrap", true));
+            writer.writeCompressedLong(symbolRepo.getSymbolId("bootstrap", !flush));
         } else {
             writer.writeCompressedLong(JfrTraceId.getTraceId(cl.getClass()));
-            writer.writeCompressedLong(symbolRepo.getSymbolId(cl.getName(), true));
+            writer.writeCompressedLong(symbolRepo.getSymbolId(cl.getName(), !flush));
         }
     }
 

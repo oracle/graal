@@ -81,6 +81,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private int lastMetadataId = 0;
     private int currentMetadataId = 0;
+    private boolean staticConstantsSerialized = false;
 
     public void setCurrentMetadataId(){
         currentMetadataId++;
@@ -136,12 +137,16 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         fd = getFileSupport().open(filename, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         writeFileHeader();
         generation = 1;
-        lastCheckpointOffset = 0;// must reset this on new chunk
+        lastCheckpointOffset = -1;// must reset this on new chunk
+        currentMetadataId = -1;
         return true;
     }
-
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.") // *** top pointer (of the buffer) like if it gets reinit.
     public boolean write(JfrBuffer buffer) {
+        return write(buffer, true);
+    }
+    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.") // *** top pointer (of the buffer) like if it gets reinit.
+    public boolean write(JfrBuffer buffer, boolean reset) {
         assert JfrBufferAccess.isAcquired(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
@@ -149,12 +154,14 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
 
         boolean success = getFileSupport().write(fd, buffer.getTop(), unflushedSize);
-        JfrBufferAccess.increaseTop(buffer, unflushedSize);
+        if(reset) {
+            JfrBufferAccess.increaseTop(buffer, unflushedSize);
+        }
         if (!success) {
             // We lost some data because the write failed.
             return false;
         }
-        // need to save pointer position so we can return to it when writing next
+        // *** need to save pointer position so we can return to it when writing next
         return getFileSupport().position(fd).greaterThan(WordFactory.signed(notificationThreshold));
     }
 
@@ -186,21 +193,22 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         filename = null;
         fd = WordFactory.nullPointer();
     }
-//    private SignedWord _constantPoolPosition;
+    private SignedWord _constantPoolPosition;
     private SignedWord _metadataPosition;
-    public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories) {
+    public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrConstantPool threadRepo) {
         assert lock.isHeldByCurrentThread();// fd should always be correct because its cleared and set within locked critical section
 
         JfrChangeEpochOperation op = new JfrChangeEpochOperation(true);
         op.enqueue();
-
+//WordFactory.signed(0); //
+//        writeThreadCheckpointEvent(threadRepo, true);
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true); // WILL get written again when the chunk closes and overwrite what we write here. In that case we shouldn't wipe the repos right? How does hotspot handle it?
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
 
-        SignedWord currentPos = getFileSupport().position(fd);
+
 //        patchFileHeader(_constantPoolPosition, metadataPosition, true);
         patchFileHeader(constantPoolPosition, metadataPosition, true);
-        getFileSupport().seek(fd,currentPos);
+
         // unlike rotate chunk, don't close file.
 
     }
@@ -232,6 +240,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void patchFileHeader(SignedWord constantPoolPosition, SignedWord metadataPosition, boolean flushpoint) {
+        SignedWord currentPos = getFileSupport().position(fd);
         long chunkSize = getFileSupport().position(fd).rawValue();
         long durationNanos = JfrTicks.currentTimeNanos() - chunkStartNanos;
         getFileSupport().seek(fd, WordFactory.signed(CHUNK_SIZE_OFFSET));
@@ -249,6 +258,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             getFileSupport().writeByte(fd, COMPLETE);
         }
         //need to move pointer back to correct position for next write
+        getFileSupport().seek(fd,currentPos);
     }
 
     private byte nextGeneration(){
@@ -260,12 +270,44 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return generation++;
     }
 
+    private SignedWord writeThreadCheckpointEvent(JfrConstantPool threadRepo, boolean flush) {
 
+        SignedWord start = beginEvent();
+
+        if (lastCheckpointOffset < 0) {
+            lastCheckpointOffset = start.rawValue();
+        }
+        writeCompressedLong(CONSTANT_POOL_TYPE_ID);
+        writeCompressedLong(JfrTicks.elapsedTicks());
+        writeCompressedLong(0); // duration
+        writeCompressedLong(lastCheckpointOffset - start.rawValue()); // deltaToNext
+        writeCompressedLong(8); // flush
+        writeCompressedLong(1);
+        writeCompressedLong(170);
+
+        SignedWord poolCountPos = getFileSupport().position(fd);
+        getFileSupport().writeInt(fd, 0); // We'll patch this later.
+
+        int poolCount = threadRepo.write(this, flush);
+
+        SignedWord currentPos = getFileSupport().position(fd);
+        getFileSupport().seek(fd, poolCountPos); // *** write number of constant pools written
+        getFileSupport().writeInt(fd, makePaddedInt(poolCount));
+        getFileSupport().seek(fd, currentPos);
+        endEvent(start);
+        lastCheckpointOffset = start.rawValue();
+
+        return start;
+    }
     private SignedWord writeCheckpointEvent(JfrConstantPool[] repositories, boolean flush) {
 //        Exception e = new Exception();
 //        e.printStackTrace();
         System.out.println("*** Checkpoint");
         SignedWord start = beginEvent();
+
+        if (lastCheckpointOffset < 0) {
+            lastCheckpointOffset = start.rawValue();
+        }
         writeCompressedLong(CONSTANT_POOL_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
@@ -275,7 +317,15 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         SignedWord poolCountPos = getFileSupport().position(fd);
         getFileSupport().writeInt(fd, 0); // We'll patch this later.
         JfrConstantPool[] serializers = JfrSerializerSupport.get().getSerializers();
-        int poolCount = writeConstantPools(serializers, flush) + writeConstantPools(repositories, flush);
+
+        int poolCount;
+        if (!staticConstantsSerialized) {
+            poolCount = writeConstantPools(serializers, flush) + writeConstantPools(repositories, flush);
+            staticConstantsSerialized = true;
+        } else {
+            poolCount = writeConstantPools(repositories, flush);
+        }
+//        int poolCount = writeConstantPools(serializers, flush) + writeConstantPools(repositories, flush);
         SignedWord currentPos = getFileSupport().position(fd);
         getFileSupport().seek(fd, poolCountPos); // *** write number of constant pools written
         getFileSupport().writeInt(fd, makePaddedInt(poolCount));
@@ -289,6 +339,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private int writeConstantPools(JfrConstantPool[] constantPools, boolean flush) {
         int count = 0;
         for (JfrConstantPool constantPool : constantPools) {
+//            if (flush && constantPool instanceof com.oracle.svm.core.jfr.JfrThreadRepository) {
+//                continue;
+//            }
             int poolCount = constantPool.write(this, flush);
             count += poolCount;
         }

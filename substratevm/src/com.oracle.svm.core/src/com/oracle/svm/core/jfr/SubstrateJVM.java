@@ -461,7 +461,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.flush(metadataDescriptor, repositories);
+                    chunkWriter.flush(metadataDescriptor, repositories, threadRepo);
                     System.out.println("*** Flushed");
                 }
             }
