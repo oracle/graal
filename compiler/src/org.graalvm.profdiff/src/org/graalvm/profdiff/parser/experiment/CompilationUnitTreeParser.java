@@ -24,12 +24,7 @@
  */
 package org.graalvm.profdiff.parser.experiment;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,37 +43,26 @@ import org.graalvm.profdiff.core.optimization.OptimizationTree;
  * Parses {@link CompilationUnit.TreePair the trees of a compilation unit} from its source file.
  */
 public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
-    /**
-     * The file containing the serialized compilation unit, and possibly several other compilation
-     * units separated by {@code '\n'}.
-     */
-    private final File file;
-
-    /**
-     * The byte index where this compilation unit starts in its source {@link #file}.
-     */
-    private final long offset;
 
     /**
      * The experiment ID to which this compilation unit belongs.
      */
     private final ExperimentId experimentId;
 
-    public CompilationUnitTreeParser(ExperimentId experimentId, File file, long offset) {
-        this.file = file;
+    /**
+     * The file view containing the serialized compilation unit.
+     */
+    private final FileView fileView;
+
+    public CompilationUnitTreeParser(ExperimentId experimentId, FileView fileView) {
         this.experimentId = experimentId;
-        this.offset = offset;
+        this.fileView = fileView;
     }
 
     @Override
     public CompilationUnit.TreePair load() throws ExperimentParserError {
-        try (FileInputStream inputStream = new FileInputStream(file);
-                        FileChannel fileChannel = inputStream.getChannel();
-                        InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
-                        BufferedReader reader = new BufferedReader(inputStreamReader)) {
-            fileChannel.position(offset);
-            String line = reader.readLine();
-            ExperimentJSONParser parser = new ExperimentJSONParser(experimentId, file, line);
+        try {
+            ExperimentJSONParser parser = new ExperimentJSONParser(experimentId, fileView);
             ExperimentJSONParser.JSONMap map = parser.parse().asMap();
             ExperimentJSONParser.JSONLiteral inliningTreeNode = map.property(OptimizationLogImpl.INLINING_TREE_PROPERTY);
             InliningTree inliningTree = new InliningTree(inliningTreeNode.isNull() ? null : parseInliningTreeNode(inliningTreeNode.asMap()));
@@ -140,7 +124,7 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
             position = EconomicMap.create();
             while (cursor.advance()) {
                 if (!(cursor.getValue() instanceof Integer)) {
-                    throw new ExperimentParserTypeError(experimentId, file.getPath(), OptimizationLogImpl.POSITION_PROPERTY, Integer.class, cursor.getValue());
+                    throw new ExperimentParserTypeError(experimentId, fileView.getSymbolicPath(), OptimizationLogImpl.POSITION_PROPERTY, Integer.class, cursor.getValue());
                 }
                 position.put(cursor.getKey(), (Integer) cursor.getValue());
             }

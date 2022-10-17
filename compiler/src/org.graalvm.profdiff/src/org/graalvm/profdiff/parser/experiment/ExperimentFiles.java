@@ -24,7 +24,6 @@
  */
 package org.graalvm.profdiff.parser.experiment;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Optional;
@@ -44,20 +43,20 @@ public interface ExperimentFiles {
     ExperimentId getExperimentId();
 
     /**
-     * Gets a file containing the JSON output of proftool (mx profjson). Returns
+     * Gets a file view containing the JSON output of proftool (mx profjson). Returns
      * {@link Optional#empty()} if the experiment is not associated with a proftool output.
      *
-     * @return the reader with the proftool output
+     * @return the file with the proftool output
      */
-    Optional<File> getProftoolOutput() throws FileNotFoundException;
+    Optional<FileView> getProftoolOutput() throws FileNotFoundException;
 
     /**
-     * Gets the list of files representing the optimization log. Each file may contain several
-     * JSON-encoded compilation units separated by a {@code '\n'}.
+     * Gets an iterable of file views representing the optimization log. Each file view may contain
+     * several JSON-encoded compilation units separated by a {@code '\n'}.
      *
-     * @return the list of files representing an optimization log
+     * @return an iterable of file views representing an optimization log
      */
-    File[] getOptimizationLogs() throws IOException;
+    Iterable<FileView> getOptimizationLogs() throws IOException;
 
     /**
      * Gets whether the experiment was compiled just-in-time or ahead-of-time.

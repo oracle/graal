@@ -24,9 +24,6 @@
  */
 package org.graalvm.profdiff.parser.experiment;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,15 +62,9 @@ public class ExperimentParser {
         long period;
 
         /**
-         * The file from which this compilation unit was read. The file may contain several
-         * compilation units separated by {@code '\n'}.
+         * The view of this compilation unit in the file from which it was read.
          */
-        File file;
-
-        /**
-         * The byte index where this compilation unit starts in its source {@link #file}.
-         */
-        long offset;
+        FileView fileView;
     }
 
     /**
@@ -136,7 +127,7 @@ public class ExperimentParser {
     public Experiment parse() throws IOException, ExperimentParserError {
         EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = parsePartialCompilationUnits();
         Experiment experiment;
-        Optional<File> proftoolLogFile = experimentFiles.getProftoolOutput();
+        Optional<FileView> proftoolLogFile = experimentFiles.getProftoolOutput();
         if (proftoolLogFile.isPresent()) {
             ProftoolLog proftoolLog = parseProftoolLog(proftoolLogFile.get());
             for (ProftoolMethod method : proftoolLog.methods) {
@@ -160,7 +151,7 @@ public class ExperimentParser {
             experiment = new Experiment(experimentFiles.getExperimentId(), experimentFiles.getCompilationKind());
         }
         for (PartialCompilationUnit unit : partialCompilationUnits.getValues()) {
-            CompilationUnitTreeParser treeParser = new CompilationUnitTreeParser(experimentFiles.getExperimentId(), unit.file, unit.offset);
+            CompilationUnitTreeParser treeParser = new CompilationUnitTreeParser(experimentFiles.getExperimentId(), unit.fileView);
             experiment.addCompilationUnit(unit.methodName, unit.compilationId, unit.period, treeParser);
         }
         return experiment;
@@ -174,64 +165,38 @@ public class ExperimentParser {
      */
     private EconomicMap<String, PartialCompilationUnit> parsePartialCompilationUnits() throws IOException {
         EconomicMap<String, PartialCompilationUnit> partialCompilationUnits = EconomicMap.create();
-        long lineIndex = 0;
         Pattern compilationUnitPattern = Pattern.compile(COMPILATION_UNIT_REGEX);
-        for (File file : experimentFiles.getOptimizationLogs()) {
-            long start = 0;
-            try (FileReader fileReader = new FileReader(file); BufferedReader reader = new BufferedReader(fileReader)) {
-                String source;
-                while ((source = reader.readLine()) != null) {
-                    // assume that the beginning of the JSON has the exact format as described by
-                    // the regex
-                    Matcher matcher = compilationUnitPattern.matcher(source);
-                    if (matcher.find()) {
-                        PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
-                        compilationUnit.file = file;
-                        compilationUnit.offset = start;
-                        compilationUnit.methodName = matcher.group(1);
-                        compilationUnit.compilationId = matcher.group(2);
-                        partialCompilationUnits.put(compilationUnit.compilationId, compilationUnit);
-                    } else {
-                        long lineNumber = lineIndex + 1;
-                        warningWriter.writeln("Warning: Invalid compilation unit in file " + file.getPath() + " on line " + lineNumber);
-                    }
-                    // assume that line separators are '\n' on all platforms
-                    start += source.length() + 1;
+        for (FileView fileView : experimentFiles.getOptimizationLogs()) {
+            final long[] lineNumber = {0};
+            fileView.forEachLine((line, lineView) -> {
+                ++lineNumber[0];
+                // assume that the beginning of the JSON has the exact format as described by
+                // the regex
+                Matcher matcher = compilationUnitPattern.matcher(line);
+                if (matcher.find()) {
+                    PartialCompilationUnit compilationUnit = new PartialCompilationUnit();
+                    compilationUnit.fileView = lineView;
+                    compilationUnit.methodName = matcher.group(1);
+                    compilationUnit.compilationId = matcher.group(2);
+                    partialCompilationUnits.put(compilationUnit.compilationId, compilationUnit);
+                } else {
+                    warningWriter.writeln("Warning: Invalid compilation unit in file " + fileView.getSymbolicPath() + " on line " + lineNumber[0]);
                 }
-            }
+            });
         }
         return partialCompilationUnits;
     }
 
     /**
-     * Reads and returns the contents of a file.
+     * Parses proftool logs from a file view.
      *
-     * @param file the file to read
-     * @return the contents of the file
-     * @throws IOException an IO error occurred
-     */
-    private static String readFully(File file) throws IOException {
-        char[] arr = new char[1024];
-        StringBuilder sb = new StringBuilder();
-        try (FileReader reader = new FileReader(file)) {
-            int numChars;
-            while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
-                sb.append(arr, 0, numChars);
-            }
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Parses proftool logs from a file.
-     *
-     * @param file a JSON file with the proftool log
+     * @param fileView a view of a JSON file with the proftool log
      * @return the parsed proftool logs
      * @throws IOException failed to read the file
      * @throws ExperimentParserError failed to parse the file
      */
-    private ProftoolLog parseProftoolLog(File file) throws IOException, ExperimentParserError {
-        ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), file, readFully(file));
+    private ProftoolLog parseProftoolLog(FileView fileView) throws IOException, ExperimentParserError {
+        ExperimentJSONParser parser = new ExperimentJSONParser(experimentFiles.getExperimentId(), fileView);
         ProftoolLog proftoolLog = new ProftoolLog();
         ExperimentJSONParser.JSONMap map = parser.parse().asMap();
         proftoolLog.executionId = map.property("executionId").asString();

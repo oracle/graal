@@ -26,6 +26,7 @@ package org.graalvm.profdiff.parser.experiment;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Optional;
 
 import org.graalvm.profdiff.core.Experiment;
@@ -74,28 +75,28 @@ public class ExperimentFilesImpl implements ExperimentFiles {
     }
 
     @Override
-    public Optional<File> getProftoolOutput() {
+    public Optional<FileView> getProftoolOutput() {
         if (proftoolOutputPath == null) {
             return Optional.empty();
         }
-        return Optional.of(new File(proftoolOutputPath));
+        return Optional.of(FileView.fromFile(new File(proftoolOutputPath)));
     }
 
     /**
-     * Gets the list of files representing the optimization log. Each file may contain several
-     * JSON-encoded compilation units separated by a {@code '\n'}. Individual files are discovered
-     * by listing the files in the provided {@link #optimizationLogPath}.
+     * Gets an iterable of file views representing the optimization log. Each file view may contain
+     * several JSON-encoded compilation units separated by a {@code '\n'}. Individual files are
+     * discovered by listing the files in the provided {@link #optimizationLogPath}.
      *
-     * @return the list of files representing an optimization log
+     * @return an iterable of file views representing an optimization log
      * @throws IOException the optimization log is not a directory
      */
     @Override
-    public File[] getOptimizationLogs() throws IOException {
+    public Iterable<FileView> getOptimizationLogs() throws IOException {
         File[] files = new File(optimizationLogPath).listFiles();
         if (files == null) {
             throw new IOException("The provided optimization log path does not denote a directory");
         }
-        return files;
+        return () -> Arrays.stream(files).map(FileView::fromFile).iterator();
     }
 
     @Override

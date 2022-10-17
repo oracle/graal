@@ -28,13 +28,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
@@ -47,21 +47,50 @@ import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
+import org.graalvm.profdiff.parser.experiment.FileView;
 import org.graalvm.profdiff.util.StdoutWriter;
 import org.graalvm.profdiff.util.Writer;
 import org.junit.Test;
 
 public class ExperimentParserTest {
+    /**
+     * Mocks a file view backed by a string instead of a file.
+     *
+     * @param path a symbolic path
+     * @param source the content of the file
+     * @return a file view backed by a string
+     */
+    private static FileView fileViewFromString(String path, String source) {
+        return new FileView() {
+            @Override
+            public String getSymbolicPath() {
+                return path;
+            }
+
+            @Override
+            public void forEachLine(BiConsumer<String, FileView> consumer) {
+                source.lines().forEach(line -> consumer.accept(line, fileViewFromString(path, line)));
+            }
+
+            @Override
+            public String readFully() {
+                return source;
+            }
+        };
+    }
+
     private static class ExperimentResources implements ExperimentFiles {
         private static final String RESOURCE_DIR = "org/graalvm/profdiff/test/resources/";
 
-        private File getFileForResource(String name) {
+        private FileView getFileForResource(String path) {
             try {
-                try (InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(name)) {
+                try (InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(path)) {
                     assert resourceAsStream != null;
-                    Path path = Files.createTempFile(null, null);
-                    Files.write(path, resourceAsStream.readAllBytes());
-                    return path.toFile();
+                    try (InputStreamReader streamReader = new InputStreamReader(resourceAsStream); BufferedReader bufferedReader = new BufferedReader(streamReader)) {
+                        StringBuilder sb = new StringBuilder();
+                        bufferedReader.lines().forEach(line -> sb.append(line).append('\n'));
+                        return fileViewFromString(path, sb.toString());
+                    }
                 }
             } catch (IOException exception) {
                 throw new RuntimeException(exception.getMessage());
@@ -74,13 +103,13 @@ public class ExperimentParserTest {
         }
 
         @Override
-        public Optional<File> getProftoolOutput() {
+        public Optional<FileView> getProftoolOutput() {
             return Optional.of(getFileForResource(RESOURCE_DIR + "profile.json"));
         }
 
         @Override
-        public File[] getOptimizationLogs() {
-            return new File[]{getFileForResource(RESOURCE_DIR + "optimization-log.txt")};
+        public Iterable<FileView> getOptimizationLogs() {
+            return List.of(getFileForResource(RESOURCE_DIR + "optimization-log.txt"));
         }
 
         @Override

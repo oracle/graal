@@ -24,7 +24,7 @@
  */
 package org.graalvm.profdiff.parser.experiment;
 
-import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -36,7 +36,7 @@ import org.graalvm.util.json.JSONParserException;
  * A wrapper around {@link JSONParser}, which aids the parsing of the Java representation of a JSON
  * related to an experiment.
  *
- * The source string is first converted to a Java representation of the JSON, using the
+ * The source file view is read and converted to a Java representation of the JSON, using the
  * {@link JSONParser}. The returned (root) literal is then wrapped as a {@link JSONLiteral}, which
  * provides type checks and wraps its properties (if the literal is a map). This allows us to both
  * have an efficient JSON representation (using plain Java types) and also provide helper methods on
@@ -68,7 +68,7 @@ public class ExperimentJSONParser {
             if (clazz.isInstance(object)) {
                 return (T) object;
             }
-            throw new ExperimentParserTypeError(experimentId, file.getPath(), objectName, clazz, object);
+            throw new ExperimentParserTypeError(experimentId, file.getSymbolicPath(), objectName, clazz, object);
         }
 
         private <T> T asNullableInstanceOf(Class<T> clazz) throws ExperimentParserTypeError {
@@ -153,19 +153,13 @@ public class ExperimentJSONParser {
     private final ExperimentId experimentId;
 
     /**
-     * The file which contains the source string at some offset.
+     * The file view which contains the source string.
      */
-    private final File file;
+    private final FileView file;
 
-    /**
-     * The source string to be parsed as JSON.
-     */
-    private final String source;
-
-    public ExperimentJSONParser(ExperimentId experimentId, File file, String source) {
+    public ExperimentJSONParser(ExperimentId experimentId, FileView file) {
         this.experimentId = experimentId;
         this.file = file;
-        this.source = source;
     }
 
     /**
@@ -174,12 +168,12 @@ public class ExperimentJSONParser {
      * @return the parsed JSON literal
      * @throws ExperimentParserError failed to parse the experiment
      */
-    public JSONLiteral parse() throws ExperimentParserError {
-        JSONParser jsonParser = new JSONParser(source);
+    public JSONLiteral parse() throws ExperimentParserError, IOException {
+        JSONParser jsonParser = new JSONParser(file.readFully());
         try {
             return new JSONLiteral(jsonParser.parse(), null);
         } catch (JSONParserException parserException) {
-            throw new ExperimentParserError(experimentId, file.getPath(), parserException.getMessage());
+            throw new ExperimentParserError(experimentId, file.getSymbolicPath(), parserException.getMessage());
         }
     }
 }
