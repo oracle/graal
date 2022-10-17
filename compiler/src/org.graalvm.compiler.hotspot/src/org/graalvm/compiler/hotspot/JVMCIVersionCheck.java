@@ -182,8 +182,7 @@ public final class JVMCIVersionCheck {
                 // A "labsjdk"
                 Version v = Version.parse(vmVersion, props);
                 if (v != null) {
-                    String jvmciVersionPrint = props.get("JVMCIVersionCheck.jvmci.version.print");
-                    if (!quiet && Boolean.valueOf(jvmciVersionPrint)) {
+                    if (!quiet) {
                         System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
                     }
                     if (v.isLessThan(minVersion)) {

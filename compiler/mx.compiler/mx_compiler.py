@@ -124,7 +124,7 @@ def _check_jvmci_version(jdk):
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
 
     out = mx.OutputCapture()
-    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.print=true', '-cp', binDir, unqualified_name], out=out)
+    mx.run([jdk.java, '-cp', binDir, unqualified_name], out=out)
     global _jdk_jvmci_version
     if out.data:
         _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
