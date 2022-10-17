@@ -21,7 +21,7 @@ The following are the certified platforms for GraalVM Enterprise 22.3:
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/installation-linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.4 (Monterey)	| x86 64-bit, ARM 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
+| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.4 (Monterey)	| x86 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/installation-windows.md) 	|
 
 Note: GraalVM Enterprise macOS distribution for ARM 64-bit architecture (Apple Silicon) is experimental.
@@ -56,7 +56,7 @@ The following table lists supported and experimental features in GraalVM Enterpr
 
 Oracle GraalVM Enterprise Edition is licensed under the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) for developing, testing, prototyping, and demonstrating Your application.
 
-For production use, GraalVM Enterprise is available as part of the [Oracle Java SE Subscription](https://www.oracle.com/uk/java/java-se-subscription/) which includes 24x7x365 [Oracle premier support](https://www.oracle.com/support/premier/) and the access to [My Oracle Support (MOS)](https://www.oracle.com/support/).
+For production use, GraalVM Enterprise is available as part of the [Oracle Java SE Subscription](https://www.oracle.com/uk/java/java-se-subscription/) which includes 24x7x365 [Oracle premier support](https://www.oracle.com/support/premier/) and access to [My Oracle Support (MOS)](https://www.oracle.com/support/).
 
 GraalVM Enterprise focuses on support for Java LTS releases for production deployments.
 See [Versions Roadmap of Oracle GraalVM Enterprise Edition](../../release-notes/enterprise/graalvm-enterprise-version-roadmap.md) for more information.
