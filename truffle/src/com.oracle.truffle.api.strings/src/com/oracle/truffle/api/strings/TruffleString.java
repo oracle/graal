@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.isPartialEvaluationConstant;
 import static com.oracle.truffle.api.strings.TStringGuards.indexOfCannotMatch;
 import static com.oracle.truffle.api.strings.TStringGuards.is16Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.is7Bit;
@@ -2832,7 +2833,7 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         static int getStringCompactionLevel(AbstractTruffleString a, Encoding expectedEncoding) {
             a.checkEncoding(expectedEncoding);
-            if (CompilerDirectives.isPartialEvaluationConstant(expectedEncoding)) {
+            if (isPartialEvaluationConstant(expectedEncoding)) {
                 if (isUTF16Or32(expectedEncoding)) {
                     return 1 << a.stride();
                 } else {
@@ -5792,21 +5793,21 @@ public final class TruffleString extends AbstractTruffleString {
          * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
          * 
          * @param allocator a function implementing {@link NativeAllocator}. This parameter is
-         *            expected to be {@link CompilerDirectives#isPartialEvaluationConstant(Object)
+         *            expected to be {@link CompilerAsserts#partialEvaluationConstant(Object)
          *            partial evaluation constant}.
          * @param useCompaction if set to {@code true}, {@link Encoding#UTF_32} and
          *            {@link Encoding#UTF_16} - encoded strings may be compacted also in the native
          *            representation. Otherwise, no string compaction is applied to the native
          *            string. This parameter is expected to be
-         *            {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
-         *            evaluation constant}.
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+         *            constant}.
          * @param cacheResult if set to {@code true}, the newly created native string will be cached
          *            in the given managed string's internal transcoding cache ring, guaranteeing
          *            that subsequent calls on the managed string return the same native string.
          *            Note that this ties the lifetime of the native string to that of the managed
          *            string. This parameter is expected to be
-         *            {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
-         *            evaluation constant}.
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+         *            constant}.
          *
          * @since 22.3
          */
