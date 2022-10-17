@@ -7,11 +7,17 @@ permalink: /reference-manual/native-image/LLVMBackend/
 
 # LLVM Backend for Native Image
 
-Native Image includes an alternative backend that uses a [LLVM intermediate representation](https://llvm.org/docs/LangRef.html) and the [LLVM compiler](http://llvm.org/docs/CommandGuide/llc.html) to produce native executables.
+Native Image provides an alternative backend that uses the [LLVM intermediate representation](https://llvm.org/docs/LangRef.html) and the [LLVM compiler](http://llvm.org/docs/CommandGuide/llc.html) to produce native executables.
 This LLVM backend enables users to [target alternative architectures](#how-to-add-a-target-architecture-to-graalvm-using-llvm-backend) that are not directly supported by GraalVM Native Image. However, this approach introduces some performance costs.
-To enable it, pass the `-H:CompilerBackend=llvm` option to the `native-image` command. 
 
-The LLVM backend requires GraalVM's LLVM toolchain to be installed (with `gu install llvm-toolchain`).
+## Installing and Usage
+
+The LLVM Backend is shipped as a separate component to Native Image and can be installed with GraalVM Updater:
+```shell
+gu install native-image-llvm-backend
+```
+
+To enable the LLVM backend, pass the `-H:CompilerBackend=llvm` option to the `native-image` command. 
 
 ## Code Generation Options
 
