@@ -36,17 +36,17 @@ jobs:
     outputs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 1
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
         ref: master
         path: ${{ env.MX_PATH }}
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.9'
     - name: Get latest quarkus release
@@ -56,13 +56,13 @@ jobs:
         curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
         mkdir ${QUARKUS_PATH}
         tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
