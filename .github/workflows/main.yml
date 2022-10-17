@@ -113,7 +113,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: Determine mx version
-      run: echo "MX_VERSION=$(cat common.json | jq -r '.mx_version')" >> ${GITHUB_ENV}
+      run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
@@ -144,8 +144,7 @@ jobs:
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
         sudo apt install python3-pip python-setuptools
-        cat common.json |
-          jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
+        jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
         ${MX_PYTHON} -m pip install jsonschema==4.6.1
     - name: Build GraalVM and run gate
@@ -154,8 +153,8 @@ jobs:
         if [[ ${GATE} == *style* ]]
         then
           export ECLIPSE_TAR=eclipse.tar.gz
-          ECLIPSE_ORG_VERSION=$(cat common.json | jq -r '.downloads.eclipse.eclipse_org.version')
-          ECLIPSE_ORG_TIMESTAMP=$(cat common.json | jq -r '.downloads.eclipse.eclipse_org.timestamp')
+          ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
+          ECLIPSE_ORG_TIMESTAMP=$(jq -r '.downloads.eclipse.eclipse_org.timestamp' common.json)
           wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-${ECLIPSE_ORG_VERSION}-${ECLIPSE_ORG_TIMESTAMP}/eclipse-SDK-${ECLIPSE_ORG_VERSION}-linux-gtk-x86_64.tar.gz -O $ECLIPSE_TAR
           tar -xzf ${ECLIPSE_TAR}
           export ECLIPSE_EXE=${PWD}/eclipse/eclipse
