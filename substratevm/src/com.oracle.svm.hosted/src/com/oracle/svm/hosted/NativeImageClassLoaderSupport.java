@@ -831,8 +831,10 @@ public class NativeImageClassLoaderSupport {
                         String message = String.format("Class-path entry %s contains class %s. This class is part of the image builder itself (in %s) and must not be passed via -cp.",
                                         applicationClassContainer, applicationClass, builderClassContainer);
                         if (!tolerateViolations) {
-                            String errorMessage = String.join(message, " This can be caused by a fat-jar that illegally includes svm.jar (or graal-sdk.jar) due to its build-time dependency on it.%n");
-                            throw UserError.abort(errorMessage);
+                            String errorMessage = String.join(" ", message,
+                                            "This can be caused by a fat-jar that illegally includes svm.jar (or graal-sdk.jar) due to its build-time dependency on it.",
+                                            "As a temporary workaround, %s allows turning this error into a warning.");
+                            throw UserError.abort(errorMessage, SubstrateOptionsParser.commandArgument(SubstrateOptions.TolerateBuilderClassesOnImageClasspath, "+"));
                         } else {
                             System.out.println("Warning: " + message);
                         }
