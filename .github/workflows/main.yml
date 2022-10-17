@@ -9,11 +9,15 @@ on:
       - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
       - '**.md'
+      - '**.jsonnet'
+      - '**.libjsonnet'
   pull_request:
     paths-ignore:
       - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
       - '**.md'
+      - '**.jsonnet'
+      - '**.libjsonnet'
   # Enable manual dispatch of the workflow
   # see https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
   workflow_dispatch:
