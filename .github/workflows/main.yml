@@ -36,13 +36,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'oracle/graal' }}
 
 env:
-  LANG: en_US.UTF-8
-  MX_GIT_CACHE: refcache
-  MX_PYTHON: python3.8
   JAVA_HOME: ${{ github.workspace }}/jdk
   JDT: builtin
-  MX_PATH: ${{ github.workspace }}/mx
+  LANG: en_US.UTF-8
   MX_GATE_OPTS: "--strict-mode"
+  MX_GIT_CACHE: refcache
+  MX_PATH: ${{ github.workspace }}/mx
+  MX_PYTHON: python3.8
 
 permissions:
   contents: read # to fetch code (actions/checkout)
