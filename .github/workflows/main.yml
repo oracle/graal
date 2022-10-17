@@ -113,12 +113,14 @@ jobs:
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v3
       with:
         fetch-depth: 1
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
-    - uses: actions/checkout@v3
+    - name: Checkout graalvm/mx
+      uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
@@ -133,7 +135,7 @@ jobs:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: ${{ runner.os }}-mx-
-    - name: Get JDK
+    - name: Fetch LabsJDK
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
@@ -141,10 +143,10 @@ jobs:
     - name: Update dependency cache
       if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
       run: sudo apt update
-    - name: Debug dependencies
+    - name: Install debug dependencies
       if: ${{ contains(matrix.env.GATE, 'debug') }}
       run: sudo apt install gdb
-    - name: Style dependencies
+    - name: Install style dependencies
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
         sudo apt install python3-pip python-setuptools
