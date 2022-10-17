@@ -16,10 +16,6 @@ The LLVM Backend is shipped as a separate component to Native Image and can be i
 ```shell
 gu install native-image-llvm-backend
 ```
-It also requires GraalVM's LLVM toolchain to be installed: 
-```shell
-gu install llvm-toolchain
-```
 
 To enable the LLVM backend, pass the `-H:CompilerBackend=llvm` option to the `native-image` command. 
 
