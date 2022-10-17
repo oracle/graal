@@ -201,7 +201,7 @@ public class SerializationFeature implements InternalFeature {
             return null;
         }
 
-        return lambdaClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ? lambdaClass : null;
+        return LambdaUtils.isLambdaClass(lambdaClass) ? lambdaClass : null;
     }
 
     private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph, SerializationBuilder serializationBuilder) {
@@ -479,6 +479,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(lambdaCapturingClass);
             RuntimeReflection.register(lambdaCapturingClass);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaCapturingClass, "$deserializeLambda$", SerializedLambda.class));
+            SerializationSupport.registerLambdaCapturingClass(lambdaCapturingClassName);
         });
     }
 

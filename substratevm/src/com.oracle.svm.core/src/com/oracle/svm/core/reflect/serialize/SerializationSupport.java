@@ -130,10 +130,21 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> classes = ConcurrentHashMap.newKeySet();
+    @Platforms(Platform.HOSTED_ONLY.class) private static final Set<String> lambdaCapturingClasses = ConcurrentHashMap.newKeySet();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerSerializationTargetClass(Class<?> serializationTargetClass) {
         classes.add(serializationTargetClass);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerLambdaCapturingClass(String lambdaCapturingClass) {
+        lambdaCapturingClasses.add(lambdaCapturingClass);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean isLambdaCapturingClassRegistered(String lambdaCapturingClass) {
+        return lambdaCapturingClasses.contains(lambdaCapturingClass);
     }
 
     @Override
@@ -146,7 +157,7 @@ public class SerializationSupport implements SerializationRegistry {
     public Object getSerializationConstructorAccessor(Class<?> rawDeclaringClass, Class<?> rawTargetConstructorClass) {
         Class<?> declaringClass = rawDeclaringClass;
 
-        if (declaringClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+        if (LambdaUtils.isLambdaClass(declaringClass)) {
             declaringClass = SerializedLambda.class;
         }
 

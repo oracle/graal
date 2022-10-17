@@ -305,6 +305,7 @@ suite = {
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
                     "jdk.internal.util",
+                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",

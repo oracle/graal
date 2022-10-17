@@ -22,6 +22,7 @@
 *.swo
 *.swp
 *.zip
+*.bgv
 .DS_Store
 .checkstyle
 .classpath

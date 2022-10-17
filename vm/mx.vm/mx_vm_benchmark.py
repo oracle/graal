@@ -898,6 +898,10 @@ class NativeImageVM(GraalVm):
         agentlib_options = ['native-image-agent=config-output-dir=' + str(config.config_dir)] + config.extra_agentlib_options
         hotspot_vm_args += ['-agentlib:' + ','.join(agentlib_options)]
 
+        # Native Image has the following option enabled by default. In order to create lambda classes in the same way
+        # during the agent run and image run, we need this option for the agent too.
+        hotspot_vm_args += ['-Djdk.internal.lambda.disableEagerInitialization=true']
+
         # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
         hotspot_vm_args += ['-XX:-UseJVMCICompiler']
 
