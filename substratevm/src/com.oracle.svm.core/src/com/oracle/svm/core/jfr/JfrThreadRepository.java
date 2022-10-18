@@ -47,6 +47,10 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.internal.Options;
 
+import static com.oracle.svm.core.jfr.JfrChunkWriter.CONSTANT_POOL_TYPE_ID;
+import static com.oracle.svm.core.jfr.JfrChunkWriter.getFileSupport;
+import static com.oracle.svm.core.jfr.JfrNativeEventWriter.makePaddedInt;
+
 /**
  * Repository that collects all metadata about threads and thread groups.
  */
@@ -134,6 +138,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         // Maybe during writing, the thread buffer was replaced with a new (larger) one, so we // *** underlying buffer of epochData.threadBuffer may have been replaced
         // need to update the repository pointer as well.
         epochData.threadBuffer = data.getJfrBuffer();
+        epochData.isDirty = true;
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
@@ -184,42 +189,49 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
-        if (flush){
-            mutex.lock(); // probably dont need this anymore
-        }
         JfrThreadEpochData epochData = getEpochData(!flush);
+        if (flush){
+            mutex.lock(); //only required when possibility of read/write same epoch data
+        }
         int count = writeThreads(writer, epochData, flush);
         count += writeThreadGroups(writer, epochData, flush);
-        if (!flush) {
-            epochData.clear();
-        }
+
+        epochData.clear(); // *** can clear this because we only write when dirty
+
+        epochData.isDirty = false;
 
         if (flush){
             mutex.unlock();
         }
-
         return count;
+    }
+
+    public boolean isDirty(boolean flush){
+        //***no lock needed bc flag cannot be unset unless in epoch change or in flush. This is the only thread that can unset it bc of lock on chunkwriter.
+        // *** Race to read vs set flag is not a problem
+        JfrThreadEpochData epochData = getEpochData(!flush);
+        return epochData.isDirty;
     }
 
     private static int writeThreads(JfrChunkWriter writer, JfrThreadEpochData epochData, boolean flush) {
         VMError.guarantee(epochData.visitedThreads.getSize() > 0, "Thread repository must not be empty.");
 
         writer.writeCompressedLong(JfrType.Thread.getId());
-        writer.writeCompressedInt(epochData.visitedThreads.getSize());
-        writer.write(epochData.threadBuffer, !flush);
+        writer.writeCompressedInt(epochData.visitedThreads.getSize()); // *** This needs to be cleared (as well as the buffers)
+        writer.write(epochData.threadBuffer, true);
 
         return NON_EMPTY;
     }
 
     private static int writeThreadGroups(JfrChunkWriter writer, JfrThreadEpochData epochData, boolean flush) {
-        int threadGroupCount = epochData.visitedThreadGroups.getSize();
+        int threadGroupCount = epochData.visitedThreadGroups.getSize(); // *** This needs to be cleared (as well as the buffers)
         if (threadGroupCount == 0) {
             return EMPTY;
         }
 
         writer.writeCompressedLong(JfrType.ThreadGroup.getId());
         writer.writeCompressedInt(threadGroupCount);
-        writer.write(epochData.threadGroupBuffer, !flush);
+        writer.write(epochData.threadGroupBuffer, true);
 
         return NON_EMPTY;
     }
@@ -274,6 +286,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
          * only invoked once per thread (there can be races when re-registering already running
          * threads).
          */
+        private boolean isDirty = false;
         private final JfrVisitedTable visitedThreads;
         private final JfrVisitedTable visitedThreadGroups;
 

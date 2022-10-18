@@ -101,7 +101,7 @@ public class SubstrateJVM {
          * Current rules: 1. methodRepo should be after stackTraceRepo; 2. typeRepo should be after
          * methodRepo and stackTraceRepo; 3. symbolRepo should be on end.
          */
-        repositories = new JfrConstantPool[]{stackTraceRepo, methodRepo, typeRepo, threadRepo, symbolRepo};
+        repositories = new JfrConstantPool[]{stackTraceRepo, methodRepo, typeRepo, symbolRepo};
 
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
@@ -332,7 +332,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.closeFile(metadataDescriptor, repositories);
+                    chunkWriter.closeFile(metadataDescriptor, repositories, threadRepo);
                 }
                 System.out.println("*** setOutput: "+ file);
                 if (file != null) {

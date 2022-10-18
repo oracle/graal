@@ -77,7 +77,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private static final byte COMPLETE = 0;
     private static final byte MAX_BYTE = 127;
 
-    private long lastCheckpointOffset = 0;
+    public long lastCheckpointOffset = 0;
 
     private int lastMetadataId = 0;
     private int currentMetadataId = 0;
@@ -168,7 +168,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     /**
      * Write all the in-memory data to the file.
      */
-    public void closeFile(byte[] metadataDescriptor, JfrConstantPool[] repositories) {
+    public void closeFile(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
         assert lock.isHeldByCurrentThread();
         System.out.println("*** rotating chunk: closeFile");
         /*
@@ -183,6 +183,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * data structures of the new epoch. This guarantees that the data in the old epoch can be
          * persisted to a file without a safepoint.
          */
+        if (threadRepo.isDirty(false)){
+            writeThreadCheckpointEvent(threadRepo, false);
+        }
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, false);
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
 //        _constantPoolPosition = constantPoolPosition;
@@ -195,13 +198,14 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
     private SignedWord _constantPoolPosition;
     private SignedWord _metadataPosition;
-    public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrConstantPool threadRepo) {
+    public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
         assert lock.isHeldByCurrentThread();// fd should always be correct because its cleared and set within locked critical section
 
         JfrChangeEpochOperation op = new JfrChangeEpochOperation(true);
         op.enqueue();
-//WordFactory.signed(0); //
-//        writeThreadCheckpointEvent(threadRepo, true);
+        if (threadRepo.isDirty(true)){
+            writeThreadCheckpointEvent(threadRepo, true);
+        }
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true); // WILL get written again when the chunk closes and overwrite what we write here. In that case we shouldn't wipe the repos right? How does hotspot handle it?
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
 
@@ -281,9 +285,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(lastCheckpointOffset - start.rawValue()); // deltaToNext
-        writeCompressedLong(8); // flush
-        writeCompressedLong(1);
-        writeCompressedLong(170);
+        writeCompressedLong(8); // *** Threads
 
         SignedWord poolCountPos = getFileSupport().position(fd);
         getFileSupport().writeInt(fd, 0); // We'll patch this later.
@@ -339,7 +341,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private int writeConstantPools(JfrConstantPool[] constantPools, boolean flush) {
         int count = 0;
         for (JfrConstantPool constantPool : constantPools) {
-//            if (flush && constantPool instanceof com.oracle.svm.core.jfr.JfrThreadRepository) {
+//            if (constantPool instanceof com.oracle.svm.core.jfr.JfrThreadRepository) {
+//                System.out.println("*** Skipping thread repo");
 //                continue;
 //            }
             int poolCount = constantPool.write(this, flush);
