@@ -476,7 +476,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
 
         if additional_deps:
             build_deps = build_deps + additional_deps
-        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk)
+        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         tests_image = native_image(build_options + extra_image_args)
         import configparser
         artifacts = configparser.RawConfigParser(allow_no_value=True)
