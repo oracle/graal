@@ -107,7 +107,7 @@ public abstract class NativeImageViaCC extends NativeImage {
              */
 
             LinkerInvocation inv = CCLinkerInvocation.getLinkerInvocation(imageKind, nativeLibs, codeCache.getCCInputFiles(tempDirectory, imageName),
-                            outputDirectory, tempDirectory, imageName, codeCache.getSymbols(this.getOrCreateDebugObjectFile()));
+                            outputDirectory, tempDirectory, imageName, codeCache.getSymbols(getObjectFile()));
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }

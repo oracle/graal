@@ -24,24 +24,41 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.util.List;
+
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.image.sources.SourceManager;
 
-import java.util.List;
-
-/**
- * An automatic feature class which ensures that the Linux debug unique short name provider is
- * registered when generating debug info for Linux.
- */
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class NativeImageDebugInfoFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.GenerateDebugInfo.getValue() > 0;
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        /*
+         * Ensure that the Linux debug unique short name provider is registered when generating
+         * debug info for Linux.
+         */
         if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
             if (!ImageSingletons.contains(UniqueShortNameProvider.class)) {
                 // configure a BFD mangler to provide unique short names for method and field
@@ -61,5 +78,20 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 ImageSingletons.add(UniqueShortNameProvider.class, new NativeImageBFDNameProvider(ignored));
             }
         }
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
+        try (Timer.StopTimer t = timer.start()) {
+            ImageSingletons.add(SourceManager.class, new SourceManager());
+            var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
+            var image = accessImpl.getImage();
+            var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
+            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), accessImpl.getHostedMetaAccess());
+            image.getObjectFile().installDebugInfo(provider);
+        }
+        ProgressReporter.singleton().setDebugInfoTimer(timer);
     }
 }
