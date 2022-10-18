@@ -43,6 +43,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -109,6 +110,7 @@ import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.word.WordCastNode;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -140,7 +142,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
-import org.graalvm.nativeimage.AnnotationAccess;
 
 public class MethodTypeFlowBuilder {
 
@@ -1176,7 +1177,7 @@ public class MethodTypeFlowBuilder {
                                     invoke.stateAfter(), invoke.stateAfter().outerFrameState());
                     MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
-                    processMethodInvocation(state, invoke.asFixedNode(), target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
+                    processMethodInvocation(state, invoke, target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
                 }
 
             } else if (n instanceof ObjectClone) {
@@ -1304,17 +1305,67 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processMacroInvokable(TypeFlowsOfNodes state, MacroInvokable macro, boolean installResult) {
-        processMethodInvocation(state, macro.asNode(), macro.getInvokeKind(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult);
+        ValueNode macroNode = macro.asNode();
+        BytecodePosition invokePosition = getInvokePosition(macro, macroNode);
+        processMethodInvocation(state, macroNode, macro.getInvokeKind(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult, invokePosition);
     }
 
-    protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
-        processMethodInvocation(state, invoke, invokeKind, targetMethod, arguments, true);
+    /* Reconstruct the macro node invoke position, avoiding cycles in the parsing backtrace. */
+    private BytecodePosition getInvokePosition(MacroInvokable macro, ValueNode macroNode) {
+        BytecodePosition invokePosition = null;
+        NodeSourcePosition position = macroNode.getNodeSourcePosition();
+        if (position != null) {
+            /*
+             * BytecodeParser.applyInvocationPlugin() gives the macro nodes a position in the target
+             * method. We pop it here because the invoke flow needs a position in the caller, i.e.,
+             * the currently parsed method.
+             */
+            assert position.getMethod().equals(macro.getTargetMethod()) : "Unexpected macro node source position: " + macro + " at " + position;
+            invokePosition = position.getCaller();
+        }
+        if (invokePosition == null) {
+            invokePosition = AbstractAnalysisEngine.syntheticSourcePosition(macroNode, method);
+        }
+        return invokePosition;
+    }
+
+    protected void processMethodInvocation(TypeFlowsOfNodes state, Invoke invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
+        FixedNode invokeNode = invoke.asFixedNode();
+        BytecodePosition invokePosition = getInvokePosition(invokeNode);
+        processMethodInvocation(state, invokeNode, invokeKind, targetMethod, arguments, true, invokePosition);
+    }
+
+    /* Get a reasonable position for inlined invokes, avoiding cycles in the parsing backtrace. */
+    private BytecodePosition getInvokePosition(FixedNode invokeNode) {
+        BytecodePosition invokePosition = invokeNode.getNodeSourcePosition();
+        /* Get the outermost caller position for inlined invokes. */
+        while (invokePosition != null && invokePosition.getCaller() != null) {
+            /*
+             * Invokes coming from recursive inlined methods can lead to cycles when reporting the
+             * parsing backtrace if we use the reported position directly. For inlined nodes Graal
+             * reports the original position (in the original method before inlining) and sets its
+             * caller to the inline location. So by using the outermost caller we simply use a
+             * version of the graph preprocessed by inline-before-analysis, whose shape may differ
+             * from the original source code. In some cases this will lead to stack traces with
+             * missing frames, but it is always correct.
+             */
+            invokePosition = invokePosition.getCaller();
+        }
+
+        if (invokePosition == null) {
+            /*
+             * The invokePosition is used for all sorts of call stack printing (for error messages
+             * and diagnostics), so we must have a non-null BytecodePosition.
+             */
+            invokePosition = AbstractAnalysisEngine.syntheticSourcePosition(invokeNode, method);
+        }
+        return invokePosition;
     }
 
     protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments,
-                    boolean installResult) {
+                    boolean installResult, BytecodePosition invokeLocation) {
         // check if the call is allowed
-        bb.isCallAllowed(bb, method, targetMethod, AbstractAnalysisEngine.sourcePosition(invoke));
+        bb.isCallAllowed(bb, method, targetMethod, invokeLocation);
 
         /*
          * Collect the parameters builders into an array so that we don't capture the `state`
@@ -1366,11 +1417,6 @@ public class MethodTypeFlowBuilder {
                 }
             }
 
-            /*
-             * The invokeLocation is used for all sorts of call stack printing (for error messages
-             * and diagnostics), so we must have a non-null BytecodePosition.
-             */
-            BytecodePosition invokeLocation = AbstractAnalysisEngine.sourcePosition(invoke);
             InvokeTypeFlow invokeFlow;
             switch (invokeKind) {
                 case Static:
@@ -1425,7 +1471,7 @@ public class MethodTypeFlowBuilder {
                  * filter to avoid loosing precision.
                  */
                 TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
-                    FilterTypeFlow filterFlow = new FilterTypeFlow(AbstractAnalysisEngine.sourcePosition(invoke), (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                    FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
                     flowsGraph.addMiscEntryFlow(filterFlow);
                     return filterFlow;
                 });

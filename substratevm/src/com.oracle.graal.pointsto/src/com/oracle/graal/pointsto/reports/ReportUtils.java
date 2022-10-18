@@ -233,21 +233,25 @@ public class ReportUtils {
                 /* Include target method first. */
                 msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
             }
-            /* Then add the parsing context. */
-            for (int i = 0; i < parsingContext.length; i++) {
-                StackTraceElement e = parsingContext[i];
-                if (isStackTraceTruncationSentinel(e)) {
-                    msg.append(String.format("%n%s", e.getClassName()));
-                    assert i == parsingContext.length - 1;
-                } else {
-                    msg.append(String.format("%n%sat %s", indent, e));
-                }
-            }
-            msg.append(String.format("%n"));
+            formatParsingContext(parsingContext, indent, msg);
         } else {
             msg.append(String.format(" <no parsing context available> %n"));
         }
         return msg.toString();
+    }
+
+    public static void formatParsingContext(StackTraceElement[] parsingContext, String indent, StringBuilder msg) {
+        /* Then add the parsing context. */
+        for (int i = 0; i < parsingContext.length; i++) {
+            StackTraceElement e = parsingContext[i];
+            if (isStackTraceTruncationSentinel(e)) {
+                msg.append(String.format("%n%s", e.getClassName()));
+                assert i == parsingContext.length - 1;
+            } else {
+                msg.append(String.format("%n%sat %s", indent, e));
+            }
+        }
+        msg.append(String.format("%n"));
     }
 
     private static final String stackTraceTruncationSentinel = "WARNING: Parsing context is truncated because its depth exceeds a reasonable limit for ";

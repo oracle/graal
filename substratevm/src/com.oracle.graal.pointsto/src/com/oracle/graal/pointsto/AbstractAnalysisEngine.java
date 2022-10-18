@@ -318,21 +318,25 @@ public abstract class AbstractAnalysisEngine implements BigBang {
      * Provide a non-null position. Some flows like newInstance and invoke require a non-null
      * position, for others is just better. The constructed position is best-effort, i.e., it
      * contains at least the method, and a BCI only if the node provides it.
-     *
+     * <p>
      * This is necessary because {@link Node#getNodeSourcePosition()} doesn't always provide a
      * position, like for example for generated factory methods in FactoryThrowMethodHolder.
      */
     public static BytecodePosition sourcePosition(ValueNode node) {
         BytecodePosition position = node.getNodeSourcePosition();
         if (position == null) {
-            int bci = BytecodeFrame.UNKNOWN_BCI;
-            if (node instanceof DeoptBciSupplier) {
-                bci = ((DeoptBciSupplier) node).bci();
-            }
-            ResolvedJavaMethod method = node.graph().method();
-            position = new BytecodePosition(null, method, bci);
+            position = syntheticSourcePosition(node, node.graph().method());
         }
         return position;
+    }
+
+    /** Creates a synthetic position for the node in the given method. */
+    public static BytecodePosition syntheticSourcePosition(ValueNode node, ResolvedJavaMethod method) {
+        int bci = BytecodeFrame.UNKNOWN_BCI;
+        if (node instanceof DeoptBciSupplier) {
+            bci = ((DeoptBciSupplier) node).bci();
+        }
+        return new BytecodePosition(null, method, bci);
     }
 
 }
