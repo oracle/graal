@@ -40,21 +40,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata.AnnotationExtractionError;
 import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ConstantPool;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationParser;
 
 /**
@@ -98,67 +98,11 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private static final Field methodParameterAnnotations = ReflectionUtil.lookupField(Method.class, "parameterAnnotations");
     private static final Field methodAnnotationDefault = ReflectionUtil.lookupField(Method.class, "annotationDefault");
     private static final Field constructorParameterAnnotations = ReflectionUtil.lookupField(Constructor.class, "parameterAnnotations");
-    private static final Class<?> recordComponentClass;
-    private static final Field recordComponentAnnotations;
-    private static final Field recordComponentTypeAnnotations;
-    private static final Method recordComponentGetDeclaringRecord;
+    private static final Class<?> recordComponentClass = ReflectionUtil.lookupClass(true, "java.lang.reflect.RecordComponent");
+    private static final Field recordComponentAnnotations = recordComponentClass == null ? null : ReflectionUtil.lookupField(recordComponentClass, "annotations");
+    private static final Field recordComponentTypeAnnotations = recordComponentClass == null ? null : ReflectionUtil.lookupField(recordComponentClass, "typeAnnotations");
+    private static final Method recordComponentGetDeclaringRecord = recordComponentClass == null ? null : ReflectionUtil.lookupMethod(recordComponentClass, "getDeclaringRecord");
     private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
-    private static final Object hotSpotJVMCIRuntimeReflection;
-    private static final Method hotSpotJDKReflectionGetMirror;
-    private static final Method hotSpotJDKReflectionGetMethod;
-    private static final Method hotSpotJDKReflectionGetField;
-    private static final boolean isHotSpotJDKReflectionAvailable;
-    private static final Method hotSpotResolvedObjectTypeImplMirror;
-    private static final Method hotSpotResolvedPrimitiveTypeMirror;
-    private static final Method hotSpotResolvedJavaMethodImplToJava;
-    private static final Method hotSpotResolvedJavaFieldImplToJava;
-
-    static {
-        recordComponentClass = ReflectionUtil.lookupClass(true, "java.lang.reflect.RecordComponent");
-        recordComponentAnnotations = recordComponentClass != null ? ReflectionUtil.lookupField(recordComponentClass, "annotations") : null;
-        recordComponentTypeAnnotations = recordComponentClass != null ? ReflectionUtil.lookupField(recordComponentClass, "typeAnnotations") : null;
-        recordComponentGetDeclaringRecord = recordComponentClass != null ? ReflectionUtil.lookupMethod(recordComponentClass, "getDeclaringRecord") : null;
-
-        Object temporaryHotSpotJVMCIRuntimeReflection = null;
-        Method temporaryHotSpotJDKReflectionGetMirror = null;
-        Method temporaryHotSpotJDKReflectionGetMethod = null;
-        Method temporaryHotSpotJDKReflectionGetField = null;
-        boolean temporaryIsHotSpotJDKReflectionAvailable = true;
-
-        try {
-            Object hotSpotJVMCIRuntime = ReflectionUtil.lookupMethod(HotSpotJVMCIRuntime.class, "runtime").invoke(null);
-            temporaryHotSpotJVMCIRuntimeReflection = ReflectionUtil.lookupMethod(HotSpotJVMCIRuntime.class, "getReflection").invoke(hotSpotJVMCIRuntime);
-            temporaryHotSpotJDKReflectionGetMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getMirror", HotSpotResolvedJavaType.class);
-            temporaryHotSpotJDKReflectionGetMethod = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getMethod",
-                            Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaMethodImpl"));
-            temporaryHotSpotJDKReflectionGetField = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection"), "getField",
-                            Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaFieldImpl"));
-        } catch (ClassNotFoundException | IllegalAccessException | InvocationTargetException | ReflectionUtil.ReflectionUtilError ex) {
-            temporaryIsHotSpotJDKReflectionAvailable = false;
-        }
-
-        isHotSpotJDKReflectionAvailable = temporaryIsHotSpotJDKReflectionAvailable;
-        hotSpotJVMCIRuntimeReflection = temporaryHotSpotJVMCIRuntimeReflection;
-        hotSpotJDKReflectionGetMirror = temporaryHotSpotJDKReflectionGetMirror;
-        hotSpotJDKReflectionGetMethod = temporaryHotSpotJDKReflectionGetMethod;
-        hotSpotJDKReflectionGetField = temporaryHotSpotJDKReflectionGetField;
-
-        if (isHotSpotJDKReflectionAvailable) {
-            hotSpotResolvedObjectTypeImplMirror = null;
-            hotSpotResolvedPrimitiveTypeMirror = null;
-            hotSpotResolvedJavaMethodImplToJava = null;
-            hotSpotResolvedJavaFieldImplToJava = null;
-        } else {
-            try {
-                hotSpotResolvedObjectTypeImplMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl"), "mirror");
-                hotSpotResolvedPrimitiveTypeMirror = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedPrimitiveType"), "mirror");
-                hotSpotResolvedJavaMethodImplToJava = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaMethodImpl"), "toJava");
-                hotSpotResolvedJavaFieldImplToJava = ReflectionUtil.lookupMethod(Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaFieldImpl"), "toJava");
-            } catch (ClassNotFoundException e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }
-    }
 
     @SuppressWarnings("unchecked")
     @Override
@@ -443,40 +387,19 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         try {
             if (element instanceof Package) {
                 return (Class<?>) packageGetPackageInfo.invoke(element);
-            } else if (element instanceof HotSpotResolvedObjectType || element instanceof HotSpotResolvedJavaType) {
-                if (isHotSpotJDKReflectionAvailable) {
-                    return (AnnotatedElement) hotSpotJDKReflectionGetMirror.invoke(hotSpotJVMCIRuntimeReflection, element);
-                } else {
-                    if (element instanceof HotSpotResolvedObjectType) {
-                        return (AnnotatedElement) hotSpotResolvedObjectTypeImplMirror.invoke(element);
-                    } else {
-                        return (AnnotatedElement) hotSpotResolvedPrimitiveTypeMirror.invoke(element);
-                    }
-                }
-            } else if (element instanceof HotSpotResolvedJavaMethod) {
-                if (((ResolvedJavaMethod) element).isClassInitializer()) {
-                    return null;
-                }
-                if (isHotSpotJDKReflectionAvailable) {
-                    return (AnnotatedElement) hotSpotJDKReflectionGetMethod.invoke(hotSpotJVMCIRuntimeReflection, element);
-                } else {
-                    return (AnnotatedElement) hotSpotResolvedJavaMethodImplToJava.invoke(element);
-                }
-            } else if (element instanceof HotSpotResolvedJavaField) {
-                if (isHotSpotJDKReflectionAvailable) {
-                    return (AnnotatedElement) hotSpotJDKReflectionGetField.invoke(hotSpotJVMCIRuntimeReflection, element);
-                } else {
-                    return (AnnotatedElement) hotSpotResolvedJavaFieldImplToJava.invoke(element);
-                }
             } else if (element instanceof AnnotationWrapper) {
                 return getRoot(((AnnotationWrapper) element).getAnnotationRoot());
+            } else if (element instanceof ResolvedJavaType) {
+                return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaType) element);
+            } else if (element instanceof ResolvedJavaMethod) {
+                return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaMethod) element);
+            } else if (element instanceof ResolvedJavaField) {
+                return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaField) element);
             }
         } catch (InvocationTargetException e) {
             Throwable targetException = e.getTargetException();
             if (targetException instanceof LinkageError) {
                 throw (LinkageError) targetException;
-            } else if (targetException instanceof IllegalArgumentException) {
-                return null;
             }
             throw new AnnotationExtractionError(e);
         } catch (IllegalAccessException e) {

@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
@@ -34,6 +37,8 @@ import org.junit.Test;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReplacementsTest extends GraalCompilerTest {
@@ -55,6 +60,16 @@ public class ReplacementsTest extends GraalCompilerTest {
 
             @Override
             public Class<?> originalClass(ResolvedJavaType type) {
+                return null;
+            }
+
+            @Override
+            public Executable originalMethod(ResolvedJavaMethod method) {
+                return null;
+            }
+
+            @Override
+            public Field originalField(ResolvedJavaField field) {
                 return null;
             }
 
