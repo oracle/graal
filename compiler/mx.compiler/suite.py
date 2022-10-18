@@ -1878,7 +1878,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.nodes",
-        "org.graalvm.util",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
@@ -2202,7 +2201,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
-        "GRAAL"
+        "GRAAL",
       ],
       "maven" : False,
     },
