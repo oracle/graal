@@ -2550,13 +2550,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
 
 def _get_jvm_cfg_contents():
-    if _src_jdk.javaCompliance < '9':
-        if mx.get_os() == 'darwin':
-            jvm_cfg = join(_src_jdk.home, 'jre', 'lib', 'jvm.cfg')
-        else:
-            jvm_cfg = join(_src_jdk.home, 'jre', 'lib', mx.get_arch(), 'jvm.cfg')
-    else:
-        jvm_cfg = join(_src_jdk.home, 'lib', 'jvm.cfg')
+    jvm_cfg = join(_src_jdk.home, 'lib', 'jvm.cfg')
     if not exists(jvm_cfg):
         raise mx.abort("Could not find jvm.cfg from source JDK at " + jvm_cfg)
     with open(jvm_cfg, 'r') as orig_f:
@@ -2886,24 +2880,23 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_distribution(get_stage1_graalvm_distribution())
 
     if register_project:
-        if _src_jdk.javaCompliance >= '9':
-            if needs_stage1:
-                _stage1_graalvm_distribution = get_stage1_graalvm_distribution()
-                if _needs_stage1_jimage(_stage1_graalvm_distribution, _final_graalvm_distribution):
-                    register_project(GraalVmJImage(
-                        suite=_suite,
-                        name='graalvm-stage1-jimage',
-                        jimage_jars=sorted(_stage1_graalvm_distribution.jimage_jars),
-                        jimage_ignore_jars=sorted(_stage1_graalvm_distribution.jimage_ignore_jars),
-                        workingSets=None,
-                    ))
-            register_project(GraalVmJImage(
-                suite=_suite,
-                name='graalvm-jimage',
-                jimage_jars=sorted(_final_graalvm_distribution.jimage_jars),
-                jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
-                workingSets=None,
-            ))
+        if needs_stage1:
+            _stage1_graalvm_distribution = get_stage1_graalvm_distribution()
+            if _needs_stage1_jimage(_stage1_graalvm_distribution, _final_graalvm_distribution):
+                register_project(GraalVmJImage(
+                    suite=_suite,
+                    name='graalvm-stage1-jimage',
+                    jimage_jars=sorted(_stage1_graalvm_distribution.jimage_jars),
+                    jimage_ignore_jars=sorted(_stage1_graalvm_distribution.jimage_ignore_jars),
+                    workingSets=None,
+                ))
+        register_project(GraalVmJImage(
+            suite=_suite,
+            name='graalvm-jimage',
+            jimage_jars=sorted(_final_graalvm_distribution.jimage_jars),
+            jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
+            workingSets=None,
+        ))
 
     if _debuginfo_dists():
         if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
