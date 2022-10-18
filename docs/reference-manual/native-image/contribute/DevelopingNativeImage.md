@@ -33,7 +33,7 @@ mx native-image HelloWorld
 
 To build polyglot images, refer to the documentation in the [VM suite](../../../../vm/README.md).
 
-## Build Native Image
+## Use Native Image
 
 Using Native Image in a development environment requires the `mx` tool to be installed first, so that it is on your `PATH`.
 Visit the [MX Homepage](https://github.com/graalvm/mx) for more details.
@@ -48,7 +48,7 @@ The most important commands are:
 * `ideinit`: create project files for Eclipse and other common IDEs
 See the [documentation on IDE integration](../../../../compiler/docs/IDEs.md) for details.
 
-## Building images
+## Build Native Executables
 
 After running `mx build` you can use `mx native-image` to build native images.
 You can specify the main entry point, i.e., the application you want to create the image for. For more information run `mx native-image --help`.

@@ -19,7 +19,7 @@ An example of a clearly written but non-actionable error message is:
 
 This message relies on the internal slang (correct image building task) and does not directly and concisely explain to the user how to fix the error.
 
-The `UserError.abort` method will interrupt compilation with a `UserException` causing the image generator to exit. To assure consistent error reporting throughout the project, this exception must be handled only once and must not be ignored anywhere in the project.
+The `UserError.abort` method will interrupt compilation with a `UserException` causing the `native image` generator to exit. To assure consistent error reporting throughout the project, this exception must be handled only once and must not be ignored anywhere in the project.
 
 ## How to Report Errors to Native Image Developers
 
@@ -36,4 +36,4 @@ The following example shows improper error reporting:
     }
     VMError.shouldNotReachHere();
 
-Error reporting with no error message requires the user to unnecessarily read the context in order to understand the error. Furthermore the `throw` in preceding `VMError.shouldNotReachHere()` is omitted making users and static analysis tools unaware of control flow interruption.
+Error reporting with no error message requires the user to unnecessarily read the context in order to understand the error. Furthermore, the `throw` in preceding `VMError.shouldNotReachHere()` is omitted making users and static analysis tools unaware of control flow interruption.
