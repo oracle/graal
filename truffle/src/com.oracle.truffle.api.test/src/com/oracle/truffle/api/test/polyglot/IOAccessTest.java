@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -73,6 +74,122 @@ public class IOAccessTest {
         AbstractPolyglotTest.assertFails(() -> IOAccess.newBuilder().allowHostFileAccess(true).fileSystem(new MemoryFileSystem()).build(),
                         IllegalArgumentException.class,
                         (iae) -> assertEquals("The allow host file access and custom filesystem are mutually exclusive.", iae.getMessage()));
+    }
+
+    @Test
+    public void testEquals() throws IOException {
+        IOAccess sockets = IOAccess.newBuilder().allowHostSocketAccess(true).build();
+        IOAccess files = IOAccess.newBuilder().allowHostFileAccess(true).build();
+        IOAccess virtualFs = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).build();
+        IOAccess virtualFsWithSockets = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).allowHostSocketAccess(true).build();
+        assertEquals(IOAccess.ALL, IOAccess.ALL);
+        assertEquals(IOAccess.ALL, IOAccess.newBuilder(IOAccess.ALL).build());
+        assertEquals(IOAccess.ALL, IOAccess.newBuilder().allowHostSocketAccess(true).allowHostFileAccess(true).build());
+        assertNotEquals(IOAccess.ALL, null);
+        assertNotEquals(IOAccess.ALL, new Object());
+        assertNotEquals(IOAccess.ALL, IOAccess.NONE);
+        assertNotEquals(IOAccess.ALL, null);
+        assertNotEquals(IOAccess.ALL, sockets);
+        assertNotEquals(IOAccess.ALL, files);
+        assertNotEquals(IOAccess.ALL, virtualFs);
+        assertNotEquals(IOAccess.ALL, virtualFsWithSockets);
+        assertEquals(IOAccess.NONE, IOAccess.NONE);
+        assertEquals(IOAccess.NONE, IOAccess.newBuilder().build());
+        assertEquals(IOAccess.NONE, IOAccess.newBuilder(IOAccess.NONE).build());
+        assertNotEquals(IOAccess.NONE, null);
+        assertNotEquals(IOAccess.NONE, new Object());
+        assertNotEquals(IOAccess.NONE, IOAccess.ALL);
+        assertNotEquals(IOAccess.NONE, sockets);
+        assertNotEquals(IOAccess.NONE, files);
+        assertNotEquals(IOAccess.NONE, virtualFs);
+        assertNotEquals(IOAccess.NONE, virtualFsWithSockets);
+        assertEquals(sockets, sockets);
+        assertEquals(sockets, IOAccess.newBuilder(sockets).build());
+        assertNotEquals(sockets, null);
+        assertNotEquals(sockets, new Object());
+        assertNotEquals(sockets, IOAccess.ALL);
+        assertNotEquals(sockets, IOAccess.NONE);
+        assertNotEquals(sockets, files);
+        assertNotEquals(sockets, virtualFs);
+        assertNotEquals(sockets, virtualFsWithSockets);
+        assertEquals(files, files);
+        assertEquals(files, IOAccess.newBuilder(files).build());
+        assertNotEquals(files, null);
+        assertNotEquals(files, new Object());
+        assertNotEquals(files, IOAccess.ALL);
+        assertNotEquals(files, IOAccess.NONE);
+        assertNotEquals(files, sockets);
+        assertNotEquals(files, virtualFs);
+        assertNotEquals(files, virtualFsWithSockets);
+        assertEquals(virtualFs, virtualFs);
+        assertEquals(virtualFs, IOAccess.newBuilder(virtualFs).build());
+        assertNotEquals(virtualFs, null);
+        assertNotEquals(virtualFs, new Object());
+        assertNotEquals(virtualFs, IOAccess.ALL);
+        assertNotEquals(virtualFs, IOAccess.NONE);
+        assertNotEquals(virtualFs, sockets);
+        assertNotEquals(virtualFs, files);
+        assertNotEquals(virtualFs, virtualFsWithSockets);
+        assertEquals(virtualFsWithSockets, virtualFsWithSockets);
+        assertEquals(virtualFsWithSockets, IOAccess.newBuilder(virtualFsWithSockets).build());
+        assertNotEquals(virtualFsWithSockets, null);
+        assertNotEquals(virtualFsWithSockets, new Object());
+        assertNotEquals(virtualFsWithSockets, IOAccess.ALL);
+        assertNotEquals(virtualFsWithSockets, IOAccess.NONE);
+        assertNotEquals(virtualFsWithSockets, sockets);
+        assertNotEquals(virtualFsWithSockets, files);
+        assertNotEquals(virtualFsWithSockets, virtualFs);
+    }
+
+    @Test
+    public void testHashCode() throws IOException {
+        IOAccess sockets = IOAccess.newBuilder().allowHostSocketAccess(true).build();
+        IOAccess files = IOAccess.newBuilder().allowHostFileAccess(true).build();
+        IOAccess virtualFs = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).build();
+        IOAccess virtualFsWithSockets = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).allowHostSocketAccess(true).build();
+        assertEquals(IOAccess.ALL.hashCode(), IOAccess.ALL.hashCode());
+        assertEquals(IOAccess.ALL.hashCode(), IOAccess.newBuilder(IOAccess.ALL).build().hashCode());
+        assertEquals(IOAccess.ALL.hashCode(), IOAccess.newBuilder().allowHostSocketAccess(true).allowHostFileAccess(true).build().hashCode());
+        assertNotEquals(IOAccess.ALL.hashCode(), IOAccess.NONE.hashCode());
+        assertNotEquals(IOAccess.ALL.hashCode(), sockets.hashCode());
+        assertNotEquals(IOAccess.ALL.hashCode(), files.hashCode());
+        assertEquals(IOAccess.NONE.hashCode(), IOAccess.NONE.hashCode());
+        assertEquals(IOAccess.NONE.hashCode(), IOAccess.newBuilder().build().hashCode());
+        assertEquals(IOAccess.NONE.hashCode(), IOAccess.newBuilder(IOAccess.NONE).build().hashCode());
+        assertNotEquals(IOAccess.NONE.hashCode(), IOAccess.ALL.hashCode());
+        assertNotEquals(IOAccess.NONE.hashCode(), sockets.hashCode());
+        assertNotEquals(IOAccess.NONE.hashCode(), files.hashCode());
+        assertEquals(sockets.hashCode(), sockets.hashCode());
+        assertEquals(sockets.hashCode(), IOAccess.newBuilder(sockets).build().hashCode());
+        assertNotEquals(sockets.hashCode(), IOAccess.ALL.hashCode());
+        assertNotEquals(sockets.hashCode(), IOAccess.NONE.hashCode());
+        assertNotEquals(sockets.hashCode(), files.hashCode());
+        assertEquals(files.hashCode(), files.hashCode());
+        assertEquals(files.hashCode(), IOAccess.newBuilder(files).build().hashCode());
+        assertNotEquals(files.hashCode(), IOAccess.ALL.hashCode());
+        assertNotEquals(files.hashCode(), IOAccess.NONE.hashCode());
+        assertNotEquals(files.hashCode(), sockets.hashCode());
+        assertEquals(virtualFs.hashCode(), virtualFs.hashCode());
+        assertEquals(virtualFs.hashCode(), IOAccess.newBuilder(virtualFs).build().hashCode());
+        assertEquals(virtualFsWithSockets.hashCode(), virtualFsWithSockets.hashCode());
+        assertEquals(virtualFsWithSockets.hashCode(), IOAccess.newBuilder(virtualFsWithSockets).build().hashCode());
+    }
+
+    @Test
+    public void testToString() throws IOException {
+        IOAccess sockets = IOAccess.newBuilder().allowHostSocketAccess(true).build();
+        IOAccess files = IOAccess.newBuilder().allowHostFileAccess(true).build();
+        IOAccess virtualFs = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).build();
+        IOAccess virtualFsWithSockets = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).allowHostSocketAccess(true).build();
+        assertEquals("IOAccess.ALL", IOAccess.ALL.toString());
+        assertEquals("IOAccess.NONE", IOAccess.NONE.toString());
+        assertEquals("IOAccess[allowHostFileAccess=false, allowHostSocketAccess=false, fileSystem=null]", IOAccess.newBuilder().build().toString());
+        assertEquals("IOAccess[allowHostFileAccess=false, allowHostSocketAccess=false, fileSystem=null]", IOAccess.newBuilder(IOAccess.NONE).build().toString());
+        assertEquals("IOAccess[allowHostFileAccess=true, allowHostSocketAccess=true, fileSystem=null]", IOAccess.newBuilder(IOAccess.ALL).build().toString());
+        assertEquals("IOAccess[allowHostFileAccess=false, allowHostSocketAccess=true, fileSystem=null]", sockets.toString());
+        assertEquals("IOAccess[allowHostFileAccess=true, allowHostSocketAccess=false, fileSystem=null]", files.toString());
+        assertTrue(virtualFs.toString().startsWith("IOAccess[allowHostFileAccess=false, allowHostSocketAccess=false, fileSystem=com.oracle.truffle.api.test.polyglot.MemoryFileSystem"));
+        assertTrue(virtualFsWithSockets.toString().startsWith("IOAccess[allowHostFileAccess=false, allowHostSocketAccess=true, fileSystem=com.oracle.truffle.api.test.polyglot.MemoryFileSystem"));
     }
 
     @Test

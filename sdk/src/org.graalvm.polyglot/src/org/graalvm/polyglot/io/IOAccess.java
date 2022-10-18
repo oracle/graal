@@ -61,7 +61,7 @@ public final class IOAccess {
      *
      * @since 23.0
      */
-    public static final IOAccess NONE = newBuilder().allowHostFileAccess(false).allowHostSocketAccess(false).build();
+    public static final IOAccess NONE = newBuilder().name("IOAccess.NONE").allowHostFileAccess(false).allowHostSocketAccess(false).build();
 
     /**
      * Provides guest language full access to host IO. Guest language have full access to host file
@@ -71,16 +71,18 @@ public final class IOAccess {
      *
      * @since 23.0
      */
-    public static final IOAccess ALL = newBuilder().allowHostFileAccess(true).allowHostSocketAccess(true).build();
+    public static final IOAccess ALL = newBuilder().name("IOAccess.ALL").allowHostFileAccess(true).allowHostSocketAccess(true).build();
 
+    private final String name;
     private final boolean allowHostFileAccess;
     private final boolean allowHostSocketAccess;
     private final FileSystem fileSystem;
 
-    IOAccess(boolean allowHostFileAccess, boolean allowHostSocketAccess, FileSystem fileSystem) {
+    IOAccess(String name, boolean allowHostFileAccess, boolean allowHostSocketAccess, FileSystem fileSystem) {
         if (allowHostFileAccess && fileSystem != null) {
             throw new IllegalArgumentException("The allow host file access and custom filesystem are mutually exclusive.");
         }
+        this.name = name;
         this.allowHostFileAccess = allowHostFileAccess;
         this.allowHostSocketAccess = allowHostSocketAccess;
         this.fileSystem = fileSystem;
@@ -153,7 +155,11 @@ public final class IOAccess {
      */
     @Override
     public String toString() {
-        return String.format("IOAccess[allow host file access: %b, allow host socket access: %b, file system %s]", allowHostFileAccess, allowHostSocketAccess, fileSystem);
+        if (name != null) {
+            return name;
+        } else {
+            return String.format("IOAccess[allowHostFileAccess=%b, allowHostSocketAccess=%b, fileSystem=%s]", allowHostFileAccess, allowHostSocketAccess, fileSystem);
+        }
     }
 
     /**
@@ -162,6 +168,8 @@ public final class IOAccess {
      * @since 23.0
      */
     public static final class Builder {
+
+        private String name;
         private boolean allowHostFileAccess;
         private boolean allowHostSocketAccess;
         private FileSystem customFileSystem;
@@ -173,6 +181,11 @@ public final class IOAccess {
             this.allowHostFileAccess = prototype.allowHostFileAccess;
             this.allowHostSocketAccess = prototype.allowHostSocketAccess;
             this.customFileSystem = prototype.fileSystem;
+        }
+
+        Builder name(String givenName) {
+            this.name = givenName;
+            return this;
         }
 
         /**
@@ -217,7 +230,7 @@ public final class IOAccess {
          * @since 23.0
          */
         public IOAccess build() {
-            return new IOAccess(allowHostFileAccess, allowHostSocketAccess, customFileSystem);
+            return new IOAccess(name, allowHostFileAccess, allowHostSocketAccess, customFileSystem);
         }
     }
 }
