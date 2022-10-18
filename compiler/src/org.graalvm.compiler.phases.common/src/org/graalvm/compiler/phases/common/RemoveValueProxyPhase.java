@@ -44,9 +44,9 @@ public class RemoveValueProxyPhase extends PostRunCanonicalizationPhase<CoreProv
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
-                        super.canApply(graphState),
+                        super.notApplicableTo(graphState),
                         NotApplicable.ifApplied(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.MID_TIER_LOWERING, graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState),

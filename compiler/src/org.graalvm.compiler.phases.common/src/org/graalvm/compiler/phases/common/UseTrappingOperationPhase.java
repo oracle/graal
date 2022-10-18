@@ -81,7 +81,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
     public abstract void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

@@ -58,9 +58,9 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
-                        super.canApply(graphState),
+                        super.notApplicableTo(graphState),
                         NotApplicable.ifApplied(this, StageFlag.EXPAND_LOGIC, graphState),
                         NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }

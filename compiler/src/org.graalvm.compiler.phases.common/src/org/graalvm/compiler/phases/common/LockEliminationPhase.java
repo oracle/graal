@@ -52,7 +52,7 @@ import org.graalvm.compiler.phases.Phase;
 public class LockEliminationPhase extends Phase {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.when(graphState.isAfterStage(StageFlag.FLOATING_READS) && graphState.isBeforeStage(StageFlag.FIXED_READS),
                         "This phase must not be applied while reads are floating");
     }

@@ -330,11 +330,11 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
      * {@link BasePhase#updateGraphState(GraphState)}.
      */
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         Formatter cannotApplyBuf = new Formatter();
         GraphState simulationGraphState = graphState.copy();
         for (BasePhase<? super C> phase : getPhases()) {
-            Optional<NotApplicable> phaseCanApply = phase.canApply(simulationGraphState);
+            Optional<NotApplicable> phaseCanApply = phase.notApplicableTo(simulationGraphState);
             if (phaseCanApply.isPresent()) {
                 String name = phase.getClass().getName();
                 if (name.contains(".svm.") || name.contains(".truffle.")) {

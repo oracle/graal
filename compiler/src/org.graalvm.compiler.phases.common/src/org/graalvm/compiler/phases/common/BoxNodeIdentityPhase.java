@@ -59,7 +59,7 @@ import org.graalvm.compiler.phases.BasePhase;
 public class BoxNodeIdentityPhase extends BasePhase<CoreProviders> {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.unlessRunBefore(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState);
     }
 

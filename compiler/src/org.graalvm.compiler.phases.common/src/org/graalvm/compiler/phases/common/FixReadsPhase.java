@@ -595,7 +595,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, StageFlag.FIXED_READS, graphState),
                         NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),

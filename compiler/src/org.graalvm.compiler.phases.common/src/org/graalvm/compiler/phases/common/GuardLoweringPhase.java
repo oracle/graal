@@ -115,7 +115,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, StageFlag.GUARD_LOWERING, graphState),
                         NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed"));

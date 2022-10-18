@@ -300,21 +300,20 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     /**
-     * Checks if all the preconditions to {@link #apply(StructuredGraph, Object, boolean)} the phase
-     * are met.
+     * Gets a precondition that prevents {@linkplain #apply(StructuredGraph, Object, boolean)
+     * applying} this phase to a graph whose state is {@code graphState}.
      *
-     * @param graphState represents the state of the {@link StructuredGraph} used for compilation
-     *            and contains the required information to determine if a phase can be applied.
+     * @param graphState the state of graph to which the caller wants to apply this phase
      *
-     * @return {@link Optional#empty()} if all the checks pass, {@link Optional#of(NotApplicable)}
-     *         containing why this phase is not applicable on this {@code graphState} otherwise.
+     * @return a {@link NotApplicable} detailing why this phase cannot be applied or a value equal
+     *         to {@link Optional#empty} if the phase can be applied
      */
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return Optional.of(new NotApplicable("BasePhase's canApply should be implemented by each phase"));
     }
 
     /**
-     * Represents that a phase is applicable and will have {@link #canApply} that will return
+     * Represents that a phase is applicable and will have {@link #notApplicableTo} that will return
      * {@link Optional#empty()}.
      */
     public static final Optional<NotApplicable> ALWAYS_APPLICABLE = Optional.empty();
@@ -390,7 +389,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         OptionValues options = graph.getOptions();
 
-        Optional<NotApplicable> cannotBeApplied = this.canApply(graph.getGraphState());
+        Optional<NotApplicable> cannotBeApplied = this.notApplicableTo(graph.getGraphState());
         if (cannotBeApplied.isPresent()) {
             String name = this.getClass().getName();
             if (name.contains(".svm.") || name.contains(".truffle.")) {

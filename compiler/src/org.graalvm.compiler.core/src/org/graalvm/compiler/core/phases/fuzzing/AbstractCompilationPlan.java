@@ -96,13 +96,13 @@ public abstract class AbstractCompilationPlan {
     public void verifyCompilationPlan(GraphState graphState) {
         GraphState simulationGraphState = graphState.copy();
         addInitialRequiredStages(simulationGraphState);
-        Optional<NotApplicable> canApplyTier = highTier.getPhaseSuite().canApply(simulationGraphState);
+        Optional<NotApplicable> canApplyTier = highTier.getPhaseSuite().notApplicableTo(simulationGraphState);
         GraalError.guarantee(canApplyTier.isEmpty(), "Cannot apply the high tier of this compilation plan because %s.%n%s", canApplyTier.orElse(null), this);
         highTier.updateGraphState(simulationGraphState);
-        canApplyTier = midTier.getPhaseSuite().canApply(simulationGraphState);
+        canApplyTier = midTier.getPhaseSuite().notApplicableTo(simulationGraphState);
         GraalError.guarantee(canApplyTier.isEmpty(), "Cannot apply the mid tier of this compilation plan because %s.%n%s", canApplyTier.orElse(null), this);
         midTier.updateGraphState(simulationGraphState);
-        canApplyTier = lowTier.getPhaseSuite().canApply(simulationGraphState);
+        canApplyTier = lowTier.getPhaseSuite().notApplicableTo(simulationGraphState);
         GraalError.guarantee(canApplyTier.isEmpty(), "Cannot apply the low tier of this compilation plan because %s.%n%s", canApplyTier.orElse(null), this);
         lowTier.updateGraphState(simulationGraphState);
         GraalError.guarantee(simulationGraphState.hasAllMandatoryStages(getMandatoryStages()), "This compilation plan does not apply all mandatory stages.%n%s", this);

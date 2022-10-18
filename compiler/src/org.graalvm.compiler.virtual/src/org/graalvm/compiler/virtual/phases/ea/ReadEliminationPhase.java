@@ -78,9 +78,9 @@ public class ReadEliminationPhase extends EffectsPhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
-                        super.canApply(graphState),
+                        super.notApplicableTo(graphState),
                         NotApplicable.when(graphState.isAfterStage(StageFlag.FLOATING_READS) && graphState.isBeforeStage(StageFlag.FIXED_READS),
                                         "This phase must not be applied while reads are floating"));
     }

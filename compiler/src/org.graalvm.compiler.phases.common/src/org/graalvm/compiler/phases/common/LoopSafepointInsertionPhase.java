@@ -51,7 +51,7 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, StageFlag.SAFEPOINTS_INSERTION, graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState));

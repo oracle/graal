@@ -50,9 +50,9 @@ public class FinalPartialEscapePhase extends PartialEscapePhase {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
-                        super.canApply(graphState),
+                        super.notApplicableTo(graphState),
                         NotApplicable.ifApplied(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState));
     }
 

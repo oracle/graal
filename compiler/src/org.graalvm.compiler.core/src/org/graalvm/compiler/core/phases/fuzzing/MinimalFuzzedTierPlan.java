@@ -258,14 +258,14 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
 
     /**
      * Inserts a phase at the given index in the tier plan if it results in a correct plan (see
-     * {@link BasePhase#canApply(GraphState)}).
+     * {@link BasePhase#notApplicableTo(GraphState)}).
      *
      * @return {@code true} if the phase was inserted successfully, {@code false} otherwise.
      */
     protected boolean insertPhaseAtIndex(BasePhase<? super C> phase, int index, GraphState graphState) {
         PhaseSuite<C> newFuzzedPhaseSuite = getPhaseSuite().copy();
         newFuzzedPhaseSuite.insertAtIndex(index, phase);
-        Optional<NotApplicable> canNewSuiteBeApplied = newFuzzedPhaseSuite.canApply(graphState.copy());
+        Optional<NotApplicable> canNewSuiteBeApplied = newFuzzedPhaseSuite.notApplicableTo(graphState.copy());
         if (canNewSuiteBeApplied.isEmpty()) {
             getIgnoredPhases().remove(phase);
             setPhaseSuite(newFuzzedPhaseSuite);

@@ -80,8 +80,8 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return this.canonicalizer.canApply(graphState);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return this.canonicalizer.notApplicableTo(graphState);
     }
 
     @Override

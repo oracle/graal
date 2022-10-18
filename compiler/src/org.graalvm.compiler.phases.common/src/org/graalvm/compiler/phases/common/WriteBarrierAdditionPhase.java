@@ -38,7 +38,7 @@ import org.graalvm.compiler.phases.BasePhase;
 public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, StageFlag.BARRIER_ADDITION, graphState),
                         NotApplicable.unlessRunAfter(this, StageFlag.MID_TIER_LOWERING, graphState),

@@ -134,7 +134,7 @@ public class FrameStateAssignmentPhase extends Phase {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, StageFlag.FSA, graphState),
                         NotApplicable.when(graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards should not be allowed."),
