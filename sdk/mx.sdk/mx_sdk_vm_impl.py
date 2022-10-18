@@ -571,7 +571,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         component_suites = {}
         installable_component_lists = {}
-        has_graal_compiler = False
         _macros_dir = _get_macros_dir()
         _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
         assert _libpolyglot_component is None or len(_libpolyglot_component.library_configs) == 1
@@ -726,9 +725,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                     _jre_bin_names.append(basename(_link_path))
 
-            if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _component.graal_compiler:
-                has_graal_compiler = True
-
             if isinstance(_component, mx_sdk.GraalVmLanguage) and not is_graalvm:
                 # add language-specific release file
                 component_suites.setdefault(_component_base, []).append(_component.suite)
@@ -757,9 +753,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
-
-        if has_graal_compiler:
-            _add(layout, '<jre_base>/lib/jvmci/compiler-name', 'string:graal')
 
         if "archive_factory" not in kw_args and self.skip_archive:
             kw_args["archive_factory"] = mx.NullArchiver

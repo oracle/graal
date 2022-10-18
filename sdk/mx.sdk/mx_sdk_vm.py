@@ -424,15 +424,12 @@ class GraalVmJreComponent(GraalVmComponent):
 
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
-    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars,
-                 graal_compiler=None, **kwargs):
+    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, **kwargs):
         """
         :type jvmci_jars: list[str]
-        :type graal_compiler: str
         """
         super(GraalVmJvmciComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                     **kwargs)
-        self.graal_compiler = graal_compiler
         self.jvmci_jars = jvmci_jars or []
 
         assert isinstance(self.jvmci_jars, list)
