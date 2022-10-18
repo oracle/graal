@@ -547,6 +547,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             jimage_exclusion_list = ['lib/jvm.cfg']
             if not stage1:
                 for lc, c in [(lc, c) for c in self.components for lc in c.library_configs if lc.add_to_module]:
+                    assert isinstance(c, (mx_sdk.GraalVmJreComponent, mx_sdk.GraalVmJdkComponent)), "'{}' is not a GraalVmJreComponent nor a GraalVmJdkComponent but defines a library config ('{}') with 'add_to_module' attribute".format(c.name, lc.destination)
                     assert not lc.add_to_module.endswith('.jmod'), "Library config '{}' of component '{}' has an invalid 'add_to_module' attribute: '{}' cannot end with '.jmod'".format(lc.destination, c.name, lc.add_to_module)
                     jmod_file = '{}{}'.format(lc.add_to_module, '' if lc.add_to_module.endswith('.jmod') else '.jmod')
                     self.modified_jmods.setdefault(jmod_file, []).append(lc)
