@@ -50,7 +50,7 @@ import io
 import inspect
 import json
 import os
-from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
+from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir
 import pprint
 import re
 import shlex
@@ -513,23 +513,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 else:
                     _add(layout, _dest + dest_base_name, 'link:{}'.format(_linkname), _component)
                     return _dest + dest_base_name
-
-        def _find_escaping_links(root_dir):
-            escaping_links = []
-            for root, dirs, files in os.walk(root_dir, followlinks=True):
-                for _file in dirs + files:
-                    _abs_file = join(root, _file)
-                    if islink(_abs_file):
-                        _link_target = os.readlink(_abs_file)
-                        if isabs(_link_target):
-                            self._post_build_warnings.append("The base JDK contains an absolute symbolic link that has been excluded from the build: '{}' points to '{}".format(_abs_file, _link_target))
-                            escaping_links.append(_abs_file)
-                        else:
-                            _resolved_link_target = join(dirname(_abs_file), _link_target)
-                            if not normpath(join(root_dir, relpath(_resolved_link_target, root_dir))).startswith(root_dir):
-                                self._post_build_warnings.append("The base JDK contains a symbolic link that escapes the root dir '{}' and has been excluded from the build: '{}' points to '{}'.".format(root_dir, _abs_file, _link_target))
-                                escaping_links.append(_abs_file)
-            return escaping_links
 
         if is_graalvm:
             if stage1:
