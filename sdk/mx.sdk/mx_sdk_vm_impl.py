@@ -567,14 +567,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             })
             _add(layout, "<jre_base>/lib/jvm.cfg", "string:" + _get_jvm_cfg_contents())
 
-            # Add vm.properties
-            vm_name = graalvm_vm_name(self, _src_jdk)
-
-            if mx.get_os() == 'windows':
-                _add(layout, "<jre_base>/bin/server/vm.properties", "string:name=" + vm_name)
-            else:
-                _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
-
         # Add the rest of the GraalVM
 
         component_suites = {}
