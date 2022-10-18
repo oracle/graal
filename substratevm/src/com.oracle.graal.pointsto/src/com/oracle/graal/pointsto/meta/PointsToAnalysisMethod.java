@@ -97,7 +97,7 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
             if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(invoke)) {
                 locations.addAll(((AbstractVirtualInvokeTypeFlow) invoke).getInvokeLocations());
-            } else {
+            } else if (invoke.getSource() != null) {
                 locations.add(invoke.getSource());
             }
         }
@@ -110,8 +110,8 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public StackTraceElement[] getParsingContext() {
-        return getTypeFlow().getParsingContext();
+    public BytecodePosition getParsingReason() {
+        return typeFlow.getParsingReason();
     }
 
     public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial) {
