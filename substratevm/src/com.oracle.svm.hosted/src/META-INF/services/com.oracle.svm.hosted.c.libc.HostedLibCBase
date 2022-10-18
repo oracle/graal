@@ -1,0 +1,3 @@
+com.oracle.svm.hosted.c.libc.HostedMuslLibC
+com.oracle.svm.hosted.c.libc.HostedGLibC
+com.oracle.svm.hosted.c.libc.HostedBionicLibC

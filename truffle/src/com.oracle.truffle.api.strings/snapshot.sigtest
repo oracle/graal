@@ -1034,7 +1034,7 @@ meth public int getByteIndex()
 meth public int nextUncached()
 meth public int previousUncached()
 supr java.lang.Object
-hfds a,arrayA,codeRangeA,encoding,errorHandling,naturalStride,rawIndex
+hfds a,arrayA,codeRangeA,encoding,errorHandling,rawIndex
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringIterator$NextNode
  outer com.oracle.truffle.api.strings.TruffleStringIterator

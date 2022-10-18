@@ -58,7 +58,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInli
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -84,6 +86,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -400,6 +403,11 @@ public final class TruffleBaseFeature implements InternalFeature {
         access.rescanRoot(layoutInfoMapField);
         access.rescanRoot(layoutMapField);
         access.rescanRoot(libraryFactoryCacheField);
+    }
+
+    @Override
+    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+        TruffleInjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
     }
 
     @Override

@@ -25,8 +25,11 @@
 package com.oracle.truffle.tools.dap.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import java.net.URL;
+import java.util.regex.Pattern;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -88,21 +91,21 @@ public class ITLDAPTest {
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}",
                         "{\"event\":\"output\",\"body\":{\"output\":\"three,\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":14}",
                         "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}");
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}",
                         "{\"event\":\"output\",\"body\":{\"output\":\"four\\rfive\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":18}",
                         "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}");
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}",
                         "{\"event\":\"output\",\"body\":{\"output\":\"\\r\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":22}",
                         "{\"event\":\"output\",\"body\":{\"output\":\"\\r\\nsix,\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":23}",
@@ -111,23 +114,114 @@ public class ITLDAPTest {
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}",
                         "{\"event\":\"output\",\"body\":{\"output\":\"1err\\n2err\\r\\n\",\"category\":\"stderr\"},\"type\":\"event\",\"seq\":28}",
                         "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}");
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}",
                         "{\"event\":\"output\",\"body\":{\"output\":\"\\r\\nnine\\rten\\r\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":32}",
                         "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}");
         // Next:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}");
         tester.finish();
     }
 
+    @Test
+    public void testMultiThreading() throws Exception {
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestThreads.itl")).content("ROOT(\n" +
+                        "DEFINE(f,\n" +
+                        "  STATEMENT(),\n" +
+                        "  STATEMENT(EXPRESSION()),\n" +
+                        "  STATEMENT()\n" +
+                        "),\n" +
+                        "DEFINE(g,\n" +
+                        "  STATEMENT(),\n" +
+                        "  STATEMENT(EXPRESSION()),\n" +
+                        "  STATEMENT()\n" +
+                        "),\n" +
+                        "STATEMENT(),\n" +
+                        "SPAWN(f),\n" +
+                        "SPAWN(g),\n" +
+                        "JOIN(),\n" +
+                        "STATEMENT()\n" +
+                        ")\n").build();
+        String path = source.getPath();
+        String sourceJson = "{\"sourceReference\":1,\"path\":\"/path/TestThreads.itl\",\"name\":\"TestThreads.itl\"}";
+        tester = DAPTester.start(false);
+        tester.sendMessage(
+                        "{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true," +
+                                        "\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"initialized\",\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"body\":{\"supportsConditionalBreakpoints\":true,\"supportsLoadedSourcesRequest\":true,\"supportsFunctionBreakpoints\":true,\"supportsExceptionInfoRequest\":true," +
+                                        "\"supportsBreakpointLocationsRequest\":true,\"supportsHitConditionalBreakpoints\":true,\"supportsLogPoints\":true,\"supportsSetVariable\":true,\"supportsConfigurationDoneRequest\":true," +
+                                        "\"exceptionBreakpointFilters\":[{\"filter\":\"all\",\"label\":\"All Exceptions\"},{\"filter\":\"uncaught\",\"label\":\"Uncaught Exceptions\"}]},\"request_seq\":1,\"command\":\"initialize\"}");
+        tester.sendMessage(
+                        "{\"command\":\"attach\",\"arguments\":{\"type\":\"graalvm\",\"request\":\"attach\",\"name\":\"Attach\",\"port\":9229,\"protocol\":\"debugAdapter\"},\"type\":\"request\",\"seq\":2}");
+        tester.compareReceivedMessages("{\"event\":\"output\",\"body\":{\"output\":\"Debugger attached.\",\"category\":\"stderr\"},\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":2,\"command\":\"attach\"}");
+        tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":{\"name\":\"TestThreads.itl\",\"path\":\"" + path +
+                        "\"},\"lines\":[3,8],\"breakpoints\":[{\"line\":3},{\"line\":8}],\"sourceModified\":false},\"type\":\"request\",\"seq\":4}");
+        tester.compareReceivedMessages(
+                        "{\"success\":true,\"body\":{\"breakpoints\":[{\"line\":3,\"verified\":false,\"id\":1},{\"line\":8,\"verified\":false,\"id\":2}]},\"type\":\"response\",\"request_seq\":4,\"command\":\"setBreakpoints\",\"seq\":5}");
+        tester.sendMessage("{\"command\":\"configurationDone\",\"type\":\"request\",\"seq\":5}");
+        tester.compareReceivedMessages("{\"success\":true,\"type\":\"response\",\"request_seq\":5,\"command\":\"configurationDone\",\"seq\":6}");
+        tester.eval(source);
+        tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":" + sourceJson + "},\"type\":\"event\",\"seq\":8}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"breakpoint\",\"body\":{\"reason\":\"changed\",\"breakpoint\":{\"endLine\":3,\"endColumn\":13,\"line\":3,\"verified\":true,\"column\":3,\"id\":1}},\"type\":\"event\",\"seq\":9}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"breakpoint\",\"body\":{\"reason\":\"changed\",\"breakpoint\":{\"endLine\":8,\"endColumn\":13,\"line\":8,\"verified\":true,\"column\":3,\"id\":2}},\"type\":\"event\",\"seq\":10}");
+
+        // Threads started:
+        Pattern threadStarted = Pattern.compile("\\{\"event\":\"thread\",\"body\":\\{\"threadId\":\\d,\"reason\":\"started\"\\},\"type\":\"event\",\"seq\":\\d+\\}");
+        String message = tester.getMessage(); // The first thread
+        Assert.assertTrue(message, threadStarted.matcher(message).matches());
+        message = tester.getMessage(); // The second thread
+        Assert.assertTrue(message, threadStarted.matcher(message).matches());
+
+        // Suspend at the breakpoint:
+        Pattern stopped = Pattern.compile(
+                        "\\{\"event\":\"stopped\",\"body\":\\{\"threadId\":\\d,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"\\},\"type\":\"event\",\"seq\":\\d+\\}");
+        message = tester.getMessage(); // The first breakpoint hit
+        Assert.assertTrue(message, stopped.matcher(message).matches());
+        message = tester.getMessage(); // The second breakpoint hit
+        Assert.assertTrue(message, stopped.matcher(message).matches());
+
+        // Step on thread 2:
+        tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":2},\"type\":\"request\",\"seq\":6}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":2,\"allThreadsContinued\":false},\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":6,\"command\":\"next\"}",
+                        "{\"event\":\"stopped\",\"body\":{\"threadId\":2,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}");
+
+        // Step on thread 3:
+        tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":3},\"type\":\"request\",\"seq\":7}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"continued\",\"body\":{\"threadId\":3,\"allThreadsContinued\":false},\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":7,\"command\":\"next\"}",
+                        "{\"event\":\"stopped\",\"body\":{\"threadId\":3,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}");
+
+        // Verify all threads:
+        tester.sendMessage("{\"command\":\"threads\",\"arguments\":{},\"type\":\"request\",\"seq\":8}");
+        Pattern threads = Pattern.compile(
+                        "\\{\"success\":true,\"body\":\\{\"threads\":\\[\\{\"name\":\"testRunner\",\"id\":1\\},\\{\"name\":\"Polyglot-instrumentation-test-language-\\d\",\"id\":\\d\\}," +
+                                        "\\{\"name\":\"Polyglot-instrumentation-test-language-\\d\",\"id\":\\d\\}\\]\\},\"type\":\"response\",\"request_seq\":8,\"command\":\"threads\",\"seq\":21\\}");
+        message = tester.getMessage();
+        Assert.assertTrue(message, threads.matcher(message).matches());
+
+        // Continue thread 2:
+        tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":2},\"type\":\"request\",\"seq\":11}");
+        // Continue thread 3:
+        tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":3},\"type\":\"request\",\"seq\":12}");
+    }
 }

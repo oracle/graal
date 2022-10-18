@@ -169,12 +169,20 @@ public class FrameInfoEncoder {
     private static final int UNCOMPRESSED_FRAME_SLICE_INDEX = -1;
 
     static class FrameData {
-        protected DebugInfo debugInfo;
-        protected int totalFrameSize;
-        protected ValueInfo[][] virtualObjects;
-        protected FrameInfoQueryResult frame;
+        protected final DebugInfo debugInfo;
+        protected final int totalFrameSize;
+        protected final ValueInfo[][] virtualObjects;
+        protected final FrameInfoQueryResult frame;
         protected long encodedFrameInfoIndex;
         protected int frameSliceIndex = UNCOMPRESSED_FRAME_SLICE_INDEX;
+
+        FrameData(DebugInfo debugInfo, int totalFrameSize, ValueInfo[][] virtualObjects, FrameInfoQueryResult frame) {
+            assert debugInfo != null;
+            this.debugInfo = debugInfo;
+            this.totalFrameSize = totalFrameSize;
+            this.virtualObjects = virtualObjects;
+            this.frame = frame;
+        }
     }
 
     private static class CompressedFrameData {
@@ -473,11 +481,8 @@ public class FrameInfoEncoder {
         }
 
         final DebugInfo debugInfo = infopoint.debugInfo;
-        final FrameData data = new FrameData();
-        data.debugInfo = debugInfo;
-        data.totalFrameSize = totalFrameSize;
-        data.virtualObjects = new ValueInfo[countVirtualObjects(debugInfo)][];
-        data.frame = addFrame(data, debugInfo.frame(), isDeoptEntry, includeLocalValues);
+        final FrameData data = new FrameData(debugInfo, totalFrameSize, new ValueInfo[countVirtualObjects(debugInfo)][], new FrameInfoQueryResult());
+        initializeFrameInfo(data.frame, data, debugInfo.frame(), isDeoptEntry, includeLocalValues);
 
         if (encodeSourceReferences) {
             List<CompressedFrameData> frameSlice = useCompressedEncoding ? new ArrayList<>() : null;
@@ -538,33 +543,33 @@ public class FrameInfoEncoder {
         }
     }
 
-    private FrameInfoQueryResult addFrame(FrameData data, BytecodeFrame frame, boolean isDeoptEntry, boolean needLocalValues) {
-        FrameInfoQueryResult result = new FrameInfoQueryResult();
+    private void initializeFrameInfo(FrameInfoQueryResult frameInfo, FrameData data, BytecodeFrame frame, boolean isDeoptEntry, boolean needLocalValues) {
         if (frame.caller() != null) {
             assert !isDeoptEntry : "Deoptimization entry point information for caller frames is not encoded";
-            result.caller = addFrame(data, frame.caller(), false, needLocalValues);
+            frameInfo.caller = new FrameInfoQueryResult();
+            initializeFrameInfo(frameInfo.caller, data, frame.caller(), false, needLocalValues);
         }
-        result.virtualObjects = data.virtualObjects;
-        result.encodedBci = encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
-        result.isDeoptEntry = isDeoptEntry;
+        frameInfo.virtualObjects = data.virtualObjects;
+        frameInfo.encodedBci = encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+        frameInfo.isDeoptEntry = isDeoptEntry;
 
         ValueInfo[] valueInfos = null;
         if (needLocalValues) {
             SharedMethod method = (SharedMethod) frame.getMethod();
             if (ImageSingletons.contains(CallStackFrameMethodData.class)) {
-                result.methodId = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
-                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, result.methodId);
+                frameInfo.methodId = ImageSingletons.lookup(CallStackFrameMethodData.class).getMethodId(method);
+                ImageSingletons.lookup(CallStackFrameMethodInfo.class).addMethodInfo(method, frameInfo.methodId);
             }
 
             if (customization.storeDeoptTargetMethod()) {
-                result.deoptMethod = method;
+                frameInfo.deoptMethod = method;
                 encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));
             }
-            result.deoptMethodOffset = method.getDeoptOffsetInImage();
+            frameInfo.deoptMethodOffset = method.getDeoptOffsetInImage();
 
-            result.numLocals = frame.numLocals;
-            result.numStack = frame.numStack;
-            result.numLocks = frame.numLocks;
+            frameInfo.numLocals = frame.numLocals;
+            frameInfo.numStack = frame.numStack;
+            frameInfo.numLocks = frame.numLocks;
 
             JavaValue[] values = frame.values;
             int numValues = 0;
@@ -581,11 +586,9 @@ public class FrameInfoEncoder {
                 valueInfos[i] = makeValueInfo(data, getFrameValueKind(frame, i), values[i], isDeoptEntry);
             }
         }
-        result.valueInfos = valueInfos;
+        frameInfo.valueInfos = valueInfos;
 
         ImageSingletons.lookup(Counters.class).frameCount.inc();
-
-        return result;
     }
 
     public static JavaKind getFrameValueKind(BytecodeFrame frame, int valueIndex) {

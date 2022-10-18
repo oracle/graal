@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.graphbuilderconf;
+package com.oracle.svm.hosted.c.libc;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.CLASS;
+import com.oracle.svm.core.c.libc.GLibC;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.util.Collections;
+import java.util.List;
 
-/**
- * Denotes a class or method that should be ignored by JaCoCo. The "Generated" part of the name is a
- * restriction based on JaCoco's support for excluding by annotation.
- *
- * @see "https://github.com/jacoco/jacoco/releases/tag/v0.8.3"
- */
-@Retention(CLASS)
-@Target({TYPE, METHOD})
-public @interface JacocoIgnoreGenerated {
-    /**
-     * Specifies the reason the annotated element should be excluded from JaCoCo analysis. If an
-     * issue has been opened for missing coverage, use the issue id as the reason.
-     */
-    String value();
+public class HostedGLibC extends GLibC implements HostedLibCBase {
+    @Override
+    public List<String> getAdditionalQueryCodeCompilerOptions() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public String getTargetCompiler() {
+        return "gcc";
+    }
+
+    @Override
+    public boolean requiresLibCSpecificStaticJDKLibraries() {
+        return false;
+    }
 }

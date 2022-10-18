@@ -66,7 +66,7 @@
         "gate", 
         "--strict-mode",
         "--jacoco-omit-excluded",
-        "--jacoco-generic-paths",
+        "--jacoco-relativize-paths",
         "--jacoco-omit-src-gen",
         "--jacocout",
         "coverage",

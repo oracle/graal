@@ -200,11 +200,23 @@ public abstract class LoopFragment {
             duplicationMap = graph().addDuplicates(nodesIterable, graph(), nodesIterable.count(), dr);
             finishDuplication();
             nodes = new NodeBitMap(graph());
+
+            assert checkNoNulls(duplicationMap);
+
             nodes.markAll(duplicationMap.getValues());
             nodesReady = true;
         } else {
             // TODO (gd) apply fix ?
         }
+    }
+
+    private boolean checkNoNulls(EconomicMap<Node, Node> dupMap) {
+        MapCursor<Node, Node> c = dupMap.getEntries();
+        while (c.advance()) {
+            GraalError.guarantee(c.getKey() != null, "Key must not be null when patching nodes for %s", this);
+            GraalError.guarantee(c.getValue() != null, "Value is null for %s when patching nodes for %s", c.getKey(), this);
+        }
+        return true;
     }
 
     protected static void computeNodes(NodeBitMap nodes, Graph graph, LoopEx loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {

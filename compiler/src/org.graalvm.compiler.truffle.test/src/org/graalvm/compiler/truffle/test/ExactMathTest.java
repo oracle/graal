@@ -132,6 +132,9 @@ public class ExactMathTest extends GraalCompilerTest {
         test("longMulHigh", Long.MIN_VALUE, 15L);
         test("longMulHigh", 15L, Long.MIN_VALUE);
         test("longMulHigh", Long.MIN_VALUE, Long.MIN_VALUE);
+        test("longMulHigh1", Long.MIN_VALUE);
+        test("longMulHighLeftAssociative", -1L, 1L, 1L);
+        test("longMulHighRightAssociative", -1L, 1L, 1L);
     }
 
     @Test
@@ -139,6 +142,9 @@ public class ExactMathTest extends GraalCompilerTest {
         test("longMulHighUnsigned", 7L, 15L);
         test("longMulHighUnsigned", Long.MAX_VALUE, 15L);
         test("longMulHighUnsigned", Long.MIN_VALUE, 15L);
+        test("longMulHighUnsigned1", Long.MIN_VALUE);
+        test("longMulHighUnsignedLeftAssociative", -1L, Long.MAX_VALUE, 4L);
+        test("longMulHighUnsignedRightAssociative", -1L, Long.MAX_VALUE, 4L);
     }
 
     @Test
@@ -233,8 +239,32 @@ public class ExactMathTest extends GraalCompilerTest {
         return ExactMath.multiplyHigh(a, b);
     }
 
+    public static long longMulHigh1(long a) {
+        return ExactMath.multiplyHigh(a, 1L);
+    }
+
+    public static long longMulHighLeftAssociative(long a, long b, long c) {
+        return ExactMath.multiplyHigh(ExactMath.multiplyHigh(a, b), c);
+    }
+
+    public static long longMulHighRightAssociative(long a, long b, long c) {
+        return ExactMath.multiplyHigh(a, ExactMath.multiplyHigh(b, c));
+    }
+
     public static long longMulHighUnsigned(long a, long b) {
         return ExactMath.multiplyHighUnsigned(a, b);
+    }
+
+    public static long longMulHighUnsigned1(long a) {
+        return ExactMath.multiplyHighUnsigned(a, 1L);
+    }
+
+    public static long longMulHighUnsignedLeftAssociative(long a, long b, long c) {
+        return ExactMath.multiplyHighUnsigned(ExactMath.multiplyHighUnsigned(a, b), c);
+    }
+
+    public static long longMulHighUnsignedRightAssociative(long a, long b, long c) {
+        return ExactMath.multiplyHighUnsigned(a, ExactMath.multiplyHighUnsigned(b, c));
     }
 
     public static float truncateFloat(float a) {

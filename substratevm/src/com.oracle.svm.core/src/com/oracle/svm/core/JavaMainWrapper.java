@@ -275,6 +275,9 @@ public class JavaMainWrapper {
     private static class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
+            if (!ImageSingletons.contains(JavaMainSupport.class)) {
+                return false;
+            }
             return SubstrateOptions.RunMainInNewThread.getValue();
         }
     }

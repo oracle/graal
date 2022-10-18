@@ -331,6 +331,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 future.completeExceptionally(Errors.invalidThread(args.getThreadId()));
                 return false;
             }
+            info.getSuspendedEvent().prepareContinue();
             ContinueResponse.ResponseBody response = ContinueResponse.ResponseBody.create().setAllThreadsContinued(false);
             responseConsumer.accept(response);
             future.complete(response);

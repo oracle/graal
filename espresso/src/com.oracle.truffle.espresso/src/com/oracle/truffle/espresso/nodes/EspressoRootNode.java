@@ -251,6 +251,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     final void initMonitorStack(VirtualFrame frame, MonitorStack monitorStack) {
         initMonitorSlot(frame);
+        assert monitorStack != null;
         frame.setAuxiliarySlot(monitorSlot, monitorStack);
     }
 
@@ -281,9 +282,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     protected MonitorStack getMonitorStack(Frame frame) {
         assert monitorSlot >= 0;
-        Object frameResult = frame.getAuxiliarySlot(monitorSlot);
-        assert frameResult instanceof MonitorStack;
-        return (MonitorStack) frameResult;
+        return (MonitorStack) frame.getAuxiliarySlot(monitorSlot);
     }
 
     public final StaticObject[] getMonitorsOnFrame(Frame frame) {
@@ -335,10 +334,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         private void enterSynchronized(VirtualFrame frame, StaticObject monitor) {
-            InterpreterToVM.monitorEnter(monitor, getMeta());
             MonitorStack monitorStack = new MonitorStack();
             monitorStack.synchronizedMethodMonitor = monitor;
             initMonitorStack(frame, monitorStack);
+            InterpreterToVM.monitorEnter(monitor, getMeta());
         }
     }
 

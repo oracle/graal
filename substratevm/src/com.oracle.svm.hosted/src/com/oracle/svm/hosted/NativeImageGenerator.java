@@ -57,6 +57,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -91,7 +92,9 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
@@ -794,7 +797,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private boolean verifyAssignableTypes() {
+    protected boolean verifyAssignableTypes() {
         /*
          * This verification has quadratic complexity, so do it only once after the static analysis
          * has finished, and can be disabled with an option.
@@ -1485,15 +1488,18 @@ public class NativeImageGenerator {
             highTier.findLastPhase().add(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_HIGH_TIER));
         }
 
-        removeSpeculativePhases(suites);
+        if (hosted) {
+            removePhases(suites, Speculative.class);
+            removePhases(suites, FloatingGuardPhase.class);
+        }
 
         return suites;
     }
 
-    private static void removeSpeculativePhases(Suites suites) {
-        suites.getHighTier().removeSpeculativePhases();
-        suites.getMidTier().removeSpeculativePhases();
-        suites.getLowTier().removeSpeculativePhases();
+    private static void removePhases(Suites suites, Class<?> c) {
+        suites.getHighTier().removeSubTypePhases(c);
+        suites.getMidTier().removeSubTypePhases(c);
+        suites.getLowTier().removeSubTypePhases(c);
     }
 
     @SuppressWarnings("unused")
@@ -1661,49 +1667,49 @@ public class NativeImageGenerator {
     private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
 
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
-            if (LibCBase.isMethodProvidedInCurrentLibc(method)) {
+            if (HostedLibCBase.isMethodProvidedInCurrentLibc(method)) {
                 initializeAtBuildTime(method.getDeclaringClass(), classInitializationSupport, CConstant.class);
                 nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
             }
         }
         for (Method method : loader.findAnnotatedMethods(CFunction.class)) {
-            if (LibCBase.isMethodProvidedInCurrentLibc(method)) {
+            if (HostedLibCBase.isMethodProvidedInCurrentLibc(method)) {
                 nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, CStruct.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(RawStructure.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, RawStructure.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CPointerTo.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, CPointerTo.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(RawPointerTo.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, RawPointerTo.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
                 initializeAtBuildTime(clazz, classInitializationSupport, CEnum.class);
                 nativeLibs.loadJavaType(type);
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, CContext.class);
             }
         }
@@ -1713,7 +1719,7 @@ public class NativeImageGenerator {
         nativeLibs.reportErrors();
     }
 
-    private static void initializeAtBuildTime(Class<?> clazz, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
+    protected static void initializeAtBuildTime(Class<?> clazz, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
         String message = "classes annotated with " + ClassUtil.getUnqualifiedName(annotationForMessage) + " are always initialized at image build time";
         classInitializationSupport.initializeAtBuildTime(clazz, message);
         classInitializationSupport.forceInitializeHosted(clazz, message, false);
