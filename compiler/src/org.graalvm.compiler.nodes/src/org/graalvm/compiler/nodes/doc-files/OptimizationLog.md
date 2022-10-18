@@ -93,7 +93,7 @@ optimization phases and optimization entries. The result is a tree of optimizati
 The ASCII art below is a snippet of an optimization tree.
 
 ```
-                                  optimizationTree
+                                  RootPhase
                     _____________/    |    \_____________
                    /                  |                  \
                 LowTier            MidTier            HighTier

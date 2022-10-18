@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.profdiff.parser.experiment.CompilationUnitTreeParser;
 import org.graalvm.profdiff.util.Writer;
 
 /**
@@ -302,12 +301,13 @@ public class Experiment {
      *
      * @param methodName the name of the root method of the compilation unit
      * @param compilationId compilation ID of the compilation unit
-     * @param treeParser
+     * @param period the number of cycles spent executing the method (collected by proftool)
+     * @param treeLoader a loader of the compilation unit's optimization and inlining tree
      * @return the added compilation unit
      */
-    public CompilationUnit addCompilationUnit(String methodName, String compilationId, long period, CompilationUnitTreeParser treeParser) {
+    public CompilationUnit addCompilationUnit(String methodName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
         graalPeriod = null;
-        return getMethodOrCreate(methodName).addCompilationUnit(compilationId, period, treeParser);
+        return getMethodOrCreate(methodName).addCompilationUnit(compilationId, period, treeLoader);
     }
 
     /**

@@ -77,7 +77,7 @@ public class MethodPair {
     /**
      * Gets the name of the methods (which is equal for both).
      */
-    private String getMethodName() {
+    public String getMethodName() {
         return method1.getMethodName();
     }
 
