@@ -132,6 +132,7 @@ public final class EconomicMapUtil {
      * @param keyComparator a comparator to compare keys
      * @param valueComparator a comparator to compare values
      * @return a lexicographical map comparator
+     * @since 23.0
      */
     public static <K, V> Comparator<UnmodifiableEconomicMap<K, V>> lexicographicalComparator(Comparator<K> keyComparator, Comparator<V> valueComparator) {
         return new Comparator<>() {
