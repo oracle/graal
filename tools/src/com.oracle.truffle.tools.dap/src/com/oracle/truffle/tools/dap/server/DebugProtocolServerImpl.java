@@ -303,7 +303,11 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
     @Override
     public CompletableFuture<SetBreakpointsResponse.ResponseBody> setBreakpoints(SetBreakpointsArguments args) {
-        return CompletableFuture.completedFuture(SetBreakpointsResponse.ResponseBody.create(context.getBreakpointsHandler().setBreakpoints(args)));
+        try {
+            return CompletableFuture.completedFuture(SetBreakpointsResponse.ResponseBody.create(context.getBreakpointsHandler().setBreakpoints(args)));
+        } catch (ExceptionWithMessage ex) {
+            return CompletableFuture.failedFuture(ex);
+        }
     }
 
     @Override
