@@ -40,7 +40,7 @@ import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 
 /**
- * Parses {@link CompilationUnit.TreePair the trees of a compilation unit} from its source file.
+ * Parses the trees of a compilation unit from its source file.
  */
 public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
 
