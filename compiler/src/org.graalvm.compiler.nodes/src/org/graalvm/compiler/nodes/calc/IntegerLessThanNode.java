@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.core.common.calc.CanonicalCondition.LT;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
@@ -159,9 +160,13 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             if (result != null) {
                 return result;
             }
-            if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
-                if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(view), (IntegerStamp) forY.stamp(view))) {
-                    return new IntegerBelowNode(forX, forY);
+            // always prefer unsigned comparisons, however, if part of a graph we sometimes want to
+            // disable it for testing purposes
+            if (forX.getOptions() == null || GraalOptions.PreferUnsignedComparison.getValue(forX.getOptions())) {
+                if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
+                    if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(view), (IntegerStamp) forY.stamp(view))) {
+                        return new IntegerBelowNode(forX, forY);
+                    }
                 }
             }
 
