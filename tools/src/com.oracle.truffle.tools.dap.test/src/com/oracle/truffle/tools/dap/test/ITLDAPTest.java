@@ -134,6 +134,52 @@ public class ITLDAPTest {
     }
 
     @Test
+    public void testOutputEarly() throws Exception {
+        Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  PRINT(OUT, \"Prologue to stdout\n\"),\n" +
+                        "  PRINT(ERR, \"Prologue to stderr\n\")" +
+                        ")\n", "TestOutput1.itl").internal(true).build();
+        Source source2 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  PRINT(OUT, \"Text to stdout\n\"),\n" +
+                        "  PRINT(ERR, \"Text to stderr\n\")" +
+                        ")\n", "TestOutput2.itl").build();
+        Source source3 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  PRINT(OUT, \"Epilogue to stdout\n\"),\n" +
+                        "  PRINT(ERR, \"Epilogue to stderr\n\")" +
+                        ")\n", "TestOutput3.itl").build();
+        tester = DAPTester.start(false, context -> context.eval(source1));
+        tester.sendMessage(
+                        "{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true," +
+                                        "\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"initialized\",\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"body\":{\"supportsConditionalBreakpoints\":true,\"supportsLoadedSourcesRequest\":true,\"supportsFunctionBreakpoints\":true,\"supportsExceptionInfoRequest\":true," +
+                                        "\"supportsBreakpointLocationsRequest\":true,\"supportsHitConditionalBreakpoints\":true,\"supportsLogPoints\":true,\"supportsSetVariable\":true,\"supportsConfigurationDoneRequest\":true," +
+                                        "\"exceptionBreakpointFilters\":[{\"filter\":\"all\",\"label\":\"All Exceptions\"},{\"filter\":\"uncaught\",\"label\":\"Uncaught Exceptions\"}]},\"request_seq\":1,\"command\":\"initialize\"}");
+        tester.sendMessage(
+                        "{\"command\":\"attach\",\"arguments\":{\"type\":\"graalvm\",\"request\":\"attach\",\"name\":\"Attach\",\"port\":9229,\"protocol\":\"debugAdapter\"},\"type\":\"request\",\"seq\":2}");
+        tester.compareReceivedMessages("{\"event\":\"output\",\"body\":{\"output\":\"Debugger attached.\",\"category\":\"stderr\"},\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":2,\"command\":\"attach\"}");
+        tester.sendMessage("{\"command\":\"loadedSources\",\"type\":\"request\",\"seq\":3}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"sources\":[]},\"type\":\"response\",\"request_seq\":3,\"command\":\"loadedSources\",\"seq\":5}");
+        tester.sendMessage("{\"command\":\"configurationDone\",\"type\":\"request\",\"seq\":4}");
+        tester.compareReceivedMessages("{\"success\":true,\"type\":\"response\",\"request_seq\":4,\"command\":\"configurationDone\",\"seq\":6}");
+        tester.eval(source2);
+        tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":2,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"TestOutput2.itl\"}},\"type\":\"event\",\"seq\":8}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"output\",\"body\":{\"output\":\"Text to stdout\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":9}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"output\",\"body\":{\"output\":\"Text to stderr\\n\",\"category\":\"stderr\"},\"type\":\"event\",\"seq\":10}");
+        tester.sendMessage("{\"command\":\"disconnect\",\"arguments\":{\"restart\":false},\"type\":\"request\",\"seq\":11}");
+        tester.compareReceivedMessages(
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":11,\"command\":\"disconnect\",\"seq\":11}");
+        tester.finish();
+        tester.getContext().eval(source3);
+    }
+
+    @Test
     public void testMultiThreading() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestThreads.itl")).content("ROOT(\n" +
                         "DEFINE(f,\n" +

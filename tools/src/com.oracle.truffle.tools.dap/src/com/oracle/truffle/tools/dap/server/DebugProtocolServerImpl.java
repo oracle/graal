@@ -707,9 +707,12 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
         @Override
         public void outputText(String text) {
-            OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
-            event.setCategory(category);
-            context.getClient().output(event);
+            DebugProtocolClient debugClient = context.getClient();
+            if (client != null) {
+                OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
+                event.setCategory(category);
+                debugClient.output(event);
+            }
         }
     }
 
