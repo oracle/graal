@@ -211,8 +211,6 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
-import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
-import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
@@ -337,9 +335,13 @@ public class NativeImageGenerator {
     protected final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
+        this(loader, optionProvider, mainEntryPoint, reporter, new FeatureHandler());
+    }
+
+    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter, FeatureHandler featureHandler) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
-        this.featureHandler = new FeatureHandler();
+        this.featureHandler = featureHandler;
         this.optionProvider = optionProvider;
         this.reporter = reporter;
         /*
@@ -1345,12 +1347,6 @@ public class NativeImageGenerator {
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
             TypeSnippets.registerLowerings(options, providers, lowerings);
-
-            if (hosted) {
-                DeoptHostedSnippets.registerLowerings(options, providers, lowerings);
-            } else {
-                DeoptRuntimeSnippets.registerLowerings(options, providers, lowerings);
-            }
 
             featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, providers, lowerings, hosted));
         } catch (Throwable e) {
