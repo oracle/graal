@@ -47,8 +47,8 @@ public class LowTierLoweringPhase extends LoweringPhase {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.LOW_TIER_LOWERING, graphState));
+                        NotApplicable.ifApplied(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 }

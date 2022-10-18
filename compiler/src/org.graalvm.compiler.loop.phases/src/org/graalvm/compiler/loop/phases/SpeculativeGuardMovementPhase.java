@@ -139,10 +139,10 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.GUARD_MOVEMENT, graphState),
-                        NotApplicable.notApplicableIf(!graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards must be allowed."))));
+                        NotApplicable.ifApplied(this, StageFlag.GUARD_MOVEMENT, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed"));
     }
 
     @Override

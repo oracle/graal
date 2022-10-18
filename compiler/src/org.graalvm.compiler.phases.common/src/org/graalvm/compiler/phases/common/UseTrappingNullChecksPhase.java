@@ -66,11 +66,11 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
                         // This phase creates {@link OffsetAddressNode}s that needs to be lowered.
-                        NotApplicable.mustRunBefore(this, StageFlag.ADDRESS_LOWERING, graphState),
-                        NotApplicable.notApplicableIf(!graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This should happen after FSA."))));
+                        NotApplicable.unlessRunBefore(this, StageFlag.ADDRESS_LOWERING, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().areFrameStatesAtDeopts(), "This should happen after FSA"));
     }
 
     @Override

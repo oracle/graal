@@ -60,7 +60,7 @@ public class BoxNodeIdentityPhase extends BasePhase<CoreProviders> {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.mustRunBefore(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState);
+        return NotApplicable.unlessRunBefore(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState);
     }
 
     @Override

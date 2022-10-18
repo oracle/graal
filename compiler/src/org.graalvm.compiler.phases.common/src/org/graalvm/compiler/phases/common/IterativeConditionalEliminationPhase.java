@@ -49,7 +49,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         conditionalEliminationPhase.canApply(graphState),
                         canonicalizer.canApply(graphState));
     }

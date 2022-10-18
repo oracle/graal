@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import static org.graalvm.compiler.nodes.GraphState.FrameStateVerification.ALL_EXCEPT_LOOP_EXIT;
+
 import java.util.Optional;
 
 import org.graalvm.compiler.nodes.FrameState;
@@ -43,12 +45,14 @@ public class RemoveValueProxyPhase extends PostRunCanonicalizationPhase<CoreProv
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.MID_TIER_LOWERING, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState),
-                        NotApplicable.mustWeakenFrameStateVerification(this, FrameStateVerification.ALL_EXCEPT_LOOP_EXIT, graphState));
+                        NotApplicable.ifApplied(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState),
+                        NotApplicable.when(!graphState.canWeakenFrameStateVerification(ALL_EXCEPT_LOOP_EXIT),
+                                        "Cannot apply %s because the frame state verification has already been weakened to %s",
+                                        getName(), graphState.getFrameStateVerification()));
     }
 
     @Override

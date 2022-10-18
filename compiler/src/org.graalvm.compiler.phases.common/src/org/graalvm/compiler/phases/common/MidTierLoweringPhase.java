@@ -47,10 +47,10 @@ public class MidTierLoweringPhase extends LoweringPhase {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.MID_TIER_LOWERING, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.GUARD_LOWERING, graphState));
+                        NotApplicable.ifApplied(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.GUARD_LOWERING, graphState));
     }
 }

@@ -47,12 +47,12 @@ public class HighTierLoweringPhase extends LoweringPhase {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        NotApplicable.ifApplied(this, StageFlag.HIGH_TIER_LOWERING, graphState),
                         // GR-38655: {@link BranchProbabilityNode}s require a canonicalization
                         // before being lowered.
-                        NotApplicable.notApplicableIf(graphState.requiresFutureStage(StageFlag.CANONICALIZATION),
-                                        Optional.of(new NotApplicable("This phase must run after a " + StageFlag.CANONICALIZATION))));
+                        NotApplicable.when(graphState.requiresFutureStage(StageFlag.CANONICALIZATION),
+                                        "This phase must run after a %s", StageFlag.CANONICALIZATION));
     }
 }

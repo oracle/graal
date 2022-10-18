@@ -60,11 +60,11 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
                         // keep in sync with stateAllowsPeeling()
-                        NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
     }
 
     private static boolean stateAllowsPeeling(GraphState graphState) {

@@ -142,7 +142,7 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
         // This phase can cause reads to be non-canonicalizable.
-        return NotApplicable.mustRunAfter(this, StageFlag.FINAL_CANONICALIZATION, graphState);
+        return NotApplicable.unlessRunAfter(this, StageFlag.FINAL_CANONICALIZATION, graphState);
     }
 
     @Override

@@ -77,9 +77,9 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
+        return NotApplicable.ifAny(
                         super.canApply(graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
     @Override

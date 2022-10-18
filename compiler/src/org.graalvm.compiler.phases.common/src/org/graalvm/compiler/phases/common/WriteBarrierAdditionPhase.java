@@ -39,10 +39,10 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
 
     @Override
     public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.BARRIER_ADDITION, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.MID_TIER_LOWERING, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.FSA, graphState));
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.BARRIER_ADDITION, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState));
     }
 
     @SuppressWarnings("try")
