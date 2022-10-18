@@ -50,7 +50,7 @@ public final class JVMCIVersionCheck {
         private final int minor;
         private final int build;
 
-        static Version parse(String vmVersion, Map<String, String> props) {
+        static Version parse(String vmVersion) {
             Matcher m = Pattern.compile(".*-jvmci-(\\d+)\\.(\\d+)-b(\\d+).*").matcher(vmVersion);
             if (m.matches()) {
                 try {
@@ -180,7 +180,7 @@ public final class JVMCIVersionCheck {
             }
             if (vmVersion.contains("-jvmci-")) {
                 // A "labsjdk"
-                Version v = Version.parse(vmVersion, props);
+                Version v = Version.parse(vmVersion);
                 if (v != null) {
                     if (!quiet) {
                         System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
