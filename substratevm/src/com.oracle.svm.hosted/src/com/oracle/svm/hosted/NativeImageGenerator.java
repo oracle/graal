@@ -215,7 +215,6 @@ import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
@@ -1346,7 +1345,6 @@ public class NativeImageGenerator {
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
             TypeSnippets.registerLowerings(options, providers, lowerings);
-            ExceptionSnippets.registerLowerings(options, providers, lowerings);
 
             if (hosted) {
                 DeoptHostedSnippets.registerLowerings(options, providers, lowerings);

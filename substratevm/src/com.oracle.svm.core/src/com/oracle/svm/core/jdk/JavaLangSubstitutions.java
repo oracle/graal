@@ -53,18 +53,18 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Containers;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
@@ -218,6 +218,7 @@ final class Target_java_lang_StringUTF16 {
 }
 
 @TargetClass(java.lang.Throwable.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_lang_Throwable {
 
@@ -423,6 +424,7 @@ final class Target_java_lang_Math {
 }
 
 @TargetClass(java.lang.StrictMath.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StrictMath {
 
     @Substitute

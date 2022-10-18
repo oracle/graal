@@ -34,6 +34,8 @@ import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -183,6 +185,7 @@ public final class Target_java_lang_Thread {
     Object[] extentLocalCache;
 
     @Alias
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     native void setPriority(int newPriority);
 
     @Alias
@@ -208,6 +211,7 @@ public final class Target_java_lang_Thread {
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class) //
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     static long nextThreadID() {
         return JavaThreads.threadSeqNumber.incrementAndGet();
     }
@@ -215,6 +219,7 @@ public final class Target_java_lang_Thread {
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class) //
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static int nextThreadNum() {
         return JavaThreads.threadInitNumber.incrementAndGet();
     }
@@ -225,6 +230,7 @@ public final class Target_java_lang_Thread {
     public native boolean isVirtual();
 
     @Alias
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public native void exit();
 
     Target_java_lang_Thread(String withName, ThreadGroup withGroup, boolean asDaemon) {
@@ -251,6 +257,7 @@ public final class Target_java_lang_Thread {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public long getId() {
         return tid;
     }
@@ -313,6 +320,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @SuppressWarnings({"unused"})
     @TargetElement(onlyWith = JDK17OrEarlier.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     Runnable target,
@@ -331,6 +339,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @SuppressWarnings({"unused"})
     @TargetElement(onlyWith = JDK19OrLater.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     String name,
@@ -375,6 +384,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("hiding")
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private void start0() {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
@@ -413,6 +423,7 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     @SuppressWarnings("static-method")
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public boolean isInterrupted() {
         return JavaThreads.isInterrupted(JavaThreads.fromTarget(this));
     }
@@ -425,6 +436,7 @@ public final class Target_java_lang_Thread {
 
     @Delete
     @TargetElement(onlyWith = JDK11OrEarlier.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private native boolean isInterrupted(boolean clearInterrupted);
 
     /**
@@ -506,6 +518,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private boolean isAlive() {
         return JavaThreads.isAlive(JavaThreads.fromTarget(this));
     }
@@ -518,6 +531,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static void yield() {
         JavaThreads.yieldCurrent();
     }
@@ -531,6 +545,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static void sleep(long millis) throws InterruptedException {
         JavaThreads.sleep(millis);
     }
@@ -553,12 +568,14 @@ public final class Target_java_lang_Thread {
      * specified object.
      */
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static boolean holdsLock(Object obj) {
         Objects.requireNonNull(obj);
         return MonitorSupport.singleton().isLockedByCurrentThread(obj);
     }
 
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private StackTraceElement[] getStackTrace() {
         return JavaThreads.getStackTrace(false, JavaThreads.fromTarget(this));
     }
@@ -569,6 +586,7 @@ public final class Target_java_lang_Thread {
     native StackTraceElement[] asyncGetStackTrace();
 
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         return PlatformThreads.getAllStackTraces();
     }

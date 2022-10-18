@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -1103,12 +1104,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public static Class<?> forName(String className) throws Throwable {
         Class<?> caller = Reflection.getCallerClass();
         return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
