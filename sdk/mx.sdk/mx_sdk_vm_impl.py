@@ -357,9 +357,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         self.components = components or registered_graalvm_components(stage1)
         self.stage1 = stage1
         self.skip_archive = stage1 or graalvm_skip_archive()  # *.tar archives for stage1 distributions are never built
-        if is_graalvm:
-            self.tmp_dir_for_modified_jmods = join(_suite.get_output_root(platformDependent=True, jdkDependent=True), '{}_MODIFIED_JMODS'.format(name))
-            self.modified_jmods = {}
 
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
@@ -533,9 +530,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     assert isinstance(c, (mx_sdk.GraalVmJreComponent, mx_sdk.GraalVmJdkComponent)), "'{}' is not a GraalVmJreComponent nor a GraalVmJdkComponent but defines a library config ('{}') with 'add_to_module' attribute".format(c.name, lc.destination)
                     assert not lc.add_to_module.endswith('.jmod'), "Library config '{}' of component '{}' has an invalid 'add_to_module' attribute: '{}' cannot end with '.jmod'".format(lc.destination, c.name, lc.add_to_module)
                     jmod_file = '{}{}'.format(lc.add_to_module, '' if lc.add_to_module.endswith('.jmod') else '.jmod')
-                    self.modified_jmods.setdefault(jmod_file, []).append(lc)
                     jimage_exclusion_list.append('jmods/{}'.format(jmod_file))
-                    _add(layout, '<jre_base>/jmods/{}'.format(jmod_file), 'file:{}/{}'.format(self.tmp_dir_for_modified_jmods.replace(os.sep, '/'), jmod_file))
+                    _add(layout, '<jre_base>/jmods/{}'.format(jmod_file), 'dependency:' + JmodModifier.project_name(jmod_file))
 
             if src_jdk_base != '.':
                 jimage_exclusion_list = ['/'.join([src_jdk_base, e]) for e in jimage_exclusion_list]
@@ -1014,23 +1010,6 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
         return self._library_projects[GraalVmLibrary.project_name(library_config)]
 
     def build(self):
-        if self.subject == get_final_graalvm_distribution():
-            mx.ensure_dir_exists(join(self.subject.tmp_dir_for_modified_jmods))
-            graalvm_jimage_home = GraalVmLayoutDistributionTask._get_graalvm_jimage(stage1=False, fatalIfMissing=True).output_directory()
-            for modified_jmod, library_configs in self.subject.modified_jmods.items():
-                # copy 'unmodified' jmod from the jimage to a tmp directory
-                jmod_copy_src = join(graalvm_jimage_home, 'jmods', modified_jmod)
-                jmod_copy_dst = join(self.subject.tmp_dir_for_modified_jmods, modified_jmod)
-                assert mx.exists(jmod_copy_src), "Library configs {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lc.destination for lc in library_configs], jmod_copy_src)
-                mx.copyfile(jmod_copy_src, jmod_copy_dst)
-                # modify the jmod file, adding the required resources
-                for library_config in library_configs:
-                    library_abs_location = self._get_library_project(library_config).output_file()
-                    library_rel_location = join('lib', basename(library_abs_location))
-                    mx.logv("Adding '{}' to '{}' ('{}')".format(library_abs_location, jmod_copy_dst, library_rel_location))
-                    with ZipFile(jmod_copy_dst, 'a', compression=zipfile.ZIP_DEFLATED) as zf:
-                        zf.write(library_abs_location, library_rel_location)
-
         super(GraalVmLayoutDistributionTask, self).build()
         if self.subject == get_final_graalvm_distribution():
             self._add_link()
@@ -1039,8 +1018,6 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
         super(GraalVmLayoutDistributionTask, self).clean(forBuild)
         if self.subject == get_final_graalvm_distribution():
             self._rm_link()
-            if exists(self.subject.tmp_dir_for_modified_jmods):
-                mx.rmtree(self.subject.tmp_dir_for_modified_jmods)
 
 
 class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
@@ -2200,6 +2177,91 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
     pass
 
 
+class JmodModifier(mx.Project):
+    def __init__(self, jmod_file, library_projects, jimage_project, **kw_args):
+        """
+        :type jmod_file: str
+        :type library_projects: list[GraalVmLibrary]
+        :type jimage_project_name: GraalVmJImage
+        """
+        self.jmod_file = jmod_file
+        self.library_projects = library_projects
+        self.jimage_project = jimage_project
+
+        super(JmodModifier, self).__init__(
+            _suite,
+            name=JmodModifier.project_name(self.jmod_file),
+            subDir=None,
+            srcDirs=[],
+            deps=[p.name for p in library_projects] + [jimage_project.name],
+            workingSets=None,
+            d=_suite.dir,
+            theLicense=None,
+            **kw_args
+        )
+
+    @staticmethod
+    def project_name(jmod_file):
+        return jmod_file + '_modifier'
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        out = self.output_file()
+        yield out, basename(out)
+
+    def output_file(self):
+        return join(self.get_output_base(), self.jmod_file)
+
+    def is_skipped(self):
+        return all(lp.is_skipped() for lp in self.library_projects)
+
+    def getBuildTask(self, args):
+        return JmodModifierBuildTask(self, args)
+
+
+class JmodModifierBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
+    def __init__(self, subject, args):
+        """
+        :type subject: JmodModifier
+        """
+        super(JmodModifierBuildTask, self).__init__(args, min(8, mx.cpu_count()), subject)
+
+    def needsBuild(self, newestInput):
+        sup = super(JmodModifierBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+        out_file = mx.TimeStampFile(self.subject.output_file())
+        if not out_file.exists():
+            return True, '{} does not exist'.format(out_file.path)
+        if newestInput and out_file.isOlderThan(newestInput):
+            return True, '{} is older than {}'.format(out_file, newestInput)
+        return False, None
+
+    def build(self):
+        mx.ensure_dir_exists(basename(self.subject.output_file()))
+        graalvm_jimage_home = self.subject.jimage_project.output_directory()
+
+        # copy 'unmodified' jmod from the jimage to a tmp directory
+        jmod_copy_src = join(graalvm_jimage_home, 'jmods', self.subject.jmod_file)
+        jmod_copy_dst = self.subject.output_file()
+        assert mx.exists(jmod_copy_src), "Library projects {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lp.name for lp in self.subject.library_projects], jmod_copy_src)
+        mx.copyfile(jmod_copy_src, jmod_copy_dst)
+        for library_project in [lp for lp in self.subject.library_projects if not lp.is_skipped()]:
+            # modify the jmod file, adding the required resources
+            library_abs_location = library_project.output_file()
+            library_rel_location = join('lib', basename(library_abs_location))
+            mx.logv("Adding '{}' to '{}' ('{}')".format(library_abs_location, jmod_copy_dst, library_rel_location))
+            with ZipFile(jmod_copy_dst, 'a', compression=zipfile.ZIP_DEFLATED) as zf:
+                zf.write(library_abs_location, library_rel_location)
+
+    def clean(self, forBuild=False):
+        out_file = self.subject.output_file()
+        if exists(out_file):
+            os.unlink(out_file)
+
+    def __str__(self):
+        return 'Building {}'.format(self.subject.name)
+
+
 def _format_manifest(data):
     manifest_lines = []
     for k, v in data.items():
@@ -2808,6 +2870,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     needs_stage1 = False
     installables = {}
     jvmci_parent_jars = []
+    modified_jmods = {}
 
     for component in registered_graalvm_components(stage1=False):
         if component.name in names:
@@ -2831,9 +2894,12 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     register_project(GraalVmNativeProperties(component, launcher_config))
             for library_config in _get_library_configs(component):
                 if with_svm:
-                    register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
-                    assert with_svm
+                    library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
+                    register_project(library_project)
                     register_project(GraalVmNativeProperties(component, library_config))
+                    if library_config.add_to_module:
+                        jmod_file = library_config.add_to_module + ('' if library_config.add_to_module.endswith('.jmod') else '.jmod')
+                        modified_jmods.setdefault(jmod_file, []).append(library_project)
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
                 if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
                     launcher_project = NativeLibraryLauncherProject(component, library_config)
@@ -2890,12 +2956,20 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     jimage_ignore_jars=sorted(_stage1_graalvm_distribution.jimage_ignore_jars),
                     workingSets=None,
                 ))
-        register_project(GraalVmJImage(
+        final_jimage_project = GraalVmJImage(
             suite=_suite,
             name='graalvm-jimage',
             jimage_jars=sorted(_final_graalvm_distribution.jimage_jars),
             jimage_ignore_jars=sorted(_final_graalvm_distribution.jimage_ignore_jars),
             workingSets=None,
+        )
+        register_project(final_jimage_project)
+
+        for jmod_file, library_projects in modified_jmods.items():
+            register_project(JmodModifier(
+                jmod_file=jmod_file,
+                library_projects=library_projects,
+                jimage_project=final_jimage_project,
         ))
 
     if _debuginfo_dists():
