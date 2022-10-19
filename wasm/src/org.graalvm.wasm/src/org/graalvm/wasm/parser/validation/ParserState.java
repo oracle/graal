@@ -343,9 +343,9 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        final byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
-        pushAll(unwindTypes);
+        final byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
+        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
+        pushAll(unwindValueTypes);
         pushAll(labelTypes);
     }
 
@@ -361,9 +361,9 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        final byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
-        pushAll(unwindTypes);
+        final byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
+        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
+        pushAll(unwindValueTypes);
     }
 
     /**
@@ -386,9 +386,9 @@ public class ParserState {
             byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
             byte[] returnTypes = popAll(otherBranchLabelReturnTypes);
-            byte[] unwindTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-            frame.addBranchTarget(branchTable.updateItemValueTypeIndicator(i, ExtraDataUtil.extractValueTypeIndicator(unwindTypes)));
-            pushAll(unwindTypes);
+            byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
+            frame.addBranchTarget(branchTable.updateItemUnwindType(i, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
+            pushAll(unwindValueTypes);
             pushAll(returnTypes);
         }
         popAll(branchLabelReturnTypes);

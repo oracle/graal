@@ -73,19 +73,19 @@ public class ExtraDataUtil {
 
     public static final int PROFILE_SIZE = 1;
 
-    private static final int PRIMITIVE_VALUE_INDICATOR = 0x0080_0000;
-    private static final int REFERENCE_VALUE_INDICATOR = 0x8000_0000;
+    private static final int PRIMITIVE_UNWIND = 0x0080_0000;
+    private static final int REFERENCE_UNWIND = 0x8000_0000;
 
     private static int createCompactShortValuesWithIndicator(int upperValue, int lowerValue) {
         return ((upperValue << 16) | lowerValue) & 0x7fff_ffff;
     }
 
-    private static int createCompactUpperBytes(int valueTypeIndicator, int upperValue, int lowerValue) {
-        return valueTypeIndicator | (upperValue << 24) | (lowerValue << 16);
+    private static int createCompactUpperBytes(int leadValue, int upperValue, int lowerValue) {
+        return leadValue | (upperValue << 24) | (lowerValue << 16);
     }
 
-    public static boolean isValidValueTypeIndicator(int value) {
-        return value == 0 || value == PRIMITIVE_VALUE_INDICATOR || value == REFERENCE_VALUE_INDICATOR || value == (PRIMITIVE_VALUE_INDICATOR | REFERENCE_VALUE_INDICATOR);
+    public static boolean isValidUnwindType(int value) {
+        return value == 0 || value == PRIMITIVE_UNWIND || value == REFERENCE_UNWIND || value == (PRIMITIVE_UNWIND | REFERENCE_UNWIND);
     }
 
     public static boolean exceedsUnsigned7BitValue(int value) {
@@ -173,14 +173,14 @@ public class ExtraDataUtil {
      * 
      * @param extraData The extra data array
      * @param stackChangeOffset The offset in the array
-     * @param valueTypeIndicator The most common type of the result values and stack value that are
-     *            affected by the stack change
+     * @param unwindType The most common type of the result values and stack value that are affected
+     *            by the stack change
      * @param resultCount The result count
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int valueTypeIndicator, int resultCount, int stackSize) {
-        extraData[stackChangeOffset] = createCompactUpperBytes(valueTypeIndicator, resultCount, stackSize);
+    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int unwindType, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = createCompactUpperBytes(unwindType, resultCount, stackSize);
         return COMPACT_STACK_CHANGE_SIZE;
     }
 
@@ -196,14 +196,14 @@ public class ExtraDataUtil {
      * 
      * @param extraData The extra data array
      * @param stackChangeOffset The offset in the array
-     * @param valueTypeIndicator The most common type of the result values and stack value that are
-     *            affected by the stack change
+     * @param unwindType The most common type of the result values and stack value that are affected
+     *            by the stack change
      * @param resultCount The result count
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addExtendedStackChange(int[] extraData, int stackChangeOffset, int valueTypeIndicator, int resultCount, int stackSize) {
-        extraData[stackChangeOffset] = valueTypeIndicator;
+    public static int addExtendedStackChange(int[] extraData, int stackChangeOffset, int unwindType, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = unwindType;
         extraData[stackChangeOffset + 1] = resultCount;
         extraData[stackChangeOffset + 2] = stackSize;
         return EXTENDED_STACK_CHANGE_SIZE;
@@ -308,12 +308,18 @@ public class ExtraDataUtil {
         return PROFILE_SIZE;
     }
 
-    public static int extractValueTypeIndicator(byte[] types) {
-        int valueTypeIndicator = 0;
+    /**
+     * Extracts the most common unwind type from the given value types.
+     * 
+     * @param types An array of value types
+     * @return The extracted unwind type
+     */
+    public static int extractUnwindType(byte[] types) {
+        int unwindType = 0;
         for (byte type : types) {
-            valueTypeIndicator |= WasmType.isNumberType(type) ? PRIMITIVE_VALUE_INDICATOR : 0;
-            valueTypeIndicator |= WasmType.isReferenceType(type) ? REFERENCE_VALUE_INDICATOR : 0;
+            unwindType |= WasmType.isNumberType(type) ? PRIMITIVE_UNWIND : 0;
+            unwindType |= WasmType.isReferenceType(type) ? REFERENCE_UNWIND : 0;
         }
-        return valueTypeIndicator;
+        return unwindType;
     }
 }

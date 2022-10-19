@@ -271,7 +271,7 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_LENG
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_PROFILE_OFFSET;
-import static org.graalvm.wasm.util.ExtraDataAccessor.COMBINED_TYPE_INDICATOR;
+import static org.graalvm.wasm.util.ExtraDataAccessor.UNKNOWN_UNWIND;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_TABLE_HEADER_LENGTH;
@@ -280,8 +280,8 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_LEN
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
-import static org.graalvm.wasm.util.ExtraDataAccessor.PRIMITIVE_TYPE_INDICATOR;
-import static org.graalvm.wasm.util.ExtraDataAccessor.REFERENCE_TYPE_INDICATOR;
+import static org.graalvm.wasm.util.ExtraDataAccessor.PRIMITIVE_UNWIND;
+import static org.graalvm.wasm.util.ExtraDataAccessor.REFERENCE_UNWIND;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.fifthValueUnsigned;
@@ -545,23 +545,20 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case BR: {
                     final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int targetValueTypeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
+                    final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
                     final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
                     final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    CompilerAsserts.partialEvaluationConstant(targetValueTypeIndicator);
-                    switch (targetValueTypeIndicator) {
-                        case PRIMITIVE_TYPE_INDICATOR:
-                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                            break;
-                        case REFERENCE_TYPE_INDICATOR:
-                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                            break;
-                        case COMBINED_TYPE_INDICATOR:
-                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                            break;
+                    CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                    if (targetUnwindType == PRIMITIVE_UNWIND) {
+                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    } else if (targetUnwindType == REFERENCE_UNWIND) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                     }
-
                     // Jump to the target block.
                     offset += secondValueSigned(extraData, extraOffset, compact);
                     extraOffset += firstValueSigned(extraData, extraOffset, compact);
@@ -574,21 +571,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
-                        final int targetValueTypeIndicator = thirdValueUnsigned(extraData, extraOffset, compact);
+                        final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
                         final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
                         final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                        CompilerAsserts.partialEvaluationConstant(targetValueTypeIndicator);
-                        switch (targetValueTypeIndicator) {
-                            case PRIMITIVE_TYPE_INDICATOR:
-                                unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                break;
-                            case REFERENCE_TYPE_INDICATOR:
-                                unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                break;
-                            case COMBINED_TYPE_INDICATOR:
-                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                break;
+                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                         }
 
                         // Jump to the target block.
@@ -623,21 +618,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                         updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int targetValueTypeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
+                        final int targetUnwindType = thirdValueUnsigned(extraData, indexOffset, compact);
                         final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
                         final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                        CompilerAsserts.partialEvaluationConstant(targetValueTypeIndicator);
-                        switch (targetValueTypeIndicator) {
-                            case PRIMITIVE_TYPE_INDICATOR:
-                                unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                break;
-                            case REFERENCE_TYPE_INDICATOR:
-                                unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                break;
-                            case COMBINED_TYPE_INDICATOR:
-                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                break;
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                         }
 
                         // Jump to the branch target.
@@ -654,21 +644,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
-                                final int targetValueTypeIndicator = thirdValueUnsigned(extraData, indexOffset, compact);
+                                final int targetUnwindType = thirdValueUnsigned(extraData, indexOffset, compact);
                                 final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
                                 final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                                CompilerAsserts.partialEvaluationConstant(targetValueTypeIndicator);
-                                switch (targetValueTypeIndicator) {
-                                    case PRIMITIVE_TYPE_INDICATOR:
-                                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                        break;
-                                    case REFERENCE_TYPE_INDICATOR:
-                                        unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                        break;
-                                    case COMBINED_TYPE_INDICATOR:
-                                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                                        break;
+                                CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                                if (targetUnwindType == PRIMITIVE_UNWIND) {
+                                    unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                } else if (targetUnwindType == REFERENCE_UNWIND) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 }
 
                                 // Jump to the branch target.

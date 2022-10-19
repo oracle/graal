@@ -136,11 +136,11 @@ public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatH
     /**
      *
      * @param index The index of the branch item
-     * @param valueTypeIndicator The new value type indicator
+     * @param unwindType The new unwind type
      * @return The updated item
      */
-    public BranchTargetWithStackChange updateItemValueTypeIndicator(int index, int valueTypeIndicator) {
-        items[index].updateValueTypeIndicator(valueTypeIndicator);
+    public BranchTargetWithStackChange updateItemUnwindType(int index, int unwindType) {
+        items[index].updateUnwindType(unwindType);
         return items[index];
     }
 

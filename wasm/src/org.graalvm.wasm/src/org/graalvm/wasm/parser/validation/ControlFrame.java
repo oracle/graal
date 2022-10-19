@@ -114,8 +114,8 @@ public abstract class ControlFrame {
         return labelTypes().length;
     }
 
-    protected int labelTypeIndicator() {
-        return ExtraDataUtil.extractValueTypeIndicator(labelTypes());
+    protected int labelUnwindType() {
+        return ExtraDataUtil.extractUnwindType(labelTypes());
     }
 
     int initialStackSize() {
