@@ -31,7 +31,7 @@
     ]
   },
 
-  bench_jdks:: [common["labsjdk-ee-11"], common["labsjdk-ee-17"]],
+  bench_jdks:: [common["labsjdk-ee-17"]],
 
   // Benchmarking building blocks
   // ****************************
