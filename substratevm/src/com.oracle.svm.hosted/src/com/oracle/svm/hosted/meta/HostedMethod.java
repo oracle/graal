@@ -34,7 +34,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -96,7 +95,6 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     private final ExceptionHandler[] handlers;
     StaticAnalysisResults staticAnalysisResults;
     int vtableIndex = -1;
-    SpecializationReason specializationReason;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -116,7 +114,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     private final LocalVariableTable localVariableTable;
 
     private final String name;
-    final String uniqueShortName;
+    private final String uniqueShortName;
 
     private final MultiMethodKey multiMethodKey;
 
@@ -145,6 +143,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, Signature signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
+        assert key == ORIGINAL_METHOD || key == DEOPT_TARGET_METHOD;
         assert !(multiMethodMap == null && key != ORIGINAL_METHOD);
 
         Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
@@ -200,7 +199,6 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         this.localVariableTable = localVariableTable;
         this.name = name;
         this.uniqueShortName = uniqueShortName;
-        this.specializationReason = SpecializationReason.create();
         this.multiMethodKey = multiMethodKey;
         this.multiMethodMap = multiMethodMap;
     }
@@ -514,54 +512,6 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     @Override
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
-    }
-
-    static final class SpecializationReason implements Comparable<SpecializationReason> {
-        List<Pair<HostedMethod, Integer>> context;
-        Reason reason;
-
-        private SpecializationReason(List<Pair<HostedMethod, Integer>> context, Reason reason) {
-            this.context = context;
-            this.reason = reason;
-        }
-
-        public static SpecializationReason create() {
-            return new SpecializationReason(Collections.emptyList(), Reason.NONE);
-        }
-
-        public static SpecializationReason create(List<Pair<HostedMethod, Integer>> context) {
-            assert context != null;
-            return new SpecializationReason(context, Reason.HOT_METHOD);
-        }
-
-        @Override
-        public int compareTo(SpecializationReason o) {
-            int result = Math.max(Math.min(context.size() - o.context.size(), 1), -1);
-            if (result != 0) {
-                return result;
-            }
-            for (int i = 0; i < context.size(); i++) {
-                int bci1 = context.get(i).getRight();
-                int bci2 = o.context.get(i).getRight();
-                result = Math.max(Math.min(bci1 - bci2, 1), -1);
-                if (result == 0) {
-                    HostedMethod m1 = context.get(i).getLeft();
-                    HostedMethod m2 = o.context.get(i).getLeft();
-                    // TODO BS this could potentially infinitely recurse
-                    result = HostedUniverse.METHOD_COMPARATOR.compare(m1, m2);
-                }
-                if (result != 0) {
-                    break;
-                }
-            }
-            assert result != 0;
-            return result;
-        }
-
-        enum Reason {
-            NONE,
-            HOT_METHOD
-        }
     }
 
     @Override

@@ -92,10 +92,6 @@ public class StaticAnalysisResults implements ProfilingInfo {
         this.cache = first;
     }
 
-    public StaticAnalysisResults(StaticAnalysisResults original) {
-        this(original.codeSize, original.parameterTypeProfiles, original.resultTypeProfile, original.first);
-    }
-
     /**
      * Returns the type profile for the parameter with the given number, or {@code null} if no type
      * profile is available. For non-static methods, the receiver is the parameter with number 0.

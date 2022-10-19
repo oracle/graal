@@ -560,16 +560,6 @@ public class HostedUniverse implements Universe {
                 return result;
             }
 
-            result = o1.specializationReason.compareTo(o2.specializationReason);
-            if (result != 0) {
-                return result;
-            }
-
-            result = o1.uniqueShortName.compareTo(o2.uniqueShortName);
-            if (result != 0) {
-                return result;
-            }
-
             throw VMError.shouldNotReachHere("HostedMethod objects not distinguishable: " + o1 + ", " + o2);
         }
     }
