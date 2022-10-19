@@ -533,10 +533,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     jmod_file = lc.add_to_module + '.jmod'
                     jimage_exclusion_list.append('jmods/' + jmod_file)
                     _add(layout, '<jre_base>/jmods/' + jmod_file, 'dependency:' + JmodModifier.project_name(jmod_file))
-
-            if src_jdk_base != '.':
-                jimage_exclusion_list = ['/'.join([src_jdk_base, e]) for e in jimage_exclusion_list]
-
             mx.logv("jimage_exclusion_list of {}: {}".format(name, jimage_exclusion_list))
 
             _add(layout, self.jdk_base + '/', {
