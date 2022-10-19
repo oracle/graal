@@ -65,12 +65,6 @@ public class ReturnInstruction extends Instruction {
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (ctx.getData().isTracing()) {
-            b.startStatement().startCall("tracer", "endFunction");
-            b.string("$this");
-            b.end(2);
-        }
-
         if (uncached) {
             b.statement("uncachedExecuteCount--");
             b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();

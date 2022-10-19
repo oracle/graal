@@ -122,6 +122,7 @@ public class OperationsBytecodeCodeGenerator {
 
         CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", baseClass.asType());
 
+        builderBytecodeNodeType.setHighPriority(true);
         initializeInstructions(builderBytecodeNodeType);
 
         builderBytecodeNodeType.add(createBytecodeLoop(baseClass));
@@ -287,6 +288,9 @@ public class OperationsBytecodeCodeGenerator {
             b.end(2);
 
             b.startStatement().startCall(varTracer, "startFunction").string("$this").end(2);
+
+            b.startTryBlock();
+
         } else {
             varTracer = null;
         }
@@ -440,6 +444,14 @@ public class OperationsBytecodeCodeGenerator {
         b.end(); // catch block
 
         b.end(); // while loop
+
+        if (m.isTracing()) {
+            b.end().startFinallyBlock();
+
+            b.startStatement().startCall(varTracer, "endFunction").string("$this").end(2);
+
+            b.end();
+        }
 
         return mContinueAt;
     }

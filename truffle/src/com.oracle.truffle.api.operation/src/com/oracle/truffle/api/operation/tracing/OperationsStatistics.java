@@ -151,10 +151,10 @@ public class OperationsStatistics {
         private final List<EnabledExecutionTracer> allTracers = new ArrayList<>();
         private final ThreadLocal<EnabledExecutionTracer> currentTracer = new ThreadLocal<>();
 
-        private Class<?> opsClass;
-        private String decisionsFile;
-        private String[] instrNames;
-        private String[][] specNames;
+        Class<?> opsClass;
+        String decisionsFile;
+        String[] instrNames;
+        String[][] specNames;
 
         GlobalOperationStatistics(Class<?> opsClass) {
             this.opsClass = opsClass;
@@ -298,6 +298,18 @@ public class OperationsStatistics {
                 return Arrays.equals(activeSpecializations, other.activeSpecializations) && instructionId == other.instructionId;
             }
 
+            private int[] specializationIds() {
+                int[] result = new int[getCountActive()];
+                int idx = 0;
+                for (int i = 0; i < activeSpecializations.length; i++) {
+                    if (activeSpecializations[i]) {
+                        result[idx++] = i;
+                    }
+                }
+
+                return result;
+            }
+
             private JSONObject serialize() {
                 JSONObject result = new JSONObject();
                 result.put("i", instructionId);
@@ -325,30 +337,6 @@ public class OperationsStatistics {
                 }
 
                 return new SpecializationKey(id, activeSpecializations);
-            }
-
-            public JSONObject serializeDecision(GlobalOperationStatistics stats) {
-                JSONObject result = new JSONObject();
-                result.put("type", "Quicken");
-                String instrName = stats.instrNames[instructionId];
-                String shortName;
-                if (instrName.startsWith("c.")) {
-                    shortName = instrName.substring(2);
-                } else {
-                    assert instrName.startsWith("sc.");
-                    shortName = instrName.substring(3);
-                }
-                result.put("operation", shortName);
-
-                JSONArray specsData = new JSONArray();
-                result.put("specializations", specsData);
-                for (int i = 0; i < activeSpecializations.length; i++) {
-                    if (activeSpecializations[i]) {
-                        specsData.put(stats.specNames[instructionId][i]);
-                    }
-                }
-
-                return result;
             }
 
             @Override
@@ -398,27 +386,50 @@ public class OperationsStatistics {
         private Map<Integer, Integer> numNodesWithInstruction = new HashMap<>();
         private Map<Integer, Set<Node>> nodesWithInstruction = new HashMap<>();
 
-        private List<Node> nodes = new ArrayList<>();
+        private List<Node> nodeStack = new ArrayList<>();
         private Node curNode;
 
         private static final int MAX_SUPERINSTR_LEN = 8;
-        private int[] instrHistory = new int[MAX_SUPERINSTR_LEN];
+        List<int[]> instrHistoryStack = new ArrayList<>();
+        List<Integer> instrHistoryLenStack = new ArrayList<>();
+        private int[] instrHistory = null;
         private int instrHistoryLen = 0;
 
         @Override
         public void startFunction(Node node) {
+            System.err.println(" [[ STARTING FUNCTION " + node);
             if (curNode != null) {
-                nodes.add(curNode);
+                nodeStack.add(curNode);
             }
             curNode = node;
+
+            if (instrHistory != null) {
+                instrHistoryStack.add(instrHistory);
+                instrHistoryLenStack.add(instrHistoryLen);
+            }
+
+            instrHistory = new int[MAX_SUPERINSTR_LEN];
+            instrHistoryLen = 0;
         }
 
         @Override
         public void endFunction(Node node) {
-            if (nodes.size() > 0) {
-                curNode = nodes.remove(nodes.size() - 1);
+            System.err.println(" ]]   ENDING FUNCTION " + node);
+            if (curNode != node) {
+                throw new AssertionError("Tracer start/stop mismatch");
+            }
+
+            if (nodeStack.size() > 0) {
+                curNode = nodeStack.remove(nodeStack.size() - 1);
             } else {
                 curNode = null;
+            }
+
+            if (instrHistoryStack.size() > 0) {
+                instrHistory = instrHistoryStack.remove(instrHistoryStack.size() - 1);
+                instrHistoryLen = instrHistoryLenStack.remove(instrHistoryLenStack.size() - 1);
+            } else {
+                instrHistory = null;
             }
         }
 
@@ -560,22 +571,51 @@ public class OperationsStatistics {
             return inst;
         }
 
+        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount) {
+            int outputCount = input.size() < expectedCount ? input.size() : expectedCount;
+
+            for (int i = 0; i < outputCount; i++) {
+                Decision next = input.get(i);
+                output.add(next);
+
+                for (int j = i + 1; j < input.size(); j++) {
+                    input.get(j).acceptedBefore(next);
+                }
+                input.subList(i, input.size()).sort(Decision.COMPARATOR);
+            }
+        }
+
         public JSONArray serializeDecisions(GlobalOperationStatistics stats) {
             JSONArray result = new JSONArray();
             result.put("This file is autogenerated by the Operations DSL.");
             result.put("Do not modify, as it will be overwritten when running with tracing support.");
             result.put("Use the overrides file to alter the optimisation decisions.");
 
-            int numDecisions = 100;
-            activeSpecializationsMap.entrySet().stream().filter(e -> e.getKey().getCountActive() > 0).sorted((a, b) -> Long.compare(b.getValue(), a.getValue())).limit(numDecisions).forEachOrdered(
-                            e -> {
-                                result.put(e.getKey().serializeDecision(stats));
-                            });
+            List<Decision> decisions = new ArrayList<>();
+
+            activeSpecializationsMap.entrySet().forEach(e -> {
+                decisions.add(new Decision.Quicken(e.getKey().instructionId, e.getKey().specializationIds(), e.getValue()));
+            });
 
             calcNumNodesWithInstruction();
 
+            instructionSequencesMap.entrySet().forEach(e -> {
+                decisions.add(new Decision.SuperInstruction(e.getKey().instructions, e.getValue()));
+            });
+
+            decisions.sort(Decision.COMPARATOR);
+
             System.err.println("================================================");
-            System.err.println("Common instructions: ");
+            System.err.println("Decisions: ");
+
+            List<Decision> acceptedDecisions = new ArrayList<>();
+            orderDecisions(acceptedDecisions, decisions, 100);
+
+            for (Decision dec : acceptedDecisions) {
+                System.err.printf(" * %.0f %s%n", dec.value(), dec.id(stats));
+            }
+            System.err.println();
+
             numNodesWithInstruction.entrySet().stream().sorted((a, b) -> Long.compare(b.getValue(), a.getValue())).forEachOrdered(x -> {
                 System.err.printf("%30s: %d%n", stats.instrNames[x.getKey()], x.getValue());
             });

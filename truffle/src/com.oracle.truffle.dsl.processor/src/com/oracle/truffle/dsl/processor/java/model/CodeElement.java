@@ -69,6 +69,15 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
 
     private Element generatorElement;
     private AnnotationMirror generatorAnnotationMirror;
+    private boolean highPriority;
+
+    public boolean isHighPriority() {
+        return highPriority;
+    }
+
+    public void setHighPriority(boolean highPriority) {
+        this.highPriority = highPriority;
+    }
 
     public CodeElement(Set<Modifier> modifiers) {
         this.modifiers = new LinkedHashSet<>(modifiers);
