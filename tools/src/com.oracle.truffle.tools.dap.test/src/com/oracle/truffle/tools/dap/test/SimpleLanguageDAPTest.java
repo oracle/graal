@@ -1061,7 +1061,7 @@ public final class SimpleLanguageDAPTest {
                 + "{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Boolean\",\"value\":\"true\"},"
                 + "{\"name\":\"bb\",\"variablesReference\":0,\"type\":\"Boolean\",\"value\":\"true\"},"
                 + "{\"name\":\"big\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"152415787532388367501905199875019052100\"},"
-                + "{\"name\":\"str\",\"variablesReference\":0,\"type\":\"String\",\"value\":\"\\\"A String\\\"\"},"
+                + "{\"name\":\"str\",\"variablesReference\":0,\"type\":\"String\",\"value\":\"A String\"},"
                 + "{\"name\":\"f\",\"variablesReference\":0,\"type\":\"Function\",\"value\":\"fn\"},"
                 + "{\"name\":\"f2\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"0\"}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"variables\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"setVariable\",\"arguments\":{\"variablesReference\":2,\"name\":\"m\",\"value\":\"1000\"},\"type\":\"request\",\"seq\":10}");
@@ -1069,7 +1069,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"setVariable\",\"arguments\":{\"variablesReference\":2,\"name\":\"bb\",\"value\":\"false\"},\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"type\":\"Boolean\",\"variablesReference\":0,\"value\":\"false\"},\"type\":\"response\",\"request_seq\":11,\"command\":\"setVariable\",\"seq\":18}");
         tester.sendMessage("{\"command\":\"setVariable\",\"arguments\":{\"variablesReference\":2,\"name\":\"str\",\"value\":\"\\\"A Different String\\\"\"},\"type\":\"request\",\"seq\":12}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"type\":\"String\",\"variablesReference\":0,\"value\":\"\\\"A Different String\\\"\"},\"type\":\"response\",\"request_seq\":12,\"command\":\"setVariable\",\"seq\":19}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"type\":\"String\",\"variablesReference\":0,\"value\":\"A Different String\"},\"type\":\"response\",\"request_seq\":12,\"command\":\"setVariable\",\"seq\":19}");
         tester.sendMessage("{\"command\":\"setVariable\",\"arguments\":{\"variablesReference\":2,\"name\":\"f2\",\"value\":\"f\"},\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"type\":\"Function\",\"variablesReference\":0,\"value\":\"fn\"},\"type\":\"response\",\"request_seq\":13,\"command\":\"setVariable\",\"seq\":20}");
         // Continue and suspend at the breakpoint:
@@ -1091,7 +1091,7 @@ public final class SimpleLanguageDAPTest {
                 + "{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Boolean\",\"value\":\"false\"},"
                 + "{\"name\":\"bb\",\"variablesReference\":0,\"type\":\"Boolean\",\"value\":\"false\"},"
                 + "{\"name\":\"big\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"23230572289118153328333583928030329684079829544396666111742077337982514410000\"},"
-                + "{\"name\":\"str\",\"variablesReference\":0,\"type\":\"String\",\"value\":\"\\\"A Different String\\\"\"},"
+                + "{\"name\":\"str\",\"variablesReference\":0,\"type\":\"String\",\"value\":\"A Different String\"},"
                 + "{\"name\":\"f\",\"variablesReference\":0,\"type\":\"Function\",\"value\":\"fn\"},"
                 + "{\"name\":\"f2\",\"variablesReference\":0,\"type\":\"Function\",\"value\":\"fn\"}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"variables\",\"seq\":27}");
         // Continue to finish:
