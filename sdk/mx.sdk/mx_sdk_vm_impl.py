@@ -529,9 +529,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 for lc, c in [(lc, c) for c in self.components for lc in c.library_configs if lc.add_to_module]:
                     assert isinstance(c, (mx_sdk.GraalVmJreComponent, mx_sdk.GraalVmJdkComponent)), "'{}' is not a GraalVmJreComponent nor a GraalVmJdkComponent but defines a library config ('{}') with 'add_to_module' attribute".format(c.name, lc.destination)
                     assert not lc.add_to_module.endswith('.jmod'), "Library config '{}' of component '{}' has an invalid 'add_to_module' attribute: '{}' cannot end with '.jmod'".format(lc.destination, c.name, lc.add_to_module)
-                    jmod_file = '{}{}'.format(lc.add_to_module, '' if lc.add_to_module.endswith('.jmod') else '.jmod')
-                    jimage_exclusion_list.append('jmods/{}'.format(jmod_file))
-                    _add(layout, '<jre_base>/jmods/{}'.format(jmod_file), 'dependency:' + JmodModifier.project_name(jmod_file))
+                    assert all(c not in lc.add_to_module for c in ('/', '\\')), "Library config '{}' of component '{}' has an invalid 'add_to_module' attribute: '{}' cannot contain '/' or '\\'".format(lc.destination, c.name, lc.add_to_module)
+                    jmod_file = lc.add_to_module + '.jmod'
+                    jimage_exclusion_list.append('jmods/' + jmod_file)
+                    _add(layout, '<jre_base>/jmods/' + jmod_file, 'dependency:' + JmodModifier.project_name(jmod_file))
 
             if src_jdk_base != '.':
                 jimage_exclusion_list = ['/'.join([src_jdk_base, e]) for e in jimage_exclusion_list]
