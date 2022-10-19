@@ -80,7 +80,7 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,test,helloworld_debug"
+              GATE: "build,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
