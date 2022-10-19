@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -33,7 +37,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.io.AssemblyBuffer;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
@@ -90,7 +97,39 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
             DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), accessImpl.getHostedMetaAccess());
-            image.getObjectFile().installDebugInfo(provider);
+            var objectFile = image.getObjectFile();
+            objectFile.installDebugInfo(provider);
+
+            if (OS.LINUX.isCurrent() && SubstrateOptions.UseImagebuildDebugSections.getValue()) {
+                /*-
+                 * Provide imagebuild infos as special debug.svm.imagebuild.* sections
+                 * The contents of these sections can be dumped with:
+                 * readelf -p .<sectionName> <debuginfo file>
+                 * e.g. readelf -p .debug.svm.imagebuild.arguments helloworld
+                 */
+                Function<List<String>, BasicProgbitsSectionImpl> makeSectionImpl = customInfo -> {
+                    var content = AssemblyBuffer.createOutputAssembler(objectFile.getByteOrder());
+                    for (String elem : customInfo) {
+                        content.writeString(elem);
+                    }
+                    return new BasicProgbitsSectionImpl(content.getBlob());
+                };
+
+                var imageClassLoader = accessImpl.getImageClassLoader();
+
+                var builderArguments = imageClassLoader.classLoaderSupport.getHostedOptionParser().getArguments();
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(builderArguments));
+
+                var classPath = imageClassLoader.classpath().stream().map(Path::toString).collect(Collectors.toList());
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.classpath", makeSectionImpl.apply(classPath));
+                var modulePath = imageClassLoader.modulepath().stream().map(Path::toString).collect(Collectors.toList());
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(modulePath));
+
+                var sortedPropertiesList = ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+                                .filter(arg -> arg.startsWith("-D"))
+                                .sorted().collect(Collectors.toList());
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(sortedPropertiesList));
+            }
         }
         ProgressReporter.singleton().setDebugInfoTimer(timer);
     }

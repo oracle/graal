@@ -191,8 +191,8 @@ public class NativeImageClassLoaderSupport {
     private List<String> remainingArguments;
 
     public void setupHostedOptionParser(List<String> arguments) {
-        hostedOptionParser = new HostedOptionParser(getClassLoader());
-        remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse(arguments)));
+        hostedOptionParser = new HostedOptionParser(getClassLoader(), arguments);
+        remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse()));
         parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
     }
 
