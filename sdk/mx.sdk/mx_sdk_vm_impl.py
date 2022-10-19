@@ -994,22 +994,6 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
                     return True, '{} is pointing to the wrong directory'.format(link_file)
         return False, None
 
-    @staticmethod
-    def _get_graalvm_jimage(stage1=False, fatalIfMissing=False):
-        expected_name = 'graalvm-stage1-jimage' if stage1 else 'graalvm-jimage'
-        for graalvm_jimage in [p for p in _suite.projects if isinstance(p, GraalVmJImage)]:
-            if graalvm_jimage.name == expected_name:
-                return graalvm_jimage
-        if fatalIfMissing:
-            raise mx.abort("Cannot find the '{}' distribution".format(expected_name))
-        return None
-
-    def _get_library_project(self, library_config):
-        if self._library_projects is None:
-            # projects are uniquely identified by their name
-            self._library_projects = {p.name: p for p in _suite.projects}
-        return self._library_projects[GraalVmLibrary.project_name(library_config)]
-
     def build(self):
         super(GraalVmLayoutDistributionTask, self).build()
         if self.subject == get_final_graalvm_distribution():
@@ -2211,9 +2195,6 @@ class JmodModifier(mx.Project):
 
     def output_file(self):
         return join(self.get_output_base(), self.jmod_file)
-
-    def is_skipped(self):
-        return all(lp.is_skipped() for lp in self.library_projects)
 
     def getBuildTask(self, args):
         return JmodModifierBuildTask(self, args)
