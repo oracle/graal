@@ -86,7 +86,7 @@
                   <exclude>com.oracle.truffle:truffle-api</exclude>
                   <exclude>com.oracle.truffle:truffle-dsl-processor</exclude>
                   <exclude>com.oracle.truffle:truffle-tck</exclude>
-                  <exclude>org.graalvm:graal-sdk</exclude>
+                  <exclude>org.graalvm.sdk:graal-sdk</exclude>
                 </excludes>
               </artifactSet>
             </configuration>
