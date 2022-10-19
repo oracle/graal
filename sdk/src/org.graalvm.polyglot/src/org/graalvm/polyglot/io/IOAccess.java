@@ -55,7 +55,7 @@ import java.util.Objects;
 public final class IOAccess {
 
     /**
-     * Provides guest language no access to host IO. Guest language only has read-only access to the
+     * Provides guest language no access to IO. Guest language only has read-only access to the
      * language's home files. The {@code NONE} is a default value for {@link Context}s created
      * without {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean) all access}. If
      * you are using this preset, the newly added privileges will default to {@code false} for this
