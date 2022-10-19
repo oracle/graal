@@ -1493,7 +1493,9 @@ public final class Context implements AutoCloseable {
         /**
          * Configures guest language access to host IO. Default is {@link IOAccess#NONE}. If
          * {@link #allowAllAccess(boolean) all access} is set to {@code true}, then
-         * {@link IOAccess#ALL} is used unless explicitly set.
+         * {@link IOAccess#ALL} is used unless explicitly set. This method can be used to virtualize
+         * file system access in the guest language by using an {@link IOAccess} with a custom
+         * filesystem.
          *
          * @see IOAccess#ALL - to allow full host IO access
          * @see IOAccess#NONE - to disable host IO access
@@ -1516,11 +1518,8 @@ public final class Context implements AutoCloseable {
          * @param enabled {@code true} to enable Input/Output
          * @return the {@link Builder}
          * @since 19.0
-         * @deprecated To migrate, use {@code allowIO(IOAccess.ALL)} to enable unrestricted IO
-         *             operations on the host system, {@code allowIO(IOAccess.NONE)} to disable IO
-         *             operations, and
-         *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())} to set
-         *             a custom filesystem.
+         * @deprecated If the value was previously {@code true} pass {@link IOAccess#ALL}, otherwise
+         *             pass {@link IOAccess#NONE}.
          */
         @Deprecated(since = "23.0")
         public Builder allowIO(final boolean enabled) {
@@ -1534,7 +1533,7 @@ public final class Context implements AutoCloseable {
          * @param fileSystem the file system to be installed
          * @return the {@link Builder}
          * @since 19.0
-         * @deprecated To migrate, use
+         * @deprecated If a file system was previously set use
          *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())}.
          */
         @Deprecated(since = "23.0")
@@ -1792,13 +1791,13 @@ public final class Context implements AutoCloseable {
             boolean innerContextOptions = orAllAccess(allowInnerContextOptions);
 
             if (this.allowHostAccess != null && this.hostAccess != null) {
-                throw new IllegalArgumentException("The method allowHostAccess with boolean and with HostAccess are mutually exclusive.");
+                throw new IllegalArgumentException("The method Context.Builder.allowHostAccess(boolean) and the method Context.Builder.allowHostAccess(HostAccess) are mutually exclusive.");
             }
             if (ioAccess != null && allowIO != null) {
-                throw new IllegalArgumentException("The method allowIO with boolean and with IOAccess are mutually exclusive.");
+                throw new IllegalArgumentException("The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) are mutually exclusive.");
             }
             if (ioAccess != null && customFileSystem != null) {
-                throw new IllegalArgumentException("The method allowIO with IOAccess and the method fileSystem are mutually exclusive.");
+                throw new IllegalArgumentException("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
             }
 
             Predicate<String> localHostLookupFilter = this.hostClassFilter;

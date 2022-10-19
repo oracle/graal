@@ -971,7 +971,7 @@ public class LanguageSPITest {
                 case NATIVE_ACCESS:
                     return env.isNativeAccessAllowed();
                 case IO:
-                    return env.isIOAllowed();
+                    return env.isFileIOAllowed();
                 case HOST_CLASS_LOADING:
                     TruffleFile file = env.getTruffleFileInternal("", null);
                     try {

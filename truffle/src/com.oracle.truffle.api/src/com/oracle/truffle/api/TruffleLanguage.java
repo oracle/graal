@@ -2250,11 +2250,22 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if access to IO is allowed, else <code>false</code>.
+         * Returns {@code true} if access to files is allowed, else {@code false}.
          *
          * @since 22.3
+         * @deprecated since 23.0; replaced by {@link #isFileIOAllowed()}.
          */
+        @Deprecated(since = "23.0")
         public boolean isIOAllowed() {
+            return isFileIOAllowed();
+        }
+
+        /**
+         * Returns {@code true} if access to files is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isFileIOAllowed() {
             try {
                 return LanguageAccessor.engineAccess().isIOAllowed(polyglotLanguageContext, this);
             } catch (Throwable t) {

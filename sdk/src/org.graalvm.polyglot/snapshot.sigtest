@@ -646,7 +646,7 @@ meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.io.IOAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.io.IOAccess$Builder newBuilder(org.graalvm.polyglot.io.IOAccess)
 supr java.lang.Object
-hfds allowHostFileAccess,allowHostSocketAccess,fileSystem
+hfds allowHostFileAccess,allowHostSocketAccess,fileSystem,name
 
 CLSS public final static org.graalvm.polyglot.io.IOAccess$Builder
  outer org.graalvm.polyglot.io.IOAccess
@@ -655,7 +655,7 @@ meth public org.graalvm.polyglot.io.IOAccess$Builder allowHostFileAccess(boolean
 meth public org.graalvm.polyglot.io.IOAccess$Builder allowHostSocketAccess(boolean)
 meth public org.graalvm.polyglot.io.IOAccess$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
 supr java.lang.Object
-hfds allowHostFileAccess,allowHostSocketAccess,customFileSystem
+hfds allowHostFileAccess,allowHostSocketAccess,customFileSystem,name
 
 CLSS public abstract interface org.graalvm.polyglot.io.MessageEndpoint
 meth public abstract void sendBinary(java.nio.ByteBuffer) throws java.io.IOException

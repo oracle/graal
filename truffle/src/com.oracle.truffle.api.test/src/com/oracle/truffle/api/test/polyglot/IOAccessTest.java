@@ -65,15 +65,16 @@ public class IOAccessTest {
     public void testInvalid() {
         AbstractPolyglotTest.assertFails(() -> Context.newBuilder().allowIO(true).allowIO(IOAccess.ALL).build(),
                         IllegalArgumentException.class,
-                        (iae) -> assertEquals("The method allowIO with boolean and with IOAccess are mutually exclusive.", iae.getMessage()));
+                        (iae) -> assertEquals("The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) are mutually exclusive.", iae.getMessage()));
 
         AbstractPolyglotTest.assertFails(() -> Context.newBuilder().fileSystem(new MemoryFileSystem()).allowIO(IOAccess.ALL).build(),
                         IllegalArgumentException.class,
-                        (iae) -> assertEquals("The method allowIO with IOAccess and the method fileSystem are mutually exclusive.", iae.getMessage()));
+                        (iae) -> assertEquals("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.", iae.getMessage()));
 
         AbstractPolyglotTest.assertFails(() -> IOAccess.newBuilder().allowHostFileAccess(true).fileSystem(new MemoryFileSystem()).build(),
                         IllegalArgumentException.class,
-                        (iae) -> assertEquals("The allow host file access and custom filesystem are mutually exclusive.", iae.getMessage()));
+                        (iae) -> assertEquals("The method IOAccess.Builder.allowHostFileAccess(boolean) and the method IOAccess.Builder.fileSystem(FileSystem) are mutually exclusive.",
+                                        iae.getMessage()));
     }
 
     @Test
@@ -234,7 +235,7 @@ public class IOAccessTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            assertTrue(env.isIOAllowed());
+            assertTrue(env.isFileIOAllowed());
             return env.getPublicTruffleFile("test").exists();
         }
     }
@@ -245,7 +246,7 @@ public class IOAccessTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            assertFalse(env.isIOAllowed());
+            assertFalse(env.isFileIOAllowed());
             AbstractPolyglotTest.assertFails(() -> env.getPublicTruffleFile("test").exists(), SecurityException.class);
             return null;
         }

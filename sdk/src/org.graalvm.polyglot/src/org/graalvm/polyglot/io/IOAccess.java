@@ -47,8 +47,8 @@ import java.util.Objects;
 /**
  * Represents an IO access configuration of a polyglot context. The IO access configuration
  * determines how a guest language can access the host IO. The access to host IO can be
- * {@link IOAccess#NONE disabled}, {@link IOAccess#ALL enabled}, or virtualized using a custom file
- * system.
+ * {@link IOAccess#NONE disabled}, {@link IOAccess#ALL enabled}, or virtualized using a custom
+ * {@link FileSystem file system}.
  *
  * @since 23.0
  */
@@ -57,17 +57,41 @@ public final class IOAccess {
     /**
      * Provides guest language no access to host IO. Guest language only has read-only access to the
      * language's home files. The {@code NONE} is a default value for {@link Context}s created
-     * without {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean) all access}.
+     * without {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean) all access}. If
+     * you are using this preset, the newly added privileges will default to {@code false} for this
+     * preset.
+     *
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * IOAccess.newBuilder().build();
+     * </code>
+     * </pre>
      *
      * @since 23.0
      */
-    public static final IOAccess NONE = newBuilder().name("IOAccess.NONE").allowHostFileAccess(false).allowHostSocketAccess(false).build();
+    public static final IOAccess NONE = newBuilder().name("IOAccess.NONE").build();
 
     /**
      * Provides guest language full access to host IO. Guest language have full access to host file
      * system and host sockets. The {@code ALL} is a default value for {@link Context}s created with
      * {@link org.graalvm.polyglot.Context.Builder#allowAllAccess(boolean) all access} set to
-     * {@code true}.
+     * {@code true}. If you are using this preset, the newly added privileges will default to
+     * {@code true} for this preset.
+     *
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * IOAccess.newBuilder()
+     *           .allowHostFileAccess(true)
+     *           .allowHostSocketAccess(true)
+     *           .build();
+     * </code>
+     * </pre>
      *
      * @since 23.0
      */
@@ -80,7 +104,7 @@ public final class IOAccess {
 
     IOAccess(String name, boolean allowHostFileAccess, boolean allowHostSocketAccess, FileSystem fileSystem) {
         if (allowHostFileAccess && fileSystem != null) {
-            throw new IllegalArgumentException("The allow host file access and custom filesystem are mutually exclusive.");
+            throw new IllegalArgumentException("The method IOAccess.Builder.allowHostFileAccess(boolean) and the method IOAccess.Builder.fileSystem(FileSystem) are mutually exclusive.");
         }
         this.name = name;
         this.allowHostFileAccess = allowHostFileAccess;
@@ -211,7 +235,10 @@ public final class IOAccess {
 
         /**
          * Sets a new {@link FileSystem}. Access to the file system in the guest language will be
-         * virtualized using the {@code fileSystem}.
+         * virtualized using the {@code fileSystem}. A file system can restrict access to files or
+         * fully virtualize file system operations. An example of virtualization is a <a href=
+         * "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/MemoryFileSystem.java">memory-based
+         * file system</a>.
          *
          * @param fileSystem the file system to use in the guest language
          * @return the {@link Builder}
