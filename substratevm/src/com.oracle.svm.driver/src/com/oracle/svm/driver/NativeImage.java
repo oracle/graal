@@ -323,7 +323,7 @@ public class NativeImage {
                 }
             }
             Path ljDir = this.rootDir.resolve(Paths.get("lib", "jvmci"));
-            libJvmciDir = Files.exists(ljDir)? ljDir : null;
+            libJvmciDir = Files.exists(ljDir) ? ljDir : null;
         }
 
         /**
