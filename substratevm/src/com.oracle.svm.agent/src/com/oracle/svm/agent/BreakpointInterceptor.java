@@ -1244,6 +1244,10 @@ final class BreakpointInterceptor {
         recursive.set(true);
         try {
             JNIObjectHandle rectifiedThread = rectifyCurrentThread(thread);
+            if (rectifiedThread.equal(nullHandle())) {
+                return;
+            }
+
             Breakpoint bp = installedBreakpoints.get(method.rawValue());
             InterceptedState state = interceptedStateSupplier.get();
             if (bp.specification.handler.dispatch(jni, rectifiedThread, bp, state)) {
@@ -1269,7 +1273,12 @@ final class BreakpointInterceptor {
             return thread;
         }
         WordPointer threadPtr = StackValue.get(WordPointer.class);
-        check(jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr));
+        JvmtiError error = jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr);
+        if (error == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
+            return nullHandle();
+        }
+
+        check(error);
         return threadPtr.read();
     }
 
