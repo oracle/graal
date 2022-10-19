@@ -496,6 +496,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
         throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
     }
+
     private void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
@@ -1041,7 +1042,7 @@ final class DirectMethodHandleEnsureInitializedNode extends FixedWithNextNode {
 
     private final ResolvedJavaType clazz;
 
-    public DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
+    protected DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
         super(TYPE, StampFactory.forVoid());
         this.clazz = clazz;
     }
