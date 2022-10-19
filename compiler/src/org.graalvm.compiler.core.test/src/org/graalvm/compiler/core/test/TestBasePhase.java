@@ -30,8 +30,9 @@ import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.phases.BasePhase;
 
 /**
- * Base class for {@link BasePhase}s used in tests. The {@link BasePhase#notApplicableTo(GraphState)}
- * method of this class always returns {@link Optional#empty}.
+ * Base class for {@link BasePhase}s used in tests. The
+ * {@link BasePhase#notApplicableTo(GraphState)} method of this class always returns
+ * {@link Optional#empty}.
  */
 public abstract class TestBasePhase<C> extends BasePhase<C> {
     @Override
