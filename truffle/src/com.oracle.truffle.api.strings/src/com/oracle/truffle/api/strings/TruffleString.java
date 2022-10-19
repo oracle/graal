@@ -2393,7 +2393,7 @@ public final class TruffleString extends AbstractTruffleString {
          *            {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation
          *            constant}.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public abstract TruffleString execute(AbstractTruffleString a, boolean cacheResult, Encoding expectedEncoding);
 
@@ -2811,7 +2811,7 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Node to get a string's compaction level.
      *
-     * @since 22.3
+     * @since 23.0
      */
     @GeneratePackagePrivate
     @GenerateUncached
@@ -2826,7 +2826,7 @@ public final class TruffleString extends AbstractTruffleString {
          * on {@link Encoding#UTF_16} and {@link Encoding#UTF_32}, this node will return {@code 1}
          * on all other encodings.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public abstract int execute(AbstractTruffleString a, Encoding expectedEncoding);
 
@@ -2846,7 +2846,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Create a new {@link GetStringCompactionLevelNode}.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public static GetStringCompactionLevelNode create() {
             return TruffleStringFactory.GetStringCompactionLevelNodeGen.create();
@@ -2855,7 +2855,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Get the uncached version of {@link GetStringCompactionLevelNode}.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public static GetStringCompactionLevelNode getUncached() {
             return TruffleStringFactory.GetStringCompactionLevelNodeGen.getUncached();
@@ -5767,7 +5767,7 @@ public final class TruffleString extends AbstractTruffleString {
      * Node to convert a potentially {@link #isManaged() managed} {@link TruffleString} to a
      * {@link #isNative() native} string.
      *
-     * @since 22.3
+     * @since 23.0
      */
     @ImportStatic(TStringAccessor.class)
     @GeneratePackagePrivate
@@ -5777,7 +5777,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * An allocation function for native buffers.
          *
-         * @since 22.3
+         * @since 23.0
          */
         @FunctionalInterface
         public interface NativeAllocator {
@@ -5786,7 +5786,7 @@ public final class TruffleString extends AbstractTruffleString {
              * Allocates a new native buffer of {@code byteSize} bytes. The return value must be a
              * Truffle object as expected by {@link FromNativePointerNode}.
              *
-             * @since 22.3
+             * @since 23.0
              */
             Object allocate(int byteSize);
         }
@@ -5820,7 +5820,7 @@ public final class TruffleString extends AbstractTruffleString {
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public abstract TruffleString execute(TruffleString a, NativeAllocator allocator, boolean useCompaction, boolean cacheResult, Encoding expectedEncoding);
 
@@ -5881,7 +5881,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Create a new {@link AsNativeNode}.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public static AsNativeNode create() {
             return TruffleStringFactory.AsNativeNodeGen.create();
@@ -5890,7 +5890,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Get the uncached version of {@link AsNativeNode}.
          *
-         * @since 22.3
+         * @since 23.0
          */
         public static AsNativeNode getUncached() {
             return TruffleStringFactory.AsNativeNodeGen.getUncached();
@@ -5900,7 +5900,7 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link AsNativeNode}.
      *
-     * @since 22.3
+     * @since 23.0
      */
     public TruffleString asNativeUncached(AsNativeNode.NativeAllocator allocator, boolean useCompaction, boolean cacheResult, Encoding expectedEncoding) {
         return AsNativeNode.getUncached().execute(this, allocator, useCompaction, cacheResult, expectedEncoding);

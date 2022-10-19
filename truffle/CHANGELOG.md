@@ -9,6 +9,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-41034 Added `TruffleInstrument.Env.getTruffleFile(TruffleContext, ...)` methods to allow reading a truffle file from a specific context without being entered. Deprecated `TruffleInstrument.Env.getTruffleFile(...)` methods that do not take the `TruffleContext`.
 
+* GR-40274 TruffleStrings: added AsNativeNode and GetStringCompactionLevelNode.
+
 ## Version 22.3.0
 
 * GR-40069 Added additional methods to the static frame API.
@@ -35,7 +37,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 		* `TruffleContext.Builder.allowInheritEnvironmentAccess(boolean)` 
 		* `TruffleContext.Builder.allowInnerContextOptions(boolean)` 
 * GR-40163 Added `TruffleContext.initializePublic(Node, String)` and `TruffleContext.initializeInternal(Node, String)` to initialize a public or internal language of an inner context.
-* GR-40274 TruffleStrings: added AsNativeNode and GetStringCompactionLevelNode.
 * GR-39354 TruffleStrings: added ErrorHandling parameter to CreateForwardIteratorNode and CreateBackwardIteratorNode.
 * GR-40062 `String.indexOf` methods are no longer considered PE safe and using them will now fail the native-image block list check. Use `TruffleString` instead or put them behind a `@TruffleBoundary`.
 * GR-39354 TruffleStrings: added ErrorHandling parameter to ByteLengthOfCodePointNode, CodePointAtIndexNode and CodePointAtByteIndexNode.
