@@ -80,7 +80,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 
@@ -209,7 +209,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         }
 
         @Override
-        public Optional<NotApplicable> canApply(GraphState graphState) {
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;
         }
 

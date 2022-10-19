@@ -131,7 +131,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
     public static final CounterKey earlyGVNAbort = DebugContext.counter("EarlyGVN_AbortProxy");
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

@@ -93,12 +93,12 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(),
-                                        java.util.Optional.of(new NotApplicable("This phase creates guard nodes, i.e., the graph must allow guard insertion."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtDeopts(),
+                                        "This phase creates guard nodes, i.e., the graph must allow guard insertion"));
     }
 
     @Override

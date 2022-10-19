@@ -42,7 +42,7 @@ import org.graalvm.compiler.phases.Phase;
 public class NonNullParametersPhase extends Phase {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

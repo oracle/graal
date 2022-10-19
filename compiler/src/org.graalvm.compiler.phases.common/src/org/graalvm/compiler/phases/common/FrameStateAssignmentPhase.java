@@ -134,11 +134,11 @@ public class FrameStateAssignmentPhase extends Phase {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FSA, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards should not be allowed."))),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This phase must run before FSA."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.FSA, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards should not be allowed."),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtDeopts(), "This phase must run before FSA"));
     }
 
     @Override
