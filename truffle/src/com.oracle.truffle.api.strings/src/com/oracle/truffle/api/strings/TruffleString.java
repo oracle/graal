@@ -4643,7 +4643,11 @@ public final class TruffleString extends AbstractTruffleString {
             int length = addByteLengths(a, b, targetStride, outOfMemoryProfile);
             boolean valid = !isBrokenMultiByte(commonCodeRange);
             if (lazyProfile.profile(lazy && valid && (a.isImmutable() || b.isImmutable()) && (length << targetStride) >= TStringConstants.LAZY_CONCAT_MIN_LENGTH)) {
-                return TruffleString.createLazyConcat(asTruffleStringANode.execute(a, encoding), asTruffleStringBNode.execute(b, encoding), encoding, length, targetStride);
+                if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
+                    return TruffleString.createLazyConcat(asTruffleStringLoose(a, encoding), asTruffleStringLoose(b, encoding), encoding, length, targetStride);
+                } else {
+                    return TruffleString.createLazyConcat(asTruffleStringANode.execute(a, encoding), asTruffleStringBNode.execute(b, encoding), encoding, length, targetStride);
+                }
             }
             return concatEagerNode.execute(a, b, encoding, length, targetStride, commonCodeRange);
         }
@@ -4655,6 +4659,13 @@ public final class TruffleString extends AbstractTruffleString {
                 throw InternalErrors.outOfMemory();
             }
             return (int) length;
+        }
+
+        private static TruffleString asTruffleStringLoose(AbstractTruffleString a, Encoding encoding) {
+            if (a.isImmutable()) {
+                return (TruffleString) a;
+            }
+            return TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode.getUncached().execute(a, encoding);
         }
 
         /**
