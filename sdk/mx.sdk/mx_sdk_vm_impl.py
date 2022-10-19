@@ -2226,6 +2226,9 @@ class JmodModifierBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
         """
         super(JmodModifierBuildTask, self).__init__(args, min(8, mx.cpu_count()), subject)
 
+    def newestOutput(self):
+        return mx.TimeStampFile(self.subject.output_file())
+
     def needsBuild(self, newestInput):
         sup = super(JmodModifierBuildTask, self).needsBuild(newestInput)
         if sup[0]:
