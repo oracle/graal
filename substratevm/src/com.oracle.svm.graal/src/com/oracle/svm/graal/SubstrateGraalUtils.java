@@ -62,12 +62,12 @@ public class SubstrateGraalUtils {
 
     /** Does the compilation of the method and returns the compilation result. */
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
-        return doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), method);
+        return doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getLIRSuites(), method);
     }
 
     private static final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
-    public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SubstrateMethod method) {
+    public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, final SubstrateMethod method) {
         updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
 
         String methodString = method.format("%H.%n(%p)");
@@ -87,7 +87,7 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
                 StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
-                return compileGraph(runtimeConfig, suites, lirSuites, method, graph);
+                return compileGraph(runtimeConfig, GraalSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
             }
 
             @Override
@@ -135,7 +135,7 @@ public class SubstrateGraalUtils {
     }
 
     public static CompilationResult compileGraph(final SharedMethod method, final StructuredGraph graph) {
-        return compileGraph(GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), method, graph);
+        return compileGraph(GraalSupport.getRuntimeConfig(), GraalSupport.getMatchingSuitesForGraph(graph), GraalSupport.getLIRSuites(), method, graph);
     }
 
     public static class Options {
@@ -146,7 +146,6 @@ public class SubstrateGraalUtils {
     @SuppressWarnings("try")
     private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
-
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {
             /*
              * forceDump is often used during debugging, and we want to make sure that it keeps

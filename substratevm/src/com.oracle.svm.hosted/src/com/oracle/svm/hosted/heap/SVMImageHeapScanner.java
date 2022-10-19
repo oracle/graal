@@ -31,13 +31,14 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.ImageHeap;
-import com.oracle.graal.pointsto.heap.ImageHeapObject;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -90,8 +91,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected ImageHeapObject getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        VMError.guarantee(javaConstant instanceof SubstrateObjectConstant, "Not a substrate constant " + javaConstant);
+    protected ImageHeapConstant getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+        VMError.guarantee(javaConstant instanceof TypedConstant, "Not a substrate constant " + javaConstant);
         return super.getOrCreateConstantReachableTask(javaConstant, reason, onAnalysisModified);
     }
 
@@ -124,7 +125,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     protected JavaConstant transformFieldValue(AnalysisField field, JavaConstant receiverConstant, JavaConstant originalValueConstant) {
-        return ((AnalysisConstantReflectionProvider) constantReflection).interceptValue(field, originalValueConstant);
+        return ((AnalysisConstantReflectionProvider) constantReflection).interceptValue(metaAccess, field, originalValueConstant);
     }
 
     @Override
@@ -144,14 +145,13 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected void onObjectReachable(ImageHeapObject imageHeapObject) {
-        super.onObjectReachable(imageHeapObject);
+    protected void onObjectReachable(ImageHeapConstant imageHeapConstant) {
+        super.onObjectReachable(imageHeapConstant);
 
-        Object object = SubstrateObjectConstant.asObject(imageHeapObject.getObject());
-        if (object instanceof Field || object instanceof Executable) {
-            reflectionSupport.registerHeapReflectionObject((AccessibleObject) object);
-        } else if (object instanceof DynamicHub) {
-            reflectionSupport.registerHeapDynamicHub(object);
+        if (metaAccess.isInstanceOf(imageHeapConstant, Field.class) || metaAccess.isInstanceOf(imageHeapConstant, Executable.class)) {
+            reflectionSupport.registerHeapReflectionObject((AccessibleObject) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()));
+        } else if (metaAccess.isInstanceOf(imageHeapConstant, DynamicHub.class)) {
+            reflectionSupport.registerHeapDynamicHub(SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()));
         }
     }
 }

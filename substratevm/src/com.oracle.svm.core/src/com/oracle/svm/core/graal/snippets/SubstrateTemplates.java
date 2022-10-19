@@ -112,7 +112,7 @@ public class SubstrateTemplates extends AbstractTemplates {
         if (object instanceof LocationIdentity) {
             location = (LocationIdentity) object;
         } else if (object instanceof Field) {
-            location = new SubstrateFieldLocationIdentity(metaAccess.lookupJavaField((Field) object));
+            location = new SubstrateFieldLocationIdentity(metaAccess.lookupJavaField((Field) object), false);
         } else {
             throw VMError.shouldNotReachHere("Cannot convert to LocationIdentity: " + object.getClass().getName());
         }

@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -35,6 +36,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -47,6 +50,13 @@ import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBufferAccess;
+import com.oracle.svm.core.sampler.SamplerSampleWriter;
+import com.oracle.svm.core.sampler.SamplerSampleWriterData;
+import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
+import com.oracle.svm.core.sampler.SamplerThreadLocal;
+import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaStackWalker;
 
 /**
  * Repository that collects all metadata about stacktraces.
@@ -88,14 +98,40 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         epochData1.teardown();
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    public long getStackTraceId(@SuppressWarnings("unused") int skipCount) {
+    @NeverInline("Starting a stack walk in the caller frame.")
+    @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
+    public long getStackTraceId(int skipCount) {
         assert maxDepth >= 0;
-        return 0;
+        long stackTraceId = 0;
+
+        /* Initialize stack walk. */
+        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
+        SamplerThreadLocal.setSignalHandlerLocallyDisabled(true);
+        if (SamplerSampleWriterDataAccess.initialize(data, skipCount, maxDepth)) {
+            SamplerSampleWriter.begin(data);
+            /* Walk the stack. */
+            Pointer sp = KnownIntrinsics.readCallerStackPointer();
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(sp);
+            if (JavaStackWalker.walkCurrentThread(sp, ip, SubstrateSigprofHandler.visitor()) || data.getTruncated()) {
+                acquireLock();
+                try {
+                    CIntPointer status = StackValue.get(CIntPointer.class);
+                    Pointer start = data.getStartPos().add(SamplerSampleWriter.getHeaderSize());
+                    stackTraceId = getStackTraceId(start, data.getCurrentPos(), data.getHashCode(), status, false);
+                    if (JfrStackTraceTableEntryStatus.get(status, JfrStackTraceTableEntryStatus.NEW)) {
+                        SamplerSampleWriter.end(data);
+                    }
+                } finally {
+                    releaseLock();
+                }
+            }
+        }
+        SamplerThreadLocal.setSignalHandlerLocallyDisabled(false);
+        return stackTraceId;
     }
 
     @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
-    public long getStackTraceId(Pointer start, Pointer end, int hashCode, CIntPointer isRecorded) {
+    public long getStackTraceId(Pointer start, Pointer end, int hashCode, CIntPointer status, boolean isSerializationInProgress) {
         JfrStackTraceEpochData epochData = getEpochData(false);
         JfrStackTraceTableEntry entry = StackValue.get(JfrStackTraceTableEntry.class);
 
@@ -107,7 +143,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
         JfrStackTraceTableEntry result = (JfrStackTraceTableEntry) epochData.visitedStackTraces.get(entry);
         if (result.isNonNull()) {
-            isRecorded.write(1);
+            JfrStackTraceTableEntryStatus.update(result, status, false, result.getSerialized(), isSerializationInProgress);
             return result.getId();
         } else {
             /* Replace the previous pointer with new one (entry size and hash remains the same). */
@@ -118,7 +154,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
             UnmanagedMemoryUtil.copy(start, to, size);
 
             JfrStackTraceTableEntry newEntry = (JfrStackTraceTableEntry) epochData.visitedStackTraces.getOrPut(entry);
-            isRecorded.write(0);
+            JfrStackTraceTableEntryStatus.update(newEntry, status, true, false, isSerializationInProgress);
             return newEntry.getId();
         }
     }
@@ -141,6 +177,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         /* Stacktrace size. */
         JfrNativeEventWriter.putInt(data, stackTraceLength);
 
+        epochData.numberOfSerializedStackTraces++;
         JfrNativeEventWriter.commit(data);
 
         /*
@@ -195,13 +232,12 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     }
 
     private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData) {
-        int stackTraceCount = epochData.visitedStackTraces.getSize();
-        if (stackTraceCount == 0) {
+        if (epochData.numberOfSerializedStackTraces == 0) {
             return EMPTY;
         }
 
         writer.writeCompressedLong(JfrType.StackTrace.getId());
-        writer.writeCompressedInt(stackTraceCount);
+        writer.writeCompressedInt(epochData.numberOfSerializedStackTraces);
         writer.write(epochData.stackTraceBuffer);
 
         return NON_EMPTY;
@@ -226,6 +262,12 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
         @RawField
         void setSize(int size);
+
+        @RawField
+        boolean getSerialized();
+
+        @RawField
+        void setSerialized(boolean serialized);
     }
 
     public static final class JfrStackTraceTable extends AbstractUninterruptibleHashtable {
@@ -254,8 +296,31 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         }
     }
 
+    public static class JfrStackTraceTableEntryStatus {
+        public static final int NEW = 1;
+        public static final int SHOULD_SERIALIZE = NEW << 1;
+        public static final int SERIALIZED = SHOULD_SERIALIZE << 1;
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void update(JfrStackTraceTableEntry entry, CIntPointer status, boolean setNew, boolean isAlreadySerialized, boolean isSerializationInProgress) {
+            int isRecorded = setNew ? NEW : 0;
+            int shouldSerialize = !isAlreadySerialized ? SHOULD_SERIALIZE : 0;
+            int isSerialized = isAlreadySerialized ? SERIALIZED : 0;
+            status.write(isRecorded | shouldSerialize | isSerialized);
+            if (!entry.getSerialized() && isSerializationInProgress) {
+                entry.setSerialized(true);
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean get(CIntPointer status, int check) {
+            return (status.read() & check) != 0;
+        }
+    }
+
     private static class JfrStackTraceEpochData {
         private JfrBuffer stackTraceBuffer;
+        private int numberOfSerializedStackTraces;
         private final JfrStackTraceTable visitedStackTraces;
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -265,6 +330,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
         void clear() {
             visitedStackTraces.clear();
+            numberOfSerializedStackTraces = 0;
             if (stackTraceBuffer.isNonNull()) {
                 JfrBufferAccess.reinitialize(stackTraceBuffer);
             }

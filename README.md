@@ -8,7 +8,7 @@ The project website at [https://www.graalvm.org/][website] describes how to [get
 
 ## Documentation
 
-Please refer to the [GraalVM website for documentation][docs]. You can find most of the documentation sources in the [`docs/`](docs/) directory in the same hierarchy as displayed on the website. Additional documentation including developer instructions for individual components can be found in corresponding `docs/` sub-directories. The documentation for the Truffle framework, for example, is in [`truffle/docs/`](truffle/docs/). This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
+Please refer to the [GraalVM website for documentation][docs]. You can find most of the documentation sources in the [_docs/_](docs/) directory in the same hierarchy as displayed on the website. Additional documentation including developer instructions for individual components can be found in corresponding _docs/_ sub-directories. The documentation for the Truffle framework, for example, is in [_truffle/docs/_](truffle/docs/). This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
 
 ## Get Support
 
@@ -44,7 +44,7 @@ Name         | Description
 ------------ | -------------
 [FastR] | Implementation of the R language.
 [GraalJS] | Implementation of JavaScript and Node.js.
-[GraalPython] | Implementation of the Python language.
+[GraalPy] | Implementation of the Python language.
 [GraalVM Demos][graalvm-demos] | Several example applications illustrating GraalVM capabilities.
 [Native Build Tools][native-build-tools] | Build tool plugins for GraalVM Native Image.
 [SimpleLanguage] | A simple example language built with the Truffle framework.
@@ -73,13 +73,13 @@ Component(s) | License
 [badge-yt]: https://img.shields.io/badge/YouTube-subscribe-active?logo=youtube
 [community]: https://www.graalvm.org/community/
 [contributors]: https://www.graalvm.org/community/contributors/
-[docs]: https://www.graalvm.org/docs/introduction/
+[docs]: https://www.graalvm.org/docs/
 [downloads]: https://www.graalvm.org/downloads/
 [fastr]: https://github.com/oracle/fastr
 [gate]: https://github.com/oracle/graal/actions/workflows/main.yml
 [getting-started]: https://www.graalvm.org/docs/getting-started/
 [graaljs]: https://github.com/oracle/graaljs
-[graalpython]: https://github.com/oracle/graalpython
+[graalpy]: https://github.com/oracle/graalpython
 [graalvm-demos]: https://github.com/graalvm/graalvm-demos
 [graalvm-sdk]: https://www.graalvm.org/sdk/javadoc/
 [issues]: https://github.com/oracle/graal/issues

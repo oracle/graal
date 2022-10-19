@@ -36,10 +36,12 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -52,6 +54,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
@@ -75,23 +78,29 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
-                if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
-                    /*
-                     * Constants that are embedded into graphs via constant folding of static fields
-                     * have already been replaced. But constants embedded manually by graph builder
-                     * plugins, or class constants that come directly from constant bytecodes, are
-                     * not replaced. We verify here that the object replacer would not replace such
-                     * objects.
-                     *
-                     * But more importantly, some object replacers also perform actions like forcing
-                     * eager initialization of fields. We need to make sure that these object
-                     * replacers really see all objects that are embedded into compiled code.
-                     */
-                    Object value = SubstrateObjectConstant.asObject(cn.asJavaConstant());
-                    Object replaced = bb.getUniverse().replaceObject(value);
-                    if (value != replaced) {
-                        throw GraalError.shouldNotReachHere("Missed object replacement during graph building: " +
-                                        value + " (" + value.getClass() + ") != " + replaced + " (" + replaced.getClass() + ")");
+                JavaConstant constant = cn.asJavaConstant();
+                if (cn.hasUsages() && cn.isJavaConstant() && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+                    if (constant instanceof ImageHeapConstant) {
+                        /* No replacement for ImageHeapObject. */
+                    } else {
+                        /*
+                         * Constants that are embedded into graphs via constant folding of static
+                         * fields have already been replaced. But constants embedded manually by
+                         * graph builder plugins, or class constants that come directly from
+                         * constant bytecodes, are not replaced. We verify here that the object
+                         * replacer would not replace such objects.
+                         *
+                         * But more importantly, some object replacers also perform actions like
+                         * forcing eager initialization of fields. We need to make sure that these
+                         * object replacers really see all objects that are embedded into compiled
+                         * code.
+                         */
+                        Object value = SubstrateObjectConstant.asObject(constant);
+                        Object replaced = bb.getUniverse().replaceObject(value);
+                        if (value != replaced) {
+                            throw GraalError.shouldNotReachHere("Missed object replacement during graph building: " +
+                                            value + " (" + value.getClass() + ") != " + replaced + " (" + replaced.getClass() + ")");
+                        }
                     }
                 }
             }
@@ -138,7 +147,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * if it was properly intercepted or not is LoadFieldNode.
          */
 
-        BytecodePosition pos = sourcePosition(offsetNode);
+        BytecodePosition pos = AbstractAnalysisEngine.sourcePosition(offsetNode);
         if (offsetNode instanceof LoadFieldNode) {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
@@ -148,17 +157,13 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
                 String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);
-                if (pos != null) {
-                    message += String.format("%n Location: %s", pos);
-                }
+                message += String.format("%n Location: %s", pos);
                 UnsafeOffsetError.report(message);
             }
         } else if (NativeImageOptions.ReportUnsafeOffsetWarnings.getValue()) {
             String message = "Offset used in an unsafe operation. Cannot determine if the offset value is recomputed.";
             message += String.format("%nNode class: %s", offsetNode.getClass().getName());
-            if (pos != null) {
-                message += String.format("%n Location: %s", pos);
-            }
+            message += String.format("%n Location: %s", pos);
             if (NativeImageOptions.UnsafeOffsetWarningsAreFatal.getValue()) {
                 UnsafeOffsetError.report(message);
             } else {
@@ -197,7 +202,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             AnalysisType valueType = (AnalysisType) (valueStamp.type() == null ? bb.getObjectType() : valueStamp.type());
 
             TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, TypeFlow.class, () -> {
-                TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(storeNode), valueType.getTypeFlow(bb, false));
+                TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(storeNode), valueType.getTypeFlow(bb, false));
                 flowsGraph.addMiscEntryFlow(proxy);
                 return proxy;
             });

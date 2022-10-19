@@ -289,14 +289,8 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      */
     public static boolean isEmptyObjectArrayConstant(PointsToAnalysis bb, JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object;
-        Object valueObj = bb.getProviders().getSnippetReflection().asObject(Object.class, constant);
-        if (valueObj instanceof Object[]) {
-            Object[] arrayValueObj = (Object[]) valueObj;
-            if (arrayValueObj.length == 0) {
-                return true;
-            }
-        }
-        return false;
+        Integer length = bb.getConstantReflectionProvider().readArrayLength(constant);
+        return length != null && length == 0;
     }
 
     @Override

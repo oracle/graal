@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.5.5",
+  "mxversion" : "6.8.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -432,6 +432,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_LIBGRAAL_PROCESSOR",
       ],
+      "jacoco" : "exclude", # GR-13965
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "workingSets" : "API,Graal",
@@ -1771,6 +1772,7 @@ suite = {
           "jdk.vm.ci.runtime",
         ],
       },
+      "jacoco" : "exclude", # GR-13965
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "annotationProcessors" : [

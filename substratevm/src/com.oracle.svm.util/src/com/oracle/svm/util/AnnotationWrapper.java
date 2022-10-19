@@ -31,6 +31,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
+
+// Checkstyle: allow direct annotation access
+
 public interface AnnotationWrapper extends AnnotatedElement {
     AnnotatedElement getAnnotationRoot();
 
@@ -63,12 +70,12 @@ public interface AnnotationWrapper extends AnnotatedElement {
             }
         }
         if (getAnnotationRoot() != null) {
-            if (GuardedAnnotationAccess.isAnnotationPresent(getAnnotationRoot(), annotationClass)) {
+            if (AnnotationAccess.isAnnotationPresent(getAnnotationRoot(), annotationClass)) {
                 return true;
             }
         }
         if (getSecondaryAnnotationRoot() != null) {
-            return GuardedAnnotationAccess.isAnnotationPresent(getSecondaryAnnotationRoot(), annotationClass);
+            return AnnotationAccess.isAnnotationPresent(getSecondaryAnnotationRoot(), annotationClass);
         }
         return false;
     }
@@ -90,24 +97,39 @@ public interface AnnotationWrapper extends AnnotatedElement {
             annotations.addAll(Arrays.asList(element.getInjectedAnnotations()));
         }
         if (element.getAnnotationRoot() != null) {
-            Annotation[] rootAnnotations = declaredOnly ? GuardedAnnotationAccess.getDeclaredAnnotations(element.getAnnotationRoot())
-                            : GuardedAnnotationAccess.getAnnotations(element.getAnnotationRoot());
-            for (Annotation rootAnnotation : rootAnnotations) {
+            for (Annotation rootAnnotation : getRootAnnotations(element.getAnnotationRoot(), declaredOnly)) {
                 if (!ignoredAnnotations.contains(rootAnnotation.annotationType())) {
                     annotations.add(rootAnnotation);
                 }
             }
         }
         if (element.getSecondaryAnnotationRoot() != null) {
-            Annotation[] secondaryRootAnnotations = declaredOnly ? GuardedAnnotationAccess.getDeclaredAnnotations(element.getSecondaryAnnotationRoot())
-                            : GuardedAnnotationAccess.getAnnotations(element.getSecondaryAnnotationRoot());
-            for (Annotation secondaryRootAnnotation : secondaryRootAnnotations) {
+            for (Annotation secondaryRootAnnotation : getRootAnnotations(element.getSecondaryAnnotationRoot(), declaredOnly)) {
                 if (!ignoredAnnotations.contains(secondaryRootAnnotation.annotationType())) {
                     annotations.add(secondaryRootAnnotation);
                 }
             }
         }
         return annotations.toArray(new Annotation[0]);
+    }
+
+    private static Annotation[] getRootAnnotations(AnnotatedElement annotationRoot, boolean declaredOnly) {
+        try {
+            if (declaredOnly) {
+                return annotationRoot.getDeclaredAnnotations();
+            } else {
+                return annotationRoot.getAnnotations();
+            }
+        } catch (LinkageError e) {
+            /*
+             * Returning an empty array essentially means that the element doesn't declare any
+             * annotations, but we know that it is not true since the reason the annotation parsing
+             * failed is because some annotation referenced a missing class. However, this allows us
+             * to defend against crashing the image builder if the user code references types
+             * missing from the classpath.
+             */
+            return new Annotation[0];
+        }
     }
 
     @Override
@@ -136,16 +158,26 @@ public interface AnnotationWrapper extends AnnotatedElement {
             }
         }
         if (element.getAnnotationRoot() != null) {
-            T rootAnnotation = declaredOnly ? GuardedAnnotationAccess.getDeclaredAnnotation(element.getAnnotationRoot(), annotationClass)
-                            : GuardedAnnotationAccess.getAnnotation(element.getAnnotationRoot(), annotationClass);
+            T rootAnnotation = getRootAnnotation(element.getAnnotationRoot(), annotationClass, declaredOnly);
             if (rootAnnotation != null) {
                 return rootAnnotation;
             }
         }
         if (element.getSecondaryAnnotationRoot() != null) {
-            return declaredOnly ? GuardedAnnotationAccess.getDeclaredAnnotation(element.getSecondaryAnnotationRoot(), annotationClass)
-                            : GuardedAnnotationAccess.getAnnotation(element.getSecondaryAnnotationRoot(), annotationClass);
+            return getRootAnnotation(element.getSecondaryAnnotationRoot(), annotationClass, declaredOnly);
         }
         return null;
+    }
+
+    private static <T extends Annotation> T getRootAnnotation(AnnotatedElement annotationRoot, Class<T> annotationClass, boolean declaredOnly) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(annotationRoot, annotationClass, declaredOnly);
+        } else {
+            if (declaredOnly) {
+                return annotationRoot.getDeclaredAnnotation(annotationClass);
+            } else {
+                return annotationRoot.getAnnotation(annotationClass);
+            }
+        }
     }
 }

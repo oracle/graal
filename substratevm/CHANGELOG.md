@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## Version 23.0.0
+* (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, -H:+TolerateBuilderClassesOnImageClasspath allows turning the error into a warning.
+
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
 * (GR-39390) (GR-39649) (GR-40033) Red Hat added support for the JFR events `JavaMonitorEnter`, `JavaMonitorWait`, and `ThreadSleep`.

@@ -30,8 +30,10 @@ import java.lang.reflect.Field;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -152,9 +154,14 @@ public class HostedField implements OriginalFieldProvider, SharedField, WrappedJ
 
     public JavaConstant readValue(JavaConstant receiver) {
         JavaConstant wrappedReceiver;
-        if (receiver != null && SubstrateObjectConstant.asObject(receiver) instanceof Class) {
-            /* Manual object replacement from java.lang.Class to DynamicHub. */
-            wrappedReceiver = SubstrateObjectConstant.forObject(metaAccess.lookupJavaType((Class<?>) SubstrateObjectConstant.asObject(receiver)).getHub());
+        if (metaAccess.isInstanceOf(receiver, Class.class)) {
+            Object classObject = SubstrateObjectConstant.asObject(receiver);
+            if (classObject instanceof Class) {
+                throw VMError.shouldNotReachHere("Receiver " + receiver + " of field " + this + " read should not be java.lang.Class. Expecting to see DynamicHub here.");
+            } else {
+                VMError.guarantee(classObject instanceof DynamicHub);
+                wrappedReceiver = receiver;
+            }
         } else {
             wrappedReceiver = receiver;
         }

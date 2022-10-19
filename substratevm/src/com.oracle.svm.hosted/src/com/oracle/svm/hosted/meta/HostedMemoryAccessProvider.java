@@ -98,7 +98,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         if (base.getJavaKind() != JavaKind.Object) {
             return null;
         }
-        HostedType type = (HostedType) metaAccess.lookupJavaType(base);
+        HostedType type = metaAccess.lookupJavaType(base);
         HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
         if (field == null) {
             return null;

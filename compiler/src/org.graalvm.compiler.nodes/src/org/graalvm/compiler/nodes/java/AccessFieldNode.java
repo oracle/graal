@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -68,12 +67,14 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @param memoryOrder specifies the memory ordering requirements of the access. This overrides
      *            the field volatile modifier.
      */
-    public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder) {
+    public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder, boolean immutable) {
         super(c, stamp);
+        assert !immutable || field.isFinal() : "immutable fields must also be final";
+        assert !immutable || !field.isStatic() : "immutable fields must also be non-static";
         this.object = object;
         this.field = field;
         this.memoryOrder = memoryOrder;
-        this.location = new FieldLocationIdentity(field);
+        this.location = new FieldLocationIdentity(field, immutable);
     }
 
     /**
@@ -83,11 +84,11 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @param field the compiler interface representation of the field
      */
     public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
-        this(c, stamp, object, field, MemoryOrderMode.getMemoryOrder(field));
+        this(c, stamp, object, field, MemoryOrderMode.getMemoryOrder(field), false);
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public FieldLocationIdentity getLocationIdentity() {
         return location;
     }
 
@@ -120,7 +121,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @Override
     public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Name) {
+        if (verbosity == Verbosity.Name && field != null) {
             return super.toString(verbosity) + "#" + field.getName();
         } else {
             return super.toString(verbosity);

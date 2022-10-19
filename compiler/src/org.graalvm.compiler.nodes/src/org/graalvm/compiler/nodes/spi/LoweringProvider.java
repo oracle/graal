@@ -90,8 +90,8 @@ public interface LoweringProvider {
 
     /**
      * Indicates whether the target platform complies with the JVM specification semantics for
-     * {@code idiv} and {@code ldiv} when the dividend is {@link Integer#MAX_VALUE} or
-     * {@link Long#MAX_VALUE} respectively and the divisor is {@code -1}. The specified result for
+     * {@code idiv} and {@code ldiv} when the dividend is {@link Integer#MIN_VALUE} or
+     * {@link Long#MIN_VALUE} respectively and the divisor is {@code -1}. The specified result for
      * this case is the dividend.
      */
     boolean divisionOverflowIsJVMSCompliant();

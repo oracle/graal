@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -227,7 +228,7 @@ public class AnalysisToHostedGraphTransplanter {
         } else if (obj instanceof FieldLocationIdentity) {
             ResolvedJavaField inner = ((FieldLocationIdentity) obj).getField();
             assert inner instanceof AnalysisField;
-            newReplacement = new SubstrateFieldLocationIdentity((ResolvedJavaField) replaceAnalysisObjects(inner, node, replacements, hUniverse));
+            newReplacement = new SubstrateFieldLocationIdentity((ResolvedJavaField) replaceAnalysisObjects(inner, node, replacements, hUniverse), ((FieldLocationIdentity) obj).isImmutable());
         } else if (obj.getClass() == ObjectStamp.class) {
             ObjectStamp stamp = (ObjectStamp) obj;
             if (stamp.type() == null) {
@@ -316,6 +317,11 @@ public class AnalysisToHostedGraphTransplanter {
         } else if (obj.getClass() == SnippetTemplate.EagerSnippetInfo.class) {
             SnippetTemplate.EagerSnippetInfo info = (SnippetTemplate.EagerSnippetInfo) obj;
             newReplacement = info.copyWith((ResolvedJavaMethod) replaceAnalysisObjects(info.getMethod(), node, replacements, hUniverse));
+        } else if (obj instanceof ImageHeapConstant) {
+            ImageHeapConstant imageObj = (ImageHeapConstant) obj;
+            ResolvedJavaType type = imageObj.getType(null);
+            imageObj.setType(type instanceof AnalysisType ? hUniverse.lookup(type) : type);
+            newReplacement = imageObj;
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;

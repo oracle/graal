@@ -57,10 +57,12 @@ import java.util.StringJoiner;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -86,7 +88,6 @@ import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -168,7 +169,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * field is final, so that various methods are constant folded for constant classes already
      * before the static analysis.
      */
-    private final byte flags;
+    private final short flags;
 
     /** Is this a primitive type. */
     private static final int IS_PRIMITIVE_FLAG_BIT = 0;
@@ -194,6 +195,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
     /** Is this a Sealed Class. */
     private static final int IS_SEALED_FLAG_BIT = 7;
+    /** Is this a VM-internal class that should be hidden from stack traces. */
+    private static final int IS_VM_INTERNAL_FLAG_BIT = 8;
+    /**
+     * Is this a lambda form hidden class that should be hidden from stack traces in some
+     * circumstances.
+     */
+    private static final int IS_LAMBDA_FORM_HIDDEN_BIT = 9;
 
     private byte instantiationFlags;
 
@@ -334,9 +342,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @UnknownObjectField(types = ReflectionMetadata.class, canBeNull = true) private ReflectionMetadata reflectionMetadata;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub,
-                    String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
-                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed, String simpleBinaryName, Object declaringClass) {
+    public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
+                    ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType;
@@ -349,14 +357,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
 
-        this.flags = NumUtil.safeToUByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
+        this.flags = NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
                         makeFlag(IS_HIDDEN_FLAG_BIT, isHidden) |
                         makeFlag(IS_RECORD_FLAG_BIT, isRecord) |
                         makeFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus) |
                         makeFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods) |
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
-                        makeFlag(IS_SEALED_FLAG_BIT, isSealed));
+                        makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
+                        makeFlag(IS_VM_INTERNAL_FLAG_BIT, isVMInternal) |
+                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden));
 
         this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
     }
@@ -369,6 +379,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isFlagSet(byte flags, int flagBit) {
+        int flagMask = 1 << flagBit;
+        return (flags & flagMask) != 0;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean isFlagSet(short flags, int flagBit) {
         int flagMask = 1 << flagBit;
         return (flags & flagMask) != 0;
     }
@@ -781,6 +797,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isFlagSet(flags, IS_SEALED_FLAG_BIT);
     }
 
+    public boolean isVMInternal() {
+        return isFlagSet(flags, IS_VM_INTERNAL_FLAG_BIT);
+    }
+
+    public boolean isLambdaFormHidden() {
+        return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
+    }
+
     @KeepOriginal
     private native boolean isLocalClass();
 
@@ -849,7 +873,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
          */
         T[] result = getDeclaredAnnotationsByType(annotationClass);
 
-        if (result.length == 0 && DirectAnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
+        if (result.length == 0 && AnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
             DynamicHub superClass = (DynamicHub) this.getSuperclass();
             if (superClass != null) {
                 /* Determine if the annotation is associated with the superclass. */
@@ -1080,12 +1104,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public static Class<?> forName(String className) throws Throwable {
         Class<?> caller = Reflection.getCallerClass();
         return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and

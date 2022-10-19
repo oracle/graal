@@ -29,15 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.nodes;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Objects;
-
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
@@ -108,6 +99,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.InitAggr
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.LocalVarDebugInfo;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.SetLocalVariablePart;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.SimpleLocalVariable;
+import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation.UnavailableLocalVariable;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -128,8 +120,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchPadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCleanupPadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode.CatchPadEntryNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCleanupPadNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssume;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
@@ -145,6 +137,15 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Objects;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -588,9 +589,12 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         if (clearParts != null && clearParts.length != 0) {
             debugInfo.add(new ClearLocalVariableParts(instructionNodes.size(), variable.getSymbol(), clearParts));
         }
-
         if (partIndex < 0 && clearParts == null) {
-            debugInfo.add(new SimpleLocalVariable(instructionNodes.size(), mustDereference, valueObject, valueFrameSlot, variable.getSymbol()));
+            if (value instanceof UndefinedConstant && expression.isOperandEmpty()) {
+                debugInfo.add(new UnavailableLocalVariable(instructionNodes.size(), variable.getSymbol()));
+            } else {
+                debugInfo.add(new SimpleLocalVariable(instructionNodes.size(), mustDereference, valueObject, valueFrameSlot, variable.getSymbol()));
+            }
         } else if (partIndex >= 0) {
             debugInfo.add(new SetLocalVariablePart(instructionNodes.size(), mustDereference, valueObject, valueFrameSlot, variable.getSymbol(), partIndex));
         }

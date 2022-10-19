@@ -42,7 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Type;
 import java.util.AbstractList;
-import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
@@ -90,7 +89,7 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
     }
 
     @TruffleBoundary
-    public static <T> List<T> create(PolyglotLanguageContext languageContext, Object array, boolean implementFunction, Class<T> elementClass, Type elementType) {
+    public static <T> PolyglotList<T> create(PolyglotLanguageContext languageContext, Object array, boolean implementFunction, Class<T> elementClass, Type elementType) {
         if (implementFunction) {
             return new PolyglotListAndFunction<>(elementClass, elementType, array, languageContext);
         } else {

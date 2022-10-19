@@ -208,6 +208,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndExit;
                     break;
                 case "-showversion":
+                case "--show-version":
                     versionAction = VersionAction.PrintAndContinue;
                     break;
 
@@ -583,6 +584,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         options.add("-classpath");
         options.add("-version");
         options.add("-showversion");
+        options.add("--show-version");
         options.add("-ea");
         options.add("-enableassertions");
         options.add("-esa");

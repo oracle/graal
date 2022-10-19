@@ -32,8 +32,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 
 /**
  * An uninterruptible hashtable with a fixed size that uses chaining in case of a collision.
@@ -76,6 +76,7 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void free(UninterruptibleEntry entry) {
+        size--;
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(entry);
     }
 
@@ -158,7 +159,7 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
             }
             table[i] = WordFactory.nullPointer();
         }
-        size = 0;
+        assert size == 0 : "The table is not empty!";
     }
 
     @Override

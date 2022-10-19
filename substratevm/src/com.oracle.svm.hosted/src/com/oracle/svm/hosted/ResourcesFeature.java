@@ -28,6 +28,7 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.FileSystem;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,6 +36,10 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -207,15 +212,57 @@ public final class ResourcesFeature implements InternalFeature {
         private final ResourcePattern[] excludePatterns;
         private final Set<String> includedResourcesModules;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<String> includedResourcesModules) {
+        private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
+        private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
+        private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
+        private final Runnable heartbeatCallback;
+        private final LongAdder reachedResourceEntries;
+        private boolean initialReport;
+        private volatile String currentlyProcessedEntry;
+        ScheduledExecutorService scheduledExecutor;
+
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<String> includedResourcesModules,
+                        Runnable heartbeatCallback) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
             this.includedResourcesModules = includedResourcesModules;
+
+            this.heartbeatCallback = heartbeatCallback;
+            this.reachedResourceEntries = new LongAdder();
+            this.initialReport = true;
+            this.currentlyProcessedEntry = null;
+        }
+
+        private void prepareProgressReporter() {
+            this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+            scheduledExecutor.scheduleAtFixedRate(() -> {
+                if (initialReport) {
+                    initialReport = false;
+                    System.out.println("WARNING: Resource scanning is taking a long time. " +
+                                    "This can be caused by class-path or module-path entries that point to large directory structures. " +
+                                    "Please make sure class-/module-path entries are easily accessible to native-image");
+                }
+                System.out.println("Total scanned entries: " + this.reachedResourceEntries + "," +
+                                " current entry: " + (this.currentlyProcessedEntry != null ? this.currentlyProcessedEntry : "Unknown resource"));
+            }, WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS, WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS, TimeUnit.SECONDS);
+        }
+
+        private void shutDownProgressReporter() {
+            if (!this.scheduledExecutor.isShutdown()) {
+                this.scheduledExecutor.shutdown();
+            }
         }
 
         @Override
-        public boolean isIncluded(String moduleName, String resourceName) {
+        public boolean isIncluded(String moduleName, String resourceName, URI resource) {
+            this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
+
+            this.reachedResourceEntries.increment();
+            if (this.reachedResourceEntries.longValue() % WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES == 0) {
+                this.heartbeatCallback.run();
+            }
+
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
 
             for (ResourcePattern rp : excludePatterns) {
@@ -267,11 +314,17 @@ public final class ResourcesFeature implements InternalFeature {
 
         access.requireAnalysisIteration();
 
+        DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
-        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules);
-        ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
+        DebugContext debugContext = duringAnalysisAccess.getDebugContext();
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules, duringAnalysisAccess.bb.getHeartbeatCallback());
+        try {
+            collector.prepareProgressReporter();
+            ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
+        } finally {
+            collector.shutDownProgressReporter();
+        }
         resourcePatternWorkSet.clear();
     }
 

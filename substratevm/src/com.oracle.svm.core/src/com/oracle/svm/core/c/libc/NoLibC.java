@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c.libc;
 
-import java.util.List;
-
 import com.oracle.svm.core.util.VMError;
 
 public class NoLibC implements LibCBase {
@@ -38,22 +36,7 @@ public class NoLibC implements LibCBase {
     }
 
     @Override
-    public String getTargetCompiler() {
-        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
-    }
-
-    @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
-    }
-
-    @Override
     public boolean hasIsolatedNamespaces() {
-        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
-    }
-
-    @Override
-    public boolean requiresLibCSpecificStaticJDKLibraries() {
         throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
 }

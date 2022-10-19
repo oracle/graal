@@ -37,8 +37,8 @@ import org.graalvm.collections.EconomicSet;
 public class EnumMultiOptionKey<T extends Enum<T>> extends OptionKey<EconomicSet<T>> {
     private final Class<T> enumClass;
 
-    public EnumMultiOptionKey(Class<T> enumClass, EconomicSet<T> value) {
-        super(value);
+    public EnumMultiOptionKey(Class<T> enumClass, EconomicSet<T> defaultValue) {
+        super(defaultValue);
         this.enumClass = enumClass;
     }
 

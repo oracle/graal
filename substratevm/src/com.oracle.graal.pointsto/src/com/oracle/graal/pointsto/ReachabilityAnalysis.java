@@ -109,8 +109,8 @@ public interface ReachabilityAnalysis {
         field.registerAsAccessed();
     }
 
-    default void markFieldRead(AnalysisField field) {
-        field.registerAsRead(null);
+    default void markFieldRead(AnalysisField field, Object reason) {
+        field.registerAsRead(reason);
     }
 
     default void markFieldWritten(AnalysisField field) {
