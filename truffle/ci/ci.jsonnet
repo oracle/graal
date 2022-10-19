@@ -117,8 +117,8 @@
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
       ] for jdk in [common.oraclejdk11, common.oraclejdk17]
     ]) + [
-    linux_amd64 + common.oraclejdk11 + truffle_gate + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    linux_amd64 + common.oraclejdk11 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk11 + guard {
       name: "gate-truffle-javadoc",
