@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
@@ -100,6 +101,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final String qualifiedName;
 
     private final AnalysisType declaringClass;
+    private final int parsingContextMaxDepth;
 
     /** Virtually invoked method registered as root. */
     @SuppressWarnings("unused") private volatile int isVirtualRootMethod;
@@ -164,6 +166,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.qualifiedName = format("%H.%n(%P)");
 
         registerSignatureTypes();
+        parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(universe.hostVM.options());
     }
 
     /**
@@ -225,9 +228,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public abstract Iterable<? extends InvokeInfo> getInvokes();
 
     /**
+     * @return the position of the invocation that triggered parsing for this method, or null
+     */
+    public abstract BytecodePosition getParsingReason();
+
+    /**
      * @return the parsing context in which given method was parsed
      */
-    public abstract StackTraceElement[] getParsingContext();
+    public final StackTraceElement[] getParsingContext() {
+        List<StackTraceElement> trace = new ArrayList<>();
+        BytecodePosition curr = getParsingReason();
+
+        while (curr != null) {
+            if (trace.size() > parsingContextMaxDepth) {
+                trace.add(ReportUtils.truncatedStackTraceSentinel(this));
+                break;
+            }
+            AnalysisMethod caller = (AnalysisMethod) curr.getMethod();
+            trace.add(caller.asStackTraceElement(curr.getBCI()));
+            curr = caller.getParsingReason();
+        }
+        return trace.toArray(new StackTraceElement[0]);
+    }
 
     public int getId() {
         return id;

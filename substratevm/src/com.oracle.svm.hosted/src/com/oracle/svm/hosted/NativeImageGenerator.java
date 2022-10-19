@@ -1238,7 +1238,7 @@ public class NativeImageGenerator {
             ((AnalysisType) resolvedJavaType).registerAsReachable();
         }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
-        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());
+        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 
