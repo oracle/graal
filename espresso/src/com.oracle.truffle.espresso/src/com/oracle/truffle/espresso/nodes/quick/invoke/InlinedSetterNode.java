@@ -57,7 +57,7 @@ public final class InlinedSetterNode extends InlinedMethodNode {
         assert isInlineCandidate(inlinedMethod, opCode);
         setterNodes.inc();
         InlinedMethodNode node = new InlinedSetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
-        if (!isUncoditionalInlineCandidate(inlinedMethod, opCode)) {
+        if (!isUnconditionalInlineCandidate(inlinedMethod, opCode)) {
             leafSetterNodes.inc();
             node = new GuardedInlinedMethodNode(node, GuardedInlinedMethodNode.InlinedMethodGuard.LEAF_ASSUMPTION_CHECK);
         }

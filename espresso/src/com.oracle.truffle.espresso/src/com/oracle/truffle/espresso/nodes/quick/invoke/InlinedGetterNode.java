@@ -55,7 +55,7 @@ public final class InlinedGetterNode extends InlinedMethodNode {
         assert isInlineCandidate(inlinedMethod, opCode);
         getterNodes.inc();
         InlinedMethodNode node = new InlinedGetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
-        if (!isUncoditionalInlineCandidate(inlinedMethod, opCode)) {
+        if (!isUnconditionalInlineCandidate(inlinedMethod, opCode)) {
             leafGetterNodes.inc();
             node = new GuardedInlinedMethodNode(node, GuardedInlinedMethodNode.InlinedMethodGuard.LEAF_ASSUMPTION_CHECK);
         }

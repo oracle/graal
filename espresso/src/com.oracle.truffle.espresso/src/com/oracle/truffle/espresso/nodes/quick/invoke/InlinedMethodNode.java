@@ -50,7 +50,7 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
         if (resolutionSeed.isInlinableSetter()) {
             return InlinedSetterNode.create(resolutionSeed, top, opcode, curBCI, statementIndex);
         }
-        if (isUncoditionalInlineCandidate(resolutionSeed, opcode)) {
+        if (isUnconditionalInlineCandidate(resolutionSeed, opcode)) {
             // Try to inline trivial substitutions.
             JavaSubstitution.Factory factory = Substitutions.lookupSubstitution(resolutionSeed);
             if (factory != null && factory.isTrivial()) {
@@ -79,7 +79,7 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
         return false;
     }
 
-    protected static boolean isUncoditionalInlineCandidate(Method resolutionSeed, int opcode) {
+    protected static boolean isUnconditionalInlineCandidate(Method resolutionSeed, int opcode) {
         if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
             return true;
         }
