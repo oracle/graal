@@ -112,7 +112,12 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                     for (String elem : customInfo) {
                         content.writeString(elem);
                     }
-                    return new BasicProgbitsSectionImpl(content.getBlob());
+                    return new BasicProgbitsSectionImpl(content.getBlob()) {
+                        @Override
+                        public boolean isLoadable() {
+                            return false;
+                        }
+                    };
                 };
 
                 var imageClassLoader = accessImpl.getImageClassLoader();
