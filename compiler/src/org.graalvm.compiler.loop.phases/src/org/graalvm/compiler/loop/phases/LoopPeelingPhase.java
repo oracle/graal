@@ -68,7 +68,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     }
 
     private static boolean stateAllowsPeeling(GraphState graphState) {
-        // keep in sync with canApply()
+        // keep in sync with notApplicableTo()
         return graphState.isBeforeStage(StageFlag.FSA) && graphState.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL);
     }
 
