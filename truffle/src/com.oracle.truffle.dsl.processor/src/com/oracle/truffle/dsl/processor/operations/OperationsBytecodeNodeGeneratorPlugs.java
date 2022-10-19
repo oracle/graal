@@ -41,6 +41,10 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createReadOpcode;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteOpcode;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.extractBoxingBits;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -445,7 +449,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
 
             // unquicken call parent EAS
-            builder.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, qinstr.getOrig().opcodeIdField));
+            builder.tree(createWriteOpcode(dummyVariables.bc, dummyVariables.bci, combineBoxingBits(m.getOperationsContext(), qinstr.getOrig(), 0)));
             easName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
         }
 
@@ -528,7 +532,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
             if (!quickened.isEmpty()) {
 
-                b.startAssign("short primitiveTagBits").string("(short) (").tree(OperationGeneratorUtils.createReadOpcode(dummyVariables.bc, dummyVariables.bci)).string(" & 0xe000)").end();
+                b.startAssign("short primitiveTagBits").string("(short) (").tree(
+                                extractBoxingBits(m.getOperationsContext(), createReadOpcode(dummyVariables.bc, dummyVariables.bci))).string(" & 0xe000)").end();
 
                 // only quicken/unquicken for instructions that have quickened versions
                 boolean elseIf = false;
@@ -538,7 +543,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                         b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
                         b.end().startBlock();
                         // {
-                        b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, "(short) (" + qinstr.opcodeIdField.getName() + " | primitiveTagBits)"));
+                        b.tree(createWriteOpcode(dummyVariables.bc, dummyVariables.bci, combineBoxingBits(m.getOperationsContext(), qinstr, "primitiveTagBits")));
                         // }
                         b.end();
                     }
@@ -549,7 +554,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 }
 
                 // quicken to generic
-                b.tree(OperationGeneratorUtils.createWriteOpcode(dummyVariables.bc, dummyVariables.bci, "(short) (" + cinstr.opcodeIdField.getName() + " | primitiveTagBits)"));
+                b.tree(createWriteOpcode(dummyVariables.bc, dummyVariables.bci, combineBoxingBits(m.getOperationsContext(), cinstr, "primitiveTagBits")));
 
                 if (elseIf) {
                     b.end();

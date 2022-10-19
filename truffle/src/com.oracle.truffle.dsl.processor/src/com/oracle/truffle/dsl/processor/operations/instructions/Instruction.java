@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteOpcode;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import javax.lang.model.element.Modifier;
-import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -448,7 +450,7 @@ public abstract class Instruction {
         b.end(2);
 
         // emit opcode
-        b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, opcodeIdField));
+        b.tree(createWriteOpcode(vars.bc, vars.bci, combineBoxingBits(ctx, this, 0)));
 
         if (!constants.isEmpty()) {
             b.startAssign("int constantsStart");
@@ -655,58 +657,58 @@ public abstract class Instruction {
         return popIndexed.size() + popSimple.size();
     }
 
-    private static void sbAppend(CodeTreeBuilder b, String format, Runnable r) {
-        b.startStatement().startCall("sb", "append");
-        b.startCall("String", "format");
-        b.doubleQuote(format);
-        r.run();
-        b.end(3);
+    private void createAddArgument(CodeTreeBuilder b, String kind, Runnable value) {
+        b.startIndention().newLine();
+        b.startNewArray((ArrayType) context.getType(Object[].class), null);
+        b.staticReference(context.getDeclaredType("com.oracle.truffle.api.operation.introspection.Argument.ArgumentKind"), kind);
+        b.startGroup();
+        value.run();
+        b.end(); // group
+        b.end(); // array
+        b.end();
     }
 
     public CodeTree createDumpCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        for (int i = 0; i < length(); i++) {
-            int ic = i;
-            sbAppend(b, " %04x", () -> b.startGroup().variable(vars.bc).string("[").variable(vars.bci).string(" + " + ic + "]").end());
-        }
-
-        for (int i = length(); i < 8; i++) {
-            b.startStatement().startCall("sb", "append").doubleQuote("     ").end(2);
-        }
-
-        b.startStatement().startCall("sb", "append").doubleQuote(name + " ".repeat(name.length() < 30 ? 30 - name.length() : 0)).end(2);
-
+        b.startAssign("Object[] dec");
+        b.startNewArray((ArrayType) context.getType(Object[].class), null);
+        b.string("$bci");
+        b.doubleQuote(name);
+        b.string("Arrays.copyOfRange($bc, $bci, $bci + " + internalName + LENGTH_SUFFIX + ")");
+        b.startNewArray((ArrayType) context.getType(Object[].class), null);
         for (int i = 0; i < constants.size(); i++) {
             int ci = i;
-            sbAppend(b, " const(%s)", () -> {
-                b.startCall("formatConstant").startGroup().variable(vars.consts).string("[").tree(createConstantIndex(vars, ci)).string("]").end(2);
+            createAddArgument(b, "CONSTANT", () -> {
+                b.variable(vars.consts).string("[").tree(createConstantIndex(vars, ci)).string("]");
             });
         }
 
         for (int i = 0; i < locals.size(); i++) {
             int ci = i;
-            sbAppend(b, " local(%s)", () -> b.startGroup().tree(createLocalIndex(vars, ci, false)).end());
+            createAddArgument(b, "LOCAL", () -> b.cast(context.getType(int.class)).tree(createLocalIndex(vars, ci, false)));
         }
 
         for (int i = 0; i < arguments.size(); i++) {
             int ci = i;
-            sbAppend(b, " arg(%s)", () -> b.startGroup().tree(createArgumentIndex(vars, ci, false)).end());
+            createAddArgument(b, "ARGUMENT", () -> b.cast(context.getType(int.class)).tree(createArgumentIndex(vars, ci, false)));
         }
 
         for (int i = 0; i < popIndexed.size(); i++) {
             int ci = i;
-            sbAppend(b, " pop(-%s)", () -> b.startGroup().tree(createPopIndexedIndex(vars, ci, false)).end());
+            createAddArgument(b, "CHILD_OFFSET", () -> b.cast(context.getType(int.class)).tree(createPopIndexedIndex(vars, ci, false)));
         }
 
         if (isVariadic) {
-            sbAppend(b, " var(%s)", () -> b.startGroup().tree(createVariadicIndex(vars, false)).end());
+            createAddArgument(b, "VARIADIC", () -> b.cast(context.getType(int.class)).tree(createVariadicIndex(vars, false)));
         }
 
         for (int i = 0; i < branchTargets.size(); i++) {
             int ci = i;
-            sbAppend(b, " branch(%04x)", () -> b.startGroup().tree(createBranchTargetIndex(vars, ci, false)).end());
+            createAddArgument(b, "CHILD_OFFSET", () -> b.cast(context.getType(int.class)).tree(createBranchTargetIndex(vars, ci, false)));
         }
+
+        b.end(3); // arg array, instr array, stmt
 
         return b.build();
 

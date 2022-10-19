@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteOpcode;
+
 import java.util.Set;
 
 import javax.lang.model.element.Modifier;
@@ -347,7 +349,7 @@ public class StoreLocalInstruction extends Instruction {
     }
 
     private void createSetPrimitiveTag(ExecutionVariables vars, CodeTreeBuilder b, String tag) {
-        b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, "(short) ((" + tag + " << 13) | " + opcodeIdField.getName() + ")"));
+        b.tree(createWriteOpcode(vars.bc, vars.bci, OperationGeneratorUtils.combineBoxingBits(ctx, this, tag)));
     }
 
     private static void createBoxingEliminateChild(ExecutionVariables vars, CodeTreeBuilder b, String tag) {

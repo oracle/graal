@@ -68,7 +68,6 @@ public class BoxingOperationsTest {
     private static final BoxingLanguage LANGUAGE = null;
 
     private static final int NUM_ITERATIONS = 10_000;
-    private static final int MAX_INVALIDATIONS = 20;
 
     private static BoxingOperations parse(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationNodes<BoxingOperations> nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);

@@ -440,6 +440,7 @@ public class GeneratorUtils {
         }
         CodeExecutableElement result = CodeExecutableElement.clone(method);
         result.getModifiers().remove(Modifier.ABSTRACT);
+        result.getModifiers().remove(Modifier.DEFAULT);
         return result;
     }
 

@@ -54,7 +54,6 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -303,7 +302,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "buildOrder")));
         typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl, m.fdConstructor));
 
-        for (String methodName : new String[]{"dump", "execute", "getSourceSectionAtBci"}) {
+        for (String methodName : new String[]{"execute", "getSourceSectionAtBci"}) {
             CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationRootNode, methodName);
             met.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end(2);
             typOperationNodeImpl.add(met);
@@ -443,9 +442,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeExecutableElement mExecute = createNodeExecute();
         typOperationNodeImpl.add(mExecute);
 
-        CodeExecutableElement mDump = GeneratorUtils.overrideImplement(types.OperationRootNode, "dump");
+        CodeExecutableElement mDump = GeneratorUtils.overrideImplement(types.OperationIntrospection_Provider, "getIntrospectionData");
         typOperationNodeImpl.add(mDump);
-        mDump.createBuilder().startReturn().startCall("switchImpl.dump").string("_bc, _handlers, _consts").end(2);
+        mDump.createBuilder().startReturn().startCall("switchImpl.getIntrospectionData").string("_bc, _handlers, _consts").end(2);
 
         CodeExecutableElement mGetLockAccessor = new CodeExecutableElement(MOD_PRIVATE, context.getType(Lock.class), "getLockAccessor");
         typOperationNodeImpl.add(mGetLockAccessor);
@@ -1168,7 +1167,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("ArrayList<" + m.getTemplateType().getSimpleName() + "> builtNodes = new ArrayList<>()");
 
             b.statement("buffer.rewind()");
-            b.declaration(context.getType(DATA_INPUT_WRAP_CLASS), "dataInput", "com.oracle.truffle.api.operation.serialization.ByteBufferDataInput.createDataInput(buffer)");
+            b.declaration(context.getType(DATA_INPUT_WRAP_CLASS), "dataInput", "com.oracle.truffle.api.operation.serialization.SerializationUtils.createDataInput(buffer)");
 
             TypeMirror deserContext = context.getDeclaredType("com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext");
 
@@ -1815,7 +1814,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "maxLocals"));
         baseClass.add(loopMethod);
 
-        CodeExecutableElement dumpMethod = new CodeExecutableElement(MOD_ABSTRACT, context.getType(String.class), "dump");
+        CodeExecutableElement dumpMethod = new CodeExecutableElement(MOD_ABSTRACT, types.OperationIntrospection, "getIntrospectionData");
         dumpMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(context.getType(short.class)), "$bc"));
         dumpMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers"));
         dumpMethod.addParameter(new CodeVariableElement(context.getType(Object[].class), "$consts"));
@@ -2663,7 +2662,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeTreeBuilder b = mSetResultBoxedImpl.createBuilder();
 
-        b.statement("bc[bci] = (short) ((targetType << 13) | (bc[bci] & 0x1fff))");
+        int mask = (0xffff << OperationGeneratorFlags.BOXING_ELIM_BITS) & 0xffff;
+        b.statement("bc[bci] = (short) (targetType | (bc[bci] & " + String.format("0x%x", mask) + "))");
 
         return mSetResultBoxedImpl;
     }

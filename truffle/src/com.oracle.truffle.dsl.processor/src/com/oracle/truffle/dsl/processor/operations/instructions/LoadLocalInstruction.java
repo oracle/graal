@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteOpcode;
+
 import java.util.List;
 import java.util.Set;
 
@@ -100,7 +103,7 @@ public class LoadLocalInstruction extends Instruction {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalUnboxed.opcodeIdField.getName()));
+            b.tree(createWriteOpcode(vars.bc, vars.bci, combineBoxingBits(ctx, ctx.loadLocalUnboxed, 0)));
             b.statement("$bci -= LOAD_LOCAL_BOXED_LENGTH");
 
             return b.build();
@@ -203,9 +206,7 @@ public class LoadLocalInstruction extends Instruction {
                         b.statement("System.err.printf(\" [load-spec]  local=%d value=%s kind=OBJECT->" + kind + " (boxed)%n\", localIdx, $frame.getValue(localIdx))");
                     }
 
-                    b.tree(OperationGeneratorUtils.createWriteOpcode(
-                                    vars.bc, vars.bci,
-                                    "(short) (" + ctx.loadLocalBoxed.opcodeIdField.getName() + " | (" + kind.toOrdinal() + " << 13))"));
+                    b.tree(createWriteOpcode(vars.bc, vars.bci, combineBoxingBits(ctx, ctx.loadLocalBoxed, kind)));
 
                     b.end().startElseBlock();
 

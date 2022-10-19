@@ -40,13 +40,17 @@
  */
 package com.oracle.truffle.api.operation;
 
+import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
+import com.oracle.truffle.api.operation.introspection.Instruction;
+import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 import com.oracle.truffle.api.source.SourceSection;
 
-public interface OperationRootNode extends NodeInterface {
+public interface OperationRootNode extends NodeInterface, OperationIntrospection.Provider {
     default <T> T getMetadata(MetadataKey<T> key) {
         return key.getValue(this);
     }
@@ -55,9 +59,22 @@ public interface OperationRootNode extends NodeInterface {
         key.setGetter(getter);
     }
 
-    // ------------------------------------ sources ------------------------------------
+    default String dump() {
+        StringBuilder sb = new StringBuilder();
+        OperationIntrospection id = getIntrospectionData();
+        for (Instruction i : id.getInstructions()) {
+            sb.append(i.toString()).append('\n');
+        }
+        List<ExceptionHandler> handlers = id.getExceptionHandlers();
+        if (handlers.size() > 0) {
+            sb.append("Exception handlers:\n");
+            for (ExceptionHandler eh : handlers) {
+                sb.append("  ").append(eh.toString()).append('\n');
+            }
+        }
 
-    String dump();
+        return sb.toString();
+    }
 
     Object execute(VirtualFrame frame);
 

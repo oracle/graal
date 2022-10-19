@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +52,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
@@ -166,7 +169,7 @@ public class OperationsBytecodeCodeGenerator {
     }
 
     private CodeExecutableElement createDumpCode(CodeTypeElement baseType) {
-        CodeExecutableElement mDump = GeneratorUtils.overrideImplement(baseType, "dump");
+        CodeExecutableElement mDump = GeneratorUtils.overrideImplement(baseType, "getIntrospectionData");
 
         CodeTreeBuilder b = mDump.getBuilder();
         ExecutionVariables vars = new ExecutionVariables();
@@ -175,34 +178,39 @@ public class OperationsBytecodeCodeGenerator {
         CodeVariableElement varHandlers = new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers");
 
         b.declaration("int", vars.bci.getName(), "0");
-        b.declaration("StringBuilder", "sb", "new StringBuilder()");
+        b.declaration("ArrayList<Object[]>", "target", "new ArrayList<>()");
 
         b.startWhile().string("$bci < $bc.length").end().startBlock(); // while {
-
-        b.statement("sb.append(String.format(\" [%04x]\", $bci))");
 
         b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, op -> {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
             if (op == null) {
-                builder.statement("sb.append(String.format(\" unknown 0x%02x\", $bc[$bci++]))");
+                builder.declaration("Object[]", "dec", "new Object[]{$bci, \"unknown\", Arrays.copyOfRange($bc, $bci, $bci + 1), null}");
+                builder.statement("$bci++");
             } else {
                 builder.tree(op.createDumpCode(vars));
                 builder.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
             }
 
+            builder.statement("target.add(dec)");
+
             builder.statement("break");
             return builder.build();
         }));
 
-        b.statement("sb.append(\"\\n\")");
-
         b.end(); // }
+
+        b.declaration("ArrayList<Object[]>", "ehTarget", "new ArrayList<>()");
 
         b.startFor().string("int i = 0; i < ").variable(varHandlers).string(".length; i++").end();
         b.startBlock();
 
-        b.startStatement().string("sb.append(").variable(varHandlers).string("[i] + \"\\n\")").end();
+        b.startStatement().startCall("ehTarget.add").startNewArray((ArrayType) context.getType(Object[].class), null);
+        b.startGroup().variable(varHandlers).string("[i].startBci").end();
+        b.startGroup().variable(varHandlers).string("[i].endBci").end();
+        b.startGroup().variable(varHandlers).string("[i].handlerBci").end();
+        b.end(3);
 
         b.end();
 
@@ -221,7 +229,7 @@ public class OperationsBytecodeCodeGenerator {
         // }
         // b.end();
 
-        b.startReturn().string("sb.toString()").end();
+        b.startReturn().string("OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray()})").end();
 
         vars.bci = null;
 
@@ -347,7 +355,7 @@ public class OperationsBytecodeCodeGenerator {
             if (ctx.hasBoxingElimination() && !isUncached) {
                 if (op.splitOnBoxingElimination()) {
                     for (FrameKind kind : op.getBoxingEliminationSplits()) {
-                        b.startCase().variable(op.opcodeIdField).string(" | (", kind.toOrdinal(), " << 13)").end();
+                        b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
                         b.startBlock();
                         vars.specializedKind = kind;
                         createBody.run();
@@ -355,19 +363,19 @@ public class OperationsBytecodeCodeGenerator {
                         b.end();
                     }
                     if (op.hasGeneric()) {
-                        b.startCase().variable(op.opcodeIdField).string(" | (7 << 13)").end();
+                        b.startCase().tree(combineBoxingBits(ctx, op, 7)).end();
                         b.startBlock();
                         createBody.run();
                         b.end();
                     }
                 } else if (op.numPushedValues == 0 || op.alwaysBoxed()) {
-                    b.startCase().variable(op.opcodeIdField).end();
+                    b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
                     b.startBlock();
                     createBody.run();
                     b.end();
                 } else {
                     for (FrameKind kind : op.getBoxingEliminationSplits()) {
-                        b.startCase().variable(op.opcodeIdField).string(" | (", kind.toOrdinal(), " << 13)").end();
+                        b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
                     }
 
                     b.startBlock();
@@ -376,7 +384,7 @@ public class OperationsBytecodeCodeGenerator {
                     b.end();
                 }
             } else {
-                b.startCase().variable(op.opcodeIdField).end();
+                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
                 b.startBlock();
                 if (ctx.hasBoxingElimination()) {
                     vars.specializedKind = FrameKind.OBJECT;

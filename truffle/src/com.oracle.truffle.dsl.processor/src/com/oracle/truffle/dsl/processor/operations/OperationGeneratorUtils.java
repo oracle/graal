@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
@@ -120,7 +121,7 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createWriteOpcode(CodeTree bc, CodeTree bci, CodeTree value) {
-        return CodeTreeBuilder.createBuilder().startStatement().startCall("unsafeWriteBytecode").tree(bc).tree(bci).tree(value).end(2).build();
+        return CodeTreeBuilder.createBuilder().startStatement().startCall("unsafeWriteBytecode").tree(bc).tree(bci).startGroup().string("(short) ").tree(value).end(3).build();
     }
 
     public static CodeTree createWriteOpcode(CodeVariableElement bc, CodeVariableElement bci, CodeVariableElement value) {
@@ -135,6 +136,13 @@ public class OperationGeneratorUtils {
                         CodeTreeBuilder.singleVariable(bc),
                         CodeTreeBuilder.singleVariable(bci),
                         CodeTreeBuilder.singleString(value));
+    }
+
+    public static CodeTree createWriteOpcode(CodeVariableElement bc, CodeVariableElement bci, CodeTree value) {
+        return createWriteOpcode(
+                        CodeTreeBuilder.singleVariable(bc),
+                        CodeTreeBuilder.singleVariable(bci),
+                        value);
     }
 
     public static CodeTree createWriteOpcode(CodeVariableElement bc, String bci, CodeVariableElement value) {
@@ -213,7 +221,7 @@ public class OperationGeneratorUtils {
 
         }
 
-        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).string(" & 0x1fff").end().startBlock();
+        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).string(" >> " + OperationGeneratorFlags.BOXING_ELIM_BITS).end().startBlock();
         for (int i = 0; i < trees.size(); i++) {
             if (treeInstructions.get(i) == null) {
                 b.caseDefault();
@@ -284,5 +292,51 @@ public class OperationGeneratorUtils {
         }
 
         throw new AssertionError(namePrefix + el.getSimpleName() + " must not be package-protected");
+    }
+
+    public static CodeTree combineBoxingBits(OperationsContext ctx, CodeTree instr, CodeTree kind) {
+        if (ctx.hasBoxingElimination()) {
+            return CodeTreeBuilder.createBuilder().startParantheses().startParantheses().tree(instr).string(" << " + OperationGeneratorFlags.BOXING_ELIM_BITS).end().string(
+                            " | ").tree(kind).end().build();
+        } else {
+            return instr;
+        }
+    }
+
+    public static CodeTree combineBoxingBits(OperationsContext ctx, Instruction instr, CodeTree kind) {
+        return combineBoxingBits(ctx, CodeTreeBuilder.singleVariable(instr.opcodeIdField), kind);
+    }
+
+    public static CodeTree combineBoxingBits(OperationsContext ctx, Instruction instr, String kind) {
+        return combineBoxingBits(ctx, instr, CodeTreeBuilder.singleString(kind));
+    }
+
+    public static CodeTree combineBoxingBits(OperationsContext ctx, Instruction instr, FrameKind kind) {
+        return combineBoxingBits(ctx, instr, kind.toOrdinal());
+    }
+
+    public static CodeTree combineBoxingBits(OperationsContext ctx, Instruction instr, int kind) {
+        return combineBoxingBits(ctx, instr, "" + kind);
+    }
+
+    public static CodeTree extractInstruction(OperationsContext ctx, CodeTree instr) {
+        if (ctx.hasBoxingElimination()) {
+            return CodeTreeBuilder.createBuilder().startParantheses().tree(instr).string(" >> " + OperationGeneratorFlags.BOXING_ELIM_BITS).end().string(
+                            " & " + (1 << (16 - OperationGeneratorFlags.BOXING_ELIM_BITS) - 1)).build();
+        } else {
+            return instr;
+        }
+    }
+
+    public static CodeTree extractInstruction(OperationsContext ctx, String instr) {
+        return extractInstruction(ctx, CodeTreeBuilder.singleString(instr));
+    }
+
+    public static CodeTree extractBoxingBits(OperationsContext ctx, CodeTree instr) {
+        if (ctx.hasBoxingElimination()) {
+            return CodeTreeBuilder.createBuilder().tree(instr).string(" & " + ((1 << OperationGeneratorFlags.BOXING_ELIM_BITS) - 1)).build();
+        } else {
+            return CodeTreeBuilder.singleString("0");
+        }
     }
 }
