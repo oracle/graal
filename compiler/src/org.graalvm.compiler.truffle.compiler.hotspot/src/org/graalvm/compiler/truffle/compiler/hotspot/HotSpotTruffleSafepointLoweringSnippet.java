@@ -172,6 +172,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
             GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
             if (config.invokeJavaMethodAddress != 0 && config.jvmciReserved0Offset != -1) {
                 this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget(), config.jvmciReserved0Offset);
+                foreignCalls.register(THREAD_LOCAL_HANDSHAKE.getSignature());
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
                     GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);

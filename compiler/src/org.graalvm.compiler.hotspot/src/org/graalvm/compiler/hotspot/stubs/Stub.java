@@ -114,7 +114,7 @@ public abstract class Stub {
 
     /**
      * Gets the registers destroyed by this stub from a caller's perspective. These are the
-     * temporaries of this stub and must thus be caller saved by a callers of this stub.
+     * temporaries of this stub and must thus be caller saved by a caller of this stub.
      */
     public EconomicSet<Register> getDestroyedCallerRegisters() {
         assert destroyedCallerRegisters != null : "not yet initialized";
