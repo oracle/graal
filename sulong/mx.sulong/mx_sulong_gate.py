@@ -178,6 +178,10 @@ def _sulong_gate_runner(args, tasks):
     def _unittest(title, test_suite, tags=None, testClasses=None, unittestArgs=None, extraUnittestArgs=None, description=None):
         _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs, extraUnittestArgs=extraUnittestArgs, description=description)
 
+    with Task('GenerateSources', tasks, tags=['fullbuild']) as t:
+        if t:
+            mx.command_function('create-generated-sources')(['--check'])
+
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
             if mx.checkcopyrights(['--primary']) != 0:

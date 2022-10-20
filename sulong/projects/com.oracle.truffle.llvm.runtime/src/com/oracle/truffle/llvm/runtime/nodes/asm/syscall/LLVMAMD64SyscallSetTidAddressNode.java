@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOpera
     }
 
     @Specialization
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     protected long doOp(@SuppressWarnings("unused") Object tidptr) {
         return Thread.currentThread().getId();
     }

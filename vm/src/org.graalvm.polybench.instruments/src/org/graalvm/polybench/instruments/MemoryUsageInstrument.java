@@ -170,6 +170,7 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
     final class GetAllocatedBytesFunction extends BaseFunction {
 
         @Override
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         Object call(Node node) {
             long report = 0;
             synchronized (MemoryUsageInstrument.this) {
@@ -335,6 +336,7 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             return update;
         }
 
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         private long getThreadAllocatedBytes() {
             long threadAllocatedBytes = 0;
             for (Thread thread : threadsArray) {
