@@ -14,7 +14,7 @@ Providing the builder with reachability metadata also ensures seamless compatibi
 
 Metadata can be provided to the `native-image` builder in following ways:
 - By [computing metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#image-build-time-vs-image-run-time) and storing required elements into the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
-- By [providing JSON files](#specifying-metadata-with-json) stored in the `META-INF/native-image/<artifact.id>` project directory. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
+- By [providing JSON files](#specifying-metadata-with-json) stored in the `META-INF/native-image/<group.id>/<artifact.id>` project directory. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
 
 ### Table of Contents
 
