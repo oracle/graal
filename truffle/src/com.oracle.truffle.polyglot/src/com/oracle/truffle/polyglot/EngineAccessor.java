@@ -265,15 +265,23 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(String path) {
-            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+        public TruffleFile getTruffleFile(TruffleContext truffleContext, String path) {
+            PolyglotContextImpl context = getPolyglotContext(truffleContext);
             return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), path);
         }
 
         @Override
-        public TruffleFile getTruffleFile(URI uri) {
-            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+        public TruffleFile getTruffleFile(TruffleContext truffleContext, URI uri) {
+            PolyglotContextImpl context = getPolyglotContext(truffleContext);
             return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), uri);
+        }
+
+        private static PolyglotContextImpl getPolyglotContext(TruffleContext truffleContext) {
+            if (truffleContext == null) {
+                return PolyglotContextImpl.requireContext();
+            } else {
+                return (PolyglotContextImpl) LANGUAGE.getPolyglotContext(truffleContext);
+            }
         }
 
         @Override

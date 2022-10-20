@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 23.0.0
+
+* GR-41034 Added `TruffleInstrument.Env.getTruffleFile(TruffleContext, ...)` methods to allow reading a truffle file from a specific context without being entered. Deprecated `TruffleInstrument.Env.getTruffleFile(...)` methods that do not take the `TruffleContext`.
+
 ## Version 22.3.0
 
 * GR-40069 Added additional methods to the static frame API.

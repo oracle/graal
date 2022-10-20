@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -69,10 +70,15 @@ public final class InspectorTester {
     }
 
     public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) throws InterruptedException {
+        return start(suspend, inspectInternal, inspectInitialization, sourcePath, null);
+    }
+
+    public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog)
+                    throws InterruptedException {
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
         InspectorExecutionContext.resetIDs();
-        InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization, sourcePath);
+        InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization, sourcePath, prolog);
         exec.start();
         exec.initialized.acquire();
         return new InspectorTester(exec);
@@ -263,6 +269,7 @@ public final class InspectorTester {
         private final boolean inspectInternal;
         private final boolean inspectInitialization;
         private final List<URI> sourcePath;
+        private final Consumer<Context> prolog;
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
         private long contextId;
@@ -277,12 +284,13 @@ public final class InspectorTester {
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
         private final EnginesGCedTest.GCCheck gcCheck;
 
-        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) {
+        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog) {
             super("Inspector Executor");
             this.suspend = suspend;
             this.inspectInternal = inspectInternal;
             this.inspectInitialization = inspectInitialization;
             this.sourcePath = sourcePath;
+            this.prolog = prolog;
             this.gcCheck = new EnginesGCedTest.GCCheck();
         }
 
@@ -290,6 +298,10 @@ public final class InspectorTester {
         public void run() {
             Engine engine = Engine.newBuilder().err(err).build();
             gcCheck.addReference(engine);
+            Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
+            if (prolog != null) {
+                prolog.accept(context);
+            }
             Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
             InspectSessionInfoProvider sessionInfoProvider = testInstrument.lookup(InspectSessionInfoProvider.class);
             InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization, sourcePath);
@@ -299,7 +311,6 @@ public final class InspectorTester {
                 contextId = sessionInfo.getId();
                 inspectorContext = sessionInfo.getInspectorContext();
                 inspect.open(this);
-                Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();
                 Source source = null;
                 CompletableFuture<Value> valueFuture = null;

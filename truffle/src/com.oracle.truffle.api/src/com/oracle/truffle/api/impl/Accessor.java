@@ -528,9 +528,9 @@ public abstract class Accessor {
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 
-        public abstract TruffleFile getTruffleFile(String path);
+        public abstract TruffleFile getTruffleFile(TruffleContext truffleContext, String path);
 
-        public abstract TruffleFile getTruffleFile(URI uri);
+        public abstract TruffleFile getTruffleFile(TruffleContext truffleContext, URI uri);
 
         public abstract int getAsynchronousStackDepth(Object polylgotLanguageInstance);
 
