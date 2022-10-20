@@ -94,8 +94,4 @@
     if objectHas(o, f) then o[f] else default
   ,
 
-  # check that all non [gate, ondemand] entries have notify_emails or notify_groups defined
-  missing_notify(builds):: {
-    [x.name]: $.std_get(x, "defined_in") for x in builds if !std.objectHas(x, "notify_emails") && !std.objectHasAll(x, "notify_groups") && (std.member(x.targets, "daily") || std.member(x.targets, "weekly") || std.member(x.targets, "monthly"))
-  },
 }

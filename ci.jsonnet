@@ -35,7 +35,7 @@ local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 # VM
 local vm = import 'vm/ci/ci_includes/vm.jsonnet';
 
-local missing_notify = (import 'common-utils.libsonnet').missing_notify;
+local verify_ci = (import 'ci-check.libsonnet').verify_ci;
 
 {
   # Ensure that entries in common.jsonnet can be resolved.
@@ -56,6 +56,5 @@ local missing_notify = (import 'common-utils.libsonnet').missing_notify;
     javadoc.builds +
     vm.builds
   )],
-  missingNotify:: missing_notify(self.builds),
-  assert std.length(self.missingNotify) == 0 : "Missing notify_emails or notify_groups: " + self.missingNotify,
+  assert verify_ci(self.builds),
 }
