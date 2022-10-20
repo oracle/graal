@@ -38,7 +38,6 @@ import org.graalvm.compiler.word.WordTypes;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.ValueKindFactory;
@@ -92,8 +91,15 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      * @param outgoingCcType outgoing (caller) calling convention type
      * @param incomingCcType incoming (callee) calling convention type (can be null)
      */
-    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, HotSpotForeignCallsProvider foreignCalls,
-                    HotSpotForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType) {
+    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess,
+                    CodeCacheProvider codeCache,
+                    WordTypes wordTypes,
+                    HotSpotForeignCallsProvider foreignCalls,
+                    HotSpotForeignCallDescriptor descriptor,
+                    long address,
+                    RegisterEffect effect,
+                    Type outgoingCcType,
+                    Type incomingCcType) {
         CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, wordTypes, foreignCalls, descriptor, incomingCcType);
         HotSpotForeignCallLinkageImpl linkage = new HotSpotForeignCallLinkageImpl(descriptor, address, effect, outgoingCc, incomingCc);
@@ -106,8 +112,12 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     /**
      * Gets a calling convention for a given descriptor and call type.
      */
-    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, WordTypes wordTypes, ValueKindFactory<?> valueKindFactory,
-                    ForeignCallDescriptor descriptor, Type ccType) {
+    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess,
+                    CodeCacheProvider codeCache,
+                    WordTypes wordTypes,
+                    ValueKindFactory<?> valueKindFactory,
+                    ForeignCallDescriptor descriptor,
+                    Type ccType) {
         assert ccType != null;
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
@@ -210,22 +220,50 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return true;
     }
 
+    /**
+     * Encapsulates a stub's entry point and set of killed registers.
+     */
+    public static final class CodeInfo {
+        /**
+         * Address of first instruction in the stub.
+         */
+        final long start;
+
+        /**
+         * @see Stub#getDestroyedCallerRegisters()
+         */
+        final EconomicSet<Register> killedRegisters;
+
+        public CodeInfo(long start, EconomicSet<Register> killedRegisters) {
+            this.start = start;
+            this.killedRegisters = killedRegisters;
+        }
+    }
+
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotForeignCallLinkageImpl}.
+     */
+    private static CodeInfo getCodeInfo(Stub stub, Backend backend) {
+        return new CodeInfo(stub.getCode(backend).getStart(), stub.getDestroyedCallerRegisters());
+    }
+
     @Override
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
             assert checkStubCondition();
-            InstalledCode code = stub.getCode(backend);
+            CodeInfo codeInfo = getCodeInfo(stub, backend);
 
-            EconomicSet<Register> destroyedRegisters = stub.getDestroyedCallerRegisters();
-            if (!destroyedRegisters.isEmpty()) {
-                AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
+            EconomicSet<Register> killedRegisters = codeInfo.killedRegisters;
+            if (!killedRegisters.isEmpty()) {
+                AllocatableValue[] temporaryLocations = new AllocatableValue[killedRegisters.size()];
                 int i = 0;
-                for (Register reg : destroyedRegisters) {
+                for (Register reg : killedRegisters) {
                     temporaryLocations[i++] = reg.asValue();
                 }
                 temporaries = temporaryLocations;
             }
-            address = code.getStart();
+            address = codeInfo.start;
         }
     }
 
