@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -92,6 +93,7 @@ public class OperationsContext {
 
     public final ArrayList<Instruction> instructions = new ArrayList<>();
     public final ArrayList<Operation> operations = new ArrayList<>();
+    private final Map<String, Instruction> instructionNameMap = new HashMap<>();
     private final Map<String, CustomInstruction> customInstructionNameMap = new HashMap<>();
     private final Map<String, SingleOperationData> opDataNameMap = new HashMap<>();
     private final OperationsData data;
@@ -165,6 +167,7 @@ public class OperationsContext {
 
     public <T extends Instruction> T add(T elem) {
         instructions.add(elem);
+        instructionNameMap.put(elem.name, elem);
         return elem;
     }
 
@@ -230,6 +233,10 @@ public class OperationsContext {
             SingleOperationData opData = opDataNameMap.get(quicken.getOperation());
 
             add(new QuickenedInstruction(this, cinstr, instructionId++, opData, List.of(quicken.specializations)));
+        }
+
+        for (OperationDecisions.SuperInstruction si : decisions.getSuperInstructions()) {
+            Instruction[] instrs = Arrays.stream(si.instructions).map(instructionNameMap::get).toArray(Instruction[]::new);
         }
     }
 

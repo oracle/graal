@@ -51,12 +51,17 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class OperationDecisions {
     private final List<Quicken> quicken = new ArrayList<>();
+    private final List<SuperInstruction> superInstr = new ArrayList<>();
 
     public OperationDecisions() {
     }
 
     public List<Quicken> getQuicken() {
         return quicken;
+    }
+
+    public List<SuperInstruction> getSuperInstructions() {
+        return superInstr;
     }
 
     public OperationDecisions merge(OperationDecisions other, MessageContainer messager) {
@@ -133,6 +138,54 @@ public class OperationDecisions {
         }
     }
 
+    public static final class SuperInstruction {
+        final String[] instructions;
+
+        private SuperInstruction(String[] instructions) {
+            this.instructions = instructions;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Arrays.hashCode(instructions);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            SuperInstruction other = (SuperInstruction) obj;
+            return Arrays.equals(instructions, other.instructions);
+        }
+
+        @Override
+        public String toString() {
+            return "SuperInstruction [" + Arrays.toString(instructions) + "]";
+        }
+
+        public static SuperInstruction deserialize(JSONObject o) {
+
+            JSONArray instrs = o.getJSONArray("instructions");
+            List<String> instructions = new ArrayList<>();
+
+            for (int i = 0; i < instrs.length(); i++) {
+                instructions.add(instrs.getString(i));
+            }
+
+            return new SuperInstruction(instructions.toArray(new String[instructions.size()]));
+        }
+    }
+
     public static OperationDecisions deserialize(JSONArray o, MessageContainer messager) {
         OperationDecisions decisions = new OperationDecisions();
 
@@ -149,6 +202,10 @@ public class OperationDecisions {
                     Quicken q = Quicken.deserialize(decision);
                     decisions.quicken.add(q);
                     break;
+                case "SuperInstruction":
+                    SuperInstruction si = SuperInstruction.deserialize(decision);
+                    decisions.superInstr.add(si);
+                    break;
                 default:
                     messager.addWarning("Invalid optimization decision: '%s'", decision.getString("type"));
                     break;
@@ -160,6 +217,6 @@ public class OperationDecisions {
 
     @Override
     public String toString() {
-        return "OperationDecisions [quicken=" + quicken + "]";
+        return "OperationDecisions [quicken=" + quicken + ", superInstr=" + superInstr + "]";
     }
 }
