@@ -201,12 +201,14 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, add_to_module=None, home_finder=False, **kwargs):
         """
         :param bool jvm_library
+        :param str add_to_module: the simple name of a module that should be modified to include this native library. It must not be a path or end with `.jmod`
         """
         super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
+        self.add_to_module = add_to_module
 
 
 class LanguageLibraryConfig(LibraryConfig):
@@ -422,15 +424,12 @@ class GraalVmJreComponent(GraalVmComponent):
 
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
-    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars,
-                 graal_compiler=None, **kwargs):
+    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, **kwargs):
         """
         :type jvmci_jars: list[str]
-        :type graal_compiler: str
         """
         super(GraalVmJvmciComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                     **kwargs)
-        self.graal_compiler = graal_compiler
         self.jvmci_jars = jvmci_jars or []
 
         assert isinstance(self.jvmci_jars, list)
@@ -610,12 +609,6 @@ def jlink_has_save_jlink_argfiles(jdk):
     Determines if the jlink executable in `jdk` supports ``--save-jlink-argfiles``.
     """
     return _probe_jlink_info(jdk, '.supports_save_jlink_argfiles')
-
-def jlink_has_copy_files(jdk):
-    """
-    Determines if the jlink executable in `jdk` supports ``--copy-files``.
-    """
-    return _probe_jlink_info(jdk, '.supports_copy_files')
 
 def _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
     """
@@ -971,17 +964,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
-
-        if jlink_has_copy_files(jdk):
-            import mx_sdk_vm_impl
-            libgraal_component = mx_sdk_vm_impl._get_libgraal_component()
-            if libgraal_component is not None:
-                # Only bake --copy-files into the args of <dst_jdk_dir>/bin/jlink
-                # if libgraal will be in <dst_jdk_dir>/lib
-                libgraal = f'lib/{mx.add_lib_suffix(mx.add_lib_prefix("jvmcicompiler"))}'
-                if mx.get_os() == 'windows':
-                    libgraal = libgraal.replace('lib/', 'bin/')
-                jlink_persist.append(f'--copy-files={libgraal}')
 
         module_path = patched_java_base + os.pathsep + jmods_dir
         if modules and not use_upgrade_module_path:

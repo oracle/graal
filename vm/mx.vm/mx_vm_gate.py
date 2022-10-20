@@ -107,7 +107,7 @@ def _test_libgraal_basic(extra_vm_arguments):
     graalvm_jdk = mx.JDKConfig(graalvm_home)
     jres = [graalvm_home]
 
-    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk) and mx_sdk_vm.jlink_has_copy_files(graalvm_jdk):
+    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
         # Create a minimal image that should contain libgraal
         libgraal_jre = abspath('libgraal-jre')
         if exists(libgraal_jre):

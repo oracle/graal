@@ -1344,7 +1344,6 @@ cmp_ce_components = [
             'compiler:GRAAL_PROCESSOR',
         ],
         jvmci_jars=_jvmci_jars(),
-        graal_compiler='graal',
         stability="supported",
     ),
     mx_sdk_vm.GraalVmComponent(
