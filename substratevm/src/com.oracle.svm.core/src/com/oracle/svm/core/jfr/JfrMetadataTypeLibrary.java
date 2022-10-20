@@ -42,6 +42,7 @@ import jdk.jfr.internal.TypeLibrary;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.SubstrateUtil;
 
 /**
  * This class caches all JFR metadata types. This is mainly necessary because
@@ -134,10 +135,14 @@ final class Target_jdk_jfr_internal_PlatformEventType {
     @Alias private boolean isJVM;
     @Alias private boolean isMethodSampling;
     @Alias private long period;
+    @Alias private boolean enabled;
+    @Alias private native void updateCommittable();
 
     @Substitute
     public void setEnabled(boolean enabled) {
-        Target_jdk_jfr_internal_Type type = com.oracle.svm.core.SubstrateUtil.cast(this, Target_jdk_jfr_internal_Type.class);
+        this.enabled = enabled;
+        updateCommittable();
+        Target_jdk_jfr_internal_Type type = SubstrateUtil.cast(this, Target_jdk_jfr_internal_Type.class);
         long id = type.getId();
         if (isJVM) {
             if (isMethodSampling) {
@@ -146,7 +151,7 @@ final class Target_jdk_jfr_internal_PlatformEventType {
             } else {
                 SubstrateJVM.get().setEnabled(id, enabled);
             }
-        } else if (com.oracle.svm.core.jfr.JfrEvent.isMirrorEvent(id)) {
+        } else if (JfrEvent.isMirrorEvent(id)) {
             // in openjdk, mirror events directly check their isEnabled boolean.
             // But in svm these flags need to be stored along with the flags for JVM native events
             SubstrateJVM.get().setEnabled(id, enabled);
