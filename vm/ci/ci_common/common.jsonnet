@@ -228,16 +228,6 @@ local devkits = common_json.devkits;
     targets+: ['gate'],
   },
 
-  bench_vm_linux_amd64: self.vm_linux_amd64 + {
-    capabilities+: ['no_frequency_scaling'],
-    targets+: ['post-merge', 'bench'],
-  },
-
-  bench_vm_darwin_amd64: self.vm_darwin_amd64 + {
-    capabilities+: ['no_frequency_scaling'],
-    targets+: ['post-merge', 'bench'],
-  },
-
   bench_daily_vm_linux_amd64: self.vm_linux_amd64 + {
     capabilities+: ['no_frequency_scaling'],
     targets+: ['daily', 'bench'],

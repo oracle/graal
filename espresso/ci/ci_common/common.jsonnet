@@ -58,7 +58,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
   postMerge:       {targets+: ['post-merge'],          notify_groups:: ['espresso']},
-  bench:           {targets+: ['bench', 'post-merge'], notify_groups:: ['espresso']},
   dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
   daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
   weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
