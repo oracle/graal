@@ -115,6 +115,8 @@ public class ExperimentMatcher {
         InliningTreeNode inliningTreeRoot2 = inliningTree2.getRoot();
         if (inliningTreeRoot1 != null && inliningTreeRoot2 != null) {
             writer.writeln("Inlining tree matching");
+            inliningTree1.preprocess(writer.getVerbosityLevel());
+            inliningTree2.preprocess(writer.getVerbosityLevel());
             EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
             DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
             if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
@@ -132,6 +134,8 @@ public class ExperimentMatcher {
      */
     private void matchOptimizationTrees(OptimizationTree optimizationTree1, OptimizationTree optimizationTree2) {
         writer.writeln("Optimization tree matching");
+        optimizationTree1.preprocess(writer.getVerbosityLevel());
+        optimizationTree2.preprocess(writer.getVerbosityLevel());
         EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(optimizationTree1.getRoot(), optimizationTree2.getRoot());
         if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
             DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
