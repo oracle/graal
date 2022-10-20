@@ -125,11 +125,11 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
-                        cleanupPhase != null ? cleanupPhase.canApply(graphState) : ALWAYS_APPLICABLE);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        cleanupPhase != null ? cleanupPhase.notApplicableTo(graphState) : ALWAYS_APPLICABLE);
     }
 
     @Override

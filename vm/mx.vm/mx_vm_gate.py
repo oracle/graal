@@ -259,8 +259,6 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
-        "-Dpolyglot.engine.TraceCompilation=true",
-        "-Dpolyglot.log.file={0}".format(compiler_log_file),
         "-Dgraalvm.locatorDisabled=true",
         "truffle"])
     if exists(compiler_log_file):
@@ -478,7 +476,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
 
         if additional_deps:
             build_deps = build_deps + additional_deps
-        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk)
+        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         tests_image = native_image(build_options + extra_image_args)
         import configparser
         artifacts = configparser.RawConfigParser(allow_no_value=True)

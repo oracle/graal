@@ -38,7 +38,7 @@ import org.graalvm.compiler.phases.Phase;
 public class DisableOverflownCountedLoopsPhase extends Phase {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

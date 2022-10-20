@@ -22,12 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
-
-import java.util.Collections;
-import java.util.List;
-
-import com.oracle.svm.core.c.libc.LibCBase;
+package com.oracle.svm.core.c.libc;
 
 public class GLibC implements LibCBase {
 
@@ -39,22 +34,7 @@ public class GLibC implements LibCBase {
     }
 
     @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public String getTargetCompiler() {
-        return "gcc";
-    }
-
-    @Override
     public boolean hasIsolatedNamespaces() {
         return true;
-    }
-
-    @Override
-    public boolean requiresLibCSpecificStaticJDKLibraries() {
-        return false;
     }
 }

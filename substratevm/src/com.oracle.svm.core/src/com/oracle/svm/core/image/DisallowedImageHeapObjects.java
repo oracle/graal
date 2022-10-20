@@ -111,8 +111,8 @@ public final class DisallowedImageHeapObjects {
              */
             if (buffer.capacity() != 0 || getFileDescriptor(buffer) != null) {
                 throw reporter.raise("Detected a direct/mapped ByteBuffer in the image heap. " +
-                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image runtime." +
-                                "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time. ",
+                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image runtime. " +
+                                "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time.",
                                 buffer, "Try avoiding to initialize the class that caused initialization of the MappedByteBuffer.");
             }
         } else if (obj instanceof Buffer && ((Buffer) obj).isDirect()) {

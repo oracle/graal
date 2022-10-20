@@ -22,16 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux.libc;
+package com.oracle.svm.core.c.libc;
 
-import java.util.Collections;
-import java.util.List;
+public class MuslLibC implements LibCBase {
 
-import com.oracle.svm.core.c.libc.LibCBase;
-
-public class BionicLibC implements LibCBase {
-
-    public static final String NAME = "bionic";
+    public static final String NAME = "musl";
 
     @Override
     public String getName() {
@@ -39,22 +34,7 @@ public class BionicLibC implements LibCBase {
     }
 
     @Override
-    public List<String> getAdditionalQueryCodeCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public String getTargetCompiler() {
-        return "clang";
-    }
-
-    @Override
     public boolean hasIsolatedNamespaces() {
         return false;
-    }
-
-    @Override
-    public boolean requiresLibCSpecificStaticJDKLibraries() {
-        return true;
     }
 }

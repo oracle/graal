@@ -24,13 +24,19 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
+import org.junit.Assert;
+import org.junit.Test;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class ReplacementsTest extends GraalCompilerTest {
+public class ReplacementsTest extends GraalCompilerTest {
 
     /**
      * Gets a {@link ClassfileBytecodeProvider} that enables snippets and intrinsics to be loaded
@@ -43,4 +49,32 @@ public abstract class ReplacementsTest extends GraalCompilerTest {
         return bytecodeProvider;
     }
 
+    @Test
+    public void testSnippetReflectionprovider() {
+        SnippetReflectionProvider snippetReflection = new SnippetReflectionProvider() {
+
+            @Override
+            public Class<?> originalClass(ResolvedJavaType type) {
+                return null;
+            }
+
+            @Override
+            public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
+                return null;
+            }
+
+            @Override
+            public JavaConstant forObject(Object object) {
+                return JavaConstant.NULL_POINTER;
+            }
+
+            @Override
+            public <T> T asObject(Class<T> type, JavaConstant constant) {
+                return null;
+            }
+        };
+
+        Assert.assertEquals(snippetReflection.forBoxed(JavaKind.Double, 42.42D), JavaConstant.forBoxedPrimitive(42.42D));
+        Assert.assertEquals(snippetReflection.forBoxed(JavaKind.Object, null), JavaConstant.NULL_POINTER);
+    }
 }

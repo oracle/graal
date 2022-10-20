@@ -107,7 +107,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

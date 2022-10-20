@@ -316,6 +316,19 @@ public abstract class LLVMInteropType implements TruffleObject {
         protected String toString(EconomicSet<LLVMInteropType> visited) {
             return name;
         }
+
+        /**
+         *
+         * @throws UnknownIdentifierException
+         */
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+            for (StructMember member : members) {
+                if (member.name.equals(ident)) {
+                    return Pair.create(new LinkedList<>(), this);
+                }
+            }
+            return null;
+        }
     }
 
     public abstract static class SpecialStruct extends Structured {
@@ -396,31 +409,40 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static final class ClazzInheritance implements Comparable<ClazzInheritance> {
-        public final Clazz superClass;
+    public static final class TypeInheritance implements Comparable<TypeInheritance> {
+        public final Struct superType;
         public final long offset;
         public final boolean virtual;
 
-        public ClazzInheritance(Clazz superClass, long offset, boolean virtual) {
-            this.superClass = superClass;
+        public TypeInheritance(Struct superType, long offset, boolean virtual) {
+            this.superType = superType;
             this.offset = offset;
             this.virtual = virtual;
         }
 
         @Override
-        public int compareTo(ClazzInheritance other) {
+        public int compareTo(TypeInheritance other) {
             if (this.virtual == other.virtual) {
                 return Long.compare(this.offset, other.offset);
             } else {
                 return this.virtual ? 1 : -1;
             }
         }
+
+        public boolean isClass() {
+            return superType instanceof Clazz;
+        }
+
+        Clazz getSuperClass() {
+            assert isClass();
+            return (Clazz) superType;
+        }
     }
 
     public static final class Clazz extends Struct {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
-        private SortedSet<ClazzInheritance> superclasses;
+        private SortedSet<TypeInheritance> superTypes;
         private VTable vtable;
         private boolean virtualMethodsInitialized;
         private boolean virtualMethods;
@@ -430,11 +452,11 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.methods = methods;
             this.vtable = null;
             this.virtualMethodsInitialized = false;
-            this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
+            this.superTypes = new TreeSet<>((a, b) -> a.compareTo(b));
         }
 
-        public void addSuperClass(Clazz superclass, long offset, boolean virtual) {
-            superclasses.add(new ClazzInheritance(superclass, offset, virtual));
+        public void addSuperType(Struct superclass, long offset, boolean virtual) {
+            superTypes.add(new TypeInheritance(superclass, offset, virtual));
         }
 
         public Method getMethod(int i) {
@@ -454,10 +476,12 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Method method = ci.superClass.findMethod(memberName);
-                if (method != null) {
-                    return method;
+            for (TypeInheritance ci : superTypes) {
+                if (ci.isClass()) {
+                    Method method = ci.getSuperClass().findMethod(memberName);
+                    if (method != null) {
+                        return method;
+                    }
                 }
             }
             return null;
@@ -485,18 +509,19 @@ public abstract class LLVMInteropType implements TruffleObject {
             return Pair.create(arr, pair.getRight());
         }
 
+        @Override
         @TruffleBoundary
-        private Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new LinkedList<>(), this);
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Pair<LinkedList<Long>, Struct> pair = ci.superClass.getMemberAccessList(ident);
+            for (TypeInheritance ci : superTypes) {
+                Pair<LinkedList<Long>, Struct> pair = ci.superType.getMemberAccessList(ident);
                 if (pair != null) {
                     for (StructMember member : members) {
-                        if (member.type.equals(ci.superClass)) {
+                        if (member.type.equals(ci.superType)) {
                             long offset = ci.virtual ? ci.offset : member.startOffset;
                             offset <<= 1;
                             offset |= ci.virtual ? 1 : 0;
@@ -517,8 +542,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return member;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                StructMember member = ci.superClass.findMember(memberName);
+            for (TypeInheritance ci : superTypes) {
+                StructMember member = ci.superType.findMember(memberName);
                 if (member != null) {
                     return member;
                 }
@@ -546,8 +571,12 @@ public abstract class LLVMInteropType implements TruffleObject {
             return list.toArray(new String[0]);
         }
 
+        public Set<Struct> getSuperTypes() {
+            return new HashSet<>(superTypes.stream().map(ci -> ci.superType).collect(Collectors.toSet()));
+        }
+
         public Set<Clazz> getSuperClasses() {
-            return new HashSet<>(superclasses.stream().map(ci -> ci.superClass).collect(Collectors.toSet()));
+            return new HashSet<>(superTypes.stream().filter(TypeInheritance::isClass).map(TypeInheritance::getSuperClass).collect(Collectors.toSet()));
         }
 
         @TruffleBoundary
@@ -559,8 +588,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                if (ci.superClass.hasVirtualMethods()) {
+            for (TypeInheritance ci : superTypes) {
+                if (ci.isClass() && ci.getSuperClass().hasVirtualMethods()) {
                     virtualMethods = true;
                     return;
                 }
@@ -586,8 +615,10 @@ public abstract class LLVMInteropType implements TruffleObject {
         public void buildVTable() {
             virtualMethodsInitialized = false;
             if (vtable == null && hasVirtualMethods()) {
-                for (ClazzInheritance ci : superclasses) {
-                    ci.superClass.buildVTable();
+                for (TypeInheritance ci : superTypes) {
+                    if (ci.isClass()) {
+                        ci.getSuperClass().buildVTable();
+                    }
                 }
                 vtable = new VTable(this);
             }
@@ -609,10 +640,12 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Method m = ci.superClass.findMethodByArgumentsWithSelf(memberName, arguments);
-                if (m != null) {
-                    return m;
+            for (TypeInheritance ci : superTypes) {
+                if (ci.isClass()) {
+                    Method m = ci.getSuperClass().findMethodByArgumentsWithSelf(memberName, arguments);
+                    if (m != null) {
+                        return m;
+                    }
                 }
             }
             if (expectedArgCount >= 0) {
@@ -997,13 +1030,13 @@ public abstract class LLVMInteropType implements TruffleObject {
                 LLVMSourceType memberType = member.getElementType();
                 final boolean isInheritanceType = member instanceof LLVMSourceInheritanceType;
                 if (isInheritanceType) {
-                    assert memberType instanceof LLVMSourceClassLikeType;
-                    LLVMSourceClassLikeType sourceSuperClazz = (LLVMSourceClassLikeType) memberType;
-                    if (!typeCache.containsKey(sourceSuperClazz)) {
-                        convertClass(sourceSuperClazz);
+                    assert memberType instanceof LLVMSourceStructLikeType;
+                    LLVMSourceStructLikeType sourceSuperType = (LLVMSourceStructLikeType) memberType;
+                    if (!typeCache.containsKey(sourceSuperType)) {
+                        convertStructured(sourceSuperType);
                     }
-                    Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
-                    ret.addSuperClass(superClazz, member.getOffset(), ((LLVMSourceInheritanceType) member).isVirtual());
+                    Struct superType = (Struct) typeCache.get(sourceSuperType);
+                    ret.addSuperType(superType, member.getOffset(), ((LLVMSourceInheritanceType) member).isVirtual());
                 }
                 long startOffset = member.getOffset() / 8;
                 long endOffset = startOffset + (memberType.getSize() + 7) / 8;

@@ -210,8 +210,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.mustRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState);
     }
 
     @Override

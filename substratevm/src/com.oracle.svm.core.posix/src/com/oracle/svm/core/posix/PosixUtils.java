@@ -27,7 +27,6 @@ package com.oracle.svm.core.posix;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
@@ -52,7 +52,6 @@ import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
-import com.oracle.svm.core.posix.linux.libc.GLibC;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -93,7 +92,7 @@ public class PosixUtils {
                 return Locale.LC_MESSAGES();
         }
 
-        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getClass().equals(GLibC.class)) {
+        if (Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(GLibC.class)) {
             switch (category) {
                 case "LC_PAPER":
                     return Locale.LC_PAPER();

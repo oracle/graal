@@ -94,6 +94,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -970,7 +971,7 @@ public class LanguageSPITest {
                 case NATIVE_ACCESS:
                     return env.isNativeAccessAllowed();
                 case IO:
-                    return env.isIOAllowed();
+                    return env.isFileIOAllowed();
                 case HOST_CLASS_LOADING:
                     TruffleFile file = env.getTruffleFileInternal("", null);
                     try {
@@ -1048,11 +1049,11 @@ public class LanguageSPITest {
                 builder.allowNativeAccess(allowPrivilege);
                 break;
             case InnerContextAccessPrivilegesLanguage.IO:
-                builder.allowIO(allowPrivilege);
+                builder.allowIO(allowPrivilege ? IOAccess.ALL : IOAccess.NONE);
                 break;
             case InnerContextAccessPrivilegesLanguage.HOST_CLASS_LOADING:
                 // required for host class loading
-                builder.allowIO(true);
+                builder.allowIO(IOAccess.ALL);
                 builder.allowHostClassLookup((s) -> true);
                 builder.allowHostClassLoading(allowPrivilege);
                 break;

@@ -213,13 +213,13 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FLOATING_READS, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.HIGH_TIER_LOWERING, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This phase must run before FSA."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.FLOATING_READS, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtDeopts(), "This phase must run before FSA"));
     }
 
     @Override

@@ -96,14 +96,14 @@ public abstract class AbstractCompilationPlan {
     public void verifyCompilationPlan(GraphState graphState) {
         GraphState simulationGraphState = graphState.copy();
         addInitialRequiredStages(simulationGraphState);
-        Optional<NotApplicable> canApplyTier = highTier.getPhaseSuite().canApply(simulationGraphState);
-        GraalError.guarantee(canApplyTier.isEmpty(), "Cannot apply the high tier of this compilation plan because %s.%n%s", canApplyTier.orElse(null), this);
+        Optional<NotApplicable> tierNotApplicable = highTier.getPhaseSuite().notApplicableTo(simulationGraphState);
+        GraalError.guarantee(tierNotApplicable.isEmpty(), "Cannot apply the high tier of this compilation plan because %s.%n%s", tierNotApplicable.orElse(null), this);
         highTier.updateGraphState(simulationGraphState);
-        canApplyTier = midTier.getPhaseSuite().canApply(simulationGraphState);
-        GraalError.guarantee(canApplyTier.isEmpty(), "Cannot apply the mid tier of this compilation plan because %s.%n%s", canApplyTier.orElse(null), this);
+        tierNotApplicable = midTier.getPhaseSuite().notApplicableTo(simulationGraphState);
+        GraalError.guarantee(tierNotApplicable.isEmpty(), "Cannot apply the mid tier of this compilation plan because %s.%n%s", tierNotApplicable.orElse(null), this);
         midTier.updateGraphState(simulationGraphState);
-        canApplyTier = lowTier.getPhaseSuite().canApply(simulationGraphState);
-        GraalError.guarantee(canApplyTier.isEmpty(), "Cannot apply the low tier of this compilation plan because %s.%n%s", canApplyTier.orElse(null), this);
+        tierNotApplicable = lowTier.getPhaseSuite().notApplicableTo(simulationGraphState);
+        GraalError.guarantee(tierNotApplicable.isEmpty(), "Cannot apply the low tier of this compilation plan because %s.%n%s", tierNotApplicable.orElse(null), this);
         lowTier.updateGraphState(simulationGraphState);
         GraalError.guarantee(simulationGraphState.hasAllMandatoryStages(getMandatoryStages()), "This compilation plan does not apply all mandatory stages.%n%s", this);
         GraalError.guarantee(!simulationGraphState.requiresFutureStages(), "This compilation plan:%n%s%nhas remaining requirements: %s", this, simulationGraphState.getFutureRequiredStages());

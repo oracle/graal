@@ -35,24 +35,24 @@ import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextPosix {
+final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_Posix {
 
     // Checkstyle: stop
     static class RTLDAccessor {
 
-        static int getRTLD_GLOBAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextPosix ctx) {
+        static int getRTLD_GLOBAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_Posix ctx) {
             return Dlfcn.RTLD_GLOBAL();
         }
 
-        static int getRTLD_LOCAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextPosix ctx) {
+        static int getRTLD_LOCAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_Posix ctx) {
             return Dlfcn.RTLD_LOCAL();
         }
 
-        static int getRTLD_LAZY(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextPosix ctx) {
+        static int getRTLD_LAZY(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_Posix ctx) {
             return Dlfcn.RTLD_LAZY();
         }
 
-        static int getRTLD_NOW(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextPosix ctx) {
+        static int getRTLD_NOW(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_Posix ctx) {
             return Dlfcn.RTLD_NOW();
         }
     }

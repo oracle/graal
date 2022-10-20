@@ -88,6 +88,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
@@ -122,6 +123,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
@@ -947,14 +950,13 @@ final class EngineAccessor extends Accessor {
             boolean useAllowCreateThread = inheritAccess(inheritAccess, allowCreateThreads, creatorConfig.createThreadAllowed);
             boolean useAllowNativeAccess = inheritAccess(inheritAccess, allowNativeAccess, creatorConfig.nativeAccessAllowed);
 
-            FileSystem useFileSystem;
-            FileSystem useInternalFileSystem;
+            FileSystemConfig fileSystemConfig;
             if (inheritAccess(inheritAccess, allowIO, true)) {
-                useFileSystem = creatorConfig.fileSystem;
-                useInternalFileSystem = creatorConfig.internalFileSystem;
+                fileSystemConfig = creatorConfig.fileSystemConfig;
             } else {
-                useFileSystem = FileSystems.newNoIOFileSystem();
-                useInternalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : useFileSystem;
+                FileSystem publicFileSystem = FileSystems.newNoIOFileSystem();
+                FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : publicFileSystem;
+                fileSystemConfig = new FileSystemConfig(IOAccess.NONE, publicFileSystem, internalFileSystem);
             }
 
             /*
@@ -1020,7 +1022,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, sharingEnabled, useOut, useErr, useIn,
                             useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
-                            useClassFilter, useArguments, allowedLanguages, useOptions, useFileSystem, useInternalFileSystem, creatorConfig.logHandler,
+                            useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
                             useTimeZone, creatorConfig.limits, creatorConfig.hostClassLoader, useAllowHostAccess,
                             creatorConfig.allowValueSharing, false,
@@ -1207,6 +1209,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isSocketIOAllowed(Object engineFileSystemContext) {
+            if (engineFileSystemContext instanceof PolyglotLanguageContext) {
+                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) engineFileSystemContext;
+                return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
+            } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
+                return true;
+            } else {
+                throw new AssertionError();
+            }
+        }
+
+        @Override
         public boolean hasNoAccess(FileSystem fs) {
             return FileSystems.hasNoAccess(fs);
         }
@@ -1381,7 +1395,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public FileSystem getFileSystem(Object polyglotContext) {
-            return ((PolyglotContextImpl) polyglotContext).config.fileSystem;
+            return ((PolyglotContextImpl) polyglotContext).config.fileSystemConfig.fileSystem;
         }
 
         @Override
@@ -1477,14 +1491,14 @@ final class EngineAccessor extends Accessor {
         public String getReinitializedPath(TruffleFile truffleFile) {
             FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((FileSystems.PreInitializeContextFileSystem) fs).pathToString(path);
+            return ((PreInitializeContextFileSystem) fs).pathToString(path);
         }
 
         @Override
         public URI getReinitializedURI(TruffleFile truffleFile) {
             FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((FileSystems.PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
+            return ((PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
         }
 
         @Override

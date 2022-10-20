@@ -57,6 +57,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -214,7 +215,6 @@ import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
@@ -1238,7 +1238,7 @@ public class NativeImageGenerator {
             ((AnalysisType) resolvedJavaType).registerAsReachable();
         }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
-        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());
+        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 
@@ -1345,7 +1345,6 @@ public class NativeImageGenerator {
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
             TypeSnippets.registerLowerings(options, providers, lowerings);
-            ExceptionSnippets.registerLowerings(options, providers, lowerings);
 
             if (hosted) {
                 DeoptHostedSnippets.registerLowerings(options, providers, lowerings);
@@ -1666,49 +1665,49 @@ public class NativeImageGenerator {
     private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
 
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
-            if (LibCBase.isMethodProvidedInCurrentLibc(method)) {
+            if (HostedLibCBase.isMethodProvidedInCurrentLibc(method)) {
                 initializeAtBuildTime(method.getDeclaringClass(), classInitializationSupport, CConstant.class);
                 nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
             }
         }
         for (Method method : loader.findAnnotatedMethods(CFunction.class)) {
-            if (LibCBase.isMethodProvidedInCurrentLibc(method)) {
+            if (HostedLibCBase.isMethodProvidedInCurrentLibc(method)) {
                 nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, CStruct.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(RawStructure.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, RawStructure.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CPointerTo.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, CPointerTo.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(RawPointerTo.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, RawPointerTo.class);
                 nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
                 initializeAtBuildTime(clazz, classInitializationSupport, CEnum.class);
                 nativeLibs.loadJavaType(type);
             }
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class, false)) {
-            if (LibCBase.isTypeProvidedInCurrentLibc(clazz)) {
+            if (HostedLibCBase.isTypeProvidedInCurrentLibc(clazz)) {
                 initializeAtBuildTime(clazz, classInitializationSupport, CContext.class);
             }
         }

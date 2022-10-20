@@ -159,7 +159,7 @@ public final class VariablesHandler {
         Collection<DebugValue> properties = val.getProperties();
         int valId = (val.isArray() && !val.getArray().isEmpty()) || (properties != null && !properties.isEmpty()) ? info.getId(val) : 0;
         Variable var = Variable.create(val.getName() != null ? val.getName() : defaultName,
-                        val.isReadable() ? val.isString() ? '"' + val.toDisplayString() + '"' : val.toDisplayString() : "",
+                        val.isReadable() ? val.toDisplayString() : "<not readable>",
                         valId);
         DebugValue metaObject = val.getMetaObject();
         if (metaObject != null) {

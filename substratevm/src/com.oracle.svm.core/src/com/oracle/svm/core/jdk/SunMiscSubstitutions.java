@@ -32,14 +32,16 @@ import java.security.ProtectionDomain;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.JavaMemoryUtil;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -68,17 +70,17 @@ final class Target_jdk_internal_misc_Unsafe_Core {
 
     @Substitute
     private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        JavaMemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
+        UnsafeMemorySupport.get().unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @Substitute
     private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        JavaMemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
+        UnsafeMemorySupport.get().unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
     @Substitute
     private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
-        JavaMemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
+        UnsafeMemorySupport.get().unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @Substitute
@@ -216,6 +218,18 @@ final class Target_jdk_internal_access_SharedSecrets {
     private static Target_jdk_internal_access_JavaAWTAccess getJavaAWTAccess() {
         return null;
     }
+
+    /**
+     * The JavaIOAccess implementation installed by the class initializer of java.io.Console
+     * captures state like "is a tty". The only way to remove such state is by resetting the field.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    private static Target_jdk_internal_access_JavaIOAccess javaIOAccess;
+}
+
+@TargetClass(className = "jdk.internal.access.JavaIOAccess", onlyWith = JDK17OrLater.class)
+final class Target_jdk_internal_access_JavaIOAccess {
 }
 
 @TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaAWTAccess")
