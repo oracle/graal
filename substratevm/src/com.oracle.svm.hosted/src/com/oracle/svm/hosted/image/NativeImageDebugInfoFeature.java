@@ -122,18 +122,18 @@ class NativeImageDebugInfoFeature implements InternalFeature {
 
                 var imageClassLoader = accessImpl.getImageClassLoader();
 
-                var builderArguments = imageClassLoader.classLoaderSupport.getHostedOptionParser().getArguments();
-                objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(builderArguments));
-
                 var classPath = imageClassLoader.classpath().stream().map(Path::toString).collect(Collectors.toList());
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.classpath", makeSectionImpl.apply(classPath));
                 var modulePath = imageClassLoader.modulepath().stream().map(Path::toString).collect(Collectors.toList());
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(modulePath));
-
-                var sortedPropertiesList = ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+                /* Get original arguments that got passed to the builder when it got started */
+                var builderArguments = imageClassLoader.classLoaderSupport.getHostedOptionParser().getArguments();
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(builderArguments));
+                /* System properties that got passed to the VM that runs the builder */
+                var builderProperties = ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
                                 .filter(arg -> arg.startsWith("-D"))
                                 .sorted().collect(Collectors.toList());
-                objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(sortedPropertiesList));
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(builderProperties));
             }
         }
         ProgressReporter.singleton().setDebugInfoTimer(timer);
