@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
@@ -40,7 +41,6 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.io.AssemblyBuffer;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
@@ -100,7 +100,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var objectFile = image.getObjectFile();
             objectFile.installDebugInfo(provider);
 
-            if (OS.LINUX.isCurrent() && SubstrateOptions.UseImagebuildDebugSections.getValue()) {
+            if (Platform.includedIn(Platform.LINUX.class) && SubstrateOptions.UseImagebuildDebugSections.getValue()) {
                 /*-
                  * Provide imagebuild infos as special debug.svm.imagebuild.* sections
                  * The contents of these sections can be dumped with:
