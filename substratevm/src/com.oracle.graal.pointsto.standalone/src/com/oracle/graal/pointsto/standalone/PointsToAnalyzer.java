@@ -28,16 +28,12 @@ package com.oracle.graal.pointsto.standalone;
 
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
-import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -77,8 +73,8 @@ import com.oracle.graal.pointsto.standalone.features.VMInitItemsFeature;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
-import com.oracle.graal.pointsto.standalone.reflect.StandaloneReflectionFeature;
 import com.oracle.graal.pointsto.standalone.phases.StandaloneClassInitializationPlugin;
+import com.oracle.graal.pointsto.standalone.reflect.StandaloneReflectionFeature;
 import com.oracle.graal.pointsto.standalone.replacements.AccessControllerSubstitutionProcessor;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
@@ -117,6 +113,7 @@ public final class PointsToAnalyzer {
     private final String analysisName;
     private boolean entrypointsAreSet;
     private boolean mainEntryIsSet;
+    private TemporaryAnalysisDirectoryProviderImpl temporaryAnalysisDirectoryProvider;
 
     @SuppressWarnings({"try", "unchecked"})
     private PointsToAnalyzer(String mainEntryClass, OptionValues options) {
@@ -129,7 +126,8 @@ public final class PointsToAnalyzer {
                             "Must specify analysis target application's classpath with -H:" + StandaloneOptions.AnalysisTargetAppCP.getName() +
                                             " or modulepath with -H:" + StandaloneOptions.AnalysisTargetAppModulePath.getName());
         }
-        standaloneAnalysisClassLoader = new StandaloneAnalysisClassLoader(extractClassPath(appCP), extractClassPath(appMP), ClassLoader.getPlatformClassLoader());
+        temporaryAnalysisDirectoryProvider = new TemporaryAnalysisDirectoryProviderImpl(options);
+        standaloneAnalysisClassLoader = StandaloneAnalysisClassLoader.createNew(appCP, appMP, ClassLoader.getPlatformClassLoader(), temporaryAnalysisDirectoryProvider);
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
@@ -252,13 +250,6 @@ public final class PointsToAnalyzer {
         }
     }
 
-    private static List<String> extractClassPath(String paths) {
-        return paths == null ? Collections.emptyList()
-                        : Arrays.stream(paths.split(File.pathSeparator))
-                                        .filter(cp -> new File(cp).exists())
-                                        .collect(Collectors.toList());
-    }
-
     private static int getWordSize() {
         int wordSize;
         String archModel = System.getProperty("sun.arch.data.model");
@@ -299,29 +290,33 @@ public final class PointsToAnalyzer {
 
     @SuppressWarnings("try")
     public int run() {
-        registerEntryMethods();
-        registerFeatures();
-        int exitCode = 0;
-        Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, standaloneAnalysisClassLoader, bigbang,
-                        debugContext);
-        standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
-        try (Timer t = new Timer("analysis", analysisName)) {
-            StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager,
-                            standaloneAnalysisClassLoader, bigbang, debugContext);
-            bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
-                bigbang.getHostVM().notifyClassReachabilityListener(analysisUniverse, config);
-                standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.duringAnalysis(config));
-                return !config.getAndResetRequireAnalysisIteration();
-            });
-        } catch (Throwable e) {
-            reportException(e);
-            exitCode = 1;
+        try {
+            registerEntryMethods();
+            registerFeatures();
+            int exitCode = 0;
+            Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, standaloneAnalysisClassLoader, bigbang,
+                            debugContext);
+            standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
+            try (Timer t = new Timer("analysis", analysisName)) {
+                StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager,
+                                standaloneAnalysisClassLoader, bigbang, debugContext);
+                bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
+                    bigbang.getHostVM().notifyClassReachabilityListener(analysisUniverse, config);
+                    standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.duringAnalysis(config));
+                    return !config.getAndResetRequireAnalysisIteration();
+                });
+            } catch (Throwable e) {
+                reportException(e);
+                exitCode = 1;
+            }
+            onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(standaloneAnalysisFeatureManager, standaloneAnalysisClassLoader, bigbang, debugContext);
+            standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.onAnalysisExit(onAnalysisExitAccess));
+            AnalysisReporter.printAnalysisReports("pointsto_" + analysisName, options, StandaloneOptions.reportsPath(options, "reports").toString(), bigbang);
+            bigbang.getUnsupportedFeatures().report(bigbang);
+            return exitCode;
+        } finally {
+            temporaryAnalysisDirectoryProvider.close();
         }
-        onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(standaloneAnalysisFeatureManager, standaloneAnalysisClassLoader, bigbang, debugContext);
-        standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.onAnalysisExit(onAnalysisExitAccess));
-        AnalysisReporter.printAnalysisReports("pointsto_" + analysisName, options, StandaloneOptions.reportsPath(options, "reports").toString(), bigbang);
-        bigbang.getUnsupportedFeatures().report(bigbang);
-        return exitCode;
     }
 
     /**

@@ -27,27 +27,51 @@
 package com.oracle.graal.pointsto.standalone;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.type.TypeResult;
 import com.oracle.svm.common.util.ClassUtils;
 
-public class StandaloneAnalysisClassLoader extends URLClassLoader {
+public final class StandaloneAnalysisClassLoader extends URLClassLoader {
     private List<String> analysisClassPath;
     private List<String> analysisModulePath;
+    private static TemporaryAnalysisDirectoryProviderImpl temporaryAnalysisDirectoryProvider;
 
-    public StandaloneAnalysisClassLoader(List<String> classPath, List<String> modulePath, ClassLoader parent) {
+    private StandaloneAnalysisClassLoader(List<String> classPath, List<String> modulePath, ClassLoader parent) {
         super(pathToUrl(classPath, modulePath), parent);
         analysisClassPath = classPath;
         analysisModulePath = modulePath;
+    }
+
+    public static StandaloneAnalysisClassLoader createNew(String classPath, String modulePath, ClassLoader parent, TemporaryAnalysisDirectoryProviderImpl tempDirProvider) {
+        temporaryAnalysisDirectoryProvider = tempDirProvider;
+        return new StandaloneAnalysisClassLoader(extractClassPath(classPath), extractClassPath(modulePath), parent);
+    }
+
+    private static List<String> extractClassPath(String paths) {
+        return paths == null ? Collections.emptyList()
+                        : Arrays.stream(paths.split(File.pathSeparator))
+                                        .collect(Collectors.toList());
     }
 
     public List<String> getClassPath() {
@@ -89,18 +113,83 @@ public class StandaloneAnalysisClassLoader extends URLClassLoader {
 
     private static URL[] pathToUrl(List<String> classPath, List<String> modulePath) {
         List<URL> urls = new ArrayList<>();
+        Map<String, List<String>> fatJarMap = new HashMap<>();
         Stream.concat(classPath.stream(), modulePath.stream())
                         .forEach(cp -> {
-                            try {
-                                urls.add(new File(cp).toURI().toURL());
-                            } catch (MalformedURLException e) {
-                                e.printStackTrace();
+                            if (isInFatJar(cp)) {
+                                String[] fatJarPaths = cp.split("!");
+                                if (fatJarPaths.length != 2) {
+                                    AnalysisError.shouldNotReachHere("Fat jar dependency format is not supported.");
+                                }
+                                String entryName = fatJarPaths[1];
+                                if (entryName.startsWith(File.separator)) {
+                                    entryName = entryName.substring(1);
+                                }
+                                fatJarMap.computeIfAbsent(fatJarPaths[0], k -> new ArrayList<>()).add(entryName);
+                            } else {
+                                File f = new File(cp);
+                                if (f.isFile() && cp.endsWith(".jar")) {
+                                    try {
+                                        JarFile jarFile = new JarFile(f);
+                                        Iterator<JarEntry> iterator = jarFile.entries().asIterator();
+                                        while (iterator.hasNext()) {
+                                            JarEntry entry = iterator.next();
+                                            if (!entry.isDirectory() && entry.getName().endsWith(".jar")) {
+                                                fatJarMap.computeIfAbsent(cp, k -> new ArrayList<>()).add(entry.getName());
+                                            }
+                                        }
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                try {
+                                    urls.add(f.toURI().toURL());
+                                } catch (MalformedURLException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         });
+        Path directory = temporaryAnalysisDirectoryProvider.getTemporaryBuildDirectory();
+        // Save the jar files in the fatjar to a temporary directory and get its url
+        fatJarMap.forEach((k, v) -> {
+            try {
+                JarFile jarFile = new JarFile(k);
+                File f = new File(k);
+                for (String entryName : v) {
+                    Path outputClassPath = directory.resolve(f.getName()).resolve(entryName).normalize();
+                    try {
+                        Path parentDirPath = outputClassPath.getParent();
+                        if (parentDirPath == null) {
+                            continue;
+                        } else {
+                            if (!Files.exists(parentDirPath)) {
+                                Files.createDirectories(parentDirPath);
+                            }
+                        }
+                    } catch (IOException e) {
+                        AnalysisError.shouldNotReachHere(e);
+                    }
+                    ZipEntry entry = jarFile.getEntry(entryName);
+                    byte[] data = jarFile.getInputStream(entry).readAllBytes();
+                    try (FileOutputStream outputStream = new FileOutputStream(outputClassPath.toFile())) {
+                        outputStream.write(data);
+                    } catch (IOException e) {
+                        AnalysisError.shouldNotReachHere(e);
+                    }
+                    urls.add(outputClassPath.toUri().toURL());
+                }
+            } catch (IOException e) {
+                AnalysisError.shouldNotReachHere(e);
+            }
+        });
         return urls.toArray(new URL[0]);
     }
 
     public Class<?> defineClass(String name, byte[] data) {
         return defineClass(name, data, 0, data.length);
+    }
+
+    private static boolean isInFatJar(String cp) {
+        return cp.contains("!") && cp.endsWith(".jar");
     }
 }

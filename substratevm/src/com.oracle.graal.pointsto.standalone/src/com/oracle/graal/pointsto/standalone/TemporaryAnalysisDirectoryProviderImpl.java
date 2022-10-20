@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +23,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
 
+package com.oracle.graal.pointsto.standalone;
+
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.CommonTemporaryDirectoryProviderImpl;
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.options.OptionValues;
 
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 
-public class TemporaryBuildDirectoryProviderImpl extends CommonTemporaryDirectoryProviderImpl {
+public class TemporaryAnalysisDirectoryProviderImpl extends CommonTemporaryDirectoryProviderImpl {
+    private OptionValues optionValues;
+
+    public TemporaryAnalysisDirectoryProviderImpl(OptionValues optionValues) {
+        this.optionValues = optionValues;
+    }
 
     @Override
     public synchronized Path getTemporaryBuildDirectory() {
         if (tempDirectory == null) {
             try {
-                Optional<Path> tempName = NativeImageOptions.TempDirectory.getValue().lastValue();
-                if (tempName.isEmpty()) {
-                    tempDirectory = Files.createTempDirectory("SVM-");
+                String tempName = StandaloneOptions.AnalysisTempDirectory.getValue(optionValues);
+                if (tempName == null || tempName.isEmpty()) {
+                    tempDirectory = Files.createTempDirectory("Pointsto-");
                     deleteTempDirectory = true;
                 } else {
-                    tempDirectory = tempName.get().resolve("SVM-" + System.currentTimeMillis());
+                    tempDirectory = FileSystems.getDefault().getPath(tempName).resolve("Pointsto-" + System.currentTimeMillis());
                     assert !Files.exists(tempDirectory);
                     Files.createDirectories(tempDirectory);
                 }
             } catch (IOException ex) {
-                throw VMError.shouldNotReachHere(ex);
+                throw throwException(null, ex);
             }
         }
         return tempDirectory.toAbsolutePath();
@@ -56,13 +64,6 @@ public class TemporaryBuildDirectoryProviderImpl extends CommonTemporaryDirector
 
     @Override
     public RuntimeException throwException(Path path, Exception cause) {
-        if (path == null) {
-            return VMError.shouldNotReachHere(cause);
-        } else {
-            return VMError.shouldNotReachHere(
-                            String.format("Unable to remove the temporary build directory at '%s'. If you are using the '%s' option, you may want to delete the temporary directory manually.",
-                                            path, NativeImageOptions.TempDirectory.getName()),
-                            cause);
-        }
+        return AnalysisError.shouldNotReachHere(cause);
     }
 }

@@ -44,7 +44,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.common.TemporaryBuildDirectoryProvider;
 
 public class FileUtils {
 

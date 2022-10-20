@@ -82,7 +82,7 @@ public class AbstractClassEntryFeature implements Feature {
                     bigBang.getMetaAccess().lookupJavaType(stubConcreteSub).registerAsInHeap("Dummy concrete subclass of abstract class.");
                     definedTypes.add(declaringType);
                 }
-                bigBang.addRootMethod(abstractEntry, false);
+                bigBang.addRootMethod(abstractEntry, false, "Non-abstract method in abstract class");
             }
             definedTypes.clear();
         }

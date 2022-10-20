@@ -76,6 +76,14 @@ public class PointstoAnalyzerTester {
     private String testClassName;
     private String testClassJar;
     private Class<?> testClass;
+    private ClassLoader analysisClassLoader;
+    private PointsToAnalyzer pointstoAnalyzer;
+
+    /**
+     * No main test entry point. The entry points shall be set by configuration file later.
+     */
+    public PointstoAnalyzerTester() {
+    }
 
     public PointstoAnalyzerTester(Class<?> testClass) {
         this.testClass = testClass;
@@ -91,6 +99,10 @@ public class PointstoAnalyzerTester {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public ClassLoader getAnalysisClassLoader() {
+        return analysisClassLoader;
     }
 
     public Class<?> getTestClass() {
@@ -152,59 +164,17 @@ public class PointstoAnalyzerTester {
      *            analysis is supposed to fail.
      */
     public void runAnalysisAndAssert(boolean expectPass) {
-        PointsToAnalyzer pointstoAnalyzer = null;
         UnsupportedFeatureException unsupportedFeatureException = null;
         try {
             try {
-                pointstoAnalyzer = runAnalysis(expectPass);
+                runAnalysis(expectPass);
             } catch (UnsupportedFeatureException e) {
                 unsupportedFeatureException = e;
             }
-            ClassLoader analysisClassLoader = pointstoAnalyzer.getClassLoader();
             if (!expectPass) {
                 return;
             }
-            final AnalysisUniverse universe = pointstoAnalyzer.getResultUniverse();
-            final MetaAccessProvider originalMetaAccess = universe.getOriginalMetaAccess();
-            assertNotNull(universe);
-
-            assertReachable("Method", expectedReachableMethods, expectedUnreachableMethods, reflectionMethod -> {
-                try {
-                    Executable actualMethod = reflectionMethod;
-                    Class<?> declaringClass = reflectionMethod.getDeclaringClass();
-                    if (!analysisClassLoader.equals(declaringClass.getClassLoader())) {
-                        Class<?> c = Class.forName(declaringClass.getName(), false, analysisClassLoader);
-                        actualMethod = c.getDeclaredMethod(reflectionMethod.getName(), reflectionMethod.getParameterTypes());
-                    }
-                    ResolvedJavaMethod m = universe.getOriginalMetaAccess().lookupJavaMethod(actualMethod);
-                    return universe.getMethod(m);
-                } catch (ReflectiveOperationException e) {
-                    throw AnalysisError.shouldNotReachHere(e);
-                }
-            },
-                            reflectionMethod -> reflectionMethod.getDeclaringClass().getName() + "." + reflectionMethod.getName());
-            assertReachable("<clinit>", expectedReachableClinits, expectedUnreachableClinits, clazz -> {
-                AnalysisType t = classToAnalysisType(analysisClassLoader, universe, originalMetaAccess, clazz);
-                return t.getClassInitializer();
-            }, clazz -> clazz.getName() + ".<clinit>");
-            assertReachable("Type", expectedReachableTypes, expectedUnreachableTypes, clazz -> classToAnalysisType(analysisClassLoader, universe, originalMetaAccess, clazz),
-                            clazz -> clazz.getName());
-            assertReachable("Field", expectedReachableFields, expectedUnreachableFields, reflectionField -> {
-                try {
-                    Field actualField = reflectionField;
-                    Class<?> declaringClass = actualField.getDeclaringClass();
-                    if (!analysisClassLoader.equals(declaringClass.getClassLoader())) {
-                        Class<?> c = Class.forName(declaringClass.getName(), false, analysisClassLoader);
-                        actualField = c.getDeclaredField(reflectionField.getName());
-                    }
-                    ResolvedJavaField resolvedJavaField = originalMetaAccess.lookupJavaField(actualField);
-                    return universe.getField(resolvedJavaField);
-                } catch (ReflectiveOperationException e) {
-                    throw AnalysisError.shouldNotReachHere(e);
-                }
-            },
-                            reflectionField -> reflectionField.getDeclaringClass().getName() + "." + reflectionField.getName());
-
+            runAsserts();
             if (unsupportedFeatureException != null) {
                 throw unsupportedFeatureException;
             }
@@ -213,6 +183,49 @@ public class PointstoAnalyzerTester {
                 pointstoAnalyzer.cleanUp();
             }
         }
+    }
+
+    public void runAsserts() {
+        final AnalysisUniverse universe = pointstoAnalyzer.getResultUniverse();
+        final MetaAccessProvider originalMetaAccess = universe.getOriginalMetaAccess();
+        assertNotNull(universe);
+
+        assertReachable("Method", expectedReachableMethods, expectedUnreachableMethods, reflectionMethod -> {
+            try {
+                Executable actualMethod = reflectionMethod;
+                Class<?> declaringClass = reflectionMethod.getDeclaringClass();
+                if (!analysisClassLoader.equals(declaringClass.getClassLoader())) {
+                    Class<?> c = Class.forName(declaringClass.getName(), false, analysisClassLoader);
+                    actualMethod = c.getDeclaredMethod(reflectionMethod.getName(), reflectionMethod.getParameterTypes());
+                }
+                ResolvedJavaMethod m = universe.getOriginalMetaAccess().lookupJavaMethod(actualMethod);
+                return universe.getMethod(m);
+            } catch (ReflectiveOperationException e) {
+                throw AnalysisError.shouldNotReachHere(e);
+            }
+        },
+                        reflectionMethod -> reflectionMethod.getDeclaringClass().getName() + "." + reflectionMethod.getName());
+        assertReachable("<clinit>", expectedReachableClinits, expectedUnreachableClinits, clazz -> {
+            AnalysisType t = classToAnalysisType(analysisClassLoader, universe, originalMetaAccess, clazz);
+            return t.getClassInitializer();
+        }, clazz -> clazz.getName() + ".<clinit>");
+        assertReachable("Type", expectedReachableTypes, expectedUnreachableTypes, clazz -> classToAnalysisType(analysisClassLoader, universe, originalMetaAccess, clazz),
+                        clazz -> clazz.getName());
+        assertReachable("Field", expectedReachableFields, expectedUnreachableFields, reflectionField -> {
+            try {
+                Field actualField = reflectionField;
+                Class<?> declaringClass = actualField.getDeclaringClass();
+                if (!analysisClassLoader.equals(declaringClass.getClassLoader())) {
+                    Class<?> c = Class.forName(declaringClass.getName(), false, analysisClassLoader);
+                    actualField = c.getDeclaredField(reflectionField.getName());
+                }
+                ResolvedJavaField resolvedJavaField = originalMetaAccess.lookupJavaField(actualField);
+                return universe.getField(resolvedJavaField);
+            } catch (ReflectiveOperationException e) {
+                throw AnalysisError.shouldNotReachHere(e);
+            }
+        },
+                        reflectionField -> reflectionField.getDeclaringClass().getName() + "." + reflectionField.getName());
     }
 
     private static AnalysisType classToAnalysisType(ClassLoader analysisClassLoader, AnalysisUniverse universe, MetaAccessProvider originalMetaAccess, Class<?> clazz) {
@@ -229,12 +242,11 @@ public class PointstoAnalyzerTester {
     }
 
     public Object runAnalysisForFeatureResult(Class<? extends Feature> feature) {
-        PointsToAnalyzer pointstoAnalyzer = runAnalysis(true);
-        return pointstoAnalyzer.getResultFromFeature(feature);
+        return runAnalysis(true).getResultFromFeature(feature);
     }
 
-    private PointsToAnalyzer runAnalysis(boolean expectPass) {
-        PointsToAnalyzer pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments);
+    public PointsToAnalyzer runAnalysis(boolean expectPass) {
+        pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments);
         try {
             int ret = pointstoAnalyzer.run();
             if (expectPass) {
@@ -245,6 +257,7 @@ public class PointstoAnalyzerTester {
         } catch (UnsupportedFeatureException e) {
             throw e;
         }
+        analysisClassLoader = pointstoAnalyzer.getClassLoader();
         return pointstoAnalyzer;
     }
 
@@ -280,19 +293,21 @@ public class PointstoAnalyzerTester {
     }
 
     public void deleteTestTmpDir() throws IOException {
-        Files.walkFileTree(tmpDir, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
-                Files.delete(file);
-                return FileVisitResult.CONTINUE;
-            }
+        if (tmpDir != null) {
+            Files.walkFileTree(tmpDir, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
 
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                Files.delete(dir);
-                return FileVisitResult.CONTINUE;
-            }
-        });
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
     }
 
     private static <T, R extends AnalysisElement> void assertReachable(String elementType, Set<T> expectedReachables, Set<T> expectedUnreachables,

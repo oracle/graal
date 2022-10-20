@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.llvm;
 import java.nio.file.Path;
 import java.util.Map;
 
+import com.oracle.svm.common.TemporaryBuildDirectoryProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
@@ -42,7 +43,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
