@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.options.OptionsParser;
@@ -42,6 +40,8 @@ import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
 import jdk.jfr.internal.TypeLibrary;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 
 /**
  * This class caches all JFR metadata types. This is mainly necessary because
@@ -50,23 +50,18 @@ import com.oracle.svm.core.annotate.TargetClass;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrMetadataTypeLibrary {
     private static final HashMap<String, Type> types = new HashMap<>();
-    private static List<Long> mirrorEvents = new ArrayList<>();
 
     private static void addMirrorEvent(Class<?> svmClass, Class<?> internalClass) {
         PlatformEventType et = (PlatformEventType) TypeLibrary.createType(svmClass, Collections.emptyList(), Collections.emptyList());
         et.setId(Type.getTypeId(internalClass));
         types.put(et.getName(), et);
-        mirrorEvents.add(et.getId());
+        JfrEvent.addMirrorEvent(et.getId());
     }
 
     private static void addMirrorEvents() {
         if (JavaVersionUtil.JAVA_SPEC > 17) {
             addMirrorEvent(com.oracle.svm.core.jfr.events.ThreadSleepEvent.class, Target_jdk_internal_event_ThreadSleepEvent.class);
         }
-    }
-
-    public static List<Long> getMirrorEvents() {
-        return mirrorEvents;
     }
 
     private static synchronized HashMap<String, Type> getTypes() {
@@ -132,4 +127,36 @@ public class JfrMetadataTypeLibrary {
 
 @TargetClass(className = "jdk.internal.event.ThreadSleepEvent", onlyWith = JDK19OrLater.class)
 final class Target_jdk_internal_event_ThreadSleepEvent {
+}
+
+@TargetClass(className = "jdk.jfr.internal.PlatformEventType")
+final class Target_jdk_jfr_internal_PlatformEventType {
+    @Alias private boolean isJVM;
+    @Alias private boolean isMethodSampling;
+    @Alias private long period;
+
+    @Substitute
+    public void setEnabled(boolean enabled) {
+        Target_jdk_jfr_internal_Type type = com.oracle.svm.core.SubstrateUtil.cast(this, Target_jdk_jfr_internal_Type.class);
+        long id = type.getId();
+        if (isJVM) {
+            if (isMethodSampling) {
+                long p = enabled ? period : 0;
+                SubstrateJVM.get().setMethodSamplingInterval(id, p);
+            } else {
+                SubstrateJVM.get().setEnabled(id, enabled);
+            }
+        } else if (com.oracle.svm.core.jfr.JfrEvent.isMirrorEvent(id)) {
+            // in openjdk, mirror events directly check their isEnabled boolean.
+            // But in svm these flags need to be stored along with the flags for JVM native events
+            SubstrateJVM.get().setEnabled(id, enabled);
+        }
+    }
+}
+
+@TargetClass(className = "jdk.jfr.internal.Type")
+final class Target_jdk_jfr_internal_Type {
+    @Alias
+    public native long getId();
+
 }

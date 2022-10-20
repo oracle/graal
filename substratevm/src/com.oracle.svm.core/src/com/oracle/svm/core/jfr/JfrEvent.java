@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
@@ -65,6 +67,13 @@ public final class JfrEvent {
 
     private final long id;
     private final String name;
+    private static Set<Long> mirrorEvents = new HashSet<>();
+    public static boolean isMirrorEvent(long id) {
+        return mirrorEvents.contains(id);
+    }
+    public static boolean addMirrorEvent(long id) {
+        return mirrorEvents.add(id);
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static JfrEvent create(String name) {
