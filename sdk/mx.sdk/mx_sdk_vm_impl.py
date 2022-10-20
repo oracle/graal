@@ -2161,7 +2161,7 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
 class JmodModifier(mx.Project):
     def __init__(self, jmod_file, library_projects, jimage_project, **kw_args):
         """
-        Add native libraries defined by library projects to a jmod file copied from a jimage.
+        Add native libraries defined by library projects to an existing jmod file copied from a jimage.
         `jimage_project` is only used as input and not modified
         :param jmod_file: the simple name of the module to be copied and modified. It must not be a path or end with `.jmod`
         :type jmod_file: str
