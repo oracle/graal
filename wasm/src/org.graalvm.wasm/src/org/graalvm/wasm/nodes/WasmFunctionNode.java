@@ -549,15 +549,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
                     final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    CompilerAsserts.partialEvaluationConstant(targetUnwindType);
-                    if (targetUnwindType == PRIMITIVE_UNWIND) {
-                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                    } else if (targetUnwindType == REFERENCE_UNWIND) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                    } else if (targetUnwindType == UNKNOWN_UNWIND) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    if (CompilerDirectives.inInterpreter()) {
+                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            // Workaround for native image performance
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            // Workaround for native image performance
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        }
+                    } else {
+                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        }
                     }
                     // Jump to the target block.
                     offset += secondValueSigned(extraData, extraOffset, compact);
@@ -575,15 +588,27 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
                         final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
-                        if (targetUnwindType == PRIMITIVE_UNWIND) {
-                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                        } else if (targetUnwindType == REFERENCE_UNWIND) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        if (CompilerDirectives.inInterpreter()) {
+                            if (targetUnwindType == PRIMITIVE_UNWIND) {
+                                unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                            } else if (targetUnwindType == REFERENCE_UNWIND) {
+                                // Workaround for native image performance
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                            } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                                // Workaround for native image performance
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                            }
+                        } else {
+                            CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                            if (targetUnwindType == PRIMITIVE_UNWIND) {
+                                unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                            } else if (targetUnwindType == REFERENCE_UNWIND) {
+                                unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                            } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                            }
                         }
 
                         // Jump to the target block.
@@ -625,8 +650,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         if (targetUnwindType == PRIMITIVE_UNWIND) {
                             unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
                         } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            // Workaround for native image performance
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
                             unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
                         } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            // Workaround for native image performance
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
                             unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                         }
 
@@ -652,10 +681,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                 if (targetUnwindType == PRIMITIVE_UNWIND) {
                                     unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 } else if (targetUnwindType == REFERENCE_UNWIND) {
-                                    CompilerDirectives.transferToInterpreterAndInvalidate();
                                     unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 } else if (targetUnwindType == UNKNOWN_UNWIND) {
-                                    CompilerDirectives.transferToInterpreterAndInvalidate();
                                     unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                                 }
 
