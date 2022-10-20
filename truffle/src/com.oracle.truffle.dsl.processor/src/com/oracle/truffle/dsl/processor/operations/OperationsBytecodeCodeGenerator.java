@@ -341,6 +341,8 @@ public class OperationsBytecodeCodeGenerator {
                     b.startStatement().startCall(varTracer, "traceInstruction");
                     b.variable(vars.bci);
                     b.variable(op.opcodeIdField);
+                    b.string(op.isBranchInstruction() ? "1" : "0");
+                    b.string(op.isVariadic() ? "1" : "0");
                     b.end(2);
                 }
 

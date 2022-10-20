@@ -232,7 +232,7 @@ public class OperationsStatistics {
         }
 
         @Override
-        public void traceInstruction(int bci, int id) {
+        public void traceInstruction(int bci, int id, int... arguments) {
         }
 
         @Override
@@ -432,21 +432,29 @@ public class OperationsStatistics {
         }
 
         @Override
-        public void traceInstruction(int bci, int id) {
+        public void traceInstruction(int bci, int id, int... arguments) {
             nodesWithInstruction.computeIfAbsent(id, k -> new HashSet<>()).add(curNode);
 
-            // SI finding
-            if (instrHistoryLen == MAX_SUPERINSTR_LEN) {
-                System.arraycopy(instrHistory, 1, instrHistory, 0, MAX_SUPERINSTR_LEN - 1);
-                instrHistory[MAX_SUPERINSTR_LEN - 1] = id;
-            } else {
-                instrHistory[instrHistoryLen++] = id;
-            }
+            boolean isBranch = arguments[0] != 0;
+            boolean isVariadic = arguments[1] != 0;
 
-            for (int i = 0; i < instrHistoryLen - 1; i++) {
-                int[] curHistory = Arrays.copyOfRange(instrHistory, i, instrHistoryLen);
-                InstructionSequenceKey key = new InstructionSequenceKey(curHistory);
-                instructionSequencesMap.merge(key, 1L, EnabledExecutionTracer::saturatingAdd);
+            // SI finding
+            if (isVariadic) {
+                // we don't support variadic
+                instrHistoryLen = 0;
+            } else {
+                if (instrHistoryLen == MAX_SUPERINSTR_LEN) {
+                    System.arraycopy(instrHistory, 1, instrHistory, 0, MAX_SUPERINSTR_LEN - 1);
+                    instrHistory[MAX_SUPERINSTR_LEN - 1] = id;
+                } else {
+                    instrHistory[instrHistoryLen++] = id;
+                }
+
+                for (int i = 0; i < instrHistoryLen - 1; i++) {
+                    int[] curHistory = Arrays.copyOfRange(instrHistory, i, instrHistoryLen);
+                    InstructionSequenceKey key = new InstructionSequenceKey(curHistory);
+                    instructionSequencesMap.merge(key, 1L, EnabledExecutionTracer::saturatingAdd);
+                }
             }
 
         }

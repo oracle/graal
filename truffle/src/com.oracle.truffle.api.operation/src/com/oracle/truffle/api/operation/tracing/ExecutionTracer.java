@@ -71,7 +71,7 @@ public abstract class ExecutionTracer {
 
     public abstract void endFunction(Node node);
 
-    public abstract void traceInstruction(int bci, int id);
+    public abstract void traceInstruction(int bci, int id, int... arguments);
 
     public abstract void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations);
 
