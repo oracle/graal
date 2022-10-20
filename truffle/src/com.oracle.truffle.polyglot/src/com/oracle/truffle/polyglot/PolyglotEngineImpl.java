@@ -93,6 +93,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -125,6 +126,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -1625,11 +1627,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     @SuppressWarnings({"all"})
     public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess, PolyglotAccess polyglotAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
-                    boolean allowContextOptions, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
-                    Map<String, String[]> arguments, String[] onlyLanguagesArray, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                    boolean allowValueSharing, boolean useSystemExit) {
+                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowContextOptions, boolean allowExperimentalOptions,
+                    Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, IOAccess ioAccess, Object logHandlerOrStream,
+                    boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
+                    String currentWorkingDirectory, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
         boolean replayEvents;
         boolean contextAddedToEngine;
@@ -1679,24 +1680,26 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (error != null) {
                 throw PolyglotEngineException.illegalArgument(error);
             }
-            final FileSystem fs;
-            final FileSystem internalFs;
+            final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
+            final boolean allowHostFileAccess = getImpl().getIO().hasHostFileAccess(ioAccess);
+            final FileSystemConfig fileSystemConfig;
             if (!ALLOW_IO) {
-                if (fileSystem == null) {
-                    fileSystem = FileSystems.newNoIOFileSystem();
+                if (allowHostFileAccess) {
+                    throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
                 }
-                fs = fileSystem;
-                internalFs = fileSystem;
-            } else if (allowHostIO) {
-                fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
-                internalFs = fs;
+                FileSystem fs = customFileSystem != null ? customFileSystem : FileSystems.newNoIOFileSystem();
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
+            } else if (allowHostFileAccess) {
+                FileSystem fs = FileSystems.newDefaultFileSystem();
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
+            } else if (customFileSystem != null) {
+                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
             } else {
-                fs = FileSystems.newNoIOFileSystem();
-                internalFs = FileSystems.newLanguageHomeFileSystem();
+                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem());
             }
             if (currentWorkingDirectory != null) {
-                fs.setCurrentWorkingDirectory(fs.parsePath(currentWorkingDirectory));
-                internalFs.setCurrentWorkingDirectory(internalFs.parsePath(currentWorkingDirectory));
+                fileSystemConfig.fileSystem.setCurrentWorkingDirectory(fileSystemConfig.fileSystem.parsePath(currentWorkingDirectory));
+                fileSystemConfig.internalFileSystem.setCurrentWorkingDirectory(fileSystemConfig.internalFileSystem.parsePath(currentWorkingDirectory));
             }
             final OutputStream useOut;
             if (configOut == null || configOut == INSTRUMENT.getOut(this.out)) {
@@ -1731,7 +1734,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             PolyglotLimits polyglotLimits = (PolyglotLimits) limitsImpl;
             PolyglotContextConfig config = new PolyglotContextConfig(this, null, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, allowContextOptions,
-                            allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
+                            allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fileSystemConfig, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit, null, null, null, null);
             context = loadPreinitializedContext(config);
             replayEvents = false;
@@ -1846,15 +1849,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return null;
         }
 
-        FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
-        preInitFs.onLoadPreinitializedContext(config.fileSystem);
-        FileSystem oldFileSystem = config.fileSystem;
-        config.fileSystem = preInitFs;
-
-        preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.internalFileSystem;
-        preInitFs.onLoadPreinitializedContext(config.internalFileSystem);
-        FileSystem oldInternalFileSystem = config.internalFileSystem;
-        config.internalFileSystem = preInitFs;
+        FileSystemConfig oldFileSystemConfig = config.fileSystemConfig;
+        config.fileSystemConfig = FileSystemConfig.createPatched(context.config.fileSystemConfig, config.fileSystemConfig);
 
         boolean patchResult = false;
         synchronized (this.lock) {
@@ -1884,8 +1880,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             } else {
                 context.closeImpl(false);
-                config.fileSystem = oldFileSystem;
-                config.internalFileSystem = oldInternalFileSystem;
+                config.fileSystemConfig = oldFileSystemConfig;
                 if (sharing) {
                     context = null;
                 } else {

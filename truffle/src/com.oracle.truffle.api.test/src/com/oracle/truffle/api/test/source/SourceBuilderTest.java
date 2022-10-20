@@ -78,6 +78,7 @@ import java.util.zip.ZipEntry;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -1011,7 +1012,8 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             text = "// Test";
             out.write(text.getBytes());
         }
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(fs).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build());
         try {
             Source.newBuilder("TestJava", queryURL(path.toUri())).build();
             fail("Expected SecurityException");

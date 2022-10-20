@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
+import org.graalvm.polyglot.io.IOAccess;
 
 /**
  * This class simulates a host to guest remote boundary. All parameters are designed to be easily
@@ -120,8 +121,8 @@ final class HostEntryPoint {
         Object receiver = api.getReceiver(engine);
         AbstractEngineDispatch dispatch = api.getDispatch(engine);
         Context remoteContext = dispatch.createContext(receiver, null, null, null, false, null, PolyglotAccess.NONE, false,
-                        false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
-                        new String[0], null, null,
+                        false, false, false, false, null, new HashMap<>(), new HashMap<>(),
+                        new String[0], IOAccess.NONE, null,
                         false, null, EnvironmentAccess.NONE,
                         null, null, null, null, null, true, false);
         return guestToHost(remoteContext);
