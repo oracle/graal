@@ -2161,6 +2161,9 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
 class JmodModifier(mx.Project):
     def __init__(self, jmod_file, library_projects, jimage_project, **kw_args):
         """
+        Add native libraries defined by library projects to a jmod file copied from a jimage.
+        `jimage_project` is only used as input and not modified
+        :param jmod_file: the simple name of the module to be copied and modified. It must not be a path or end with `.jmod`
         :type jmod_file: str
         :type library_projects: list[GraalVmLibrary]
         :type jimage_project_name: GraalVmJImage
@@ -2199,6 +2202,7 @@ class JmodModifier(mx.Project):
 class JmodModifierBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
     def __init__(self, subject, args):
         """
+        Add native libraries defined by the native projects to a jmod file copied from a jimage
         :type subject: JmodModifier
         """
         super(JmodModifierBuildTask, self).__init__(args, min(8, mx.cpu_count()), subject)
@@ -2221,13 +2225,13 @@ class JmodModifierBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
         mx.ensure_dir_exists(basename(self.subject.output_file()))
         graalvm_jimage_home = self.subject.jimage_project.output_directory()
 
-        # copy 'unmodified' jmod from the jimage to a tmp directory
+        # 1. copy the jmod file from the jimage to the output path
         jmod_copy_src = join(graalvm_jimage_home, 'jmods', self.subject.jmod_file)
         jmod_copy_dst = self.subject.output_file()
         assert mx.exists(jmod_copy_src), "Library projects {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lp.name for lp in self.subject.library_projects], jmod_copy_src)
         mx.copyfile(jmod_copy_src, jmod_copy_dst)
         for library_project in [lp for lp in self.subject.library_projects if not lp.is_skipped()]:
-            # modify the jmod file, adding the required resources
+            # 2. append the native libraries defined by the library projects to the copy of the jmod file
             library_abs_location = library_project.output_file()
             library_rel_location = join('lib', basename(library_abs_location))
             mx.logv("Adding '{}' to '{}' ('{}')".format(library_abs_location, jmod_copy_dst, library_rel_location))
