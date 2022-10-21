@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class GuardedInlinedMethodNode extends InlinedMethodNode {
-    private final InlinedMethodNode inlinedMethodNode;
+    @Child private InlinedMethodNode inlinedMethodNode;
 
     private final InlinedMethodGuard guard;
 
@@ -53,7 +53,7 @@ public final class GuardedInlinedMethodNode extends InlinedMethodNode {
 
     public GuardedInlinedMethodNode(InlinedMethodNode guardedNode, InlinedMethodGuard guard) {
         super(guardedNode.method.getMethod(), guardedNode.getTop(), guardedNode.opcode, guardedNode.getCallerBCI(), guardedNode.statementIndex);
-        this.inlinedMethodNode = guardedNode;
+        this.inlinedMethodNode = insert(guardedNode);
         this.guard = guard;
     }
 
