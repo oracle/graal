@@ -3,7 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 23.0.0
-* (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, -H:+TolerateBuilderClassesOnImageClasspath allows turning the error into a warning.
+* (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
 * (GR-41196) Provide `.debug.svm.imagebuild.*` sections that contain build options and properties used in the build of the image.
 
 ## Version 22.3.0

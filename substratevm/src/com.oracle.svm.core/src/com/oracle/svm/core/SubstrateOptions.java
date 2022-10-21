@@ -858,6 +858,6 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = Debug)//
-    public static final HostedOptionKey<Boolean> TolerateBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
 }
