@@ -723,7 +723,7 @@ suite = {
             "os_arch" : {
                 "windows": {
                     "amd64" : {
-                        "cflags": ["-MD", "-Zi", "-O2"],
+                        "cflags": ["-MD", "-Zi", "-O2", "-DJNIEXPORT="],
                     },
                 },
                 "<others>": {

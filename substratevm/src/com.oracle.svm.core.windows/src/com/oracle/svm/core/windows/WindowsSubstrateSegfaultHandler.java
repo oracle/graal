@@ -78,7 +78,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class,
                     "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
