@@ -97,27 +97,26 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
-                throw signalAPIRequiredError("SIGUSR2");
-            }
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateDumpRuntimeCompilationOnSignal);
+
+    public static void validateDumpRuntimeCompilationOnSignal(OptionKey<?> optionKey) {
+        if (DumpRuntimeCompilationOnSignal.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw signalAPIRequiredError(optionKey, "SIGUSR2");
         }
-    };
+    }
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
-                throw signalAPIRequiredError("SIGQUIT/SIGBREAK");
-            }
-        }
-    };
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateDumpThreadStacksOnSignal);
 
-    private static UserException signalAPIRequiredError(String requiredSignals) {
-        return UserError.abort("Cannot install signal handler for %s when Signal API is disabled. Please enable with `-H:+%s`.", requiredSignals, SubstrateOptions.EnableSignalAPI.getName());
+    public static void validateDumpThreadStacksOnSignal(OptionKey<?> optionKey) {
+        if (DumpThreadStacksOnSignal.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw signalAPIRequiredError(optionKey, "SIGQUIT/SIGBREAK");
+        }
+    }
+
+    private static UserException signalAPIRequiredError(OptionKey<?> optionKey, String requiredSignals) {
+        return UserError.abort("The option %s requires the Signal API to install signal handler(s) for %s, but the Signal API is disabled. Please enable with `-H:+%s`.",
+                        optionKey.getName(), requiredSignals, SubstrateOptions.EnableSignalAPI.getName());
     }
 
     static class DeprecatedOptions {
