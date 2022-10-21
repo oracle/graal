@@ -44,6 +44,7 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
   } + $.build_template + b + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
   # Generates an array of build specs for give build spec prototypes and platform configurations and applies the names array.
+  # If any resulting build contains a hidden field "skipPlattform:: true", then that build is dropped from the result array.
   #
   # Parameters
   #
@@ -67,12 +68,13 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
       std.mapWithIndex(function(idx, spec) spec + names[idx], build_spec)
     );
     local platforms = std.flattenArrays([flattenPlatformSpec(spec) for spec in platform_specs]);
-    mapSpecWithName([
+    local result = mapSpecWithName([
         proto + platform
           for proto in prototypes
               for platform in platforms
       ],
-      names)
+      names);
+    [b for b in result if !std.objectHasAll(b, "skipPlatform") || !b.skipPlatform]
   ,
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,
@@ -119,7 +121,7 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
 
   Description(description):: { description_text:: description },
 
-  gateTags(tags):: $.mxCommand + {
+  mxGate:: $.mxCommand + {
     # sorted and unique
     local prefixes = std.uniq(std.sort(["sulong"] + if std.objectHasAll(self, "suite") then [self.suite] else [])),
     local processTags(tags) =
@@ -138,24 +140,36 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
       # return tags if we would have returned an empty array
       else tags
     ,
+    local tags = std.join(",", self.gateTags),
+    gateTags:: [],
     extra_gate_args:: [],
-    job:: std.join("-", processTags(std.split(tags, ","))),
-    run+:
-      # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
-      assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
-      [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
-  } + self.Description("Run mx gate --tags " + tags),
+    job:: std.join("-", processTags(self.gateTags)),
+    run+: [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
+    description_text:: "Run mx gate --tags " + tags,
+  },
+
+  gateTags(tags):: $.mxGate + {
+    # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
+    assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self),
+    gateTags:: std.split(tags, ","),
+  },
 
   style:: common.eclipse + common.jdt + $.gateTags("style,fullbuild") + {
     extra_gate_args+:: ["--strict-mode"],
   },
 
-  coverage:: self.llvmBundled + self.requireGMP + self.optionalGCC + self.gateTags("build,coverage") + {
-    extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
-    teardown+: [
-      self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
-    ],
-  },
+  coverage(builds):: $.llvmBundled + $.requireGMP + $.optionalGCC + $.mxGate + {
+      local sameArchBuilds = std.filter(function(b) b.os == self.os && b.arch == self.arch, builds),
+      local allTags = std.set(std.flattenArrays([b.gateTags for b in sameArchBuilds if std.objectHasAll(b, "gateTags")])),
+      local coverageTags = std.setDiff(allTags, ["build", "build-all", "fullbuild", "style"]),
+      job:: "coverage",
+      skipPlatform:: coverageTags == [],
+      gateTags:: ["build"] + coverageTags,
+      extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+      teardown+: [
+        self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+      ],
+    },
 
   sulong_gateTest_default_tools:: {
     environment+: {

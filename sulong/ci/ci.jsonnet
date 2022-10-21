@@ -52,7 +52,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   ],
 
   coverage_builds::
-    sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage],
+    sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
     [
       [sc.linux_amd64,    [sc.labsjdk_ce_17]],
       [sc.darwin_amd64,   [sc.labsjdk_ce_17]],
