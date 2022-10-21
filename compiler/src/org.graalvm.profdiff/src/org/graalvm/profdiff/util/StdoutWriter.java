@@ -75,7 +75,7 @@ public class StdoutWriter implements Writer {
 
     @Override
     public void writeln() {
-        System.out.print('\n');
+        System.out.println();
         indentWritten = false;
     }
 

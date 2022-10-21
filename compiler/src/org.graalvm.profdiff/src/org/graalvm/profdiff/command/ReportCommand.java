@@ -91,7 +91,8 @@ public class ReportCommand implements Command {
             if (hasProftool && !method.isHot()) {
                 continue;
             }
-            writer.writeln("\nMethod " + method.getMethodName());
+            writer.writeln();
+            writer.writeln("Method " + method.getMethodName());
             writer.increaseIndent();
             method.writeCompilationList(writer);
             writer.increaseIndent();

@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.parser.args;
 
+import java.util.Formatter;
+
 import org.graalvm.profdiff.command.Command;
 
 /**
@@ -65,25 +67,25 @@ public class ProgramArgumentParser extends ArgumentParser {
      * @return a help message for the program
      */
     public String formatHelp() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("usage: ").append(prog);
+        Formatter fmt = new Formatter();
+        fmt.format("usage: %s", prog);
         if (!optionArguments.isEmpty()) {
-            sb.append(' ').append(formatOptionUsage());
+            fmt.format(" %s", formatOptionUsage());
         }
         if (!positionalArguments.isEmpty()) {
-            sb.append(' ').append(formatPositionalUsage());
+            fmt.format(" %s", formatPositionalUsage());
         }
-        sb.append("\n\n").append(description).append('\n');
+        fmt.format("%n%n%s%n", description);
         if (!optionArguments.isEmpty()) {
-            sb.append('\n').append(formatOptionHelp());
+            fmt.format("%n%s", formatOptionHelp());
         }
         if (!positionalArguments.isEmpty()) {
-            sb.append('\n').append(formatPositionalHelp());
+            fmt.format("%n%s", formatPositionalHelp());
         }
         if (getCommandGroup().isPresent()) {
-            sb.append('\n').append(getCommandGroup().get().formatCommandsHelp());
+            fmt.format("%n%s", getCommandGroup().get().formatCommandsHelp());
         }
-        return sb.toString();
+        return fmt.toString();
     }
 
     /**
@@ -95,31 +97,31 @@ public class ProgramArgumentParser extends ArgumentParser {
      * @return a help message for the command
      */
     public String formatHelp(Command command) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("usage: ").append(prog);
+        Formatter fmt = new Formatter();
+        fmt.format("usage: %s", prog);
         if (!optionArguments.isEmpty()) {
-            sb.append(' ').append(formatOptionUsage());
+            fmt.format(" %s", formatOptionUsage());
         }
         if (!positionalArguments.isEmpty()) {
-            sb.append(' ').append(formatPositionalUsage(command));
+            fmt.format(" %s", formatPositionalUsage(command));
         }
         ArgumentParser commandParser = command.getArgumentParser();
         if (!commandParser.getOptionArguments().isEmpty()) {
-            sb.append(' ').append(command.getArgumentParser().formatOptionUsage());
+            fmt.format(" %s", command.getArgumentParser().formatOptionUsage());
         }
         if (!commandParser.getPositionalArguments().isEmpty()) {
-            sb.append(' ').append(commandParser.formatPositionalUsage());
+            fmt.format(" %s", commandParser.formatPositionalUsage());
         }
-        sb.append("\n\n").append(command.getDescription()).append('\n');
+        fmt.format("%n%n%s%n", command.getDescription());
         if (!commandParser.getOptionArguments().isEmpty()) {
-            sb.append('\n').append(commandParser.formatOptionHelp());
+            fmt.format("%n%s", commandParser.formatOptionHelp());
         }
         if (!commandParser.getPositionalArguments().isEmpty()) {
-            sb.append('\n').append(commandParser.formatPositionalHelp());
+            fmt.format("%n%s", commandParser.formatPositionalHelp());
         }
         if (commandParser.getCommandGroup().isPresent()) {
-            sb.append('\n').append(commandParser.getCommandGroup().get().formatCommandsHelp());
+            fmt.format("%n%s", commandParser.getCommandGroup().get().formatCommandsHelp());
         }
-        return sb.toString();
+        return fmt.toString();
     }
 }

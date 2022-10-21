@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.parser.args;
 
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -205,22 +206,24 @@ public class ArgumentParser {
      * Formats a help string for the option arguments, listing their names and descriptions.
      */
     public String formatOptionHelp() {
-        StringBuilder sb = new StringBuilder("options:\n");
+        Formatter fmt = new Formatter();
+        fmt.format("options:%n");
         for (Argument argument : optionArguments.getValues()) {
-            sb.append(String.format("  %-20s ", argument.getName())).append(argument.getDescription()).append('\n');
+            fmt.format("  %-20s %s%n", argument.getName(), argument.getDescription());
         }
-        return sb.toString();
+        return fmt.toString();
     }
 
     /**
      * Formats a help string for the positional arguments, listing their names and descriptions.
      */
     public String formatPositionalHelp() {
-        StringBuilder sb = new StringBuilder("positional arguments:\n");
+        Formatter fmt = new Formatter();
+        fmt.format("positional arguments:%n");
         for (Argument argument : positionalArguments) {
-            sb.append(String.format("  %-20s ", argument.getName())).append(argument.getDescription()).append('\n');
+            fmt.format("  %-20s %s%n", argument.getName(), argument.getDescription());
         }
-        return sb.toString();
+        return fmt.toString();
     }
 
     /**

@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.parser.args;
 
 import java.util.Arrays;
+import java.util.Formatter;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.command.Command;
@@ -90,11 +91,12 @@ public class CommandGroup extends Argument {
      * @return the usage string listing the commands
      */
     public String formatCommandsHelp() {
-        StringBuilder sb = new StringBuilder("available commands:\n");
+        Formatter fmt = new Formatter();
+        fmt.format("available commands:%n");
         for (Command command : commands.getValues()) {
-            sb.append(String.format("  %-20s ", command.getName())).append(command.getDescription()).append('\n');
+            fmt.format("  %-20s %s%n", command.getName(), command.getDescription());
         }
-        return sb.toString();
+        return fmt.toString();
     }
 
     @Override

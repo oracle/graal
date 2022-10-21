@@ -72,7 +72,7 @@ public class HelpCommand implements Command {
             command = programArgumentParser.getCommandGroup().get().getCommandByName(commandArgument.getValue());
         }
         if (command == null) {
-            System.err.printf("%s: unknown command %s\n", programArgumentParser.getProg(), commandArgument.getValue());
+            System.err.printf("%s: unknown command %s%n", programArgumentParser.getProg(), commandArgument.getValue());
             if (programArgumentParser.getCommandGroup().isPresent()) {
                 System.err.println(programArgumentParser.getCommandGroup().get().formatCommandsHelp());
             }
