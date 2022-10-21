@@ -114,7 +114,7 @@ public class Profdiff {
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         ProgramArguments programArguments = new ProgramArguments();
         CommandGroup commandGroup = programArguments.getCommandGroup();
         commandGroup.addCommand(new ReportCommand());
@@ -131,8 +131,7 @@ public class Profdiff {
             commandGroup.getSelectedCommand().invoke(writer);
         } catch (Exception exception) {
             System.err.println(exception.getMessage());
-            throw exception;
-            // System.exit(1);
+            System.exit(1);
         }
     }
 }

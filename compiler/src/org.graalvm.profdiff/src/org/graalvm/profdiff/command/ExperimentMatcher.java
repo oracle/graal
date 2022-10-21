@@ -68,11 +68,11 @@ public class ExperimentMatcher {
     /**
      * Matches and compares the provided experiments, writing out the results.
      *
-     * It is assumed that the experiments have already their hot methods marked. First, the methods
-     * and hot compilation units of the experiments are matched. Each matched method pair is printed
-     * out and its hot compilation units are either printed or their optimization/inlining trees
-     * diffed, depending on the verbosity level. Unmatched methods are similarly listed, possibly
-     * including the optimization/inlining trees of their hot compilation units.
+     * It is assumed that the experiments have their hot methods already marked. Each method present
+     * in at least one of the experiments is listed. Hot compilation units of the method are paired.
+     * Their optimization/inlining trees are either printed or diffed, depending on the verbosity
+     * level. Unmatched compilation units are also listed, possibly including their
+     * optimization/inlining trees.
      *
      * @param experimentPair the pair of experiments to be matched
      */

@@ -30,7 +30,7 @@ import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents one use case of the program that can be invoked from the command line using
- * {@link #getName() the command's name}. A command may define its additional arguments, which are
+ * {@link #getName() the command's name}. A command may define additional arguments, which are
  * parsed using {@link #getArgumentParser() its argument parser}.
  */
 public interface Command {

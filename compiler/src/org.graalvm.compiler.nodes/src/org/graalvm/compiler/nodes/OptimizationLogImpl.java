@@ -614,8 +614,9 @@ public class OptimizationLogImpl implements OptimizationLog {
      *
      * When the logs are printed to files, the filename is set to the current thread ID. The
      * optimization log in the form of a single-line JSON is appended to the file. This way, the
-     * number of files is reduced, which significantly speeds up reading. It is also not necessary
-     * to coordinate with other compilation threads, because they write to a different file.
+     * number of files is reduced, which significantly speeds up parsing later. It is also not
+     * necessary to coordinate with other compilation threads, because they write to a different
+     * file.
      *
      * Profdiff makes strong assumptions about the format of the optimization log files in order to
      * speed up parsing. In particular, it expects one compilation per line with {@code '\n'} line
