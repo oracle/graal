@@ -81,7 +81,6 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
@@ -347,13 +346,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                  * the callee is linked and registered as implementation-invoked.
                  */
                 postTask(() -> {
-                    BytecodePosition location = new BytecodePosition(null, pointsToMethod, 0);
                     if (invokeSpecial) {
                         pointsToMethod.registerAsDirectRootMethod();
                     } else {
                         pointsToMethod.registerAsVirtualRootMethod();
                     }
-                    InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, location, invokeSpecial);
+                    InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial);
                     /*
                      * Initialize the type flow of the invoke's actual parameters with the
                      * corresponding parameter declared type. Thus, when the invoke links callees it

@@ -66,7 +66,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
         }
 
         @Override
-        public Optional<NotApplicable> canApply(GraphState graphState) {
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;
         }
 
@@ -80,7 +80,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
 
     private static final class ReportAddNodePhase extends BasePhase<CoreProviders> {
         @Override
-        public Optional<NotApplicable> canApply(GraphState graphState) {
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;
         }
 
@@ -94,7 +94,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
 
     private static final class ReportReturnNodePhase extends BasePhase<CoreProviders> {
         @Override
-        public Optional<NotApplicable> canApply(GraphState graphState) {
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;
         }
 

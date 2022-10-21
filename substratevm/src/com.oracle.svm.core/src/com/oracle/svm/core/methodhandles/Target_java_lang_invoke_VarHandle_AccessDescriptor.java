@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.nfi.posix;
+package com.oracle.svm.core.methodhandles;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.lang.invoke.MethodType;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
-@Platforms(Platform.LINUX.class)
-@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux {
-
-    // Checkstyle: stop
-    @Alias volatile long isolatedNamespaceId;
-
-    @Alias @InjectAccessors(IsolatedAccessor.class) int ISOLATED_NAMESPACE;
-
-    static class IsolatedAccessor {
-        static int getISOLATED_NAMESPACE(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux ctx) {
-            return PosixTruffleNFISupport.isolatedNamespaceFlag;
-        }
-    }
-    // Checkstyle: resume
+@TargetClass(className = "java.lang.invoke.VarHandle", innerClass = "AccessDescriptor")
+final class Target_java_lang_invoke_VarHandle_AccessDescriptor {
+    @Alias//
+    MethodType symbolicMethodTypeInvoker;
+    @Alias//
+    int mode;
 }

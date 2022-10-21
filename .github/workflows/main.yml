@@ -39,7 +39,6 @@ env:
   JAVA_HOME: ${{ github.workspace }}/jdk
   JDT: builtin
   LANG: en_US.UTF-8
-  MX_GATE_OPTS: "--strict-mode"
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
   MX_PYTHON: python3.8
@@ -80,7 +79,7 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,test,helloworld_debug"
+              GATE: "build,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
@@ -94,13 +93,11 @@ jobs:
           - env:
               JDK_VERSION: "19"
               GATE: "style,fullbuild,sulongBasic"
-              MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
               PRIMARY: "sulong"
           # /vm
           - env:
               JDK_VERSION: "19"
               GATE: "build,sulong"
-              MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
@@ -169,4 +166,4 @@ jobs:
       run: rm -rf .git
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate ${MX_GATE_OPTS} --tags ${GATE}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}

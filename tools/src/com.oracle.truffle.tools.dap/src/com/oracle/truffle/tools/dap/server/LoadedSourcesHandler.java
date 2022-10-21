@@ -77,6 +77,9 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
 
     public Source getSource(int id) {
         synchronized (sourcesLock) {
+            if (id > sources.size()) {
+                return null;
+            }
             return sources.get(id - 1).truffleSource;
         }
     }

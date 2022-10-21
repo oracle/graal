@@ -77,6 +77,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
         // Nothing needs to be done in Sulong for native thread initialization.
     }
 
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     public void disposeThread(@SuppressWarnings("unused") LLVMContext context,
                     @SuppressWarnings("unused") Thread thread) {
         context.getpThreadContext().callDestructors(context, thread.getId());

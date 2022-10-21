@@ -17,7 +17,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   bench: {
-    targets+: ['bench', 'post-merge'],
+    targets+: ['bench', 'daily'],
   },
 
   common: {

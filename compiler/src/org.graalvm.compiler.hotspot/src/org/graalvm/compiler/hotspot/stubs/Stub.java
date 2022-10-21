@@ -301,7 +301,7 @@ public abstract class Stub {
 
     private static class EmptyHighTier extends BasePhase<HighTierContext> {
         @Override
-        public Optional<NotApplicable> canApply(GraphState graphState) {
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;
         }
 

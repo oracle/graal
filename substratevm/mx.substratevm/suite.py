@@ -1245,6 +1245,7 @@ suite = {
                     "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.graal.snippets           to jdk.internal.vm.compiler",
                     "com.oracle.svm.hosted.fieldfolding           to jdk.internal.vm.compiler",
+                    "com.oracle.svm.hosted.phases                 to jdk.internal.vm.compiler",
                     "com.oracle.svm.hosted.reflect                to jdk.internal.vm.compiler",
                 ],
                 "requires": [

@@ -106,6 +106,7 @@ import java.util.zip.ZipOutputStream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -416,7 +417,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testNormalizeEmptyPath() {
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         TruffleFile file = languageEnv.getInternalTruffleFile("");
         assertEquals("", file.normalize().getPath());
         file = languageEnv.getInternalTruffleFile(".");
@@ -431,7 +432,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
      */
     @Test
     public void testEmptyPath() throws Exception {
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(new EmptyPathTestFs()).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new EmptyPathTestFs()).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build());
         TruffleFile file = languageEnv.getInternalTruffleFile("");
         TruffleFile otherFile = languageEnv.getInternalTruffleFile("other");
 
@@ -518,7 +520,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertTrue(internalFile.isSameFile(internalFile));
         assertFalse(publicFile.isSameFile(internalFile));
         assertFalse(internalFile.isSameFile(publicFile));
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         context.initialize("DuplicateMimeTypeLanguage1");
         publicFile = languageEnv.getPublicTruffleFile(path);
         internalFile = languageEnv.getInternalTruffleFile(path);
@@ -550,7 +552,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path workDir = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
         Path targetPath = workDir.relativize(Files.createFile(Files.createDirectory(workDir.resolve("folder")).resolve("target")));
         try {
-            setupEnv(Context.newBuilder().allowIO(true).build());
+            setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
             languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(workDir.toString()));
             TruffleFile symLink = languageEnv.getPublicTruffleFile("link");
             TruffleFile targetRelativePath = languageEnv.getPublicTruffleFile(targetPath.toString());
@@ -575,7 +577,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testGetTruffleFileInternalAllowedIO() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).build(), new InternalTruffleFileTestLanguage());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build(), new InternalTruffleFileTestLanguage());
         StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
         TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
         assertFalse(predicate.called);
@@ -599,7 +601,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testGetTruffleFileInternalCustomFileSystem() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build(),
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build(),
                         new InternalTruffleFileTestLanguage());
         StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
         TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
@@ -667,7 +670,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path write4 = Files.createFile(p.resolve("write4"));
         try {
             CheckCloseFileSystem fs = new CheckCloseFileSystem();
-            setupEnv(Context.newBuilder().fileSystem(fs).allowIO(true).build());
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+            setupEnv(Context.newBuilder().allowIO(ioAccess).build());
             assertEquals(0, fs.openFileCount);
             SeekableByteChannel readByteChannel1 = languageEnv.getPublicTruffleFile(read1.toString()).newByteChannel(EnumSet.of(StandardOpenOption.READ));
             assertEquals(1, fs.openFileCount);
@@ -712,7 +716,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path dir2 = Files.createDirectory(p.resolve("read2"));
         try {
             CheckCloseFileSystem fs = new CheckCloseFileSystem();
-            setupEnv(Context.newBuilder().fileSystem(fs).allowIO(true).build());
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+            setupEnv(Context.newBuilder().allowIO(ioAccess).build());
             assertEquals(0, fs.openDirCount);
             DirectoryStream<TruffleFile> dirStream1 = languageEnv.getPublicTruffleFile(dir1.toString()).newDirectoryStream();
             assertEquals(1, fs.openDirCount);

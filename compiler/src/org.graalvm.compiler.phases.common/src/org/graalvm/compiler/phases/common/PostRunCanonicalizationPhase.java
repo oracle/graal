@@ -54,8 +54,8 @@ public abstract class PostRunCanonicalizationPhase<C extends CoreProviders> exte
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return this.canonicalizer.canApply(graphState);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return this.canonicalizer.notApplicableTo(graphState);
     }
 
     @Override
