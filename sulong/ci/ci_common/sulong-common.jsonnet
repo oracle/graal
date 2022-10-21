@@ -201,15 +201,11 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
   },
 
   requireGMP:: {
-    packages+: {
-      libgmp: "==6.1.2",
-    },
-  },
-
-  requireGMPDarwinAArch64:: {
-    packages+: {
-      libgmp: "==6.2.1",
-    },
+    packages+: if self.os == "darwin" && self.arch == "aarch64" then {
+        libgmp: "==6.2.1",
+      } else {
+        libgmp: "==6.1.2",
+      },
   },
 } + {
 
