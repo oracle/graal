@@ -43,6 +43,38 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
   } + $.build_template + b + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
+  # Generates an array of build specs for give build spec prototypes and platform configurations and applies the names array.
+  #
+  # Parameters
+  #
+  #   prototypes:       An array of build spec prototypes which will be extended with os, arch, jdk and a name.
+  #   platform_specs:   An array of tuples (actually, an array) of the form (<os_arch>, [<jdk1>, <jdk2>, ...]).
+  #                     The value will be flattened into an array "platforms" of the form [<os_arch1> + <jdk1>, <os_arch1> + <jdk2>, ...].
+  #   names:            An array of name objects (object with a key called "name") that contains a name for each generated
+  #                     build spec (prototypes X platforms). The name objects can be used to set additional properties
+  #                     that are specific to the concrete job at hand, such as "timelimit".
+  #
+  mapPrototypePlatformName(prototypes, platform_specs, names)::
+    local flattenPlatformSpec(spec) =
+      local os_arch = spec[0];
+      local jdks = spec[1];
+      [os_arch + jdk for jdk in jdks]
+    ;
+    local mapSpecWithName(build_spec, names) = (
+      assert std.length(build_spec) == std.length(names) : "got " + std.length(build_spec) + " build specs but " + std.length(names) + " names.\n" +
+        "Expected:\n  " + std.join("\n  ", [(self.build_template + x).gen_name for x in build_spec]) +
+        "\nGot:\n  " + std.join("\n  ", [x.name for x in names]);
+      std.mapWithIndex(function(idx, spec) spec + names[idx], build_spec)
+    );
+    local platforms = std.flattenArrays([flattenPlatformSpec(spec) for spec in platform_specs]);
+    mapSpecWithName([
+        proto + platform
+          for proto in prototypes
+              for platform in platforms
+      ],
+      names)
+  ,
+
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64,
@@ -118,7 +150,7 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     extra_gate_args+:: ["--strict-mode"],
   },
 
-  coverage:: self.llvmBundled + self.requireGMP + self.requireGCC + self.gateTags("build,coverage") + {
+  coverage:: self.llvmBundled + self.requireGMP + self.optionalGCC + self.gateTags("build,coverage") + {
     extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
     teardown+: [
       self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
@@ -198,6 +230,12 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
       DRAGONEGG_GCC: { name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true },
       DRAGONEGG_LLVM: { name: "clang+llvm", version: "3.2", platformspecific: true },
     },
+  },
+
+  # like requireGCC, but only on linux/amd64, ignored otherwise
+  optionalGCC:: {
+    packages+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.packages else {},
+    downloads+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.downloads else {},
   },
 
   requireGMP:: {

@@ -27,7 +27,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  builds: [ sc.defBuild(b) for b in [
+  regular_builds:: [
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-fullbuild-jdk17-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk17-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk17-linux-amd64", timelimit: "45:00" },
@@ -49,7 +49,24 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-darwin-aarch64", timelimit: "30:00" },
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone") + { name: "gate-sulong-standalone-jdk17-windows-amd64", timelimit: "30:00" },
+  ],
 
-    sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64", timelimit: "1:45:00"},
-  ]],
+  coverage_builds::
+    sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage],
+    [
+      [sc.linux_amd64,    [sc.labsjdk_ce_17]],
+      [sc.darwin_amd64,   [sc.labsjdk_ce_17]],
+      [sc.windows_amd64,  [sc.labsjdk_ce_17]],
+      [sc.linux_aarch64,  [sc.labsjdk_ce_17]],
+      [sc.darwin_aarch64, [sc.labsjdk_ce_17]],
+    ],
+    [
+      { name: "weekly-sulong-coverage-jdk17-linux-amd64",    timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk17-darwin-amd64",   timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk17-windows-amd64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk17-linux-aarch64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk17-darwin-aarch64", timelimit: "1:00:00" },
+    ]),
+
+  builds: [ sc.defBuild(b) for b in self.regular_builds + self.coverage_builds ],
 }
