@@ -75,7 +75,7 @@
       ],
     ],
     teardown+: [
-      ["mx", "sversions", "--print-related-repos", "|", "coverage-uploader.py", "--associated-repos", "-"],
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     targets: ["weekly"],
   },
