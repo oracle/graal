@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.graal.code;
 
 import org.graalvm.compiler.nodes.gc.BarrierSet;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+public interface PlatformConfigurationProviderFactory {
 
-public class SubstratePlatformConfigurationProvider implements PlatformConfigurationProvider {
-    private final BarrierSet barrierSet;
-
-    protected SubstratePlatformConfigurationProvider(BarrierSet barrierSet) {
-        this.barrierSet = barrierSet;
-    }
-
-    @Override
-    public BarrierSet getBarrierSet() {
-        return barrierSet;
-    }
-
-    @Override
-    public boolean canVirtualizeLargeByteArrayAccess() {
-        return true;
-    }
-
-}
-
-@AutomaticallyRegisteredImageSingleton(value = {PlatformConfigurationProviderFactory.class})
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-final class SubstratePlatformConfigurationProviderFactory implements PlatformConfigurationProviderFactory {
-
-    @Override
-    public SubstratePlatformConfigurationProvider getProvider(BarrierSet barrierSet) {
-        return new SubstratePlatformConfigurationProvider(barrierSet);
-    }
+    SubstratePlatformConfigurationProvider getProvider(BarrierSet barrierSet);
 }

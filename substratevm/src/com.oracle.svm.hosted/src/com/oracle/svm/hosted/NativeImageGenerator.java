@@ -195,6 +195,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.graal.EconomyGraalConfiguration;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.PlatformConfigurationProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.jdk.SubstrateArraycopySnippets;
@@ -1085,7 +1086,7 @@ public class NativeImageGenerator {
          */
         aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
         BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(aMetaAccess);
-        SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
+        SubstratePlatformConfigurationProvider platformConfig = ImageSingletons.lookup(PlatformConfigurationProviderFactory.class).getProvider(barrierSet);
         MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);

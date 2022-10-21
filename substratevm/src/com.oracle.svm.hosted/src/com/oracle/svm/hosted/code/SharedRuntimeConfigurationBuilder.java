@@ -47,6 +47,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.PlatformConfigurationProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
@@ -172,7 +173,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     protected SubstratePlatformConfigurationProvider createPlatformConfigProvider(BarrierSet barrierSet) {
-        return new SubstratePlatformConfigurationProvider(barrierSet);
+        return ImageSingletons.lookup(PlatformConfigurationProviderFactory.class).getProvider(barrierSet);
     }
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
