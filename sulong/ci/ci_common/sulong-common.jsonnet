@@ -79,7 +79,8 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
-  darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64,
+  # Avoid darwin_sierra builders in our CI. This is missing a declaration (fmemopen) that some of our tests need.
+  darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64 + { capabilities+: ["!darwin_sierra"] },
   darwin_aarch64:: darwin_aarch64 + sulong_deps.darwin_aarch64,
   windows_amd64:: windows_amd64 + sulong_deps.windows + {
     packages+: common.devkits["windows-" + self.jdk].packages
