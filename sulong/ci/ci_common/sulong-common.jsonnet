@@ -118,6 +118,13 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     extra_gate_args+:: ["--strict-mode"],
   },
 
+  coverage:: self.llvmBundled + self.requireGMP + self.requireGCC + self.gateTags("build,coverage") + {
+    extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+    teardown+: [
+      self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+    ],
+  },
+
   sulong_gateTest_default_tools:: {
     environment+: {
       CLANG_LLVM_AS: "llvm-as",

@@ -17,15 +17,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  sulong_coverage:: sc.gateTags("build,sulongCoverage") + {
-    job::"coverage",
-    extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
-    teardown+: [
-      self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
-    ],
-    timelimit: "1:45:00",
-  },
-
   sulong_test_toolchain:: {
     run+: [
       ["mx", "build", "--dependencies", "SULONG_TEST"],
@@ -59,6 +50,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone") + { name: "gate-sulong-standalone-jdk17-windows-amd64", timelimit: "30:00" },
 
-    sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
+    sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64", timelimit: "1:45:00"},
   ]],
 }
