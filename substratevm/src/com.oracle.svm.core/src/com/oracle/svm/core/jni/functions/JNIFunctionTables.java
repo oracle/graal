@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jni.functions;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
+import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDK19OrLater;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -71,7 +73,7 @@ public final class JNIFunctionTables {
         javaVMData = new WordBase[wordArrayLength(SizeOf.get(JNIJavaVM.class))];
         invokeInterfaceDataMutable = new WordBase[wordArrayLength(SizeOf.get(JNIInvokeInterface.class))];
         invokeInterfaceDataPrototype = new CFunctionPointer[wordArrayLength(SizeOf.get(JNIInvokeInterface.class))];
-        functionTableData = new CFunctionPointer[wordArrayLength(SizeOf.get(JNINativeInterface.class))];
+        functionTableData = new CFunctionPointer[wordArrayLength(JavaVersionUtil.JAVA_SPEC <= 17 ? SizeOf.get(JNINativeInterface.class) : SizeOf.get(JNINativeInterfaceJDK19OrLater.class))];
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

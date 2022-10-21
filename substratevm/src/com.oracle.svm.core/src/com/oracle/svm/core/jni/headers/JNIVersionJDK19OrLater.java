@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,51 +24,19 @@
  */
 package com.oracle.svm.core.jni.headers;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
-import com.oracle.svm.core.Uninterruptible;
-
-@CContext(JNIHeaderDirectives.class)
-public final class JNIVersion {
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static boolean isSupported(int version) {
-        return (JavaVersionUtil.JAVA_SPEC > 17 && version == JNIVersionJDK19OrLater.JNI_VERSION_19()) ||
-                        version == JNI_VERSION_10() ||
-                        version == JNI_VERSION_9() ||
-                        version == JNI_VERSION_1_8() ||
-                        version == JNI_VERSION_1_6() ||
-                        version == JNI_VERSION_1_4() ||
-                        version == JNI_VERSION_1_2() ||
-                        version == JNI_VERSION_1_1();
-    }
+@CContext(JNIHeaderDirectivesJDK19OrLater.class)
+public final class JNIVersionJDK19OrLater {
 
     // Checkstyle: stop
 
     @CConstant
-    public static native int JNI_VERSION_1_1();
-
-    @CConstant
-    public static native int JNI_VERSION_1_2();
-
-    @CConstant
-    public static native int JNI_VERSION_1_4();
-
-    @CConstant
-    public static native int JNI_VERSION_1_6();
-
-    @CConstant
-    public static native int JNI_VERSION_1_8();
-
-    @CConstant
-    public static native int JNI_VERSION_9();
-
-    @CConstant
-    public static native int JNI_VERSION_10();
+    public static native int JNI_VERSION_19();
 
     // Checkstyle: resume
 
-    private JNIVersion() {
+    private JNIVersionJDK19OrLater() {
     }
 }
