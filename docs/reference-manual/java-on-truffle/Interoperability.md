@@ -183,6 +183,31 @@ assert java_lang_Integer.equals(integer_class.getMember("static"));
 assert java_lang_Number.equals(java_lang_Integer.getMember("super"));
 ```
 
+### Multiple `Context` Support
+
+Support for multiple `Context`'s is not available on Windows.
+The only configuration supported for Windows is _native, single-context_ (identical to `java -truffle`)
+
+On Linux, every Espresso context spawns a new linking namespace to load Java's native libraries (`libjava.so`, `libnio.so`, `libnet.so` ...) completely isolated from the host JVM and from all other contexts.
+
+This is done via glibc's `dlmopen`. Unfortunately, `dlmopen` has some constraints, and it is only possible to create **a maximum of 16, non-reusable linking namespaces.**
+
+To tackle this limitation we distribute a version of the Java native libraries compiled to LLVM bitcode, which we load and run on top of Sulong (our LLVM bitcode interpreter).
+
+You must install it e.g. `$GRAALVM_HOME/bin/gu install espresso-llvm` and run Espresso with `--java.NativeBackend=nfi-llvm` (this option can be passed on the `Context` creation as `.option("java.NativeBackend", "nfi-llvm")` as well)
+
+Please note that running with the Sulong backend has some limitations:
+- You cannot spawn processes (`fork` is not supported)
+- Graphical app support is not provided
+- `Context` initialization is slower
+
+Failure to configure these settings properly will cause your applications to fail once the `Context` limit has been reached:
+```
+org.graalvm.polyglot.PolyglotException: com.oracle.truffle.espresso.meta.EspressoError: should not reach here: Cannot load library: eden
+Search path: [/graalvm-ce-java17-22.2.0/languages/java/lib]
+        at com.oracle.truffle.espresso.meta.EspressoError.shouldNotReachHere(EspressoError.java:68)
+```
+
 ## Multithreading
 
 Java on Truffle is designed to be a multi-threaded language and much of the ecosystem expects threads to be available.
