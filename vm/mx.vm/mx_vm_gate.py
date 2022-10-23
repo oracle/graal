@@ -35,7 +35,7 @@ import re
 from mx_gate import Task
 
 from os import environ, listdir, remove, linesep
-from os.path import join, exists, dirname, isdir, isfile, getsize
+from os.path import join, exists, dirname, isdir, isfile, getsize, abspath
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
 
@@ -86,10 +86,50 @@ def gate_body(args, tasks):
             with Task('LibGraal Compiler:GraalVM DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     java_exe = join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java')
-                    mx.run([java_exe,
+
+                    out = mx.OutputCapture()
+                    rc = mx.run([java_exe] + ['-XX:+EagerJVMCI', '-Djvmci.CompilerIdleDelay=0', '-version'], out=out, err=out, nonZeroIsFatal=False)
+                    multi_isolate_libgraal = rc == 0
+
+                    # To test Graal stubs do not create and install duplicate RuntimeStubs:
+                    # - use a new libgraal isolate for each compilation
+                    # - use 1 JVMCI compiler thread
+                    # - enable PrintCompilation (which also logs stub compilations)
+                    # - check that log shows at least one stub is compiled and each stub is compiled at most once
+                    compiler_log_file = abspath('graal-compiler.log')
+                    check_stub_sharing = [
+                        '-Djvmci.ThreadsPerNativeLibraryRuntime=1',
+                        '-Djvmci.CompilerIdleDelay=0',
+                        '-XX:JVMCIThreads=1',
+                        '-Dlibgraal.PrintCompilation=true',
+                        '-Dlibgraal.LogFile=' + compiler_log_file,
+                    ] if multi_isolate_libgraal else []
+                    mx.run([java_exe] + check_stub_sharing + [
                             '-XX:+UseJVMCICompiler',
                             '-XX:+UseJVMCINativeLibrary',
-                            '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
+                            '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1'])
+
+                    if multi_isolate_libgraal:
+                        # Checks that compiler log shows at least stub compilation
+                        # and that each stub is compiled at most once.
+                        if not exists(compiler_log_file):
+                            mx.abort('No output written to ' + compiler_log_file)
+                        with open(compiler_log_file) as fp:
+                            compiler_log = fp.read()
+                        nl = linesep
+                        stub_compilations = {}
+                        stub_compilation = re.compile(r'StubCompilation-\d+ +<stub> +([\S]+) +([\S]+) +.*')
+                        for line in compiler_log.split('\n'):
+                            m = stub_compilation.match(line)
+                            if m:
+                                stub = m.group(1) + m.group(2)
+                                stub_compilations[stub] = stub_compilations.get(stub, 0) + 1
+                        if not stub_compilations:
+                            mx.abort('Expected at least one stub compilation in compiler log')
+                        duplicated = {stub: count for stub, count in stub_compilations.items() if count > 1}
+                        if duplicated:
+                            table = '  Count    Stub{}  '.format(nl) + '{}  '.format(nl).join(('{:<8d} {}'.format(count, stub)) for stub, count in stub_compilations.items())
+                            mx.abort('Following stubs were compiled more than once according to compiler log:{}{}'.format(nl, table))
 
                     # Ensure that fatal errors in libgraal route back to HotSpot
                     testdir = mkdtemp()
