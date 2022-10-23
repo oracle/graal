@@ -129,7 +129,7 @@ public final class LibGraalEntryPoints {
     /**
      * A struct that encapsulates the address of the first instruction of and the registers killed
      * by a HotSpot {@code RuntimeStub}. One such struct is allocated for each entry in
-     * {@value LibGraalEntryPoints#STUBS}.
+     * {@link LibGraalEntryPoints#STUBS}.
      *
      * <pre>
      * struct RuntimeStubInfo {

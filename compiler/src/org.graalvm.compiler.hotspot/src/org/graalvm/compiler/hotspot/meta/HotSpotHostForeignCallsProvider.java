@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
@@ -94,6 +95,7 @@ import static org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub.EXCEPTION_
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
 import static org.graalvm.compiler.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
+import static org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates.findMethod;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -130,7 +132,6 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -159,24 +160,22 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                     "JVMCIRuntime::invoke_static_method_one_arg", long.class, Word.class, Word.class, long.class);
 
     public static class TestForeignCalls {
-        public static final HotSpotForeignCallDescriptor BOOLEAN_RETURNS_BOOLEAN = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "boolean returns boolean",
-                        Boolean.TYPE, Boolean.TYPE);
-        public static final HotSpotForeignCallDescriptor BYTE_RETURNS_BYTE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "byte returns byte",
-                        Byte.TYPE, Byte.TYPE);
-        public static final HotSpotForeignCallDescriptor SHORT_RETURNS_SHORT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "short returns short",
-                        Short.TYPE, Short.TYPE);
-        public static final HotSpotForeignCallDescriptor CHAR_RETURNS_CHAR = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "char returns char",
-                        Character.TYPE, Character.TYPE);
-        public static final HotSpotForeignCallDescriptor INT_RETURNS_INT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "int returns int",
-                        Integer.TYPE, Integer.TYPE);
-        public static final HotSpotForeignCallDescriptor LONG_RETURNS_LONG = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "long returns long",
-                        Long.TYPE, Long.TYPE);
-        public static final HotSpotForeignCallDescriptor FLOAT_RETURNS_FLOAT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "float returns float",
-                        Float.TYPE, Float.TYPE);
-        public static final HotSpotForeignCallDescriptor DOUBLE_RETURNS_DOUBLE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "double returns double",
-                        Double.TYPE, Double.TYPE);
-        public static final HotSpotForeignCallDescriptor OBJECT_RETURNS_OBJECT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "object returns object",
-                        Object.class, Object.class);
+
+        /**
+         * Kinds for which foreign call stubs are created when building the libgraal image.
+         */
+        public static final JavaKind[] KINDS = {JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Int, JavaKind.Long, JavaKind.Object};
+
+        /**
+         * Creates a {@link HotSpotForeignCallDescriptor} for a foreign call stub to a method named
+         * {@code <kind>Returns<Kind>} (e.g., "byteReturnsByte") with a signature of
+         * {@code (<kind>)<kind>} (e.g., {@code (byte)byte}).
+         */
+        public static HotSpotForeignCallDescriptor createStubCallDescriptor(JavaKind kind) {
+            String name = kind.isObject() ? "objectReturnsObject" : kind.getJavaName() + "Returns" + capitalize(kind.getJavaName());
+            Class<?> javaClass = kind.isObject() ? Object.class : kind.toJavaClass();
+            return new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, name, javaClass, javaClass);
+        }
 
         static boolean booleanReturnsBoolean(boolean arg) {
             return arg;
@@ -205,10 +204,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         static Object objectReturnsObject(Object arg) {
             return arg;
         }
-
     }
 
-    public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
+    public HotSpotHostForeignCallsProvider(HotSpotJVMCIRuntime jvmciRuntime,
+                    HotSpotGraalRuntimeProvider runtime,
+                    MetaAccessProvider metaAccess,
+                    CodeCacheProvider codeCache,
                     WordTypes wordTypes) {
         super(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes);
     }
@@ -262,26 +263,24 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private boolean registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
-        if (config.invokeJavaMethodAddress == 0) {
-            return true;
-        }
-        ResolvedJavaMethod booleanReturnsBoolean = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "booleanReturnsBoolean");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, config.invokeJavaMethodAddress, booleanReturnsBoolean);
-        ResolvedJavaMethod byteReturnsByte = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "byteReturnsByte");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.BYTE_RETURNS_BYTE, config.invokeJavaMethodAddress, byteReturnsByte);
-        ResolvedJavaMethod shortReturnsShort = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "shortReturnsShort");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.SHORT_RETURNS_SHORT, config.invokeJavaMethodAddress, shortReturnsShort);
-        ResolvedJavaMethod charReturnsChar = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "charReturnsChar");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.CHAR_RETURNS_CHAR, config.invokeJavaMethodAddress, charReturnsChar);
-        ResolvedJavaMethod intReturnsInt = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "intReturnsInt");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.INT_RETURNS_INT, config.invokeJavaMethodAddress, intReturnsInt);
-        ResolvedJavaMethod longReturnsLong = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "longReturnsLong");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.LONG_RETURNS_LONG, config.invokeJavaMethodAddress, longReturnsLong);
-        ResolvedJavaMethod objectReturnsObject = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), TestForeignCalls.class, "objectReturnsObject");
-        invokeJavaMethodStub(options, providers, TestForeignCalls.OBJECT_RETURNS_OBJECT, config.invokeJavaMethodAddress, objectReturnsObject);
+    private static String capitalize(String s) {
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
 
-        return true;
+    private void registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        long invokeJavaMethodAddress = config.invokeJavaMethodAddress;
+        if (invokeJavaMethodAddress == 0 || IS_IN_NATIVE_IMAGE) {
+            return;
+        }
+        // These functions are only used for testing purposes but their registration also ensures
+        // that libgraal has support for InvokeJavaMethodStub built into the image, which is
+        // required for support of Truffle. Because of the lazy initialization of this support in
+        // Truffle we rely on this code to ensure the support is built into the image.
+        for (JavaKind kind : TestForeignCalls.KINDS) {
+            HotSpotForeignCallDescriptor desc = TestForeignCalls.createStubCallDescriptor(kind);
+            ResolvedJavaMethod method = findMethod(providers.getMetaAccess(), TestForeignCalls.class, desc.getName());
+            invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
+        }
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
@@ -596,7 +595,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(VECTORIZED_MISMATCH, c.vectorizedMismatch, NativeCall);
         }
 
-        assert registerStubCallFunctions(options, providers, runtime.getVMConfig());
+        registerStubCallFunctions(options, providers, runtime.getVMConfig());
     }
 
     @SuppressWarnings("unused")
