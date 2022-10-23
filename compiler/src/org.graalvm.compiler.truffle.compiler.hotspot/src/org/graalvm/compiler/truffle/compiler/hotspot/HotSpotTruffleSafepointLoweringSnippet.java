@@ -76,7 +76,10 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()}
      * via a stub.
      */
-    static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(SAFEPOINT, Reexecutability.REEXECUTABLE, NO_LOCATIONS,
+    static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(
+                    SAFEPOINT,
+                    Reexecutability.REEXECUTABLE,
+                    NO_LOCATIONS,
                     "HotSpotThreadLocalHandshake.doHandshake",
                     void.class, Object.class);
 
@@ -177,7 +180,6 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                                     "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
                     HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Ljava/lang/Object;)V");
                     ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
-                    assert staticMethod != null;
                     foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
                 };
             }
