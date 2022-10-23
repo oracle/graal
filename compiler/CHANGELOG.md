@@ -1,6 +1,6 @@
 # Compiler Changelog
 
-This changelog summarizes newly introduced optimizations that may be relevant to other teams.
+This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## Version 22.3.0
 * (GR-19840): An image produced by GraalVM's jlink now includes and uses libgraal by default and its `java -version` output includes GraalVM branding.
