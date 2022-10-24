@@ -199,7 +199,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     public boolean useVectorizedMismatchIntrinsic() {
-        return useVectorizedMismatchIntrinsic && vectorizedMismatch != 0;
+        return useVectorizedMismatchIntrinsic; //&& vectorizedMismatch != 0;
     }
 
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);

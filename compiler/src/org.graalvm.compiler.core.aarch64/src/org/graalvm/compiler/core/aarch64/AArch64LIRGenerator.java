@@ -84,6 +84,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
+import org.graalvm.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
@@ -702,6 +703,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64StringUTF16CompressOp(this, asAllocatable(src), asAllocatable(dst), asAllocatable(len), result));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64VectorizedMismatchOp(this, result, asAllocatable(arrayA), asAllocatable(arrayB), asAllocatable(length), asAllocatable(stride)));
         return result;
     }
 
