@@ -558,6 +558,8 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
             args['buildDependencies'] = []
         if 'sdk:LLVM_TOOLCHAIN' not in args['buildDependencies']:
             args['buildDependencies'].append('sdk:LLVM_TOOLCHAIN')
+        if 'toolchain' not in args:
+            args['toolchain'] = '<toolchainCMakePath:native>'
         self.buildRef = buildRef
         self.buildSharedObject = buildSharedObject
         self.current_variant = None
