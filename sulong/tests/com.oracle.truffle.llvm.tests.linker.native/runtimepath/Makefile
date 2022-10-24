@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,27 +29,27 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: rpath/not-inherited/ref.bc rpath/main-override/ref.bc
+default: runtimepath/not-inherited/ref.bc runtimepath/main-override/ref.bc
 
-rpath/libFoo$(SO_EXT): rpath/FooA.c rpath/Makefile rpath/lib/libBar$(SO_EXT)
+runtimepath/libFoo$(SO_EXT): runtimepath/FooA.c runtimepath/Makefile runtimepath/lib/libBar$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -rpath $(ORIGIN_TOKEN)/lib -Lrpath/lib -lBar -fPIC -shared -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -rpath $(ORIGIN_TOKEN)/lib -Lruntimepath/lib -lBar -fPIC -shared -o $@ $<
 
-rpath/libBar$(SO_EXT): rpath/BarB.c rpath/Makefile
-	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
-
-rpath/lib/libBar$(SO_EXT): rpath/BarC.c rpath/Makefile
+runtimepath/libBar$(SO_EXT): runtimepath/BarB.c runtimepath/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-rpath/not-inherited/ref.out: rpath/main.c rpath/Makefile rpath/libFoo$(SO_EXT)
+runtimepath/lib/libBar$(SO_EXT): runtimepath/BarC.c runtimepath/Makefile
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN)/.. -Lrpath -lFoo -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-rpath/main-override/ref.out: rpath/main.c rpath/Makefile rpath/libFoo$(SO_EXT) rpath/libBar$(SO_EXT)
+runtimepath/not-inherited/ref.out: runtimepath/main.c runtimepath/Makefile runtimepath/libFoo$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN)/.. -Lrpath -lFoo -lBar -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN)/.. -Lruntimepath -lFoo -o $@ $<
+
+runtimepath/main-override/ref.out: runtimepath/main.c runtimepath/Makefile runtimepath/libFoo$(SO_EXT) runtimepath/libBar$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN)/.. -Lruntimepath -lFoo -lBar -o $@ $<
 
 %.bc: %.out
 	cp $< $@

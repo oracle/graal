@@ -1330,7 +1330,7 @@ suite = {
       "results": [
         "dynLink",
         "linker",
-        "rpath",
+        "runtimepath",
         "reload",
       ],
       "testProject" : True,
