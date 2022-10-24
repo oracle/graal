@@ -628,7 +628,10 @@ public class FrameInfoEncoder {
             StackSlot stackSlot = (StackSlot) value;
             result.type = ValueType.StackSlot;
             result.data = stackSlot.getOffset(data.totalFrameSize);
-            // TODO BS The first check is needed when safe point sampling is on. Is this OK?
+            // TODO BS The first check is needed when safe-point sampling is on. Is this OK?
+            // e.g. stackSlot -> stack:32|V128_SINGLE,
+            // stackSlot.getPlatformKind() -> V128_SINGLE,
+            // stackSlot.getPlatformKind().getVectorLength() -> 4
             result.isCompressedReference = stackSlot.getPlatformKind().getVectorLength() == 1 && isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
 
@@ -648,7 +651,10 @@ public class FrameInfoEncoder {
             RegisterValue register = (RegisterValue) value;
             result.type = ValueType.Register;
             result.data = CalleeSavedRegisters.singleton().getOffsetInFrame(ValueUtil.asRegister(register));
-            // TODO BS The first check is needed when safe point sampling is on. Is this OK?
+            // TODO BS The first check is needed when safe-point sampling is on. Is this OK?
+            // e.g. register -> xmm0|V128_SINGLE,
+            // register.getPlatformKind() -> V128_SINGLE,
+            // register.getPlatformKind().getVectorLength() -> 4
             result.isCompressedReference = register.getPlatformKind().getVectorLength() == 1 && isCompressedReference(register);
             ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
