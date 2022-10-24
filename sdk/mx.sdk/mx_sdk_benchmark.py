@@ -731,8 +731,22 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         return '5.3'
 
     def rules(self, out, benchmarks, bmSuiteArgs):
-        # Example of jmeter output:
-        # "summary =     70 in 00:00:01 =   47.6/s Avg:    12 Min:     3 Max:   592 Err:     0 (0.00%)"
+        # Example of jmeter output (time = 100s):
+        #
+        # summary +     59 in 00:00:10 =    5.9/s Avg:   449 Min:    68 Max:  7725 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary +   1945 in 00:00:30 =   64.9/s Avg:    46 Min:    26 Max:   116 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary =   2004 in 00:00:40 =   50.2/s Avg:    57 Min:    26 Max:  7725 Err:     0 (0.00%)
+        # summary +   1906 in 00:00:30 =   63.6/s Avg:    47 Min:    26 Max:    73 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary =   3910 in 00:01:10 =   55.9/s Avg:    52 Min:    26 Max:  7725 Err:     0 (0.00%)
+        # summary +   1600 in 00:00:30 =   53.3/s Avg:    56 Min:    29 Max:    71 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary =   5510 in 00:01:40 =   55.1/s Avg:    53 Min:    26 Max:  7725 Err:     0 (0.00%)
+        # summary +      8 in 00:00:00 =   68.4/s Avg:    46 Min:    30 Max:    58 Err:     0 (0.00%) Active: 0 Started: 3 Finished: 3
+        # summary =   5518 in 00:01:40 =   55.1/s Avg:    53 Min:    26 Max:  7725 Err:     0 (0.00%)
+        #
+        # The following rule matches `^summary \+` and reports the corresponding data points as 'warmup'.
+        # Note that the `run()` function calls `addAverageAcrossLatestResults()`, which computes
+        # the avg. of the last `AveragingBenchmarkMixin.getExtraIterationCount()` warmup data points
+        # and reports that value as 'throughput'.
         return [
             mx_benchmark.StdOutRule(
                 r"^summary \+\s+(?P<requests>[0-9]+) in (?P<hours>\d+):(?P<minutes>\d\d):(?P<seconds>\d\d) =\s+(?P<throughput>\d*[.,]?\d*)/s Avg:\s+(?P<avg>\d+) Min:\s+(?P<min>\d+) Max:\s+(?P<max>\d+) Err:\s+(?P<errors>\d+) \((?P<errpct>\d*[.,]?\d*)\%\)", # pylint: disable=line-too-long
