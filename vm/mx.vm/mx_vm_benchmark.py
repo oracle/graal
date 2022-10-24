@@ -818,8 +818,11 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # TODO BS add `--pgo-sampling` here breaks benchmarks with G1
-        instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
+        # GR-40154 --pgo-sampling does not work with G1 for some reason
+        if self.gc == 'G1':
+            instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        else:
+            instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:ProfilingPackagePrefixes={}'.format(self.generate_profiling_package_prefixes())]
 
