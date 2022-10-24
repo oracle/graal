@@ -30,26 +30,23 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMContextWindows;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMThreadException;
 
 public class LLVMWindowsInitThreadIntrinsics {
-    static ReentrantLock lock = new ReentrantLock();
-    static Condition condition = lock.newCondition();
-
     public abstract static class InitThreadLock extends LLVMExpressionNode {
         abstract Object execute();
 
         @Specialization
         @TruffleBoundary
         public Object doLock() {
-            lock.lock();
+            getContext().getWindowsContext().getInitThreadLock().lock();
             return null;
         }
     }
@@ -60,7 +57,7 @@ public class LLVMWindowsInitThreadIntrinsics {
         @Specialization
         @TruffleBoundary
         public Object doUnlock() {
-            lock.unlock();
+            getContext().getWindowsContext().getInitThreadLock().unlock();
             return null;
         }
     }
@@ -73,7 +70,7 @@ public class LLVMWindowsInitThreadIntrinsics {
         @TruffleBoundary
         public Object doWait(int timeout) {
             try {
-                condition.await(timeout, TimeUnit.MILLISECONDS);
+                getContext().getWindowsContext().getInitThreadCondition().await(timeout, TimeUnit.MILLISECONDS);
             } catch (InterruptedException ex) {
                 throw new LLVMThreadException(this, "Thread interrupted during _Init_thread_wait", ex);
             }
@@ -87,9 +84,11 @@ public class LLVMWindowsInitThreadIntrinsics {
         @Specialization
         @TruffleBoundary
         public Object doWait() {
-            lock.lock();
+            LLVMContextWindows context = getContext().getWindowsContext();
+            Lock lock = context.getInitThreadLock();
             try {
-                condition.signalAll();
+                lock.lock();
+                context.getInitThreadCondition().signalAll();
             } finally {
                 lock.unlock();
             }
