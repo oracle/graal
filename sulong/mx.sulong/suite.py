@@ -1906,7 +1906,7 @@ suite = {
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/native/include"
               ],
               "./native/cmake/" : [
-                "file:cmake/toolchain-native.cmake",
+                "file:cmake/toolchain.cmake",
               ],
               "./native/lib/" : [
                 "dependency:com.oracle.truffle.llvm.libraries.pthread/lib/*",
@@ -1926,7 +1926,7 @@ suite = {
                 "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
               ],
               "./cmake/" : [
-                "file:cmake/toolchain-native.cmake",
+                "file:cmake/toolchain.cmake",
               ],
               "./native/lib/" : [
                 "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
@@ -2013,6 +2013,9 @@ suite = {
       "platformDependent": True,
       "layout": {
         "./": "dependency:bootstrap-toolchain-launchers/*",
+        "./cmake/" : [
+          "file:cmake/toolchain.cmake",
+        ],
       },
       "asm_requires_cpp": False,
       "buildDependencies" : [
@@ -2028,6 +2031,9 @@ suite = {
       "platformDependent": True,
       "layout": {
         "./": "dependency:bootstrap-toolchain-launchers-no-home/*",
+        "./cmake/" : [
+          "file:cmake/toolchain.cmake",
+        ],
       },
       "buildDependencies": [
         "SULONG_TOOLCHAIN_LAUNCHERS",
