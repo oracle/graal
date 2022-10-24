@@ -230,18 +230,35 @@ public class ITLDAPTest {
 
         // Threads started:
         Pattern threadStarted = Pattern.compile("\\{\"event\":\"thread\",\"body\":\\{\"threadId\":\\d,\"reason\":\"started\"\\},\"type\":\"event\",\"seq\":\\d+\\}");
-        String message = tester.getMessage(); // The first thread
-        Assert.assertTrue(message, threadStarted.matcher(message).matches());
-        message = tester.getMessage(); // The second thread
-        Assert.assertTrue(message, threadStarted.matcher(message).matches());
-
         // Suspend at the breakpoint:
         Pattern stopped = Pattern.compile(
                         "\\{\"event\":\"stopped\",\"body\":\\{\"threadId\":\\d,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"\\},\"type\":\"event\",\"seq\":\\d+\\}");
-        message = tester.getMessage(); // The first breakpoint hit
-        Assert.assertTrue(message, stopped.matcher(message).matches());
-        message = tester.getMessage(); // The second breakpoint hit
-        Assert.assertTrue(message, stopped.matcher(message).matches());
+
+        // The first thread started
+        String message = tester.getMessage();
+        Assert.assertTrue(message, threadStarted.matcher(message).matches());
+
+        // Either the second thread started, or the first one hit the breakpoint:
+        message = tester.getMessage();
+        if (threadStarted.matcher(message).matches()) {
+            // The second thread started
+            Assert.assertTrue(message, threadStarted.matcher(message).matches());
+            // The first breakpoint is hit
+            message = tester.getMessage();
+            Assert.assertTrue(message, stopped.matcher(message).matches());
+            // The second breakpoint is hit
+            message = tester.getMessage();
+            Assert.assertTrue(message, stopped.matcher(message).matches());
+        } else {
+            // The first breakpoint is hit
+            Assert.assertTrue(message, stopped.matcher(message).matches());
+            // Then the second thread started
+            message = tester.getMessage();
+            Assert.assertTrue(message, threadStarted.matcher(message).matches());
+            // The second breakpoint is hit
+            message = tester.getMessage();
+            Assert.assertTrue(message, stopped.matcher(message).matches());
+        }
 
         // Step on thread 2:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":2},\"type\":\"request\",\"seq\":6}");
@@ -260,8 +277,8 @@ public class ITLDAPTest {
         // Verify all threads:
         tester.sendMessage("{\"command\":\"threads\",\"arguments\":{},\"type\":\"request\",\"seq\":8}");
         Pattern threads = Pattern.compile(
-                        "\\{\"success\":true,\"body\":\\{\"threads\":\\[\\{\"name\":\"testRunner\",\"id\":1\\},\\{\"name\":\"Polyglot-instrumentation-test-language-\\d\",\"id\":\\d\\}," +
-                                        "\\{\"name\":\"Polyglot-instrumentation-test-language-\\d\",\"id\":\\d\\}\\]\\},\"type\":\"response\",\"request_seq\":8,\"command\":\"threads\",\"seq\":21\\}");
+                        "\\{\"success\":true,\"body\":\\{\"threads\":\\[\\{\"name\":\"testRunner\",\"id\":1\\},\\{\"name\":\"Polyglot-instrumentation-test-language-\\d+\",\"id\":\\d\\}," +
+                                        "\\{\"name\":\"Polyglot-instrumentation-test-language-\\d+\",\"id\":\\d\\}\\]\\},\"type\":\"response\",\"request_seq\":8,\"command\":\"threads\",\"seq\":21\\}");
         message = tester.getMessage();
         Assert.assertTrue(message, threads.matcher(message).matches());
 
