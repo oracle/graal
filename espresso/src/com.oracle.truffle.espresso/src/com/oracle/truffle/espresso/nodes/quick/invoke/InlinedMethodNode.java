@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
@@ -60,8 +61,8 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
         return null;
     }
 
-    public final void revertToGeneric(BytecodeNode parent) {
-        parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex, method.getMethod());
+    public final BaseQuickNode revertToGeneric(BytecodeNode parent) {
+        return parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex, method.getMethod());
     }
 
     protected static boolean isInlineCandidate(Method resolutionSeed, int opcode) {

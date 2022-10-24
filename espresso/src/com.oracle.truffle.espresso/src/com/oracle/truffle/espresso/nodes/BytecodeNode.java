@@ -2109,7 +2109,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         atomic(() -> {
             for (BaseQuickNode quick : nodes) {
                 if (quick instanceof InlinedMethodNode) {
-                    ((InlinedMethodNode) quick).revertToGeneric(this);
+                    notifyInserted(((InlinedMethodNode) quick).revertToGeneric(this));
                 }
             }
         });
