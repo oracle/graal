@@ -628,6 +628,7 @@ public class FrameInfoEncoder {
             StackSlot stackSlot = (StackSlot) value;
             result.type = ValueType.StackSlot;
             result.data = stackSlot.getOffset(data.totalFrameSize);
+            // TODO BS The first check is needed when safe point sampling is on. Is this OK?
             result.isCompressedReference = stackSlot.getPlatformKind().getVectorLength() == 1 && isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
 
@@ -647,7 +648,8 @@ public class FrameInfoEncoder {
             RegisterValue register = (RegisterValue) value;
             result.type = ValueType.Register;
             result.data = CalleeSavedRegisters.singleton().getOffsetInFrame(ValueUtil.asRegister(register));
-            result.isCompressedReference = isCompressedReference(register);
+            // TODO BS The first check is needed when safe point sampling is on. Is this OK?
+            result.isCompressedReference = register.getPlatformKind().getVectorLength() == 1 && isCompressedReference(register);
             ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
         } else if (value instanceof JavaConstant) {
