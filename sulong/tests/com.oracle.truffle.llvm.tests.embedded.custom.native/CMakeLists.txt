@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,4 +28,27 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-include $(SRC_DIR)/interop/*/Makefile
+cmake_minimum_required(VERSION 3.15)
+project(com.oracle.truffle.llvm.tests.embedded.custom.native)
+
+function(require_var var)
+  if (NOT ${var})
+    message(FATAL_ERROR "${var} needs to be set")
+  endif()
+endfunction()
+
+function(check_var var)
+  set(${var} PARENT_SCOPE)
+  require_var(${var})
+endfunction()
+
+check_var(GRAALVM_LLVM_INCLUDE_DIR)
+
+include_directories(${GRAALVM_LLVM_INCLUDE_DIR})
+link_directories(${GRAALVM_LLVM_LIB_DIR})
+link_libraries(graalvm-llvm)
+
+add_custom_target(default)
+
+add_subdirectory(interop)
+

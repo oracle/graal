@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,14 +29,8 @@
 #
 
 cmake_minimum_required(VERSION 3.15)
-project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
+project(com.oracle.truffle.llvm.tests.native)
 
-link_libraries(graalvm-llvm)
-if(WIN32)
-  link_libraries(pthread)
-else()
-  set(CMAKE_C_FLAGS "-pthread")
-  set(CMAKE_C_LINK_FLAGS "-pthread")
-endif()
+add_library(sulongtest SHARED src/caller.c src/callbackLibrary.c)
 
-include(SulongTestSuite)
+add_custom_target(default DEPENDS sulongtest)

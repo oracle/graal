@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,15 +28,12 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 3.15)
-project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
+add_library(Baz SHARED baz.c)
 
-link_libraries(graalvm-llvm)
-if(WIN32)
-  link_libraries(pthread)
-else()
-  set(CMAKE_C_FLAGS "-pthread")
-  set(CMAKE_C_LINK_FLAGS "-pthread")
-endif()
+add_library(Foo SHARED foo.c)
+target_link_libraries(Foo Baz)
 
-include(SulongTestSuite)
+add_library(Bar SHARED bar.c)
+target_link_libraries(Bar Baz)
+
+add_dependencies(default Bar Foo)

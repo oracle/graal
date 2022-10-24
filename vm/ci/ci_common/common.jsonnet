@@ -149,7 +149,6 @@ local devkits = common_json.devkits;
       'pcre2': '==10.37',
     },
     environment+: {
-      PATH : '/usr/local/bin:$JAVA_HOME/bin:$PATH',
       FASTR_FC: '/cm/shared/apps/gcc/8.3.0/bin/gfortran',
       FASTR_CC: '/cm/shared/apps/gcc/8.3.0/bin/gcc',
       TZDIR: '/usr/share/zoneinfo',
