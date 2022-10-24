@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int bar(int a, int b);
-
-int foo(int a, int b) {
-    printf("fooA\n");
-    return (b - a) + bar(3, 9);
+int bar(int a, int b) {
+    printf("barB\n");
+    return a + b + 37;
 }
