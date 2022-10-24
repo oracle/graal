@@ -924,6 +924,9 @@ suite = {
           },
         },
       },
+      "buildDependencies" : [
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
+      ],
       "license" : "BSD-new",
     },
 
@@ -1090,7 +1093,6 @@ suite = {
     "com.oracle.truffle.llvm.tests.interop.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "toolchain" : "<toolchainCMakePath:native>",
       "variants" : ["toolchain-plain"],
       "buildRef" : False,
       "buildSharedObject" : True,

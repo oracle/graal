@@ -338,11 +338,10 @@ def _get_toolchain(toolchain_name):
 
 
 def _get_toolchain_tool(name_tool):
-    name, tool = name_tool.split(",", 2)
+    name, tool = name_tool.split(",", 1)
     return _get_toolchain(name).get_toolchain_tool(tool)
 
-def _get_toolchain_cmake(name_tool):
-    name, tool = name_tool.split(":", 1)
+def _get_toolchain_cmake(name):
     return _get_toolchain(name).get_toolchain_cmake()
 
 
