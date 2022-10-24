@@ -347,10 +347,14 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.workloadPath = None
         self.measureLatency = None
         self.measureFirstResponse = None
+        self.measureStartup = None
+        self.measurePeak = None
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("--workload-configuration", type=str, default=None, help="Path to workload configuration.")
         self.parser.add_argument("--skip-latency-measurements", action='store_true', help="Determines if the latency measurements should be skipped.")
         self.parser.add_argument("--skip-first-response-measurements", action='store_true', help="Determines if the time-to-first-response measurements should be skipped.")
+        self.parser.add_argument("--skip-startup-measurements", action='store_true', help="Determines if the startup performance measurements should be skipped.")
+        self.parser.add_argument("--skip-peak-measurements", action='store_true', help="Determines if the peak performance measurements should be skipped.")
 
     def benchMicroserviceName(self):
         """
@@ -661,6 +665,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.workloadPath = args.workload_configuration
         self.measureLatency = not args.skip_latency_measurements
         self.measureFirstResponse = not args.skip_first_response_measurements
+        self.measureStartup = not args.skip_startup_measurements
+        self.measurePeak = not args.skip_peak_measurements
 
         if not self.inNativeMode():
             datapoints = []
@@ -674,19 +680,21 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         measurementThread.join()
                 mx.enable_command_mapper_hooks()
 
-            # Measure startup performance (without RSS tracker)
-            mx_benchmark.disable_tracker()
-            with EmptyEnv(self.get_env()):
-                measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                measurementThread.join()
-            mx_benchmark.enable_tracker()
+            if self.measureStartup:
+                # Measure startup performance (without RSS tracker)
+                mx_benchmark.disable_tracker()
+                with EmptyEnv(self.get_env()):
+                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
+                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                    measurementThread.join()
+                mx_benchmark.enable_tracker()
 
-            # Measure peak performance (with all command mapper hooks)
-            with EmptyEnv(self.get_env()):
-                measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                measurementThread.join()
+            if self.measurePeak:
+                # Measure peak performance (with all command mapper hooks)
+                with EmptyEnv(self.get_env()):
+                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
+                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                    measurementThread.join()
 
             if self.measureLatency:
                 # Calibrate for latency measurements (without RSS tracker)
