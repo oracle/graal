@@ -27,10 +27,11 @@ package org.graalvm.compiler.truffle.test.strings;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Assert;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -128,7 +129,7 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     @SuppressWarnings("unchecked")
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64 && hasRequiredFeatures(((AMD64) getTarget().arch))) {
+        if (isSupportedArchitecture() && hasRequiredFeatures(getTarget().arch)) {
             for (Node node : graph.getNodes()) {
                 if (nodeClass.isInstance(node)) {
                     checkIntrinsicNode((T) node);
@@ -142,9 +143,9 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     protected void checkIntrinsicNode(@SuppressWarnings("unused") T node) {
     }
 
-    private boolean hasRequiredFeatures(AMD64 arch) {
-        if (nodeClass.equals(AMD64CalcStringAttributesNode.class)) {
-            return arch.getFeatures().contains(AMD64.CPUFeature.SSE4_1);
+    private boolean hasRequiredFeatures(Architecture arch) {
+        if (nodeClass.equals(CalcStringAttributesNode.class) && arch instanceof AMD64) {
+            return ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
         }
         return true;
     }

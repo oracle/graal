@@ -22,14 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
+package org.graalvm.compiler.truffle.compiler.substitutions;
 
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.BMP;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.LATIN1;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.getArrayLocation;
 
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
@@ -37,30 +41,37 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesMacroNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.truffle.api.nodes.Node;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class AMD64TruffleInvocationPlugins {
+/**
+ * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are not only used during
+ * partial evaluation, but also in later phases, and behind
+ * {@link com.oracle.truffle.api.CompilerDirectives.TruffleBoundary Truffle boundaries}.
+ */
+public class TruffleInvocationPlugins {
 
     public static void register(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
-        if (architecture instanceof AMD64) {
-            registerArrayUtilsPlugins(plugins, replacements);
+        if (architecture instanceof AMD64 || architecture instanceof AArch64) {
             registerTStringPlugins(plugins, replacements);
+            registerArrayUtilsPlugins(plugins, replacements);
         }
     }
 
@@ -68,28 +79,28 @@ public class AMD64TruffleInvocationPlugins {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ArrayUtils;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ArrayUtils", replacements);
         for (Stride stride : new Stride[]{Stride.S1, Stride.S2}) {
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB1" + stride.name(), byte[].class, long.class, int.class, int.class) {
+            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB1" + stride.name(), byte[].class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0) {
                     return arrayUtilsIndexOfAny(b, JavaKind.Byte, stride, array, fromIndex, maxIndex, v0);
                 }
             });
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB2" + stride.name(), byte[].class, long.class, int.class, int.class, int.class) {
+            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB2" + stride.name(), byte[].class, int.class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                     return arrayUtilsIndexOfAny(b, JavaKind.Byte, stride, array, fromIndex, maxIndex, v0, v1);
                 }
             });
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB3" + stride.name(), byte[].class, long.class, int.class, int.class, int.class, int.class) {
+            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB3" + stride.name(), byte[].class, int.class, int.class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2) {
                     return arrayUtilsIndexOfAny(b, JavaKind.Byte, stride, array, fromIndex, maxIndex, v0, v1, v2);
                 }
             });
-            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB4" + stride.name(), byte[].class, long.class, int.class, int.class, int.class, int.class, int.class) {
+            r.register(new InlineOnlyInvocationPlugin("stubIndexOfB4" + stride.name(), byte[].class, int.class, int.class, int.class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                                 ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
@@ -97,49 +108,49 @@ public class AMD64TruffleInvocationPlugins {
                 }
             });
         }
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC1S2", char[].class, long.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC1S2", char[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC2S2", char[].class, long.class, int.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC2S2", char[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC3S2", char[].class, long.class, int.class, int.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC3S2", char[].class, int.class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0, v1, v2);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC4S2", char[].class, long.class, int.class, int.class, int.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOfC4S2", char[].class, int.class, int.class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
                 return arrayUtilsIndexOfAny(b, JavaKind.Char, Stride.S2, array, fromIndex, maxIndex, v0, v1, v2, v3);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS1", byte[].class, long.class, int.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS1", byte[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                 return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S1, true, false, array, fromIndex, maxIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", byte[].class, long.class, int.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", byte[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
                 return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S2, true, false, array, fromIndex, maxIndex, v0, v1);
             }
         });
-        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", char[].class, long.class, int.class, int.class, int.class) {
+        r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", char[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
@@ -366,7 +377,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.LATIN1, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, LATIN1, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -375,7 +386,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.BMP, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, BMP, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -384,7 +395,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative, assumeValid);
-                b.addPush(JavaKind.Long, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.UTF_8, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_8, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -393,7 +404,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative, assumeValid);
-                b.addPush(JavaKind.Long, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.UTF_16, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_16, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -402,7 +413,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length);
-                b.addPush(JavaKind.Long, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.UTF_16, false, getArrayLocation(JavaKind.Char)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_16, false, getArrayLocation(JavaKind.Char)));
                 return true;
             }
         });
@@ -411,7 +422,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.UTF_32, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -420,7 +431,7 @@ public class AMD64TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length) {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length);
-                b.addPush(JavaKind.Int, new AMD64CalcStringAttributesMacroNode(params, AMD64CalcStringAttributesOp.Op.UTF_32, false, getArrayLocation(JavaKind.Int)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32, false, getArrayLocation(JavaKind.Int)));
                 return true;
             }
         });

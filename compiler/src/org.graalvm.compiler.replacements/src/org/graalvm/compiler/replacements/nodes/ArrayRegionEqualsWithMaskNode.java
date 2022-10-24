@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements.nodes;
 
 import java.util.EnumSet;
 
@@ -44,7 +44,6 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
-import org.graalvm.compiler.replacements.nodes.PureFunctionStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
@@ -55,9 +54,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 // JaCoCo Exclude
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public final class ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
-    public static final NodeClass<AMD64ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(AMD64ArrayRegionEqualsWithMaskNode.class);
+    public static final NodeClass<ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(ArrayRegionEqualsWithMaskNode.class);
 
     /**
      * Stride for reading type punned array elements of {@link #arrayA}. Allowed values are
@@ -92,7 +91,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
      */
     @OptionalInput protected ValueNode dynamicStrides;
 
-    public AMD64ArrayRegionEqualsWithMaskNode(
+    public ArrayRegionEqualsWithMaskNode(
                     ValueNode arrayA,
                     ValueNode offsetA,
                     ValueNode arrayB,
@@ -105,7 +104,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, strideA, strideB, strideMask, null, LocationIdentity.ANY_LOCATION);
     }
 
-    public AMD64ArrayRegionEqualsWithMaskNode(
+    public ArrayRegionEqualsWithMaskNode(
                     ValueNode arrayA,
                     ValueNode offsetA,
                     ValueNode arrayB,
@@ -119,7 +118,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, strideA, strideB, strideMask, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
-    public AMD64ArrayRegionEqualsWithMaskNode(
+    public ArrayRegionEqualsWithMaskNode(
                     ValueNode arrayA,
                     ValueNode offsetA,
                     ValueNode arrayB,
@@ -129,7 +128,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, null, null, null, null, LocationIdentity.ANY_LOCATION);
     }
 
-    public AMD64ArrayRegionEqualsWithMaskNode(
+    public ArrayRegionEqualsWithMaskNode(
                     ValueNode arrayA,
                     ValueNode offsetA,
                     ValueNode arrayB,
@@ -140,7 +139,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
         this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, null, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
-    public AMD64ArrayRegionEqualsWithMaskNode(
+    public ArrayRegionEqualsWithMaskNode(
                     ValueNode arrayA,
                     ValueNode offsetA,
                     ValueNode arrayB,
@@ -199,7 +198,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIn
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return AMD64ArrayEqualsWithMaskForeignCalls.getStub(this);
+        return ArrayEqualsWithMaskForeignCalls.getStub(this);
     }
 
     @Override

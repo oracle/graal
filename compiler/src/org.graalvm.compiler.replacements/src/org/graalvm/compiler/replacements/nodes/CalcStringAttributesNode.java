@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements.nodes;
 
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
@@ -36,18 +36,17 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.GenerateStub;
-import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.replacements.nodes.PureFunctionStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -55,14 +54,12 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This intrinsic calculates properties of string contents in various encodings, see
- * {@link AMD64CalcStringAttributesOp} for details.
- *
- * @see AMD64CalcStringAttributesOp
+ * {@code AMD64CalcStringAttributesOp} for details.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrinsicNode {
+public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNode {
 
-    public static final NodeClass<AMD64CalcStringAttributesNode> TYPE = NodeClass.create(AMD64CalcStringAttributesNode.class);
+    public static final NodeClass<CalcStringAttributesNode> TYPE = NodeClass.create(CalcStringAttributesNode.class);
 
     private static final EnumSet<AMD64.CPUFeature> MINIMUM_FEATURES_AMD64 = EnumSet.of(
                     SSE,
@@ -73,7 +70,7 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
                     SSE4_2,
                     POPCNT);
 
-    private final AMD64CalcStringAttributesOp.Op op;
+    private final LIRGeneratorTool.CalcStringAttributesEncoding encoding;
     private final boolean assumeValid;
 
     @Input protected ValueNode array;
@@ -87,45 +84,45 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
      * location identities, but are calling the same stubs (after
      * {@link #generate(NodeLIRBuilderTool) assembly generation}).
      */
-    protected AMD64CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+    protected CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid) {
-        this(array, offset, length, op, assumeValid, null, LocationIdentity.any());
+        this(array, offset, length, encoding, assumeValid, null, LocationIdentity.any());
     }
 
-    protected AMD64CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+    protected CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(array, offset, length, op, assumeValid, runtimeCheckedCPUFeatures, LocationIdentity.any());
+        this(array, offset, length, encoding, assumeValid, runtimeCheckedCPUFeatures, LocationIdentity.any());
     }
 
-    public AMD64CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+    public CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid,
                     LocationIdentity locationIdentity) {
-        this(array, offset, length, op, assumeValid, null, locationIdentity);
+        this(array, offset, length, encoding, assumeValid, null, locationIdentity);
     }
 
-    public AMD64CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+    public CalcStringAttributesNode(ValueNode array, ValueNode offset, ValueNode length,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forKind(getReturnValueKind(op)), runtimeCheckedCPUFeatures, locationIdentity);
-        this.op = op;
+        super(TYPE, StampFactory.forKind(getReturnValueKind(encoding)), runtimeCheckedCPUFeatures, locationIdentity);
+        this.encoding = encoding;
         this.assumeValid = assumeValid;
         this.array = array;
         this.offset = offset;
         this.length = length;
     }
 
-    private static JavaKind getReturnValueKind(AMD64CalcStringAttributesOp.Op op) {
-        return op == AMD64CalcStringAttributesOp.Op.UTF_8 || op == AMD64CalcStringAttributesOp.Op.UTF_16 ? JavaKind.Long : JavaKind.Int;
+    private static JavaKind getReturnValueKind(LIRGeneratorTool.CalcStringAttributesEncoding encoding) {
+        return encoding == LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8 || encoding == LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16 ? JavaKind.Long : JavaKind.Int;
     }
 
-    public AMD64CalcStringAttributesOp.Op getOp() {
-        return op;
+    public LIRGeneratorTool.CalcStringAttributesEncoding getOp() {
+        return encoding;
     }
 
     public boolean isAssumeValid() {
@@ -148,13 +145,13 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
         return MINIMUM_FEATURES_AMD64;
     }
 
-    public static EnumSet<?> minFeaturesAARCH64() {
-        throw GraalError.shouldNotReachHere("not implemented yet");
+    public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
+        return EnumSet.noneOf(AArch64.CPUFeature.class);
     }
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return AMD64CalcStringAttributesForeignCalls.getStub(this);
+        return CalcStringAttributesForeignCalls.getStub(this);
     }
 
     @Override
@@ -164,7 +161,7 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.getLIRGeneratorTool().emitCalcStringAttributes(op, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(offset), gen.operand(length), assumeValid));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitCalcStringAttributes(encoding, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(offset), gen.operand(length), assumeValid));
     }
 
     /* NodeIntrinsic plugins for snippet stubs. */
@@ -174,12 +171,12 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
     @GenerateStub(name = "calcStringAttributesBMP", parameters = {"BMP", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "calcStringAttributesUTF32", parameters = {"UTF_32", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native int intReturnValue(Object array, long offset, int length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid);
 
     @NodeIntrinsic
     public static native int intReturnValue(Object array, long offset, int length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
@@ -189,12 +186,12 @@ public final class AMD64CalcStringAttributesNode extends PureFunctionStubIntrins
     @GenerateStub(name = "calcStringAttributesUTF16Valid", parameters = {"UTF_16", "true"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     @GenerateStub(name = "calcStringAttributesUTF16Unknown", parameters = {"UTF_16", "false"}, minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native long longReturnValue(Object array, long offset, int length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid);
 
     @NodeIntrinsic
     public static native long longReturnValue(Object array, long offset, int length,
-                    @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
+                    @ConstantNodeParameter LIRGeneratorTool.CalcStringAttributesEncoding encoding,
                     @ConstantNodeParameter boolean assumeValid,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 }

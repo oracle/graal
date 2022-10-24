@@ -171,7 +171,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void csinc(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
+    public void csinc(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
         super.csinc(size, dst, src1, src2, condition);
     }
 

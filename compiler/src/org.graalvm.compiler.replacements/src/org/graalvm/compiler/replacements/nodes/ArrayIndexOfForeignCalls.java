@@ -82,7 +82,7 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_4_S4,
     };
 
-    public static final ForeignCallDescriptor[] STUBS_AMD64 = Stream.concat(Stream.of(
+    public static final ForeignCallDescriptor[] STUBS = Stream.concat(Stream.of(
                     STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_S4,

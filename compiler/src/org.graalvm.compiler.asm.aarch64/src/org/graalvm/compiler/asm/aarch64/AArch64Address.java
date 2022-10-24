@@ -354,6 +354,7 @@ public final class AArch64Address extends AbstractAddress {
                 return regByteSize;
             case ST1_MULTIPLE_2R:
             case LD1_MULTIPLE_2R:
+            case LD2_MULTIPLE_2R:
                 return regByteSize * 2;
             case ST1_MULTIPLE_3R:
             case LD1_MULTIPLE_3R:
@@ -397,7 +398,7 @@ public final class AArch64Address extends AbstractAddress {
 
     private boolean verify() {
         assert bitMemoryTransferSize == ANY_SIZE || bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 ||
-                        bitMemoryTransferSize == 128;
+                        bitMemoryTransferSize == 128 : bitMemoryTransferSize;
         assert addressingMode != null;
         assert base.getRegisterCategory().equals(AArch64.CPU);
         assert offset.getRegisterCategory().equals(AArch64.CPU);

@@ -42,6 +42,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -2252,6 +2253,64 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 PatcherUtil.writeInstruction(code, instOffset, newInst);
                 siteOffset += 4;
             }
+        }
+    }
+
+    /**
+     * Load elements of size {@code strideSrc} from {@code arrayAddress} and zero-extend them to
+     * {@code strideDst} to fill vector registers {@code vectorLo} and {@code vectorHi}. After
+     * loading, {@code arrayAddress} is increased by the amount of bytes loaded.
+     * <p>
+     * For example: if both strides are {@link Stride#S1}, 32 bytes from {@code arrayAddress} are
+     * loaded into the vector registers and {@code arrayAddress} is increased by 32. If
+     * {@code strideSrc} is {@link Stride#S1} and {@code strideDst} is {@link Stride#S2}, 16 bytes
+     * are loaded, the lower 8 bytes are zero-extended (individually) to 16 bit width and stored in
+     * {@code vectorLo}, the upper 8 bytes are zero-extended and stored in {@code vectorHi}, and
+     * {@code arrayAddress} is increased by 16.
+     */
+    public void loadAndExtend(Stride strideDst, Stride strideSrc, Register arrayAddress, Register vectorLo, Register vectorHi) {
+        assert arrayAddress.getRegisterCategory().equals(CPU);
+        assert vectorLo.getRegisterCategory().equals(SIMD);
+        assert vectorHi.getRegisterCategory().equals(SIMD);
+        switch (strideDst.log2 - strideSrc.log2) {
+            case 0:
+                // load 32 bytes into two 16-byte vector registers
+                fldp(128, vectorLo, vectorHi, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayAddress, 32));
+                break;
+            case 1:
+                // load 16 bytes
+                fldr(128, vectorLo, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayAddress, 16));
+                // extend upper half and store in vectorHi
+                neon.uxtl2VV(asElementSize(strideSrc), vectorHi, vectorLo);
+                // extend lower half
+                neon.uxtlVV(asElementSize(strideSrc), vectorLo, vectorLo);
+                break;
+            case 2:
+                // load 8 bytes
+                fldr(64, vectorLo, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayAddress, 8));
+                // extend to 16 bytes
+                neon.uxtlVV(asElementSize(strideSrc), vectorLo, vectorLo);
+                // extend again
+                neon.uxtl2VV(asElementSize(strideSrc).expand(), vectorHi, vectorLo);
+                neon.uxtlVV(asElementSize(strideSrc).expand(), vectorLo, vectorLo);
+                break;
+            default:
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+        }
+    }
+
+    public static AArch64ASIMDAssembler.ElementSize asElementSize(Stride stride) {
+        switch (stride) {
+            case S1:
+                return AArch64ASIMDAssembler.ElementSize.Byte;
+            case S2:
+                return AArch64ASIMDAssembler.ElementSize.HalfWord;
+            case S4:
+                return AArch64ASIMDAssembler.ElementSize.Word;
+            case S8:
+                return AArch64ASIMDAssembler.ElementSize.DoubleWord;
+            default:
+                throw GraalError.shouldNotReachHere();
         }
     }
 }

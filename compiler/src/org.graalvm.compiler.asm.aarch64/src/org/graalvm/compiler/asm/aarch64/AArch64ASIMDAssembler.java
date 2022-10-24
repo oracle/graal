@@ -531,6 +531,7 @@ public abstract class AArch64ASIMDAssembler {
         LD1_MULTIPLE_3R(LoadFlag | 0b0110 << 12),
         LD1_MULTIPLE_1R(LoadFlag | 0b0111 << 12),
         LD1_MULTIPLE_2R(LoadFlag | 0b1010 << 12),
+        LD2_MULTIPLE_2R(LoadFlag | 0b1000 << 12),
 
         /* Advanced SIMD load/store single structure (C4-299). */
         LD1R(LoadFlag | 0b110 << 13),
@@ -609,6 +610,8 @@ public abstract class AArch64ASIMDAssembler {
         /* Advanced SIMD three different (C4-365). */
         SMLAL(0b1000 << 12),
         SMLSL(0b1010 << 12),
+        USUBL(UBit | 0b0010 << 12),
+        SSUBL(0b0010 << 12),
         PMULL(0b1110 << 12),
         UMLAL(UBit | 0b1000 << 12),
         UMLSL(UBit | 0b1010 << 12),
@@ -675,6 +678,7 @@ public abstract class AArch64ASIMDAssembler {
         SHL(0b01010 << 11),
         SSHLL(0b10100 << 11),
         USHR(UBit | 0b00000 << 11),
+        USRA(UBit | 0b00010 << 11),
         USHLL(UBit | 0b10100 << 11);
 
         public final int encoding;
@@ -2197,6 +2201,30 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * Load multiple 2-element structures to two registers, with de-interleaving.<br>
+     *
+     * This instruction loads multiple 2-element structures from memory and writes the result to two
+     * registers. Note the two registers must be consecutive (modulo the number of SIMD
+     * registers).<br>
+     *
+     * <code>
+     * memory at addr: b0 b1 b2 b3 b4 ... <br>
+     * result in dst1: b0 b2 b4 ... <br>
+     * result in dst2: b1 b3 b5 ... <br>
+     * </code>
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param addr address of first structure.
+     */
+    public void ld2MultipleVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2);
+        loadStoreMultipleStructures(ASIMDInstruction.LD2_MULTIPLE_2R, size, eSize, dst1, addr);
+    }
+
+    /**
      * C7.2.196 Multiply-add to accumulator.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += int_multiply(src1[i], src2[i])</code>
@@ -2836,6 +2864,82 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * Unsigned integer subtract vector Long.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in 0..(n/2)-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
+     *
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void usublVVV(ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeDifferentEncoding(ASIMDInstruction.USUBL, false, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * Unsigned integer subtract vector Long upper half.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in (n/2)..n-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
+     *
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void usubl2VVV(ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeDifferentEncoding(ASIMDInstruction.USUBL, true, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * Integer subtract vector Long.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in 0..(n/2)-1 do dst[i] = int_sub(src1[i], src2[i])</code>
+     *
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void ssublVVV(ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeDifferentEncoding(ASIMDInstruction.SSUBL, false, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * Integer subtract vector Long upper half.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in (n/2)..n-1 do dst[i] = int_sub(src1[i], src2[i])</code>
+     *
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void ssubl2VVV(ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeDifferentEncoding(ASIMDInstruction.SSUBL, true, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
      * C7.2.339 Table vector lookup (single register table variant).<br>
      *
      * This instruction is used to perform permutations at a byte granularity. Within the
@@ -3219,7 +3323,7 @@ public abstract class AArch64ASIMDAssembler {
     /**
      * C7.2.392 unsigned shift right (immediate) scalar.<br>
      *
-     * <code>for i in 0..n-1 do dst[i] = src[i] >>> imm</code>
+     * <code>dst = src >>> imm</code>
      *
      * @param eSize element size. Must be ElementSize.DoubleWord.
      * @param dst SIMD register.
@@ -3243,7 +3347,7 @@ public abstract class AArch64ASIMDAssembler {
     /**
      * C7.2.392 unsigned shift right (immediate) vector.<br>
      *
-     * <code>dst = src >>> imm</code>
+     * <code>for i in 0..n-1 do dst[i] = src[i] >>> imm</code>
      *
      * @param size register size.
      * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
@@ -3264,6 +3368,32 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = eSize.nbits * 2 - shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.USHR, size, imm7, dst, src);
+    }
+
+    /**
+     * Unsigned shift right (immediate) and accumulate vector.<br>
+     *
+     * <code>for i in 0..n-1 do dst[i] += src[i] >>> imm</code>
+     *
+     * @param size register size.
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift right amount.
+     */
+    public void usraVVI(ASIMDSize size, ElementSize eSize, Register dst, Register src, int shiftAmt) {
+        assert usesMultipleLanes(size, eSize);
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        /* Accepted shift range */
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+
+        /* shift = eSize.nbits * 2 - imm7 */
+        int imm7 = eSize.nbits * 2 - shiftAmt;
+
+        shiftByImmEncoding(ASIMDInstruction.USRA, size, imm7, dst, src);
     }
 
     /**

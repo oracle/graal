@@ -974,6 +974,7 @@ suite = {
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
                 ]
             },
