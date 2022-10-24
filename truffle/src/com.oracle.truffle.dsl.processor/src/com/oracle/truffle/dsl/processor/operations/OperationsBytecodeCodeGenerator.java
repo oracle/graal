@@ -320,7 +320,12 @@ public class OperationsBytecodeCodeGenerator {
 
         b.startAssert().variable(vars.sp).string(" >= maxLocals : \"stack underflow @ \" + $bci").end();
 
-        b.startSwitch().string("curOpcode").end();
+        b.startSwitch();
+        b.string("curOpcode");
+        if (isUncached) {
+            b.string(" >> " + OperationGeneratorFlags.BOXING_ELIM_BITS);
+        }
+        b.end();
         b.startBlock();
 
         for (Instruction op : m.getInstructions()) {
@@ -390,7 +395,11 @@ public class OperationsBytecodeCodeGenerator {
                     b.end();
                 }
             } else {
-                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
+                if (isUncached) {
+                    b.startCase().variable(op.opcodeIdField).end();
+                } else {
+                    b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
+                }
                 b.startBlock();
                 if (ctx.hasBoxingElimination()) {
                     vars.specializedKind = FrameKind.OBJECT;

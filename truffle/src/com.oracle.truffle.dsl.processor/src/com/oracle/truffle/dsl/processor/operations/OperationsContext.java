@@ -72,6 +72,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalMaterializedInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.SuperInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ThrowInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.YieldInstruction;
 
@@ -145,7 +146,8 @@ public class OperationsContext {
         if (hasBoxingElimination()) {
             loadLocalBoxed = add(new LoadLocalInstruction(this, instructionId++, true));
         }
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(this, instructionId++))));
+        Instruction storeLocal;
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, storeLocal = add(new StoreLocalInstruction(this, instructionId++))));
         add(new Operation.Simple(this, "Return", operationId++, 1, add(new ReturnInstruction(this, instructionId++))));
 
         add(new Operation.LoadLocalMaterialized(this, operationId++, add(new LoadLocalMaterializedInstruction(this, instructionId++))));
@@ -163,6 +165,8 @@ public class OperationsContext {
                         add(new InstrumentationExitInstruction(this, instructionId++)),
                         add(new InstrumentationExitInstruction(this, instructionId++, true)),
                         add(new InstrumentationLeaveInstruction(this, instructionId++))));
+
+        add(new SuperInstruction(this, instructionId++, storeLocal, loadLocalUnboxed));
     }
 
     public <T extends Instruction> T add(T elem) {
@@ -238,6 +242,10 @@ public class OperationsContext {
         for (OperationDecisions.SuperInstruction si : decisions.getSuperInstructions()) {
             Instruction[] instrs = Arrays.stream(si.instructions).map(instructionNameMap::get).toArray(Instruction[]::new);
         }
+    }
+
+    public List<SuperInstruction> getSuperInstructions() {
+        return instructions.stream().filter(x -> x instanceof SuperInstruction).map(x -> (SuperInstruction) x).toList();
     }
 
     public boolean hasBoxingElimination() {

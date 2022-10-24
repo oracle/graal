@@ -626,6 +626,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private byte unsafeGetIndexedTag(int slot) {
+        assert getIndexedTags()[slot] >= 0;
         byte tag = UNSAFE.getByte(getIndexedTags(), Unsafe.ARRAY_BYTE_BASE_OFFSET + slot * Unsafe.ARRAY_BYTE_INDEX_SCALE);
         assert (tag & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_READ;
         return tag;

@@ -120,6 +120,12 @@ public class OperationGeneratorUtils {
                         CodeTreeBuilder.singleVariable(bci));
     }
 
+    public static CodeTree createReadOpcode(CodeVariableElement bc, String bci) {
+        return createReadOpcode(
+                        CodeTreeBuilder.singleVariable(bc),
+                        CodeTreeBuilder.singleString(bci));
+    }
+
     public static CodeTree createWriteOpcode(CodeTree bc, CodeTree bci, CodeTree value) {
         return CodeTreeBuilder.createBuilder().startStatement().startCall("unsafeWriteBytecode").tree(bc).tree(bci).startGroup().string("(short) ").tree(value).end(3).build();
     }

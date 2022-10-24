@@ -288,4 +288,167 @@ public abstract class UnsafeFrameAccess {
         }
     }
 
+    private static final class ImplSafe extends UnsafeFrameAccess {
+
+        @Override
+        public short unsafeShortArrayRead(short[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public void unsafeShortArrayWrite(short[] arr, int index, short value) {
+            arr[index] = value;
+        }
+
+        @Override
+        public byte unsafeByteArrayRead(byte[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public void unsafeByteArrayWrite(byte[] arr, int index, byte value) {
+            arr[index] = value;
+        }
+
+        @Override
+        public int unsafeIntArrayRead(int[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public void unsafeIntArrayWrite(int[] arr, int index, int value) {
+            arr[index] = value;
+        }
+
+        @Override
+        public <T> T unsafeObjectArrayRead(T[] arr, int index) {
+            return arr[index];
+        }
+
+        @Override
+        public byte unsafeGetTag(Frame frame, int slot) {
+            return frame.getTag(slot);
+        }
+
+        @Override
+        public Object unsafeGetObject(Frame frame, int slot) {
+            return frame.getObject(slot);
+        }
+
+        @Override
+        public boolean unsafeGetBoolean(Frame frame, int slot) {
+            return frame.getBoolean(slot);
+        }
+
+        @Override
+        public int unsafeGetInt(Frame frame, int slot) {
+            return frame.getInt(slot);
+        }
+
+        @Override
+        public long unsafeGetLong(Frame frame, int slot) {
+            return frame.getLong(slot);
+        }
+
+        @Override
+        public double unsafeGetDouble(Frame frame, int slot) {
+            return frame.getDouble(slot);
+        }
+
+        @Override
+        public Object unsafeUncheckedGetObject(Frame frame, int slot) {
+            return frame.getObject(slot);
+        }
+
+        @Override
+        public boolean unsafeUncheckedGetBoolean(Frame frame, int slot) {
+            return frame.getBoolean(slot);
+        }
+
+        @Override
+        public int unsafeUncheckedGetInt(Frame frame, int slot) {
+            return frame.getInt(slot);
+        }
+
+        @Override
+        public long unsafeUncheckedGetLong(Frame frame, int slot) {
+            return frame.getLong(slot);
+        }
+
+        @Override
+        public double unsafeUncheckedGetDouble(Frame frame, int slot) {
+            return frame.getDouble(slot);
+        }
+
+        @Override
+        public void unsafeSetObject(Frame frame, int slot, Object value) {
+            frame.setObject(slot, value);
+        }
+
+        @Override
+        public void unsafeSetBoolean(Frame frame, int slot, boolean value) {
+            frame.setBoolean(slot, value);
+        }
+
+        @Override
+        public void unsafeSetInt(Frame frame, int slot, int value) {
+            frame.setInt(slot, value);
+        }
+
+        @Override
+        public void unsafeSetLong(Frame frame, int slot, long value) {
+            frame.setLong(slot, value);
+        }
+
+        @Override
+        public void unsafeSetDouble(Frame frame, int slot, double value) {
+            frame.setDouble(slot, value);
+        }
+
+        @Override
+        public boolean unsafeIsObject(Frame frame, int slot) {
+            return frame.isObject(slot);
+        }
+
+        @Override
+        public boolean unsafeIsBoolean(Frame frame, int slot) {
+            return frame.isBoolean(slot);
+        }
+
+        @Override
+        public boolean unsafeIsInt(Frame frame, int slot) {
+            return frame.isInt(slot);
+        }
+
+        @Override
+        public boolean unsafeIsLong(Frame frame, int slot) {
+            return frame.isLong(slot);
+        }
+
+        @Override
+        public boolean unsafeIsDouble(Frame frame, int slot) {
+            return frame.isDouble(slot);
+        }
+
+        @Override
+        public void unsafeCopy(Frame frame, int srcSlot, int dstSlot) {
+            frame.copy(srcSlot, dstSlot);
+        }
+
+        @Override
+        public void unsafeCopyTo(Frame srcFrame, int srcOffset, Frame dstFrame, int dstOffset, int length) {
+            srcFrame.copyTo(srcOffset, dstFrame, dstOffset, length);
+        }
+
+        @Override
+        public void unsafeCopyObject(Frame frame, int srcSlot, int dstSlot) {
+            frame.copyObject(srcSlot, dstSlot);
+        }
+
+        @Override
+        public void unsafeCopyPrimitive(Frame frame, int srcSlot, int dstSlot) {
+            frame.copyPrimitive(srcSlot, dstSlot);
+        }
+
+    }
 }

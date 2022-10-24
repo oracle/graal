@@ -53,6 +53,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -251,7 +252,7 @@ public abstract class Instruction {
         return getStateBitsOffset() + stateBits.size();
     }
 
-    private int length() {
+    protected int length() {
         return getInstrumentsOffset() + instruments.size();
     }
 
@@ -547,6 +548,40 @@ public abstract class Instruction {
         }
 
         // todo: instruments
+
+        // superinstructions
+
+        final int MAX_HISTORY = 8;
+
+        b.startAssign("instructionHistory[++instructionHistoryIndex % " + MAX_HISTORY + "]").variable(opcodeIdField).end();
+
+        boolean elseIf = false;
+        for (SuperInstruction si : ctx.getSuperInstructions()) {
+            Instruction[] instrs = si.getInstructions();
+
+            if (instrs[instrs.length - 1].id == id) {
+                String lengthOffset = "";
+                elseIf = b.startIf(elseIf);
+                for (int i = 1; i < instrs.length; i++) {
+                    if (i != 1) {
+                        b.string(" && ");
+                    }
+                    b.string("instructionHistory[(instructionHistoryIndex - " + i + " + " + MAX_HISTORY + ") % 8] == ");
+                    b.variable(instrs[instrs.length - 1 - i].opcodeIdField);
+                }
+                b.end().startBlock();
+
+                b.startStatement().variable(vars.bc).string("[");
+                b.variable(vars.bci);
+                // skips the last since BCI is still not incremented for current instruction
+                for (int i = 0; i < instrs.length - 1; i++) {
+                    b.string(" - ").tree(instrs[i].createLength());
+                }
+                b.string("] = ").tree(OperationGeneratorUtils.combineBoxingBits(ctx, si, 0)).end();
+
+                b.end();
+            }
+        }
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
 

@@ -612,9 +612,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("parentFrame.copyTo(root._maxLocals, frame, root._maxLocals, sp - 1 - root._maxLocals)");
         b.statement("frame.setObject(sp - 1, inputValue)");
 
-        // b.statement("System.err.printf(\" continuing: %s %s %d%n\", frame, parentFrame, (target
-        // >> 16) + root._maxLocals)");
-
         b.statement("return root.executeAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
 
         return cr;
@@ -999,6 +996,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "curStack"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "maxStack"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numLocals"));
+        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "instructionHistory = new int[8]"));
+        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "instructionHistoryIndex = 0"));
         if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numLabels"));
         }
@@ -2726,6 +2725,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("numChildNodes = 0");
         b.statement("numConditionProfiles = 0");
         b.statement("exceptionHandlers.clear()");
+        b.statement("Arrays.fill(instructionHistory, -1)");
+        b.statement("instructionHistoryIndex = 0");
 
         if (m.enableYield) {
             b.statement("yieldCount = 0");
