@@ -422,8 +422,8 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         # add properties from the project
         if hasattr(self.subject, "getJavaProperties"):
             for key, value in sorted(self.subject.getJavaProperties().items()):
-                jvm_args.append("-D" + key + "=" + value)
-        command = [java] + jvm_args + extra_props + [main_class, all_params]
+                jvm_args.append(_quote("-D" + key + "=" + value))
+        command = [_quote(java)] + jvm_args + extra_props + [main_class, all_params]
         # create script
         if mx.is_windows():
             return "@echo off\n" + " ".join(command) + "\n"
