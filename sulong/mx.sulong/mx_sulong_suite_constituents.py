@@ -589,6 +589,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         _config['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         _config['LLVM_CONFIG'] = mx_sulong.findBundledLLVMProgram('llvm-config')
         _config['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
+        _config['CMAKE_NM'] = mx_sulong.findBundledLLVMProgram('llvm-nm')
         if DragonEggSupport.haveDragonegg():
             _config['DRAGONEGG'] = DragonEggSupport.pluginPath()
             _config['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)

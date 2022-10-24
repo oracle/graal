@@ -1007,7 +1007,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testBoxedboolean() {
-        try (Runner runner = new Runner("interop_conditionalWithBoxedBoolean.c")) {
+        try (Runner runner = new Runner("conditionalWithBoxedBoolean.c")) {
             runner.export(true, "boxed_true");
             runner.export(false, "boxed_false");
             Assert.assertEquals(0, runner.run());
@@ -1016,7 +1016,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testUnboxedboolean() {
-        try (Runner runner = new Runner("interop_conditionalWithUnboxedBoolean.c")) {
+        try (Runner runner = new Runner("conditionalWithUnboxedBoolean.c")) {
             runner.export(true, "boxed_true");
             runner.export(false, "boxed_false");
             Assert.assertEquals(0, runner.run());

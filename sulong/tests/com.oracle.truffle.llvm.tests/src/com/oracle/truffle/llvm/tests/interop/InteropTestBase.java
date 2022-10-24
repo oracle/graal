@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -73,15 +74,29 @@ public class InteropTestBase {
     }
 
     protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
-    public static final String TEST_FILE_NAME = "toolchain-plain.so";
+    public static final String TEST_FILE_NAME = "toolchain-plain";
 
     protected static String getLibrary(String library) {
         runWithPolyglot.getPolyglotContext().initialize("llvm");
         return LLVMLanguage.get(null).getCapability(PlatformCapability.class).getLibrary(library);
     }
 
+    protected static String getLibrarySuffixName(String fileName) {
+        runWithPolyglot.getPolyglotContext().initialize("llvm");
+        PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        // TODO: GR-41902 remove this platform dependent code
+        if (platform.getOS() == OS.Darwin) {
+            return fileName + ".so";
+        }
+        return fileName + "." + platform.getLibrarySuffix();
+    }
+
+    protected static String getTestLibraryName() {
+        return getLibrarySuffixName(TEST_FILE_NAME);
+    }
+
     protected static File getTestBitcodeFile(String name) {
-        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, getTestLibraryName()).toFile();
     }
 
     protected static Object loadTestBitcodeInternal(String name) {
