@@ -834,6 +834,19 @@ class NativeImageVM(GraalVm):
                 image_size = os.stat(image_path).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
+    def _ensureSamplesAreInProfile(self, profile_path):
+        # GR-40154 --pgo-sampling does not work with G1 for some reason
+        if self.pgo_aot_inline and self.gc != 'G1':
+            with open(profile_path) as profile_file:
+                parsed = json.load(profile_file)
+                samples = parsed["samplingProfiles"]
+                assert len(samples) != 0, "No sampling profiles in iprof file " + profile_path
+                for sample in samples:
+                    assert "<" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
+                    assert ":" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
+                    assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
+                    assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
+
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
         image_run_cmd += config.extra_profile_run_args
@@ -841,6 +854,7 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if s.exit_code == 0:
                 mx.copyfile(profile_path, config.latest_profile_path)
+            self._ensureSamplesAreInProfile(profile_path)
 
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]
