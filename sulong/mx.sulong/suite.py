@@ -250,25 +250,16 @@ suite = {
       "ninja_targets" : [
         "default",
       ],
+      "results" : [
+        "<lib:sulongtest>",
+      ],
       "os_arch" : {
         "windows" : {
-          "<others>" :  {
-            "results" : [
-              "<lib:sulongtest>",
-              "<staticlib:sulongtest>",
-            ],
-            "cmakeConfig" : {
-              "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
-            },
-          },
+          "results" : [
+            "<lib:sulongtest>",
+          ],
         },
-        "<others>" : {
-          "<others>" : {
-            "results" : [
-              "<lib:sulongtest>",
-            ],
-          },
-        },
+        "<others>" : {},
       },
       "buildDependencies" : [
       ],
@@ -1014,9 +1005,6 @@ suite = {
             "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
             "cmakeConfig" : {
               "LLVM_ENABLE_RUNTIMES" : "libcxx",
-              # TODO: are these flags necessary?
-              "CMAKE_C_FLAGS" : "-flto -gdwarf-5 -O1",
-              "CMAKE_CXX_FLAGS" : "-flto -gdwarf-5 -O1",
             }
           },
         },
@@ -1098,10 +1086,9 @@ suite = {
       "buildSharedObject" : True,
       "bundledLLVMOnly" : True,
       "cmakeConfig" : {
-        # TODO: can the -I<path:SULONG_HOME> flags be removed
-        "CMAKE_C_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -pthread",
+        "CMAKE_C_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -pthread",
         "CMAKE_C_LINK_FLAGS" : "-pthread",
-        "CMAKE_CXX_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
+        "CMAKE_CXX_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include",
       },
       "os" : {
         "linux": {
