@@ -57,4 +57,6 @@ local verify_ci = (import 'ci-check.libsonnet').verify_ci;
     vm.builds
   )],
   assert verify_ci(self.builds),
+  // verify that the run-spec demo works
+  assert (import "ci/ci_common/run-spec-demo.jsonnet").check(),
 }
