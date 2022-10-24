@@ -101,6 +101,7 @@ local jdks = common_json.jdks;
       {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
     ],
     targets+: ['daily'],
+    notify_groups:: ['deploy'],
   },
 
   deploy_vm_publish_releaser_artifact(build): build + {
@@ -173,6 +174,7 @@ local jdks = common_json.jdks;
      ],
      name: 'post-merge-deploy-vm-maven-linux-amd64',
      timelimit: '45:00',
+     notify_groups:: ['deploy'],
     },
     vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_11_17_only_native + {
      run: [
@@ -187,6 +189,7 @@ local jdks = common_json.jdks;
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
      name: 'post-merge-deploy-vm-maven-linux-aarch64',
+     notify_groups:: ['deploy'],
     },
     vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_11_17_only_native + {
      run: [
@@ -208,6 +211,7 @@ local jdks = common_json.jdks;
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
      name: 'daily-deploy-vm-maven-darwin-amd64',
+     notify_groups:: ['deploy'],
     },
     vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_11_17_only_native + {
      run: [
@@ -215,6 +219,7 @@ local jdks = common_json.jdks;
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
      name: 'daily-deploy-vm-maven-darwin-aarch64',
+     notify_groups:: ['deploy'],
     },
     vm_common.svm_common_windows_amd64("11") + vm_common.gate_vm_windows_amd64 + self.maven_11_17_only_native + {
      run: [
@@ -229,6 +234,7 @@ local jdks = common_json.jdks;
        $.maven_11_17_only_native.deploy + ['lafo-maven'],
      ],
      name: 'daily-deploy-vm-maven-windows-amd64',
+     notify_groups:: ['deploy'],
     },
 
     #

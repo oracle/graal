@@ -78,6 +78,7 @@
       ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     targets: ["weekly"],
+    notify_groups:: ["tools"],
   },
 
   builds: [
