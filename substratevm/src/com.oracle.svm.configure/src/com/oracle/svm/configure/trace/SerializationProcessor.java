@@ -58,9 +58,7 @@ public class SerializationProcessor extends AbstractProcessor {
         if ("ObjectStreamClass.<init>".equals(function)) {
             expectSize(args, 2);
 
-            advisor.setProcessingSerializationEntry(true);
-
-            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), true)) {
                 return;
             }
 
@@ -71,8 +69,6 @@ public class SerializationProcessor extends AbstractProcessor {
             } else {
                 serializationConfiguration.registerWithTargetConstructorClass(condition, className, (String) args.get(1));
             }
-
-            advisor.setProcessingSerializationEntry(false);
         } else if ("SerializedLambda.readResolve".equals(function)) {
             expectSize(args, 1);
 
