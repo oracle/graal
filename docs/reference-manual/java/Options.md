@@ -31,8 +31,8 @@ of available configurations, supply the value help to this option.
 
     The accepted values for this option are:
     * `none`: To show no information.
-    * `info`: To print one line of output showing the name of the compiler configuration in use
-       and the location it is loaded from.
+    * `info`: To print one line of output describing the compiler configuration in use
+       and whether it is loaded from a Native Image ("libgraal") or from class files ("jargraal").
     * `verbose`: To print detailed compiler configuration information.
 
 * `-Dgraal.MitigateSpeculativeExecutionAttacks=None`: Selects a strategy to mitigate speculative

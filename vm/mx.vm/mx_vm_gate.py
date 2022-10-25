@@ -119,7 +119,7 @@ def _test_libgraal_basic(extra_vm_arguments):
         jres.append(libgraal_jre)
         atexit.register(mx.rmtree, libgraal_jre)
 
-    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from[ \w]* JVMCI native library"
+    expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
 
     # To test Graal stubs do not create and install duplicate RuntimeStubs:
@@ -155,7 +155,7 @@ def _test_libgraal_basic(extra_vm_arguments):
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
             mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
 
-    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=info',
+    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose',
             '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
