@@ -323,9 +323,10 @@ public class OperationsBytecodeCodeGenerator {
         b.startAssert().variable(vars.sp).string(" >= maxLocals : \"stack underflow @ \" + $bci").end();
 
         b.startSwitch();
-        b.string("curOpcode");
         if (isUncached) {
-            b.string(" >> " + OperationGeneratorFlags.BOXING_ELIM_BITS);
+            b.tree(OperationGeneratorUtils.extractInstruction(ctx, CodeTreeBuilder.singleString("curOpcode")));
+        } else {
+            b.string("curOpcode");
         }
         b.end();
         b.startBlock();

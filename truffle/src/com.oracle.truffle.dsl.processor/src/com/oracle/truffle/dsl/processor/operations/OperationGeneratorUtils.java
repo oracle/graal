@@ -229,7 +229,7 @@ public class OperationGeneratorUtils {
 
         }
 
-        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).string(" >> " + OperationGeneratorFlags.BOXING_ELIM_BITS).end().startBlock();
+        b.startSwitch().tree(OperationGeneratorUtils.extractInstruction(data.getOperationsContext(), createReadOpcode(vars.bc, vars.bci))).end().startBlock();
         for (int i = 0; i < trees.size(); i++) {
             if (treeInstructions.get(i) == null) {
                 b.caseDefault();
@@ -365,7 +365,9 @@ public class OperationGeneratorUtils {
             m.addParameter(vars.children);
             m.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
             m.addParameter(new CodeVariableElement(new GeneratedTypeMirror("", "Counter"), "loopCounter"));
-            m.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+            if (ctx.hasBoxingElimination()) {
+                m.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+            }
             if (ctx.getData().isTracing()) {
                 m.addParameter(vars.tracer);
             }
@@ -396,7 +398,9 @@ public class OperationGeneratorUtils {
         b.variable(vars.children);
         b.string("$conditionProfiles");
         b.string("loopCounter");
-        b.string("$localTags");
+        if (ctx.hasBoxingElimination()) {
+            b.string("$localTags");
+        }
         if (ctx.getData().isTracing()) {
             b.variable(vars.tracer);
         }

@@ -73,4 +73,8 @@ public class YieldInstruction extends Instruction {
         return true;
     }
 
+    @Override
+    public boolean neverWrapInMethod() {
+        return true;
+    }
 }

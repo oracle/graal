@@ -333,6 +333,9 @@ public class CustomInstruction extends Instruction {
             b.end();
         }
 
+        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
+        b.statement("continue loop");
+
         return b.build();
     }
 
@@ -418,5 +421,12 @@ public class CustomInstruction extends Instruction {
 
     public void setUncachedExecuteMethod(ExecutableElement uncachedExecuteMethod) {
         this.uncachedExecuteMethod = uncachedExecuteMethod;
+    }
+
+    @Override
+    public boolean neverWrapInMethod() {
+        // there is no need to wrap custom instructions in methods, since they already
+        // have their own entry-point methods
+        return true;
     }
 }
