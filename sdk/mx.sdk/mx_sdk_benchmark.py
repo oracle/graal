@@ -792,11 +792,14 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
                             "--add-opens=java.base/java.text=ALL-UNNAMED"]
         jmeterCmd = [mx.get_jdk().java] + extraVMArgs + ["-jar", jmeterPath,
                                                          "-t", self.workloadConfigurationPath(),
-                                                         "-n", "-j", "/dev/stdout"]
+                                                         "-n", "-j", "/dev/stdout"] + self.extraJMeterArgs()
         mx.log("Running JMeter: {0}".format(jmeterCmd))
         output = mx.TeeOutputCapture(mx.OutputCapture())
         mx.run(jmeterCmd, out=output, err=output)
         self.peakOutput = output.underlying.data
+
+    def extraJMeterArgs(self):
+        return []
 
     def calibrateLatencyTest(self):
         pass
