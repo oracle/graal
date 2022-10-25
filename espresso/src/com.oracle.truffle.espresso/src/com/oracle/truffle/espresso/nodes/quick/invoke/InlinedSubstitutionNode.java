@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 public final class InlinedSubstitutionNode extends InlinedMethodNode {
@@ -46,10 +45,9 @@ public final class InlinedSubstitutionNode extends InlinedMethodNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        Object[] args = getArguments(frame);
         if (!method.isStatic()) {
-            nullCheck((StaticObject) args[0]);
+            nullCheck(peekReceiver(frame));
         }
-        return pushResult(frame, substitution.invoke(args));
+        return pushResult(frame, substitution.invokeInlined(frame, top));
     }
 }

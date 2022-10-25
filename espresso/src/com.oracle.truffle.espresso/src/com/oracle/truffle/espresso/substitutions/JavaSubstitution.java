@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 public abstract class JavaSubstitution extends SubstitutionProfiler {
@@ -81,6 +82,8 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
     }
 
     public abstract Object invoke(Object[] args);
+
+    public abstract Object invokeInlined(VirtualFrame frame, int top);
 
     @Override
     public boolean canSplit() {

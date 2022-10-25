@@ -84,6 +84,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     private static final String INSTANCE = "INSTANCE";
 
+    private static final String VIRTUAL_FRAME_IMPORT = "com.oracle.truffle.api.frame.VirtualFrame";
+    private static final String ESPRESSO_FRAME = "EspressoFrame";
+    private static final String ESPRESSO_FRAME_IMPORT = "com.oracle.truffle.espresso.nodes.EspressoFrame";
+
     public SubstitutionProcessor() {
         super(SUBSTITUTION_PACKAGE, SUBSTITUTOR);
     }
@@ -550,6 +554,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         List<String> expectedImports = new ArrayList<>();
         SubstitutorHelper h = (SubstitutorHelper) helper;
         expectedImports.add(substitutorPackage + "." + SUBSTITUTOR);
+        expectedImports.add(VIRTUAL_FRAME_IMPORT);
+        if (!parameterTypeName.isEmpty()) {
+            expectedImports.add(ESPRESSO_FRAME_IMPORT);
+        }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             expectedImports.add(IMPORT_STATIC_OBJECT);
         }
@@ -636,6 +644,65 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             invoke.addBodyLine("return StaticObject.NULL;");
         } else {
             invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim());
+        }
+        return generateInvokeInlined(classBuilder.withMethod(invoke), className, parameterTypeName, helper);
+    }
+
+    ClassBuilder generateInvokeInlined(ClassBuilder classBuilder, String className, List<String> parameterTypeName, SubstitutionHelper helper) {
+        SubstitutorHelper h = (SubstitutorHelper) helper;
+        MethodBuilder invoke = new MethodBuilder("invokeInlined") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withParams("VirtualFrame frame", "int top") //
+                        .withReturnType("Object");
+        int delta = 1;
+        int argCount = parameterTypeName.size();
+        for (int argIndex = argCount - 1; argIndex >= 0; argIndex--) {
+
+            String argType = parameterTypeName.get(argIndex);
+            String popMethod;
+            boolean doCast = false;
+            int slotCount = 1;
+
+            switch (argType) {
+                case "byte":
+                case "boolean":
+                case "char":
+                case "short":
+                    doCast = true;
+                case "int":
+                    popMethod = "popInt";
+                    break;
+                case "float":
+                    popMethod = "popFloat";
+                    break;
+                case "long":
+                    slotCount = 2;
+                    popMethod = "popLong";
+                    break;
+                case "double":
+                    slotCount = 2;
+                    popMethod = "popDouble";
+                    break;
+                default:
+                    popMethod = "popObject";
+                    break;
+            }
+
+            String cast = doCast ? "(" + argType + ") " : "";
+            if (argType.equals("boolean")) {
+                invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", ESPRESSO_FRAME + "." + popMethod + "(frame, top - " + delta + ") != 0", ";");
+            } else {
+                invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", cast, ESPRESSO_FRAME + "." + popMethod + "(frame, top - " + delta + ")", ";");
+            }
+            delta += slotCount;
+        }
+        setEspressoContextVar(invoke, helper);
+        if (h.returnType.equals("V")) {
+            invoke.addBodyLine(extractInvocation(className, argCount, helper).trim());
+            invoke.addBodyLine("return StaticObject.NULL;");
+        } else {
+            invoke.addBodyLine("return ", extractInvocation(className, argCount, helper).trim());
         }
         return classBuilder.withMethod(invoke);
     }
