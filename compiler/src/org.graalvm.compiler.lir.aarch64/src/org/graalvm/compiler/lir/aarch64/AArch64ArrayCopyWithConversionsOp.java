@@ -24,10 +24,18 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD2_MULTIPLE_2R;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.ST2_MULTIPLE_2R;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createBaseRegisterOnlyAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createPairBaseRegisterOnlyAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureImmediatePostIndexAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.asElementSize;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -35,13 +43,13 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import java.util.Arrays;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -52,7 +60,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -73,8 +80,8 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
     @Alive({REG}) protected Value offsetSrcValue;
     @Alive({REG}) protected Value lengthValue;
     @Alive({REG, ILLEGAL}) private Value dynamicStridesValue;
-    @Temp({REG}) protected AllocatableValue[] temp;
-    @Temp({REG}) protected AllocatableValue[] vectorTemp;
+    @Temp({REG}) protected Value[] temp;
+    @Temp({REG}) protected Value[] vectorTemp;
 
     public AArch64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, Stride strideSrc, Stride strideDst, Value arrayDst, Value offsetDst, Value arraySrc, Value offsetSrc,
                     Value length, Value dynamicStrides) {
@@ -95,7 +102,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         this.dynamicStridesValue = dynamicStrides == null ? Value.ILLEGAL : dynamicStrides;
 
         temp = allocateTempRegisters(tool, 3);
-        vectorTemp = allocateVectorRegisters(tool, dynamicStrides != null || Math.abs(strideSrc.log2 - strideDst.log2) == 2 ? 4 : 2);
+        vectorTemp = allocateConsecutiveVectorRegisters(dynamicStrides != null || (strideDst.log2 - strideSrc.log2) == 2 ? 8 : 4);
     }
 
     @Override
@@ -132,22 +139,22 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 masm.lsl(64, length, length, 1);
                 masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
-                emitArrayCopy(masm, Stride.S1, Stride.S1, arrayDst, arraySrc, length, tmp, end);
+                emitArrayCopy(crb, masm, Stride.S1, Stride.S1, arrayDst, arraySrc, length, tmp, end);
                 masm.jmp(end);
 
-                for (Stride stride1 : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                    for (Stride stride2 : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                        if (stride1.log2 == stride2.log2) {
+                for (Stride strideSrc : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
+                    for (Stride strideDst : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
+                        if (strideSrc.log2 == strideDst.log2) {
                             continue;
                         }
                         masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
-                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(stride1, stride2)]);
-                        emitArrayCopy(masm, stride2, stride1, arrayDst, arraySrc, length, tmp, end);
+                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideSrc, strideDst)]);
+                        emitArrayCopy(crb, masm, strideDst, strideSrc, arrayDst, arraySrc, length, tmp, end);
                         masm.jmp(end);
                     }
                 }
             } else {
-                emitArrayCopy(masm, argStrideDst, argStrideSrc, arrayDst, arraySrc, length, tmp, end);
+                emitArrayCopy(crb, masm, argStrideDst, argStrideSrc, arrayDst, arraySrc, length, tmp, end);
             }
             masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             masm.bind(end);
@@ -158,217 +165,293 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         return !isIllegal(dynamicStridesValue);
     }
 
-    private void emitArrayCopy(AArch64MacroAssembler masm, Stride strideDst, Stride strideSrc, Register arrayDst, Register arraySrc, Register length, Register tmp, Label end) {
-        Label scalarCopy = new Label();
+    private void emitArrayCopy(CompilationResultBuilder crb, AArch64MacroAssembler asm, Stride strideDst, Stride strideSrc, Register arrayDst, Register arraySrc, Register len, Register tmp,
+                    Label end) {
+        Label tailLessThan64 = new Label();
+        Label tailLessThan32 = new Label();
+        Label tailLessThan16 = new Label();
+        Label tailLessThan8 = new Label();
+        Label tailLessThan4 = new Label();
+        Label tailLessThan2 = new Label();
 
-        int chunkSize = strideSrc == strideDst ? 32 : 16;
-        masm.compare(32, length, chunkSize >> Stride.min(strideSrc, strideDst).log2);
-        masm.branchConditionally(ConditionFlag.LE, scalarCopy);
-
-        emitSIMDCopy(masm, strideDst, strideSrc, arrayDst, arraySrc, length, tmp, end);
-
-        masm.bind(scalarCopy);
-        if (strideDst == strideSrc) {
-            emitSameStrideScalarCopy(masm, strideDst, arrayDst, arraySrc, length, tmp, end);
-        } else {
-            emitMixedStrideScalarCopy(masm, strideDst, strideSrc, arrayDst, arraySrc, length, tmp, end);
-        }
-    }
-
-    private void emitSameStrideScalarCopy(AArch64MacroAssembler masm, Stride stride, Register arrayDst, Register arraySrc, Register length,
-                    Register lengthTail, Label end) {
-        // convert length to byte-length
-        if (stride.log2 > 0) {
-            masm.lsl(64, length, length, stride.log2);
-        }
-        masm.mov(64, lengthTail, length); // copy
-
-        emit8ByteCopy(masm, arrayDst, arraySrc, length, lengthTail, end);
-        emitTailCopies(masm, stride, arrayDst, arraySrc, lengthTail, end);
-    }
-
-    /**
-     * Vector size used in {@link #emit8ByteCopy}.
-     */
-    private static final int VECTOR_SIZE = 8;
-
-    private void emit8ByteCopy(AArch64MacroAssembler masm, Register arrayDst, Register arraySrc, Register length, Register lengthTail, Label end) {
-        Label loop = new Label();
-        Label compareTail = new Label();
-
-        Register tmp = asRegister(temp[2]);
-
-        masm.and(64, lengthTail, lengthTail, VECTOR_SIZE - 1); // tail count (in bytes)
-        masm.ands(64, length, length, -VECTOR_SIZE);  // vector count (in bytes)
-        masm.branchConditionally(ConditionFlag.EQ, compareTail);
-
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(loop);
-        masm.ldr(64, tmp, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, VECTOR_SIZE));
-        masm.str(64, tmp, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayDst, VECTOR_SIZE));
-        masm.sub(64, length, length, VECTOR_SIZE);
-        masm.cbnz(64, length, loop);
-
-        masm.cbz(64, lengthTail, end);
-
-        masm.sub(64, lengthTail, lengthTail, VECTOR_SIZE);
-        masm.ldr(64, tmp, AArch64Address.createRegisterOffsetAddress(64, arraySrc, lengthTail, false));
-        masm.str(64, tmp, AArch64Address.createRegisterOffsetAddress(64, arrayDst, lengthTail, false));
-        masm.jmp(end);
-
-        masm.bind(compareTail);
-    }
-
-    private void emitTailCopies(AArch64MacroAssembler masm, Stride stride, Register arrayDst, Register arraySrc, Register lengthTail, Label end) {
-        Label copy2Bytes = new Label();
-        Label copy1Byte = new Label();
-
-        Register tmp = asRegister(temp[2]);
-
-        if (stride.value <= 4) {
-            // Copy trailing 4 bytes, if any.
-            tailCopy(masm, arrayDst, arraySrc, lengthTail, copy2Bytes, tmp, 4);
-
-            masm.bind(copy2Bytes);
-            if (stride.value <= 2) {
-                // Copy trailing 2 bytes, if any.
-                tailCopy(masm, arrayDst, arraySrc, lengthTail, copy1Byte, tmp, 2);
-
-                masm.bind(copy1Byte);
-                if (stride.value <= 1) {
-                    // Copy trailing byte, if any.
-                    tailCopy(masm, arrayDst, arraySrc, lengthTail, end, tmp, 1);
-                }
-            }
-        }
-    }
-
-    private static void tailCopy(AArch64MacroAssembler masm, Register arrayDst, Register arraySrc, Register lengthTail, Label nextTail, Register tmp, int nBytes) {
-        int srcSize = nBytes * 8;
-        masm.ands(32, zr, lengthTail, nBytes);
-        masm.branchConditionally(ConditionFlag.EQ, nextTail);
-        masm.ldr(srcSize, tmp, AArch64Address.createImmediateAddress(srcSize, AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, nBytes));
-        masm.str(srcSize, tmp, AArch64Address.createImmediateAddress(srcSize, AddressingMode.IMMEDIATE_POST_INDEXED, arrayDst, nBytes));
-    }
-
-    private static void emitMixedStrideScalarCopy(AArch64MacroAssembler masm, Stride strideDst, Stride strideSrc, Register arrayDst, Register arraySrc, Register length, Register tmp, Label end) {
-        Label loop = new Label();
-
-        // check for length == 0
-        masm.cbz(64, length, end);
-
-        // main loop
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(loop);
-        masm.ldr(strideSrc.getBitCount(), tmp, AArch64Address.createImmediateAddress(strideSrc.getBitCount(), AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, strideSrc.value));
-        masm.str(strideDst.getBitCount(), tmp, AArch64Address.createImmediateAddress(strideDst.getBitCount(), AddressingMode.IMMEDIATE_POST_INDEXED, arrayDst, strideDst.value));
-        masm.sub(64, length, length, 1);
-        masm.cbnz(64, length, loop);
-    }
-
-    private void emitSIMDCopy(AArch64MacroAssembler masm, Stride strideDst, Stride strideSrc, Register arrayDst, Register arraySrc, Register length,
-                    Register arrayAlignment, Label endLabel) {
-
-        Label loopHead = new Label();
+        Label vectorLoop = new Label();
         Label tail = new Label();
 
-        Stride maxStride = Stride.max(strideSrc, strideDst);
-        Stride minStride = Stride.min(strideSrc, strideDst);
         Register maxStrideArray = strideSrc.value < strideDst.value ? arrayDst : arraySrc;
         Register minStrideArray = strideSrc.value < strideDst.value ? arraySrc : arrayDst;
 
-        int chunkSize = strideSrc == strideDst ? 32 : 16;
-        Register refAddress = length;
-        masm.add(64, refAddress, minStrideArray, length, ShiftType.LSL, minStride.log2);
-        masm.sub(64, refAddress, refAddress, chunkSize);
+        Stride strideMax = Stride.max(strideSrc, strideDst);
+        Stride strideMin = Stride.min(strideSrc, strideDst);
 
-        // peeled first loop iteration
-        simdCopy(masm, strideDst, strideSrc, arrayDst, arraySrc);
-        masm.cmp(64, refAddress, minStrideArray);
-        masm.branchConditionally(ConditionFlag.LS, tail);
+        // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
+        asm.subs(64, len, len, 64 >> strideMax.log2);
+        asm.branchConditionally(ConditionFlag.MI, tailLessThan64);
+
+        Register refAddress = len;
+        asm.add(64, refAddress, maxStrideArray, len, ShiftType.LSL, strideMax.log2);
+        if (strideDst.log2 - strideSrc.log2 == 2) {
+            byte[] maskIndices = new byte[64];
+            for (int i = 0; i < maskIndices.length; i++) {
+                maskIndices[i] = (byte) ((i & 3) == 0 ? (i >> 2) : 0xff);
+            }
+
+            DataSection.Data maskData = writeToDataSection(crb, maskIndices);
+            loadDataSectionAddress(crb, asm, tmp, maskData);
+            // prepare a mask vector containing ascending byte index values
+            asm.neon.ld1MultipleVVVV(FullReg, ElementSize.Word, v(4), v(5), v(6), v(7), createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Word, tmp, 64));
+        }
+        simdCopy64(asm, strideDst, strideSrc, arrayDst, arraySrc);
+
+        asm.cmp(64, refAddress, maxStrideArray);
+        asm.branchConditionally(ConditionFlag.LS, tail);
 
         // align addresses to chunk size
-        masm.and(64, arrayAlignment, minStrideArray, chunkSize - 1);
-        masm.sub(64, maxStrideArray, maxStrideArray, arrayAlignment, ShiftType.LSL, maxStride.log2 - minStride.log2);
-        masm.bic(64, minStrideArray, minStrideArray, chunkSize - 1);
+        asm.and(64, tmp, maxStrideArray, 63);
+        asm.sub(64, minStrideArray, minStrideArray, tmp, ShiftType.LSR, strideMax.log2 - strideMin.log2);
+        asm.bic(64, maxStrideArray, maxStrideArray, 63);
 
-        // main loop
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(loopHead);
-        simdCopy(masm, strideDst, strideSrc, arrayDst, arraySrc);
-        masm.cmp(64, minStrideArray, refAddress);
-        masm.branchConditionally(ConditionFlag.LO, loopHead);
+        // 64 byte loop
+        asm.align(PREFERRED_LOOP_ALIGNMENT);
+        asm.bind(vectorLoop);
+        simdCopy64(asm, strideDst, strideSrc, arrayDst, arraySrc);
+        asm.cmp(64, maxStrideArray, refAddress);
+        asm.branchConditionally(ConditionFlag.LO, vectorLoop);
 
-        masm.bind(tail);
-        /* Adjust array1 and array2 to access last 32 bytes. */
-        masm.sub(64, arrayAlignment, minStrideArray, refAddress);
-        masm.mov(64, minStrideArray, refAddress);
-        masm.sub(64, maxStrideArray, maxStrideArray, arrayAlignment, ShiftType.LSL, maxStride.log2 - minStride.log2);
-        simdCopy(masm, strideDst, strideSrc, arrayDst, arraySrc);
-        masm.jmp(endLabel);
+        asm.bind(tail);
+        // 32 byte loop tail
+        asm.sub(64, tmp, maxStrideArray, refAddress);
+        asm.mov(64, maxStrideArray, refAddress);
+        asm.sub(64, minStrideArray, minStrideArray, tmp, ShiftType.LSR, strideMax.log2 - strideMin.log2);
+
+        simdCopy64(asm, strideDst, strideSrc, arrayDst, arraySrc);
+        asm.jmp(end);
+
+        // tail for 32 - 63 bytes
+        tail32(asm, strideDst, strideSrc, arrayDst, arraySrc, len, tmp, tailLessThan64, tailLessThan32, end);
+        // tail for 16 - 31 bytes
+        tailLessThan32(asm, strideDst, strideSrc, arrayDst, arraySrc, len, tailLessThan32, tailLessThan16, end, 16);
+        // tail for 8 - 15 bytes
+        tailLessThan32(asm, strideDst, strideSrc, arrayDst, arraySrc, len, tailLessThan16, tailLessThan8, end, 8);
+        // tail for 4 - 7 bytes
+        tailLessThan32(asm, strideDst, strideSrc, arrayDst, arraySrc, len, tailLessThan8, tailLessThan4, end, 4);
+        // tail for 2 - 3 bytes
+        tailLessThan32(asm, strideDst, strideSrc, arrayDst, arraySrc, len, tailLessThan4, tailLessThan2, end, 2);
+        // tail for 0 - 1 bytes
+        tailLessThan32(asm, strideDst, strideSrc, arrayDst, arraySrc, len, tailLessThan2, end, end, 1);
     }
 
     private Register v(int index) {
         return asRegister(vectorTemp[index]);
     }
 
-    private void simdCopy(AArch64MacroAssembler masm,
+    private void simdCopy64(AArch64MacroAssembler asm,
                     Stride strideDst,
                     Stride strideSrc,
                     Register arrayDst,
                     Register arraySrc) {
-        AArch64ASIMDAssembler.ElementSize dstESize = asElementSize(strideDst);
-        AArch64ASIMDAssembler.ElementSize srcESize = asElementSize(strideSrc);
-        AArch64Address addressLoad = AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32);
-        AArch64Address addressStore = AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32);
+        ElementSize dstESize = asElementSize(strideDst);
+        ElementSize srcESize = asElementSize(strideSrc);
         switch (strideDst.log2 - strideSrc.log2) {
             case -2:
                 // 4 -> 1 byte compression
-                AArch64ASIMDAssembler.ElementSize dstESizeDouble = dstESize.expand();
-                masm.fldp(128, v(0), v(1), addressLoad);
-                masm.fldp(128, v(2), v(3), addressLoad);
-                masm.neon.xtnVV(dstESizeDouble, v(0), v(0));
-                masm.neon.xtnVV(dstESizeDouble, v(2), v(2));
-                masm.neon.xtn2VV(dstESizeDouble, v(0), v(1));
-                masm.neon.xtn2VV(dstESizeDouble, v(2), v(3));
-                masm.neon.xtnVV(dstESize, v(0), v(0));
-                masm.neon.xtn2VV(dstESize, v(0), v(2));
-                masm.fstr(128, v(0), AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayDst, 16));
+                asm.fldp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.fldp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.neon.uzp1VVV(FullReg, srcESize.narrow(), v(0), v(0), v(1));
+                asm.neon.uzp1VVV(FullReg, srcESize.narrow(), v(2), v(2), v(3));
+                asm.neon.uzp1VVV(FullReg, dstESize, v(0), v(0), v(2));
+                asm.fstr(128, v(0), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayDst, 16));
                 break;
             case -1:
                 // 2 -> 1 byte compression
-                masm.fldp(128, v(0), v(1), addressLoad);
-                masm.neon.xtnVV(dstESize, v(0), v(0));
-                masm.neon.xtn2VV(dstESize, v(0), v(1));
-                masm.fstr(128, v(0), AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayDst, 16));
+                asm.fldp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.fldp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.neon.uzp1VVV(FullReg, dstESize, v(0), v(0), v(1));
+                asm.neon.uzp1VVV(FullReg, dstESize, v(2), v(2), v(3));
+                asm.fstp(128, v(0), v(2), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 break;
             case 0:
                 // direct copy
-                masm.fldp(128, v(0), v(1), addressLoad);
-                masm.fstp(128, v(0), v(1), addressStore);
+                asm.fldp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.fldp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.fstp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
+                asm.fstp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 break;
             case 1:
                 // 1 -> 2 byte inflation
-                masm.fldr(128, v(0), AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, 16));
-                masm.neon.uxtl2VV(srcESize, v(1), v(0));
-                masm.neon.uxtlVV(srcESize, v(0), v(0));
-                masm.fstp(128, v(0), v(1), addressStore);
+                asm.fldp(128, v(0), v(2), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arraySrc, 32));
+                asm.neon.uxtl2VV(srcESize, v(1), v(0));
+                asm.neon.uxtl2VV(srcESize, v(3), v(2));
+                asm.neon.uxtlVV(srcESize, v(0), v(0));
+                asm.neon.uxtlVV(srcESize, v(2), v(2));
+                asm.fstp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
+                asm.fstp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 break;
             case 2:
                 // 1 -> 4 byte inflation
-                AArch64ASIMDAssembler.ElementSize srcESizeDouble = srcESize.expand();
-                masm.fldr(128, v(0), AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, 16));
-                masm.neon.uxtl2VV(srcESize, v(2), v(0));
-                masm.neon.uxtlVV(srcESize, v(0), v(0));
-                masm.neon.uxtl2VV(srcESizeDouble, v(1), v(0));
-                masm.neon.uxtl2VV(srcESizeDouble, v(3), v(2));
-                masm.neon.uxtlVV(srcESizeDouble, v(0), v(0));
-                masm.neon.uxtlVV(srcESizeDouble, v(2), v(2));
-                masm.fstp(128, v(0), v(1), addressStore);
-                masm.fstp(128, v(2), v(3), addressStore);
+                asm.fldr(128, v(0), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, 16));
+                asm.neon.tblVVV(FullReg, v(1), v(0), v(5));
+                asm.neon.tblVVV(FullReg, v(2), v(0), v(6));
+                asm.neon.tblVVV(FullReg, v(3), v(0), v(7));
+                asm.neon.tblVVV(FullReg, v(0), v(0), v(4));
+                asm.fstp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
+                asm.fstp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 break;
             default:
                 throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
         }
+    }
+
+    private void tail32(AArch64MacroAssembler asm,
+                    Stride strideDst,
+                    Stride strideSrc,
+                    Register arrayDst,
+                    Register arraySrc,
+                    Register len,
+                    Register tmp,
+                    Label entry,
+                    Label nextTail,
+                    Label end) {
+        Stride strideMax = Stride.max(strideSrc, strideDst);
+
+        asm.bind(entry);
+        asm.adds(64, len, len, 32 >> strideMax.log2);
+        asm.branchConditionally(ConditionFlag.MI, nextTail);
+
+        ElementSize dstESize = asElementSize(strideDst);
+        ElementSize srcESize = asElementSize(strideSrc);
+        switch (strideDst.log2 - strideSrc.log2) {
+            case -2:
+                // 4 -> 1 byte compression
+                asm.sub(64, tmp, len, 32 >> strideMax.log2);
+                asm.neon.ld2MultipleVV(FullReg, srcESize.narrow(), v(0), v(1), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, srcESize.narrow(), arraySrc, 32));
+                asm.add(64, arraySrc, arraySrc, tmp, ShiftType.LSL, strideSrc.log2);
+                asm.neon.ld2MultipleVV(FullReg, srcESize.narrow(), v(2), v(3), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, srcESize.narrow(), arraySrc, 32));
+                asm.neon.xtnVV(dstESize, v(0), v(0));
+                asm.neon.xtnVV(dstESize, v(2), v(2));
+                asm.fstr(64, v(0), createBaseRegisterOnlyAddress(64, arrayDst));
+                asm.add(64, arrayDst, arrayDst, len, ShiftType.LSL, strideDst.log2);
+                asm.fstr(64, v(2), createBaseRegisterOnlyAddress(64, arrayDst));
+                break;
+            case -1:
+                // 2 -> 1 byte compression
+                asm.fldp(128, v(0), v(1), createPairBaseRegisterOnlyAddress(128, arraySrc));
+                asm.add(64, arraySrc, arraySrc, len, ShiftType.LSL, strideSrc.log2);
+                asm.fldp(128, v(2), v(3), createPairBaseRegisterOnlyAddress(128, arraySrc));
+                asm.neon.uzp1VVV(FullReg, dstESize, v(0), v(0), v(1));
+                asm.neon.uzp1VVV(FullReg, dstESize, v(2), v(2), v(3));
+                asm.fstr(128, v(0), createBaseRegisterOnlyAddress(128, arrayDst));
+                asm.add(64, arrayDst, arrayDst, len, ShiftType.LSL, strideDst.log2);
+                asm.fstr(128, v(2), createBaseRegisterOnlyAddress(128, arrayDst));
+                break;
+            case 0:
+                // direct copy
+                asm.fldp(128, v(0), v(1), createPairBaseRegisterOnlyAddress(128, arraySrc));
+                asm.add(64, arraySrc, arraySrc, len, ShiftType.LSL, strideSrc.log2);
+                asm.fldp(128, v(2), v(3), createPairBaseRegisterOnlyAddress(128, arraySrc));
+                asm.fstp(128, v(0), v(1), createPairBaseRegisterOnlyAddress(128, arrayDst));
+                asm.add(64, arrayDst, arrayDst, len, ShiftType.LSL, strideDst.log2);
+                asm.fstp(128, v(2), v(3), createPairBaseRegisterOnlyAddress(128, arrayDst));
+                break;
+            case 1:
+                // 1 -> 2 byte inflation
+                asm.fldr(128, v(0), createBaseRegisterOnlyAddress(128, arraySrc));
+                asm.add(64, arraySrc, arraySrc, len, ShiftType.LSL, strideSrc.log2);
+                asm.fldr(128, v(2), createBaseRegisterOnlyAddress(128, arraySrc));
+                asm.neon.eorVVV(FullReg, v(1), v(1), v(1));
+                asm.sub(64, tmp, len, 32 >> strideMax.log2);
+                asm.neon.eorVVV(FullReg, v(3), v(3), v(3));
+                asm.neon.st2MultipleVV(FullReg, srcESize, v(0), v(1), createStructureImmediatePostIndexAddress(ST2_MULTIPLE_2R, FullReg, srcESize, arrayDst, 32));
+                asm.add(64, arrayDst, arrayDst, tmp, ShiftType.LSL, strideDst.log2);
+                asm.neon.st2MultipleVV(FullReg, srcESize, v(2), v(3), createStructureImmediatePostIndexAddress(ST2_MULTIPLE_2R, FullReg, srcESize, arrayDst, 32));
+                break;
+            case 2:
+                // 1 -> 4 byte inflation
+                asm.fldr(64, v(0), createBaseRegisterOnlyAddress(64, arraySrc));
+                asm.add(64, arraySrc, arraySrc, len, ShiftType.LSL, strideSrc.log2);
+                asm.fldr(64, v(2), createBaseRegisterOnlyAddress(64, arraySrc));
+                asm.neon.eorVVV(FullReg, v(1), v(1), v(1));
+                asm.sub(64, tmp, len, 32 >> strideMax.log2);
+                asm.neon.eorVVV(FullReg, v(3), v(3), v(3));
+                asm.neon.uxtlVV(srcESize, v(0), v(0));
+                asm.neon.uxtlVV(srcESize, v(2), v(2));
+                asm.neon.st2MultipleVV(FullReg, dstESize.narrow(), v(0), v(1), createStructureImmediatePostIndexAddress(ST2_MULTIPLE_2R, FullReg, dstESize.narrow(), arrayDst, 32));
+                asm.add(64, arrayDst, arrayDst, tmp, ShiftType.LSL, strideDst.log2);
+                asm.neon.st2MultipleVV(FullReg, dstESize.narrow(), v(2), v(3), createStructureImmediatePostIndexAddress(ST2_MULTIPLE_2R, FullReg, dstESize.narrow(), arrayDst, 32));
+                break;
+            default:
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+        }
+        asm.jmp(end);
+    }
+
+    private void tailLessThan32(AArch64MacroAssembler asm,
+                    Stride strideDst,
+                    Stride strideSrc,
+                    Register arrayDst,
+                    Register arraySrc,
+                    Register len,
+                    Label entry,
+                    Label nextTail,
+                    Label end,
+                    int nBytes) {
+        Stride strideMax = Stride.max(strideSrc, strideDst);
+        if (strideMax.value > nBytes) {
+            return;
+        }
+        asm.bind(entry);
+        asm.adds(64, len, len, nBytes >> strideMax.log2);
+        asm.branchConditionally(ConditionFlag.MI, strideMax.value == nBytes ? end : nextTail);
+
+        ElementSize dstESize = asElementSize(strideDst);
+        ElementSize srcESize = asElementSize(strideSrc);
+        int op = strideDst.log2 - strideSrc.log2;
+        int bits = nBytes << 3;
+        int loadBits = bits >> Math.max(0, op);
+        int storeBits = bits >> Math.max(0, -op);
+        if (strideMax.value == nBytes) {
+            asm.ldr(loadBits, len, createBaseRegisterOnlyAddress(loadBits, arraySrc));
+            asm.str(storeBits, len, createBaseRegisterOnlyAddress(storeBits, arrayDst));
+            asm.jmp(end);
+            return;
+        }
+
+        asm.fldr(loadBits, v(0), createBaseRegisterOnlyAddress(loadBits, arraySrc));
+        asm.add(64, arraySrc, arraySrc, len, ShiftType.LSL, strideSrc.log2);
+        asm.fldr(loadBits, v(1), createBaseRegisterOnlyAddress(loadBits, arraySrc));
+        switch (op) {
+            case -2:
+                // 4 -> 1 byte compression
+                asm.neon.xtnVV(dstESize.expand(), v(0), v(0));
+                asm.neon.xtnVV(dstESize.expand(), v(1), v(1));
+                asm.neon.xtnVV(dstESize, v(0), v(0));
+                asm.neon.xtnVV(dstESize, v(1), v(1));
+                break;
+            case -1:
+                // 2 -> 1 byte compression
+                asm.neon.xtnVV(dstESize, v(0), v(0));
+                asm.neon.xtnVV(dstESize, v(1), v(1));
+                break;
+            case 0:
+                // direct copy
+                break;
+            case 1:
+                // 1 -> 2 byte inflation
+                asm.neon.uxtlVV(srcESize, v(0), v(0));
+                asm.neon.uxtlVV(srcESize, v(1), v(1));
+                break;
+            case 2:
+                // 1 -> 4 byte inflation
+                asm.neon.uxtlVV(srcESize, v(0), v(0));
+                asm.neon.uxtlVV(srcESize, v(1), v(1));
+                asm.neon.uxtlVV(srcESize.expand(), v(0), v(0));
+                asm.neon.uxtlVV(srcESize.expand(), v(1), v(1));
+                break;
+            default:
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+        }
+        asm.fstr(storeBits, v(0), createBaseRegisterOnlyAddress(storeBits, arrayDst));
+        asm.add(64, arrayDst, arrayDst, len, ShiftType.LSL, strideDst.log2);
+        asm.fstr(storeBits, v(1), createBaseRegisterOnlyAddress(storeBits, arrayDst));
+        asm.jmp(end);
     }
 }

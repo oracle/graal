@@ -527,11 +527,14 @@ public abstract class AArch64ASIMDAssembler {
         ST1_MULTIPLE_3R(0b0110 << 12),
         ST1_MULTIPLE_1R(0b0111 << 12),
         ST1_MULTIPLE_2R(0b1010 << 12),
+        ST2_MULTIPLE_2R(0b1000 << 12),
+        ST4_MULTIPLE_4R(0b0000 << 12),
         LD1_MULTIPLE_4R(LoadFlag | 0b0010 << 12),
         LD1_MULTIPLE_3R(LoadFlag | 0b0110 << 12),
         LD1_MULTIPLE_1R(LoadFlag | 0b0111 << 12),
         LD1_MULTIPLE_2R(LoadFlag | 0b1010 << 12),
         LD2_MULTIPLE_2R(LoadFlag | 0b1000 << 12),
+        LD4_MULTIPLE_4R(LoadFlag | 0b0000 << 12),
 
         /* Advanced SIMD load/store single structure (C4-299). */
         LD1R(LoadFlag | 0b110 << 13),
@@ -2215,13 +2218,41 @@ public abstract class AArch64ASIMDAssembler {
      *
      * @param size register size.
      * @param eSize element size.
-     * @param dst1 destination of first structure's value.
-     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param dst1 destination of structure's first value.
+     * @param dst2 destination of structure's second value. Must be register after dst1.
      * @param addr address of first structure.
      */
     public void ld2MultipleVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(dst1, dst2);
         loadStoreMultipleStructures(ASIMDInstruction.LD2_MULTIPLE_2R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     *
+     * This instruction loads multiple 4-element structures from memory and writes the result to four
+     * registers. Note the four registers must be consecutive (modulo the number of SIMD
+     * registers).<br>
+     *
+     * <code>
+     * memory at addr: b0 b1 b2 b3 b4 ... <br>
+     * result in dst1: b0 b4 b8 ... <br>
+     * result in dst2: b1 b5 b9 ... <br>
+     * result in dst3: b2 b6 b10 ... <br>
+     * result in dst4: b3 b7 b11 ... <br>
+     * </code>
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of structure's first value.
+     * @param dst2 destination of structure's second value. Must be register after dst1.
+     * @param dst3 destination of structure's third value. Must be register after dst2.
+     * @param dst4 destination of structure's fourth value. Must be register after dst3.
+     * @param addr address of first structure.
+     */
+    public void ld4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, Register dst4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3, dst4);
+        loadStoreMultipleStructures(ASIMDInstruction.LD4_MULTIPLE_4R, size, eSize, dst1, addr);
     }
 
     /**
@@ -2820,6 +2851,60 @@ public abstract class AArch64ASIMDAssembler {
     public void st1MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);
         loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_4R, size, eSize, src1, addr);
+    }
+
+    /**
+     * Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     *
+     * This instruction loads multiple 4-element structures from memory and writes the result to four
+     * registers. Note the four registers must be consecutive (modulo the number of SIMD
+     * registers).<br>
+     *
+     * <code>
+     * memory at addr: b0 b1 b2 b3 b4 ... <br>
+     * result in src1: b0 b4 b8 ... <br>
+     * result in src2: b1 b5 b9 ... <br>
+     * result in dst3: b2 b6 b10 ... <br>
+     * result in dst4: b3 b7 b11 ... <br>
+     * </code>
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 destination of structure's first value.
+     * @param src2 destination of structure's second value. Must be register after src1.
+     * @param addr address of first structure.
+     */
+    public void st2MultipleVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2);
+        loadStoreMultipleStructures(ASIMDInstruction.ST2_MULTIPLE_2R, size, eSize, src1, addr);
+    }
+
+    /**
+     * Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     *
+     * This instruction loads multiple 4-element structures from memory and writes the result to four
+     * registers. Note the four registers must be consecutive (modulo the number of SIMD
+     * registers).<br>
+     *
+     * <code>
+     * memory at addr: b0 b1 b2 b3 b4 ... <br>
+     * result in src1: b0 b4 b8 ... <br>
+     * result in src2: b1 b5 b9 ... <br>
+     * result in src3: b2 b6 b10 ... <br>
+     * result in src4: b3 b7 b11 ... <br>
+     * </code>
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 destination of structure's first value.
+     * @param src2 destination of structure's second value. Must be register after src1.
+     * @param src3 destination of structure's third value. Must be register after src2.
+     * @param src4 destination of structure's fourth value. Must be register after src3.
+     * @param addr address of first structure.
+     */
+    public void st4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);
+        loadStoreMultipleStructures(ASIMDInstruction.ST4_MULTIPLE_4R, size, eSize, src1, addr);
     }
 
     /**
