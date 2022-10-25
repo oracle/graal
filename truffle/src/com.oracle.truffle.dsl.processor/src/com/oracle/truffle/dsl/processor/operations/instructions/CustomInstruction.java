@@ -46,15 +46,12 @@ import java.util.Set;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
@@ -62,7 +59,6 @@ import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGenerat
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
-import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public class CustomInstruction extends Instruction {
 
@@ -333,9 +329,6 @@ public class CustomInstruction extends Instruction {
             b.end();
         }
 
-        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
-        b.statement("continue loop");
-
         return b.build();
     }
 
@@ -421,12 +414,5 @@ public class CustomInstruction extends Instruction {
 
     public void setUncachedExecuteMethod(ExecutableElement uncachedExecuteMethod) {
         this.uncachedExecuteMethod = uncachedExecuteMethod;
-    }
-
-    @Override
-    public boolean neverWrapInMethod() {
-        // there is no need to wrap custom instructions in methods, since they already
-        // have their own entry-point methods
-        return true;
     }
 }
