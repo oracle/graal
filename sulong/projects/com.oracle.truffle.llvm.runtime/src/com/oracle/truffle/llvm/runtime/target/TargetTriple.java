@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ public final class TargetTriple {
     /**
      * Parses a target triple string and creates a {@link TargetTriple} instance. A target triple
      * has the form {@code <arch>-<vendor>-<sys>-<abi>}. The {@code <abi>} part is optional.
-     * 
+     *
      * @see <a href="https://releases.llvm.org/10.0.0/docs/LangRef.html#target-triple">LLVM Language
      *      Reference Manual - Target Triple</a>
      */
@@ -48,7 +48,7 @@ public final class TargetTriple {
         final String arch = s[0];
         final String vendor = s[1];
         final String system = s[2];
-        final String abi = s.length == 4 ? s[3] : null;
+        String abi = s.length == 4 ? s[3] : null;
         final String systemName;
         final String systemVersion;
         if (system.startsWith(MACOSX_SYSTEM_NAME)) {
@@ -58,10 +58,19 @@ public final class TargetTriple {
             systemName = system;
             systemVersion = null;
         }
+
+        if (abi != null && abi.startsWith(MSVC_ABI)) {
+            // Given an ABI such as `msvc19.33.31630`, only use the major version `msvc19`
+            String[] abiParts = abi.split("[.]", 2);
+            abi = abiParts[0];
+        }
+
         return new TargetTriple(triple, arch, vendor, systemName, systemVersion, abi);
     }
 
     private static final String MACOSX_SYSTEM_NAME = "macosx";
+
+    private static final String MSVC_ABI = "msvc";
 
     /**
      * Only used for printing.
