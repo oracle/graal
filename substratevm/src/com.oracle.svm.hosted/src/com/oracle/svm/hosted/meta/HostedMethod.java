@@ -533,6 +533,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
             newMultiMethod.staticAnalysisResults = staticAnalysisResults;
+            newMultiMethod.implementations = implementations;
             return newMultiMethod;
         });
     }
