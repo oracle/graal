@@ -1971,7 +1971,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // region Bytecode quickening
 
     private char readCPI(int curBCI) {
-        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || ((ReentrantLock) getLock()).isHeldByCurrentThread())
+        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || lockIsHeld())
                         : "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. " +
                                         "Please obtain the lock, or use readOriginalCPI.";
         return bs.readCPI(curBCI);
@@ -2276,12 +2276,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
-        if (allowBytecodeInlining) {
+        // Skip inlined nodes if instrumentation is live.
+        // Lock must be owned for correctness.
+        assert lockIsHeld();
+        boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
+        if (tryBytecodeLevelInlining) {
             invoke = InlinedMethodNode.createFor(resolutionSeed, top, opcode, curBCI, statementIndex);
             if (invoke != null) {
                 return invoke;
             }
         }
+
         if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
@@ -2354,17 +2359,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
-        try {
-            lock.lock();
+        quick = atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
-                quick = nodes[readCPI(curBCI)];
+                return nodes[readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
+                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
             }
-        } finally {
-            lock.unlock();
-        }
+        });
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -2818,6 +2820,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
             instrumentation.notifyFieldAccess(frame, index, field, receiver);
         }
+    }
+
+    private boolean lockIsHeld() {
+        return ((ReentrantLock) getLock()).isHeldByCurrentThread();
     }
 
     static final class InstrumentationSupport extends EspressoNode {
