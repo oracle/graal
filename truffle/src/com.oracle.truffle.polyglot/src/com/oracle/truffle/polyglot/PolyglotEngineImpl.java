@@ -1217,7 +1217,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
 
             if (operationStatistics != null) {
-                operationStatistics.write();
+                operationStatistics.write(engineOptionValues.get(PolyglotEngineOptions.OperationsDumpDecisions));
             }
 
             // don't commit changes to contexts if still running

@@ -3,6 +3,8 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import java.util.List;
 import java.util.function.Function;
 
+import javax.lang.model.type.ArrayType;
+
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
@@ -114,8 +116,33 @@ public class SuperInstruction extends Instruction {
 
     @Override
     public CodeTree createDumpCode(ExecutionVariables vars) {
-        // TODO Auto-generated method stub
-        return super.createDumpCode(vars);
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.statement("int oldBci = $bci");
+
+        b.startAssign("Object[] decSuper");
+        b.startNewArray((ArrayType) context.getType(Object[].class), null);
+        b.string("$bci");
+        b.doubleQuote(name);
+        b.startGroup().string("Arrays.copyOfRange($bc, $bci, $bci + ").tree(createLength()).string(")").end();
+        b.startNewArray((ArrayType) context.getType(Object[].class), null).end();
+        b.startNewArray((ArrayType) context.getType(Object[].class), CodeTreeBuilder.singleString("" + instructions.length)).end();
+        b.end(2); // outer array, assign
+
+        for (int i = 0; i < instructions.length; i++) {
+            b.startBlock();
+            b.tree(instructions[i].createDumpCode(vars));
+            b.startAssign("((Object[]) decSuper[4])[" + i + "]").string("dec").end();
+            b.end();
+
+            b.startStatement().string("$bci += ").tree(instructions[i].createLength()).end();
+        }
+
+        b.startAssign("Object[] dec").string("decSuper").end();
+
+        b.statement("$bci = oldBci");
+
+        return b.build();
     }
 
     @Override

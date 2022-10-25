@@ -29,6 +29,7 @@ abstract class Decision {
 
     JSONObject serialize(GlobalOperationStatistics stats) {
         JSONObject obj = new JSONObject();
+        obj.put("_comment", "value: " + value());
         obj.put("type", type);
         obj.put("id", id(stats));
         return obj;
@@ -77,6 +78,21 @@ abstract class Decision {
             }
 
             return result;
+        }
+
+        @Override
+        protected String prettyPrint(GlobalOperationStatistics stats) {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("Quicken ").append(id(stats)).append('\n');
+            sb.append("    value: ").append(value()).append('\n');
+            sb.append("    total execution count: ").append(executionCount).append('\n');
+            sb.append("    instruction: ").append(stats.instrNames[instruction]).append('\n');
+            for (int i = 0; i < specializations.length; i++) {
+                sb.append("    specialization[").append(i).append("]: ").append(stats.specNames[instruction][specializations[i]]).append('\n');
+            }
+
+            return sb.toString();
         }
     }
 
@@ -133,5 +149,21 @@ abstract class Decision {
 
             return result;
         }
+
+        @Override
+        protected String prettyPrint(GlobalOperationStatistics stats) {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("SuperInstruction ").append(id(stats)).append('\n');
+            sb.append("    value: ").append(value()).append('\n');
+            sb.append("    total execution count: ").append(executionCount).append('\n');
+            for (int i = 0; i < instructions.length; i++) {
+                sb.append("    instruction[").append(i).append("]: ").append(stats.instrNames[instructions[i]]).append('\n');
+            }
+
+            return sb.toString();
+        }
     }
+
+    protected abstract String prettyPrint(GlobalOperationStatistics stats);
 }

@@ -379,7 +379,7 @@ public class OperationsBytecodeCodeGenerator {
                         createBody.run();
                         b.end();
                     }
-                } else if (op.numPushedValues == 0 || op.alwaysBoxed()) {
+                } else if (op.alwaysBoxed()) {
                     b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
                     b.startBlock();
                     createBody.run();

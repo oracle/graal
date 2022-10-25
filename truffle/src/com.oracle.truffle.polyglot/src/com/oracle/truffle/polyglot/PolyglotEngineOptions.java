@@ -121,8 +121,12 @@ final class PolyglotEngineOptions {
     static final OptionKey<Boolean> TraceCodeSharing = new OptionKey<>(false);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Enables and sets the state file path for Operations tracer") //
+                    "Enables and sets the state file path for Operation DSL tracer") //
     static final OptionKey<String> OperationsTracingState = new OptionKey<>("");
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Dumps the Operation DSL decisions. This option is indended for debugging corpus tracing decisions.") //
+    static final OptionKey<Boolean> OperationsDumpDecisions = new OptionKey<>(false);
 
     enum StaticObjectStorageStrategies {
         DEFAULT,

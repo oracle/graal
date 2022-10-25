@@ -6,11 +6,11 @@ import java.util.stream.Collectors;
 
 public final class Instruction {
 
+    // [int index, String name, short[] bytes, Object[][] arguments, Object[][] subinstructions?]
     private final Object[] data;
 
     Instruction(Object[] data) {
         this.data = data;
-
     }
 
     public int getIndex() {
@@ -39,12 +39,24 @@ public final class Instruction {
         return Arrays.stream((Object[]) data[3]).map(x -> new Argument((Object[]) x)).collect(Collectors.toUnmodifiableList());
     }
 
+    public List<Instruction> getSubInstructions() {
+        if (data.length >= 5) {
+            return Arrays.stream((Object[]) data[4]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
+        } else {
+            return List.of();
+        }
+    }
+
     private static final int REASONABLE_INSTRUCTION_LENGTH = 16;
 
     @Override
     public String toString() {
+        return toString("");
+    }
+
+    private String toString(String prefix) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("[%04x] ", getIndex()));
+        sb.append(String.format("%s[%04x] ", prefix, getIndex()));
 
         byte[] bytes = getBytes();
         for (int i = 0; i < REASONABLE_INSTRUCTION_LENGTH; i++) {
@@ -55,7 +67,7 @@ public final class Instruction {
             }
         }
 
-        for (int i = REASONABLE_INSTRUCTION_LENGTH; i < data.length; i++) {
+        for (int i = REASONABLE_INSTRUCTION_LENGTH; i < bytes.length; i++) {
             sb.append(String.format("%02x ", bytes[i]));
         }
 
@@ -63,6 +75,10 @@ public final class Instruction {
 
         for (Argument a : getArgumentValues()) {
             sb.append(' ').append(a.toString());
+        }
+
+        for (Instruction instr : getSubInstructions()) {
+            sb.append('\n').append(instr.toString(prefix + "      "));
         }
 
         return sb.toString();

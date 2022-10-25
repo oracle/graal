@@ -146,8 +146,7 @@ public class OperationsContext {
         if (hasBoxingElimination()) {
             loadLocalBoxed = add(new LoadLocalInstruction(this, instructionId++, true));
         }
-        Instruction storeLocal;
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, storeLocal = add(new StoreLocalInstruction(this, instructionId++))));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(this, instructionId++))));
         add(new Operation.Simple(this, "Return", operationId++, 1, add(new ReturnInstruction(this, instructionId++))));
 
         add(new Operation.LoadLocalMaterialized(this, operationId++, add(new LoadLocalMaterializedInstruction(this, instructionId++))));
@@ -165,8 +164,6 @@ public class OperationsContext {
                         add(new InstrumentationExitInstruction(this, instructionId++)),
                         add(new InstrumentationExitInstruction(this, instructionId++, true)),
                         add(new InstrumentationLeaveInstruction(this, instructionId++))));
-
-        add(new SuperInstruction(this, instructionId++, storeLocal, loadLocalUnboxed));
     }
 
     public <T extends Instruction> T add(T elem) {
@@ -239,8 +236,25 @@ public class OperationsContext {
             add(new QuickenedInstruction(this, cinstr, instructionId++, opData, List.of(quicken.specializations)));
         }
 
-        for (OperationDecisions.SuperInstruction si : decisions.getSuperInstructions()) {
+        outer: for (OperationDecisions.SuperInstruction si : decisions.getSuperInstructions()) {
             Instruction[] instrs = Arrays.stream(si.instructions).map(instructionNameMap::get).toArray(Instruction[]::new);
+
+            int i = -1;
+            for (Instruction instr : instrs) {
+                i++;
+                if (instr == null) {
+                    data.addWarning("Invalid SuperInstruction decision: undefined instruction %s. Rerun the corpus with tracing to regenerate decisions.", si.instructions[i]);
+                    continue outer;
+                }
+
+                if (instr.isVariadic()) {
+                    data.addWarning("Invalid SuperInstruction decision: unsuported variadic instruction %s. Remove this decision.", si.instructions[i]);
+                    continue outer;
+                }
+
+            }
+
+            add(new SuperInstruction(this, instructionId++, instrs));
         }
     }
 

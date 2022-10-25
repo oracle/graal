@@ -383,7 +383,11 @@ public abstract class Instruction {
     }
 
     public boolean alwaysBoxed() {
-        throw new AssertionError(name);
+        if (numPushedValues == 0) {
+            return true;
+        } else {
+            throw new AssertionError(name);
+        }
     }
 
     public List<FrameKind> getBoxingEliminationSplits() {
