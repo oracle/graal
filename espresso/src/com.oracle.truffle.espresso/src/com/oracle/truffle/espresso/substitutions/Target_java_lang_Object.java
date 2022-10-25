@@ -50,7 +50,10 @@ public final class Target_java_lang_Object {
     }
 
     public static final GuardedInlinedMethodNode.InlinedMethodGuard InitGuard = //
-                    (context, version, frame, node) -> !Init.hasFinalizer(node.peekReceiver(frame));
+                    (context, version, frame, node) -> {
+                        StaticObject receiver = node.peekReceiver(frame);
+                        return StaticObject.isNull(receiver) || !Init.hasFinalizer(receiver);
+                    };
 
     @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true, hasGuard = true)
     abstract static class Init extends SubstitutionNode {
