@@ -66,11 +66,11 @@ public class ReturnInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (uncached) {
-            b.statement("uncachedExecuteCount--");
-            b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
+            b.statement("uncachedExecuteCount.count--");
+            b.startIf().string("uncachedExecuteCount.count <= 0").end().startBlock();
             b.statement("$this.changeInterpreters(COMMON_EXECUTE)");
             b.end().startElseBlock();
-            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
+            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount.count");
             b.end();
         }
 
@@ -98,5 +98,10 @@ public class ReturnInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public boolean neverWrapInMethod() {
+        return true;
     }
 }

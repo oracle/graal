@@ -47,6 +47,7 @@ import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 @SuppressWarnings("unused")
@@ -137,8 +138,8 @@ public class BranchInstruction extends Instruction {
             }
 
             if (uncached) {
-                b.statement("uncachedExecuteCount--");
-                b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
+                b.statement("uncachedExecuteCount.count--");
+                b.startIf().string("uncachedExecuteCount.count <= 0").end().startBlock();
 
                 b.statement("$this.changeInterpreters(COMMON_EXECUTE)");
                 b.statement("return ($sp << 16) | targetBci");
@@ -151,7 +152,7 @@ public class BranchInstruction extends Instruction {
 
         b.startAssign(vars.bci).string("targetBci").end();
 
-        b.statement("continue loop");
+        b.tree(OperationGeneratorUtils.encodeExecuteReturn());
 
         return b.build();
     }

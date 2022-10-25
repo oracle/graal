@@ -46,6 +46,7 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -60,6 +61,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
@@ -344,5 +346,72 @@ public class OperationGeneratorUtils {
         } else {
             return CodeTreeBuilder.singleString("0");
         }
+    }
+
+    public static CodeTree wrapExecuteInMethod(OperationsContext ctx, ExecutionVariables vars, String name, boolean isUncached, Consumer<CodeTreeBuilder> build) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        createHelperMethod(ctx.outerType, name, () -> {
+            CodeExecutableElement m = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(int.class), name);
+
+            m.addParameter(vars.stackFrame);
+            if (ctx.getData().enableYield) {
+                m.addParameter(vars.localFrame);
+            }
+            m.addParameter(new CodeVariableElement(ctx.outerType.asType(), "$this"));
+            m.addParameter(vars.bc);
+            m.addParameter(new CodeVariableElement(context.getType(int.class), "$startBci"));
+            m.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
+            m.addParameter(vars.consts);
+            m.addParameter(vars.children);
+            m.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+            m.addParameter(new CodeVariableElement(new GeneratedTypeMirror("", "Counter"), "loopCounter"));
+            m.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+            if (ctx.getData().isTracing()) {
+                m.addParameter(vars.tracer);
+            }
+            if (isUncached) {
+                m.addParameter(new CodeVariableElement(new GeneratedTypeMirror("", "Counter"), "uncachedExecuteCount"));
+            }
+
+            CodeTreeBuilder b = m.createBuilder();
+            b.statement("int $bci = $startBci");
+            b.statement("int $sp = $startSp");
+            build.accept(b);
+
+            return m;
+        });
+
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startAssign("int _enc").startCall(name);
+
+        b.variable(vars.stackFrame);
+        if (ctx.getData().enableYield) {
+            b.variable(vars.localFrame);
+        }
+        b.string("$this");
+        b.variable(vars.bc);
+        b.variable(vars.bci);
+        b.variable(vars.sp);
+        b.variable(vars.consts);
+        b.variable(vars.children);
+        b.string("$conditionProfiles");
+        b.string("loopCounter");
+        b.string("$localTags");
+        if (ctx.getData().isTracing()) {
+            b.variable(vars.tracer);
+        }
+        if (isUncached) {
+            b.string("uncachedExecuteCount");
+        }
+        b.end(2);
+
+        b.startAssign(vars.bci).string("_enc & 0xffff").end();
+        b.startAssign(vars.sp).string("(_enc >> 16) & 0xffff").end();
+
+        return b.build();
+    }
+
+    public static CodeTree encodeExecuteReturn() {
+        return CodeTreeBuilder.createBuilder().startReturn().string("($sp << 16) | $bci").end().build();
     }
 }

@@ -99,7 +99,7 @@ public abstract class Instruction {
     public final int id;
     public final int numPushedValues;
 
-    private final String internalName;
+    public final String internalName;
 
     // --------------------- arguments ------------------------
 
@@ -803,5 +803,9 @@ public abstract class Instruction {
 
     public boolean isVariadic() {
         return isVariadic;
+    }
+
+    public boolean neverWrapInMethod() {
+        return false;
     }
 }

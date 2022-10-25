@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 
@@ -79,13 +80,14 @@ public class ShortCircuitInstruction extends CustomInstruction {
         // {
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
         b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
-        b.statement("continue loop");
+
+        b.tree(OperationGeneratorUtils.encodeExecuteReturn());
         // }
         b.end().startElseBlock();
         // {
         b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0, false)).end();
 
-        b.statement("continue loop");
+        b.tree(OperationGeneratorUtils.encodeExecuteReturn());
         // }
         b.end();
 

@@ -7,6 +7,7 @@ import javax.lang.model.type.ArrayType;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class SuperInstruction extends Instruction {
@@ -75,7 +76,7 @@ public class SuperInstruction extends Instruction {
         }
 
         if (!instructions[instructions.length - 1].isBranchInstruction()) {
-            b.statement("continue loop");
+            b.tree(OperationGeneratorUtils.encodeExecuteReturn());
         }
 
         return b.build();
@@ -93,7 +94,7 @@ public class SuperInstruction extends Instruction {
             b.end();
         }
         if (!instructions[instructions.length - 1].isBranchInstruction()) {
-            b.statement("continue loop");
+            b.tree(OperationGeneratorUtils.encodeExecuteReturn());
         }
 
         return b.build();
