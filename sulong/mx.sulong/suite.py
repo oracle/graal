@@ -1086,6 +1086,8 @@ suite = {
       "buildSharedObject" : True,
       "bundledLLVMOnly" : True,
       "cmakeConfig" : {
+        # TODO: replace with toolchain file
+        "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
         "CMAKE_C_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -pthread",
         "CMAKE_C_LINK_FLAGS" : "-pthread",
         "CMAKE_CXX_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
