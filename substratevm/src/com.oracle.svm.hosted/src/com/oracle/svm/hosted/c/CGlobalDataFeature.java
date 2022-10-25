@@ -235,12 +235,18 @@ public class CGlobalDataFeature implements InternalFeature {
         return obj;
     }
 
-    private static int getCGlobalDataSize(CGlobalDataImpl<?> data, int wordSize) {
+    private static CGlobalDataInfo assignCGlobalDataSize(Map.Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry, int wordSize) {
+        CGlobalDataImpl<?> data = entry.getKey();
+        CGlobalDataInfo info = entry.getValue();
+
         if (data.bytesSupplier != null) {
-            return data.bytesSupplier.get().length;
+            byte[] bytes = data.bytesSupplier.get();
+            info.assignSize(bytes.length);
+            info.assignBytes(bytes);
         } else {
+            info.assignBytes(null);
             if (data.sizeSupplier != null) {
-                return data.sizeSupplier.getAsInt();
+                info.assignSize(data.sizeSupplier.getAsInt());
             } else {
                 assert data.symbolName != null : "CGlobalData without bytes, size, or referenced symbol";
                 /*
@@ -248,9 +254,10 @@ public class CGlobalDataFeature implements InternalFeature {
                  * 32-bit immediates, which might not be sufficient for the target symbol's address.
                  * Therefore, reserve space for a word with the symbol's true address.
                  */
-                return wordSize;
+                info.assignSize(wordSize);
             }
         }
+        return info;
     }
 
     private void layout() {
@@ -261,14 +268,12 @@ public class CGlobalDataFeature implements InternalFeature {
          * entries
          */
         totalSize = map.entrySet().stream()
-                        .sorted(Comparator.comparing(e -> getCGlobalDataSize(e.getKey(), wordSize)))
-                        .reduce(0, (currentOffset, entry) -> {
-                            CGlobalDataImpl<?> data = entry.getKey();
-                            CGlobalDataInfo info = entry.getValue();
+                        .map(entry -> assignCGlobalDataSize(entry, wordSize))
+                        .sorted(Comparator.comparing(CGlobalDataInfo::getSize))
+                        .reduce(0, (currentOffset, info) -> {
+                            info.assignOffset(currentOffset);
 
-                            info.assign(currentOffset, data.bytesSupplier != null ? data.bytesSupplier.get() : null);
-
-                            int nextOffset = currentOffset + getCGlobalDataSize(data, wordSize);
+                            int nextOffset = currentOffset + info.getSize();
                             return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
                         }, Integer::sum);
         assert isLayouted();
