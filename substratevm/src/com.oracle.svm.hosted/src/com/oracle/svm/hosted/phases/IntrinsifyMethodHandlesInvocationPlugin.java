@@ -550,7 +550,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         r.register(new RequiredInvocationPlugin("asType", Receiver.class, MethodType.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newTypeNode) {
-                ValueNode methodHandleNode = receiver.get();
+                ValueNode methodHandleNode = receiver.get(false);
                 if (methodHandleNode.isJavaConstant() && newTypeNode.isJavaConstant()) {
                     try {
                         /*
