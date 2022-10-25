@@ -534,6 +534,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
             newMultiMethod.staticAnalysisResults = staticAnalysisResults;
             newMultiMethod.implementations = implementations;
+            newMultiMethod.vtableIndex = vtableIndex;
             return newMultiMethod;
         });
     }
