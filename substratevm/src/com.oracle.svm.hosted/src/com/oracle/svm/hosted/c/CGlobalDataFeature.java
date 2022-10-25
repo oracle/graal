@@ -244,7 +244,6 @@ public class CGlobalDataFeature implements InternalFeature {
             info.assignSize(bytes.length);
             info.assignBytes(bytes);
         } else {
-            info.assignBytes(null);
             if (data.sizeSupplier != null) {
                 info.assignSize(data.sizeSupplier.getAsInt());
             } else {

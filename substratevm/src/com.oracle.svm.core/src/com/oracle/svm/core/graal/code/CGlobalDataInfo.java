@@ -71,6 +71,7 @@ public final class CGlobalDataInfo {
     @SuppressWarnings("hiding")
     public void assignSize(int size) {
         assert this.size == -1 : "already initialized";
+        assert bytes == null || bytes.length == size;
         assert size >= 0;
         this.size = size;
     }
@@ -78,6 +79,7 @@ public final class CGlobalDataInfo {
     @SuppressWarnings("hiding")
     public void assignBytes(byte[] bytes) {
         assert this.bytes == null : "already initialized";
+        assert size == -1 || size == bytes.length;
         this.bytes = bytes;
     }
 
