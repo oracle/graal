@@ -173,14 +173,14 @@ public final class AccessAdvisor {
             return true;
         }
         if (heuristicsEnabled && queriedClass.get() != null) {
-            return (!useLambdaHeuristics && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) ||
+            return (useLambdaHeuristics && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) ||
                             PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
         }
         return false;
     }
 
     public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
-        return shouldIgnore(queriedClass, callerClass, false);
+        return shouldIgnore(queriedClass, callerClass, true);
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
