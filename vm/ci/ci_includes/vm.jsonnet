@@ -112,15 +112,35 @@ local jdks = common_json.jdks;
     java19_linux_amd64: "30GB",
   },
 
+  local installer_guard = {
+    guard+: {
+      includes+: ["<graal>/vm/src/org.graalvm.component.installer**/**"]
+    }
+  },
+
+  local svm_guard = {
+    guard+: {
+      includes+: ["<graal>/substratevm/**"]
+    }
+  },
+
+  local truffle_guard = {
+    guard+: {
+      includes+: ["<graal>/truffle/**"]
+    }
+  },
+
+  local gu_guard = installer_guard + svm_guard + truffle_guard,
+
   local builds = [
-    self.vm_java_17 + vm_common.gate_vm_linux_amd64 + {
+    self.vm_java_11 + vm_common.gate_vm_linux_amd64 + gu_guard +{
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     },
-    self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + {
+    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows_amd64 + gu_guard + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
