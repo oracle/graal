@@ -76,51 +76,46 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
     }
 
     /**
-     * Creates the following mask in the data section: {@code [ 0x00 <n times> 0xff <n times> ]},
-     * where {@code n} is the AVX vector size in bytes.
+     * Creates the following mask in the data section: {@code [ 0x00 <n times> 0xff <n times> ]}.
      *
      * With this mask, bytes loaded by a vector load aligned to the end of the array can be set to
-     * zero with a PAND instruction, e.g.:
+     * zero with a {@code andVVV} instruction, e.g.:
      *
-     * Given an array of 20 bytes, and XMM vectors of 16 bytes, we can load bytes 0-15 with a MOVDQU
-     * instruction aligned to the beginning of the array, and bytes 4-19 with another MOVDQU
-     * instruction aligned to the end of the array, using the address (arrayBasePointer,
-     * arrayLength, -16). To avoid processing bytes 4-15 twice, we can zero them in the second
-     * vector with this mask and the tail count {@code 20 % 16 = 4}:
+     * Given an array of 20 bytes, and vectors of 16 bytes, we can load bytes 0-15 with a
+     * {@code fldr} instruction aligned to the beginning of the array, and bytes 4-19 with another
+     * {@code fldr} instruction aligned to the end of the array, using the address
+     * (arrayBasePointer, arrayLength, -16). To avoid processing bytes 4-15 twice, we can zero them
+     * in the second vector with this mask and the tail count {@code 20 % 16 = 4}:
      *
-     * {@code PAND vector2, (maskBasePointer, tailCount)}
+     * {@code andVVV vector2, vector2, (maskBasePointer, tailCount)}
      *
      * {@code (maskBasePointer, tailCount)} yields a mask where all lower bytes are {@code 0x00},
      * and exactly the last {@code tailCount} bytes are {@code 0xff}, in this case:
      *
      * {@code [0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0xff 0xff 0xff 0xff] }
      */
-    protected DataSection.Data createTailANDMask(CompilationResultBuilder crb, Stride stride, int chunkSize) {
-        byte[] mask = new byte[chunkSize << 1];
-        for (int i = chunkSize >> stride.log2; i < mask.length >> stride.log2; i++) {
+    protected DataSection.Data createTailANDMask(CompilationResultBuilder crb, Stride stride, int n) {
+        byte[] mask = new byte[n << 1];
+        for (int i = n >> stride.log2; i < mask.length >> stride.log2; i++) {
             writeValue(mask, stride, i, ~0);
         }
         return writeToDataSection(crb, mask);
     }
 
     /**
-     * Creates the following mask: {@code [0x00 0x01 0x02 ... 0x0f 0xff <n times>]}, where {@code n}
-     * is the AVX vector size in bytes.
+     * Creates the following mask: {@code [0x00 0x01 0x02 ... 0x0f 0xff <n times>]}.
      *
-     * This mask can be used with PSHUFB to not only remove duplicate bytes in a vector tail load
-     * (see {@link #createTailANDMask(CompilationResultBuilder, Stride, int)}, but also move the
+     * This mask can be used with TBL to not only remove duplicate bytes in a vector tail load (see
+     * {@link #createTailANDMask(CompilationResultBuilder, Stride, int)}, but also move the
      * remaining bytes to the beginning of the vector, as if the vector was right-shifted by
      * {@code 16 - tailCount} bytes.
-     *
-     * This only works on XMM vectors; to achieve the same on a YMM vector additional instructions
-     * are needed.
      */
-    protected static DataSection.Data createTailShuffleMask(CompilationResultBuilder crb, int chunkSize) {
-        byte[] mask = new byte[chunkSize + 16];
-        for (int i = 0; i < chunkSize; i++) {
+    protected static DataSection.Data createTailShuffleMask(CompilationResultBuilder crb, int n) {
+        byte[] mask = new byte[n + 16];
+        for (int i = 0; i < n; i++) {
             mask[i] = (byte) i;
         }
-        Arrays.fill(mask, chunkSize, mask.length, (byte) ~0);
+        Arrays.fill(mask, n, mask.length, (byte) ~0);
         return writeToDataSection(crb, mask);
     }
 

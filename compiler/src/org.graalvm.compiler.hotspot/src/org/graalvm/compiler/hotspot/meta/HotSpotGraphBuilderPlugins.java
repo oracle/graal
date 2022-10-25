@@ -985,6 +985,8 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+        // TODO: intrinsify on AARCH64 while still respecting the UseVectorizedMismatchIntrinsic
+        // flag
         r.registerConditional(config.useVectorizedMismatchIntrinsic() || true, new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,

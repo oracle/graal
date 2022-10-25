@@ -163,7 +163,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             switch (encoding) {
                 case LATIN1:
-                    emitLatin1(asm, arr, len, tmp, ret, end);
+                    emitLatin1(asm, arr, len, tmp, ret, end, asRegister(vectorTemp[0]), asRegister(vectorTemp[1]), asRegister(vectorTemp[2]));
                     break;
                 case BMP:
                     emitBMP(asm, arr, len, tmp, ret, end);
@@ -185,8 +185,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         }
     }
 
-    private void emitLatin1(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
-        assert stride.log2 == 0;
+    static void emitLatin1(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end, Register vecArray1, Register vecArray2, Register vecMask) {
         Label tailLessThan32 = new Label();
         Label tailLessThan16 = new Label();
         Label tailLessThan8 = new Label();
@@ -195,10 +194,6 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         Label tailLoaded = new Label();
         Label vectorLoop = new Label();
-
-        Register vecArray1 = asRegister(vectorTemp[0]);
-        Register vecArray2 = asRegister(vectorTemp[1]);
-        Register vecMask = asRegister(vectorTemp[2]);
 
         // set vecMask to all ones
         asm.neon.cmeqVVV(FullReg, DoubleWord, vecMask, vecMask, vecMask);

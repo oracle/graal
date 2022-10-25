@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
-@Platforms(Platform.AMD64.class)
+@Platforms(Platform.AARCH64.class)
 public class SubstrateAArch64GraphBuilderPlugins implements InternalFeature {
 
     @Override
