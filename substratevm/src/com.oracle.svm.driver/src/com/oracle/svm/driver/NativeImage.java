@@ -259,6 +259,8 @@ public class NativeImage {
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
 
+    private long imageBuilderPid = -1;
+
     protected static class BuildConfiguration {
 
         /*
@@ -1359,6 +1361,7 @@ public class NativeImage {
             pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
             sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
+            imageBuilderPid = p.pid();
             exitStatus = p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
@@ -1433,7 +1436,9 @@ public class NativeImage {
                                 "(use --" + SubstrateOptions.OptionNameNoFallback +
                                 " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
             } else if (buildStatus != 0) {
-                throw showError("Image build request failed with exit status " + buildStatus, null, buildStatus);
+                String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
+                                nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, buildStatus);
+                throw showError(message, null, buildStatus);
             }
         }
     }
