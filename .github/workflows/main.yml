@@ -109,12 +109,15 @@ jobs:
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
+    env:
+      MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') }}
+      MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') }}
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v3
       with:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
-        fetch-depth: "${{ contains(matrix.env.GATE_TAGS, 'style') && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
+        fetch-depth: "${{ env.MX_RUNS_STYLE && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
@@ -140,20 +143,20 @@ jobs:
         mkdir jdk-dl
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
-      if: ${{ contains(matrix.env.GATE_TAGS, 'debug') || contains(matrix.env.GATE_TAGS, 'style') }}
+      if: ${{ env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
       run: sudo apt update
     - name: Install debug dependencies
-      if: ${{ contains(matrix.env.GATE_TAGS, 'debug') }}
+      if: ${{ env.MX_RUNS_DEBUG == 'true' }}
       run: sudo apt install gdb
     - name: Install style dependencies
-      if: ${{ contains(matrix.env.GATE_TAGS, 'style') }}
+      if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         sudo apt install python3-pip python-setuptools
         jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
         ${MX_PYTHON} -m pip install jsonschema==4.6.1
     - name: Download Eclipse
-      if: ${{ contains(matrix.env.GATE_TAGS, 'style') }}
+      if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         ECLIPSE_TAR=eclipse.tar.gz
         ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
