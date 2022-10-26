@@ -216,6 +216,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         pos = writeHeaderType(context, headerType(), buffer, pos);
 
+        /* write class constants for primitive type classes */
+
+        pos = primitiveTypeStream().reduce(pos,
+                (pos1, primitiveTypeEntry) -> writeClassConstantDeclaration(context, primitiveTypeEntry, buffer, pos1),
+                (oldpos, newpos) -> newpos);
+
         /* Terminate with null entry. */
 
         pos = writeAttrNull(buffer, pos);
