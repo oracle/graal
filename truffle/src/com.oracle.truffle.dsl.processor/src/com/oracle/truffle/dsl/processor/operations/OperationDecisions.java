@@ -52,6 +52,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 public class OperationDecisions {
     private final List<Quicken> quicken = new ArrayList<>();
     private final List<SuperInstruction> superInstr = new ArrayList<>();
+    private final List<CommonInstruction> commonInstr = new ArrayList<>();
 
     public OperationDecisions() {
     }
@@ -62,6 +63,10 @@ public class OperationDecisions {
 
     public List<SuperInstruction> getSuperInstructions() {
         return superInstr;
+    }
+
+    public List<CommonInstruction> getCommonInstructions() {
+        return commonInstr;
     }
 
     public OperationDecisions merge(OperationDecisions other, MessageContainer messager) {
@@ -186,6 +191,41 @@ public class OperationDecisions {
         }
     }
 
+    public static final class CommonInstruction {
+        final String instruction;
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(instruction);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            CommonInstruction other = (CommonInstruction) obj;
+            return Objects.equals(instruction, other.instruction);
+        }
+
+        private CommonInstruction(String instruction) {
+            this.instruction = instruction;
+        }
+
+        @Override
+        public String toString() {
+            return "CommonInstruction [" + instruction + "]";
+        }
+
+        public static CommonInstruction deserialize(JSONObject o) {
+            String instruction = o.getString("instruction");
+            return new CommonInstruction(instruction);
+        }
+    }
+
     public static OperationDecisions deserialize(JSONArray o, MessageContainer messager) {
         OperationDecisions decisions = new OperationDecisions();
 
@@ -205,6 +245,10 @@ public class OperationDecisions {
                 case "SuperInstruction":
                     SuperInstruction si = SuperInstruction.deserialize(decision);
                     decisions.superInstr.add(si);
+                    break;
+                case "CommonInstruction":
+                    CommonInstruction ci = CommonInstruction.deserialize(decision);
+                    decisions.commonInstr.add(ci);
                     break;
                 default:
                     messager.addWarning("Invalid optimization decision: '%s'", decision.getString("type"));

@@ -22,8 +22,14 @@ abstract class Decision {
 
     abstract String id(GlobalOperationStatistics stats);
 
+    protected abstract String prettyPrint(GlobalOperationStatistics stats);
+
+    protected String createsInstruction(GlobalOperationStatistics stats) {
+        return null;
+    }
+
     @SuppressWarnings("unused")
-    boolean acceptedBefore(Decision decision) {
+    boolean acceptedBefore(Decision decision, GlobalOperationStatistics stats) {
         return false;
     }
 
@@ -94,6 +100,17 @@ abstract class Decision {
 
             return sb.toString();
         }
+
+        @Override
+        protected String createsInstruction(GlobalOperationStatistics stats) {
+            String s = stats.instrNames[instruction] + ".q";
+
+            for (int spec : specializations) {
+                s += "." + stats.specNames[instruction][spec];
+            }
+
+            return s;
+        }
     }
 
     static final class SuperInstruction extends Decision {
@@ -117,7 +134,7 @@ abstract class Decision {
         }
 
         @Override
-        boolean acceptedBefore(Decision decision) {
+        boolean acceptedBefore(Decision decision, GlobalOperationStatistics stats) {
             boolean changed = false;
             if (decision instanceof SuperInstruction) {
                 SuperInstruction si = (SuperInstruction) decision;
@@ -163,7 +180,73 @@ abstract class Decision {
 
             return sb.toString();
         }
+
+        @Override
+        protected String createsInstruction(GlobalOperationStatistics stats) {
+            String s = "si";
+
+            for (int i = 0; i < instructions.length; i++) {
+                s += "." + stats.instrNames[instructions[i]];
+            }
+
+            return s;
+        }
     }
 
-    protected abstract String prettyPrint(GlobalOperationStatistics stats);
+    static final class CommonInstruction extends Decision {
+
+        private final String instruction;
+        private final long numNodes;
+
+        // the decision has any value only if its a regular instr
+        // or a decision-based one that has been accepted
+        private boolean doCount;
+
+        CommonInstruction(String instruction, long numNodes, boolean regular) {
+            super("CommonInstruction");
+            this.instruction = instruction;
+            this.numNodes = numNodes;
+            doCount = regular;
+        }
+
+        @Override
+        double value() {
+            return doCount ? numNodes : 0;
+        }
+
+        @Override
+        boolean acceptedBefore(Decision decision, GlobalOperationStatistics stats) {
+            if (instruction.equals(decision.createsInstruction(stats))) {
+                doCount = true;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        JSONObject serialize(GlobalOperationStatistics stats) {
+            JSONObject result = super.serialize(stats);
+            result.put("instruction", instruction);
+            return result;
+        }
+
+        @Override
+        String id(GlobalOperationStatistics stats) {
+            return "c:" + instruction;
+        }
+
+        @Override
+        protected String prettyPrint(GlobalOperationStatistics stats) {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("Common ").append(id(stats)).append('\n');
+            sb.append("    value: ").append(value()).append('\n');
+            sb.append("    instruction: ").append(instruction).append('\n');
+            sb.append("    nodes with instruction: ").append(numNodes).append('\n');
+
+            return sb.toString();
+        }
+
+    }
 }

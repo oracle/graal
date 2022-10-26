@@ -187,7 +187,8 @@ public class OperationsStatistics {
         }
 
         private JSONObject serialize() {
-            JSONObject result = collect().serialize();
+            setNames();
+            JSONObject result = collect().serialize(this);
             result.put("key", opsClass.getName());
             return result;
         }
@@ -200,6 +201,10 @@ public class OperationsStatistics {
             this.decisionsFile = ExecutionTracer.DECISIONS_FILE_MAP.get(opsClass);
             this.instrNames = ExecutionTracer.INSTR_NAMES_MAP.get(opsClass);
             this.specNames = ExecutionTracer.SPECIALIZATION_NAMES_MAP.get(opsClass);
+
+            if (decisionsFile == null || instrNames == null || specNames == null) {
+                throw new AssertionError();
+            }
         }
 
         public EnabledExecutionTracer getTracer() {
@@ -250,7 +255,75 @@ public class OperationsStatistics {
 
     private static class EnabledExecutionTracer extends ExecutionTracer {
 
-        private static class SpecializationKey {
+        private interface PseudoInstruction {
+            String name(GlobalOperationStatistics stats);
+
+            default boolean isRegular() {
+                return false;
+            }
+
+            public static PseudoInstruction parse(String s) {
+                return new Key(s.substring(1), s.charAt(0) == 'R');
+            }
+
+            default String serialize(GlobalOperationStatistics stats) {
+                return (isRegular() ? 'R' : 'g') + name(stats);
+            }
+
+            public static class Key implements PseudoInstruction {
+                private final String name;
+                private final boolean regular;
+
+                Key(String name, boolean regular) {
+                    this.name = name;
+                    this.regular = regular;
+                }
+
+                public String name(GlobalOperationStatistics stats) {
+                    return name;
+                }
+
+                public boolean isRegular() {
+                    return regular;
+                }
+            }
+        }
+
+        private static class RegularInstruction implements PseudoInstruction {
+            private final int instruction;
+
+            RegularInstruction(int instruction) {
+                this.instruction = instruction;
+            }
+
+            @Override
+            public int hashCode() {
+                return instruction;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj)
+                    return true;
+                if (obj == null)
+                    return false;
+                if (getClass() != obj.getClass())
+                    return false;
+                RegularInstruction other = (RegularInstruction) obj;
+                return instruction == other.instruction;
+            }
+
+            public String name(GlobalOperationStatistics stats) {
+                return stats.instrNames[instruction];
+            }
+
+            public boolean isRegular() {
+                return true;
+            }
+
+        }
+
+        private static class SpecializationKey implements PseudoInstruction {
             final int instructionId;
             @CompilationFinal(dimensions = 1) final boolean[] activeSpecializations;
             int countActive = -1;
@@ -343,9 +416,21 @@ public class OperationsStatistics {
             public String toString() {
                 return "SpecializationKey [" + instructionId + ", " + Arrays.toString(activeSpecializations) + "]";
             }
+
+            public String name(GlobalOperationStatistics stats) {
+                String s = stats.instrNames[instructionId] + ".q";
+
+                for (int i = 0; i < activeSpecializations.length; i++) {
+                    if (activeSpecializations[i]) {
+                        s += "." + stats.specNames[instructionId][i];
+                    }
+                }
+
+                return s;
+            }
         }
 
-        private static class InstructionSequenceKey {
+        private static class InstructionSequenceKey implements PseudoInstruction {
             final int[] instructions;
 
             InstructionSequenceKey(int[] instructions) {
@@ -379,12 +464,27 @@ public class OperationsStatistics {
             public Object toString(String[] instrNames) {
                 return String.join(",", Arrays.stream(instructions).mapToObj(x -> instrNames[x]).toArray(String[]::new));
             }
+
+            public String name(GlobalOperationStatistics stats) {
+                String s = "si";
+
+                for (int i = 0; i < instructions.length; i++) {
+                    s += "." + stats.instrNames[instructions[i]];
+                }
+
+                return s;
+            }
         }
 
+        // quickening
         private Map<SpecializationKey, Long> activeSpecializationsMap = new HashMap<>();
+
+        // superinstructions
         private Map<InstructionSequenceKey, Long> instructionSequencesMap = new HashMap<>();
-        private Map<Integer, Integer> numNodesWithInstruction = new HashMap<>();
-        private Map<Integer, Set<Node>> nodesWithInstruction = new HashMap<>();
+
+        // common / uncommon
+        private Map<PseudoInstruction, Long> numNodesWithInstruction = new HashMap<>();
+        private Map<PseudoInstruction, Set<Node>> nodesWithInstruction = new HashMap<>();
 
         private List<Node> nodeStack = new ArrayList<>();
         private Node curNode;
@@ -431,9 +531,13 @@ public class OperationsStatistics {
             }
         }
 
+        private void encounterPseudoInstruction(PseudoInstruction instr) {
+            nodesWithInstruction.computeIfAbsent(instr, k -> new HashSet<>()).add(curNode);
+        }
+
         @Override
         public void traceInstruction(int bci, int id, int... arguments) {
-            nodesWithInstruction.computeIfAbsent(id, k -> new HashSet<>()).add(curNode);
+            encounterPseudoInstruction(new RegularInstruction(id));
 
             boolean isBranch = arguments[0] != 0;
             boolean isVariadic = arguments[1] != 0;
@@ -454,6 +558,7 @@ public class OperationsStatistics {
                     int[] curHistory = Arrays.copyOfRange(instrHistory, i, instrHistoryLen);
                     InstructionSequenceKey key = new InstructionSequenceKey(curHistory);
                     instructionSequencesMap.merge(key, 1L, EnabledExecutionTracer::saturatingAdd);
+                    encounterPseudoInstruction(key);
                 }
             }
 
@@ -463,7 +568,7 @@ public class OperationsStatistics {
             try {
                 return Math.addExact(x, y);
             } catch (ArithmeticException e) {
-                return x;
+                return Long.MAX_VALUE;
             }
         }
 
@@ -471,7 +576,7 @@ public class OperationsStatistics {
             try {
                 return Math.addExact(x, y);
             } catch (ArithmeticException e) {
-                return x;
+                return Integer.MAX_VALUE;
             }
         }
 
@@ -479,6 +584,7 @@ public class OperationsStatistics {
         public void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations) {
             SpecializationKey key = new SpecializationKey(id, activeSpecializations);
             Long l = activeSpecializationsMap.get(key);
+            encounterPseudoInstruction(key);
             if (l == null) {
                 activeSpecializationsMap.put(key, 1L);
             } else if (l != Long.MAX_VALUE) {
@@ -519,14 +625,15 @@ public class OperationsStatistics {
             });
         }
 
-        private void calcNumNodesWithInstruction() {
+        private void calcNumNodesWithInstruction(GlobalOperationStatistics stats) {
             nodesWithInstruction.forEach((k, v) -> {
-                numNodesWithInstruction.put(k, v.size() + numNodesWithInstruction.getOrDefault(k, 0));
+                long totalCount = v.size();
+                numNodesWithInstruction.merge(k, totalCount, EnabledExecutionTracer::saturatingAdd);
             });
             nodesWithInstruction.clear();
         }
 
-        private JSONObject serialize() {
+        private JSONObject serialize(GlobalOperationStatistics stats) {
             JSONObject result = new JSONObject();
 
             JSONArray activeSpecializationsData = new JSONArray();
@@ -538,9 +645,9 @@ public class OperationsStatistics {
             result.put("as", activeSpecializationsData);
 
             JSONObject ni = new JSONObject();
-            calcNumNodesWithInstruction();
+            calcNumNodesWithInstruction(stats);
             numNodesWithInstruction.forEach((k, v) -> {
-                ni.put(k.toString(), v);
+                ni.put(k.serialize(stats), v);
             });
             result.put("ni", ni);
 
@@ -566,7 +673,7 @@ public class OperationsStatistics {
 
             JSONObject ni = obj.getJSONObject("ni");
             for (String key : ni.keySet()) {
-                inst.numNodesWithInstruction.put(Integer.parseInt(key), ni.getInt(key));
+                inst.numNodesWithInstruction.put(PseudoInstruction.parse(key), ni.getLong(key));
             }
 
             JSONObject instructionSequences = obj.getJSONObject("is");
@@ -577,7 +684,7 @@ public class OperationsStatistics {
             return inst;
         }
 
-        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount) {
+        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount, GlobalOperationStatistics stats) {
             int outputCount = input.size() < expectedCount ? input.size() : expectedCount;
 
             for (int i = 0; i < outputCount; i++) {
@@ -585,7 +692,7 @@ public class OperationsStatistics {
                 output.add(next);
 
                 for (int j = i + 1; j < input.size(); j++) {
-                    input.get(j).acceptedBefore(next);
+                    input.get(j).acceptedBefore(next, stats);
                 }
                 input.subList(i, input.size()).sort(Decision.COMPARATOR);
             }
@@ -599,8 +706,8 @@ public class OperationsStatistics {
             result.put("Do not modify, as it will be overwritten when running with tracing support.");
             result.put("Use the overrides file to alter the optimisation decisions.");
 
-            // create decisions
-            calcNumNodesWithInstruction();
+            calcNumNodesWithInstruction(stats);
+
             List<Decision> decisions = new ArrayList<>();
             activeSpecializationsMap.entrySet().forEach(e -> {
                 decisions.add(new Decision.Quicken(e.getKey().instructionId, e.getKey().specializationIds(), e.getValue()));
@@ -612,7 +719,21 @@ public class OperationsStatistics {
             // sort
             decisions.sort(Decision.COMPARATOR);
             List<Decision> acceptedDecisions = new ArrayList<>();
-            orderDecisions(acceptedDecisions, decisions, NUM_DECISIONS);
+            orderDecisions(acceptedDecisions, decisions, NUM_DECISIONS, stats);
+
+            // the common / uncommon instructions don't compete with other decisions,
+            // so we add them at the end
+            numNodesWithInstruction.entrySet().stream()//
+                            .map(e -> {
+                                Decision d = new Decision.CommonInstruction(e.getKey().name(stats), e.getValue(), e.getKey().isRegular());
+                                for (Decision pre : acceptedDecisions) {
+                                    d.acceptedBefore(pre, stats);
+                                }
+                                return d;
+                            })//
+                            .sorted(Decision.COMPARATOR)//
+                            .limit(100)//
+                            .forEach(acceptedDecisions::add);
 
             if (dumpInfo) {
                 System.err.println("======================== OPERATION DSL TRACING DECISIONS ======================== ");

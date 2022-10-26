@@ -102,9 +102,10 @@ public class OperationsBytecodeCodeGenerator {
     private final CodeTypeElement baseClass;
     private final CodeTypeElement opNodeImpl;
     private final CodeTypeElement typExceptionHandler;
+    private final boolean isCommonOnly;
 
     public OperationsBytecodeCodeGenerator(CodeTypeElement typEnclosingElement, CodeTypeElement baseClass, CodeTypeElement opNodeImpl, CodeTypeElement typExceptionHandler, OperationsData m,
-                    boolean withInstrumentation, boolean isUncached) {
+                    boolean withInstrumentation, boolean isUncached, boolean isCommonOnly) {
         this.typEnclosingElement = typEnclosingElement;
         this.baseClass = baseClass;
         this.opNodeImpl = opNodeImpl;
@@ -112,6 +113,7 @@ public class OperationsBytecodeCodeGenerator {
         this.m = m;
         this.withInstrumentation = withInstrumentation;
         this.isUncached = isUncached;
+        this.isCommonOnly = isCommonOnly;
     }
 
     /**
@@ -119,7 +121,7 @@ public class OperationsBytecodeCodeGenerator {
      * executable Truffle node.
      */
     public CodeTypeElement createBuilderBytecodeNode() {
-        String namePrefix = withInstrumentation ? "Instrumentable" : isUncached ? "Uncached" : "";
+        String namePrefix = withInstrumentation ? "Instrumentable" : isUncached ? "Uncached" : isCommonOnly ? "Common" : "";
 
         CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", baseClass.asType());
 
@@ -340,6 +342,10 @@ public class OperationsBytecodeCodeGenerator {
                 continue;
             }
 
+            if (!op.isCommon && isCommonOnly) {
+                continue;
+            }
+
             for (String line : op.dumpInfo().split("\n")) {
                 b.lineComment(line);
             }
@@ -430,7 +436,12 @@ public class OperationsBytecodeCodeGenerator {
 
         b.caseDefault().startCaseBlock();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-        b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
+        if (isCommonOnly) {
+            b.statement("$this.changeInterpreters(UNCOMMON_EXECUTE)");
+            b.startReturn().string("($sp << 16) | $bci").end();
+        } else {
+            b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
+        }
         b.end();
 
         b.end(); // switch block

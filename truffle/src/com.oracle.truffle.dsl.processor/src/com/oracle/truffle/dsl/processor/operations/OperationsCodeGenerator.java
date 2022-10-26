@@ -427,12 +427,23 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             }
         }
 
+        String initialExecute = "UNCOMMON_EXECUTE";
+
+        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "UNCOMMON_EXECUTE = new BytecodeNode()"));
+
+        if (m.getDecisionsFilePath() != null) {
+            typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "COMMON_EXECUTE = new CommonBytecodeNode()"));
+            initialExecute = "COMMON_EXECUTE";
+        } else {
+            typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "COMMON_EXECUTE = UNCOMMON_EXECUTE"));
+        }
+
         if (m.isGenerateUncached()) {
             typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "UNCACHED_EXECUTE = new UncachedBytecodeNode()"));
+            initialExecute = "UNCACHED_EXECUTE";
         }
-        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "COMMON_EXECUTE = new BytecodeNode()"));
 
-        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "INITIAL_EXECUTE = " + (m.isGenerateUncached() ? "UNCACHED_EXECUTE" : "COMMON_EXECUTE")));
+        typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "INITIAL_EXECUTE = " + initialExecute));
 
         typOperationNodeImpl.add(createNodeImplExecuteAt());
         typOperationNodeImpl.add(createNodeImplGetSourceSection());
@@ -476,23 +487,32 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(typOpNodesImpl);
 
         CodeTypeElement builderBytecodeNodeType;
+        CodeTypeElement builderCommonBytecodeNodeType;
         CodeTypeElement builderUncachedBytecodeNodeType;
         CodeTypeElement builderInstrBytecodeNodeType;
 
-        bytecodeGenerator = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, false, false);
+        bytecodeGenerator = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, false, false, false);
         builderBytecodeNodeType = bytecodeGenerator.createBuilderBytecodeNode();
         typOperationNodeImpl.add(builderBytecodeNodeType);
 
         if (m.isGenerateUncached()) {
             builderUncachedBytecodeNodeType = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, false,
-                            true).createBuilderBytecodeNode();
+                            true, false).createBuilderBytecodeNode();
             typOperationNodeImpl.add(builderUncachedBytecodeNodeType);
         } else {
             builderUncachedBytecodeNodeType = null;
         }
 
+        if (m.getDecisionsFilePath() != null) {
+            builderCommonBytecodeNodeType = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, false, false,
+                            true).createBuilderBytecodeNode();
+            typOperationNodeImpl.add(builderCommonBytecodeNodeType);
+        } else {
+            builderCommonBytecodeNodeType = null;
+        }
+
         if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
-            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, true, false);
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, true, false, false);
             builderInstrBytecodeNodeType = bcg.createBuilderBytecodeNode();
             typOperationNodeImpl.add(builderInstrBytecodeNodeType);
         } else {

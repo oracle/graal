@@ -117,6 +117,8 @@ public abstract class Instruction {
     private List<Object> stateBits = new ArrayList<>();
     private List<Object> instruments = new ArrayList<>();
 
+    public boolean isCommon;
+
     private static final String CONSTANT_OFFSET_SUFFIX = "_CONSTANT_OFFSET";
     private static final String CHILDREN_OFFSET_SUFFIX = "_CHILDREN_OFFSET";
     private static final String LOCALS_OFFSET_SUFFIX = "_LOCALS_OFFSET";

@@ -256,10 +256,21 @@ public class OperationsContext {
 
             add(new SuperInstruction(this, instructionId++, instrs));
         }
+
+        for (OperationDecisions.CommonInstruction ci : decisions.getCommonInstructions()) {
+            Instruction instr = instructionNameMap.get(ci.instruction);
+
+            if (instr == null) {
+                data.addWarning("Invalid CommonInstruction decision: undefined instruction %s. Rerun the corpus with tracing to regenerate decisions.", ci.instruction);
+                continue;
+            }
+
+            instr.isCommon = true;
+        }
     }
 
     public List<SuperInstruction> getSuperInstructions() {
-        return instructions.stream().filter(x -> x instanceof SuperInstruction).map(x -> (SuperInstruction) x).toList();
+        return instructions.stream().filter(x -> x instanceof SuperInstruction).map(x -> (SuperInstruction) x).collect(Collectors.toList());
     }
 
     public boolean hasBoxingElimination() {
