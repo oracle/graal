@@ -26,12 +26,18 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class GuardedInlinedMethodNode extends InlinedMethodNode {
     @Child private InlinedMethodNode inlinedMethodNode;
 
     private final InlinedMethodGuard guard;
+
+    @Override
+    protected void invoke(VirtualFrame frame) {
+        throw EspressoError.shouldNotReachHere("invoke method of guarding node should never be directly called.");
+    }
 
     public interface InlinedMethodGuard {
         InlinedMethodGuard ALWAYS_VALID = new InlinedMethodGuard() {

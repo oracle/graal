@@ -26,7 +26,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
@@ -64,17 +63,15 @@ public final class InlinedGetterNode extends InlinedMethodNode {
 
     // Shortcuts arguments array creation
     @Override
-    public int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodeNode();
+    public void invoke(VirtualFrame frame) {
         StaticObject receiver = getReceiver(frame);
-        getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
-        return stackEffect;
+        getFieldNode.getField(frame, getBytecodeNode(), receiver, resultAt, statementIndex);
     }
 
     private StaticObject getReceiver(VirtualFrame frame) {
         return field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(EspressoFrame.popObject(frame, top - 1));
+                        : EspressoFrame.popObject(frame, top - 1);
     }
 
     private static Field getInlinedField(Method inlinedMethod) {

@@ -44,10 +44,10 @@ public final class InlinedSubstitutionNode extends InlinedMethodNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public void invoke(VirtualFrame frame) {
         if (!method.isStatic()) {
             nullCheck(peekReceiver(frame));
         }
-        return pushResult(frame, substitution.invokeInlined(frame, top));
+        pushResult(frame, substitution.invokeInlined(frame, top));
     }
 }

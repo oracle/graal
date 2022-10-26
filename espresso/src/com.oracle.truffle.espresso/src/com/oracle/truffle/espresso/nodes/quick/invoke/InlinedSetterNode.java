@@ -26,7 +26,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
@@ -65,13 +64,11 @@ public final class InlinedSetterNode extends InlinedMethodNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodeNode();
+    public void invoke(VirtualFrame frame) {
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
-        setFieldNode.setField(frame, root, receiver, top, statementIndex);
-        return stackEffect;
+                        : EspressoFrame.popObject(frame, top - 1 - slotCount);
+        setFieldNode.setField(frame, getBytecodeNode(), receiver, top, statementIndex);
     }
 
     private static Field getInlinedField(Method inlinedMethod) {

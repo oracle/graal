@@ -438,6 +438,34 @@ public final class EspressoFrame {
     }
 
     /**
+     * Peeks at a value in the operand stack, without clearing it.
+     *
+     * Returns the peeked value.
+     *
+     * @param kind kind to push
+     */
+    public static Object peekKind(VirtualFrame frame, int top, JavaKind kind) {
+        assert top >= 0;
+        // @formatter:off
+        switch (kind) {
+            case Boolean : return frame.getIntStatic(top) != 0;
+            case Byte    : return (byte) frame.getIntStatic(top);
+            case Short   : return (short) frame.getIntStatic(top);
+            case Char    : return (char) frame.getIntStatic(top);
+            case Int     : return frame.getIntStatic(top);
+            case Float   : return frame.getFloatStatic(top);
+            case Long    : return frame.getLongStatic(top);
+            case Double  : return frame.getDoubleStatic(top);
+            case Object  : return frame.getObjectStatic(top);
+            case Void    : /* ignore */
+            default      :
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+    }
+
+    /**
      * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
      * int) are always treated as int.
      *

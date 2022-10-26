@@ -23,9 +23,16 @@
 
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -35,10 +42,24 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
     protected final int opcode;
     protected final int statementIndex;
 
+    @Child DummyInstrumentation dummy;
+
+    @Override
+    public int execute(VirtualFrame frame) {
+        if (!method.isStatic()) {
+            nullCheck(peekReceiver(frame));
+        }
+        dummy.execute(frame);
+        return stackEffect;
+    }
+
+    protected abstract void invoke(VirtualFrame frame);
+
     protected InlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
         super(inlinedMethod, top, callerBCI);
         this.opcode = opcode;
         this.statementIndex = statementIndex;
+        this.dummy = insert(new DummyInstrumentation());
     }
 
     public static InlinedMethodNode createFor(Method resolutionSeed, int top, int opcode, int curBCI, int statementIndex) {
@@ -92,5 +113,95 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
             }
         }
         return false;
+    }
+
+    class DummyInstrumentation extends Node implements InstrumentableNode {
+        private volatile SourceSection sourceSection;
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        public Object execute(VirtualFrame frame) {
+            invoke(frame);
+            return null;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            if (method.getSource() == null) {
+                return null;
+            }
+            if (sourceSection == null) {
+                if (sourceSection == null) {
+                    SourceSection localSourceSection = method.getWholeMethodSourceSection();
+                    synchronized (this) {
+                        if (sourceSection == null) {
+                            sourceSection = localSourceSection;
+                        }
+                    }
+                }
+            }
+            return sourceSection;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new DummyInstrumentationWrapper(this, probe);
+        }
+    }
+
+    final class DummyInstrumentationWrapper extends DummyInstrumentation implements WrapperNode {
+
+        @Child private DummyInstrumentation delegateNode;
+        @Child private ProbeNode probeNode;
+
+        DummyInstrumentationWrapper(DummyInstrumentation delegateNode, ProbeNode probeNode) {
+            this.delegateNode = delegateNode;
+            this.probeNode = probeNode;
+        }
+
+        @Override
+        public DummyInstrumentation getDelegateNode() {
+            return delegateNode;
+        }
+
+        @Override
+        public ProbeNode getProbeNode() {
+            return probeNode;
+        }
+
+        @Override
+        public NodeCost getCost() {
+            return NodeCost.NONE;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object returnValue;
+            for (;;) {
+                boolean wasOnReturnExecuted = false;
+                try {
+                    probeNode.onEnter(frame);
+                    delegateNode.execute(frame);
+                    returnValue = EspressoFrame.peekKind(frame, resultAt, method.getMethod().getReturnKind());
+                    wasOnReturnExecuted = true;
+                    probeNode.onReturnValue(frame, returnValue);
+                    break;
+                } catch (Throwable t) {
+                    Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
+                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                        continue;
+                    } else if (result != null) {
+                        returnValue = result;
+                        break;
+                    }
+                    throw t;
+                }
+            }
+            return returnValue;
+        }
+
     }
 }
