@@ -68,4 +68,4 @@ See the [documentation on IDE integration](https://github.com/graalvm/mx/blob/ma
 
 ### Further Reading
 
-* [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md)
+* [Native Image Hosted and Runtime Options](../HostedvsRuntimeOptions.md)

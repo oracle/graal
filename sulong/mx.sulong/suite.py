@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.8.0",
+  "mxversion" : "6.9.9",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
