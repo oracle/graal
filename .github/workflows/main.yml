@@ -48,7 +48,7 @@ permissions:
 
 jobs:
   build-graalvm:
-    name: ${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }} ${{ matrix.env.WITHOUT_VCS }}
+    name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
