@@ -24,19 +24,20 @@
  */
 package com.oracle.svm.core.c;
 
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.util.VMError;
 
-/*
- * The following class is a helper registry, that contains only CGlobalDataInfo for
- * non-constant symbols defining during image generation. This object will be burned
- * into a native image.
+/**
+ * The following class is a helper registry, that contains only CGlobalDataInfo for non-constant
+ * symbols defining during image generation. This object will be burned into a native image.
  */
 public class CGlobalDataNonConstantRegistry {
 
@@ -46,7 +47,11 @@ public class CGlobalDataNonConstantRegistry {
     private final Lock lock = new ReentrantLock();
 
     public CGlobalDataInfo getCGlobalDataInfo(CGlobalDataImpl<?> cGlobalData) {
-        return cGlobalDataInfos.get(cGlobalData);
+        CGlobalDataInfo res = cGlobalDataInfos.get(cGlobalData);
+        if (res == null) {
+            throw VMError.shouldNotReachHere("Non-constant C global data must be registered via a factory method with a parameter named \"nonConstant\" whose value must be true");
+        }
+        return res;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

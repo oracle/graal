@@ -77,7 +77,10 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      * {@code org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake.doHandshake()}
      * via a stub.
      */
-    static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(SAFEPOINT, Reexecutability.REEXECUTABLE, NO_LOCATIONS,
+    static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(
+                    SAFEPOINT,
+                    Reexecutability.REEXECUTABLE,
+                    NO_LOCATIONS,
                     "HotSpotThreadLocalHandshake.doHandshake",
                     void.class, Object.class);
 
@@ -172,6 +175,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
             GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
             if (config.invokeJavaMethodAddress != 0 && config.jvmciReserved0Offset != -1) {
                 this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget(), config.jvmciReserved0Offset);
+                foreignCalls.register(THREAD_LOCAL_HANDSHAKE.getSignature());
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
                     GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
@@ -179,7 +183,6 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                                     "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
                     HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Ljava/lang/Object;)V");
                     ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
-                    assert staticMethod != null;
                     foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
                 };
             }
