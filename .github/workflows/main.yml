@@ -94,6 +94,11 @@ jobs:
               JDK_VERSION: "19"
               GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
+          # /truffle
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "" # Truffle does not use tags
+              PRIMARY: "truffle"
           # /vm
           - env:
               JDK_VERSION: "19"
@@ -110,8 +115,8 @@ jobs:
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
     env:
-      MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') }}
-      MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') }}
+      MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
+      MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v3
@@ -167,6 +172,11 @@ jobs:
     - name: Remove .git directory
       if: ${{ matrix.env.WITHOUT_VCS }}
       run: rm -rf .git
-    - name: Build GraalVM and run gate
+    - name: Build GraalVM and run gate with tags
       env: ${{ matrix.env }}
       run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE_TAGS}
+      if: ${{ matrix.env.GATE_TAGS != '' }}
+    - name: Build GraalVM and run gate without tags
+      env: ${{ matrix.env }}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode
+      if: ${{ matrix.env.GATE_TAGS == '' }}
