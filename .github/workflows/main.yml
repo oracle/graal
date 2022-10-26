@@ -48,7 +48,7 @@ permissions:
 
 jobs:
   build-graalvm:
-    name: ${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE }} JDK${{ matrix.env.JDK_VERSION }} ${{ matrix.env.WITHOUT_VCS }}
+    name: ${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }} ${{ matrix.env.WITHOUT_VCS }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -57,54 +57,54 @@ jobs:
           # /compiler
           - env:
               JDK_VERSION: "19"
-              GATE: "style,fullbuild,test"
+              GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,bootstraplite"
+              GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
           - env:
               JDK_VERSION: "17" # espresso does not support JDK19 yet
-              GATE: "style,fullbuild"
+              GATE_TAGS: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
           - env:
               JDK_VERSION: "19"
-              GATE: "style,fullbuild"
+              GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,test,helloworld"
+              GATE_TAGS: "build,test,helloworld"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,helloworld_debug"
+              GATE_TAGS: "build,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,debuginfotest"
+              GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "hellomodule"
+              GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
           - env:
               JDK_VERSION: "19"
-              GATE: "style,fullbuild,sulongBasic"
+              GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /vm
           - env:
               JDK_VERSION: "19"
-              GATE: "build,sulong"
+              GATE_TAGS: "build,sulong"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
               JDK_VERSION: "17"
-              GATE: "build"
+              GATE_TAGS: "build"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
               NATIVE_IMAGES: "polyglot"
@@ -114,7 +114,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
-        fetch-depth: "${{ contains(matrix.env.GATE, 'style') && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
+        fetch-depth: "${{ contains(matrix.env.GATE_TAGS, 'style') && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
@@ -140,20 +140,20 @@ jobs:
         mkdir jdk-dl
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
-      if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
+      if: ${{ contains(matrix.env.GATE_TAGS, 'debug') || contains(matrix.env.GATE_TAGS, 'style') }}
       run: sudo apt update
     - name: Install debug dependencies
-      if: ${{ contains(matrix.env.GATE, 'debug') }}
+      if: ${{ contains(matrix.env.GATE_TAGS, 'debug') }}
       run: sudo apt install gdb
     - name: Install style dependencies
-      if: ${{ contains(matrix.env.GATE, 'style') }}
+      if: ${{ contains(matrix.env.GATE_TAGS, 'style') }}
       run: |
         sudo apt install python3-pip python-setuptools
         jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
         ${MX_PYTHON} -m pip install jsonschema==4.6.1
     - name: Download Eclipse
-      if: ${{ contains(matrix.env.GATE, 'style') }}
+      if: ${{ contains(matrix.env.GATE_TAGS, 'style') }}
       run: |
         ECLIPSE_TAR=eclipse.tar.gz
         ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
@@ -166,4 +166,4 @@ jobs:
       run: rm -rf .git
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE_TAGS}
