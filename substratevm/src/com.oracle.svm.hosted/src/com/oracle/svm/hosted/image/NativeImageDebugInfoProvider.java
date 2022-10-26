@@ -477,6 +477,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public long classOffset() {
+            ObjectInfo objectInfo = heap.getObjectInfo(hostedType.getHub());
+            if (objectInfo != null) {
+                return objectInfo.getOffset();
+            }
+            return -1;
+        }
+
+        @Override
         public int size() {
             if (hostedType instanceof HostedInstanceClass) {
                 /* We know the actual instance size in bytes. */
@@ -551,6 +560,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public Path cachePath() {
             return null;
+        }
+
+        @Override
+        public long classOffset() {
+            return -1;
         }
 
         @Override

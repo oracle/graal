@@ -381,6 +381,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeClassType(context, classEntry, buffer, pos);
         }
 
+        int classObjectDeclarationOffset = pos;
+        /*  Write a declaration for the special Class object pseudo-static field */
+        pos = writeClassConstantDeclaration(context, classEntry, buffer, pos);
+
         /* For a non-compiled class there are no method definitions to write. */
         /* Nor, by the same token are there any abstract inline methods to write. */
 
@@ -468,6 +472,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeClassType(context, classEntry, buffer, pos);
         }
 
+        int classObjectDeclarationOffset = pos;
+        /*  Write a declaration for the special Class object pseudo-static field */
+        pos = writeClassConstantDeclaration(context, classEntry, buffer, pos);
+
         /* Write all method locations. */
 
         pos = writeMethodLocations(context, classEntry, false, buffer, pos);
@@ -507,6 +515,38 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
+        return pos;
+    }
+
+    private int writeClassConstantDeclaration(DebugContext context, TypeEntry typeEntry, byte[] buffer, int p) {
+        int pos = p;
+        long offset = typeEntry.getClassOffset();
+        if (offset < 0) {
+            return pos;
+        }
+        // Write a special static field declaration for the class object
+        // we use the abbrev code for a static field with no file or line location
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_constant;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+
+        String name = uniqueDebugString(typeEntry.getTypeName() + ".class");
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        pos = writeStrSectionOffset(name, buffer, pos);
+        /* use the indirect layout type for hub class to type the class constant */
+        ClassEntry valueType = dwarfSections.getHubClassEntry();
+        int typeIdx = (valueType == null ? -1 : getIndirectLayoutIndex(valueType));
+        log(context, "  [0x%08x]     type  0x%x (<hub type>)", pos, typeIdx);
+        pos = writeInfoSectionOffset(typeIdx, buffer, pos);
+        log(context, "  [0x%08x]     accessibility public static final", pos);
+        pos = writeAttrAccessibility(Modifier.PUBLIC|Modifier.STATIC|Modifier.FINAL, buffer, pos);
+        log(context, "  [0x%08x]     external(true)", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
+        log(context, "  [0x%08x]     definition(true)", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
+        /* Field offset needs to be relocated relative to static object base. */
+        log(context, "  [0x%08x]     location  heapbase + 0x%x (class constant)", pos, offset);
+        pos = writeHeapLocationExprLoc(offset, buffer, pos);
         return pos;
     }
 
@@ -586,6 +626,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * Write a terminating null attribute.
              */
             pos = writeAttrNull(buffer, pos);
+        } else {
+            setIndirectLayoutIndex(classEntry, layoutIndex);
         }
 
         return pos;
@@ -904,6 +946,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * Write a terminating null attribute.
              */
             pos = writeAttrNull(buffer, pos);
+        } else {
+            setIndirectLayoutIndex(interfaceClassEntry, layoutOffset);
         }
 
         return pos;
@@ -1175,6 +1219,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeIndirectArrayLayout(context, arrayTypeEntry, size, layoutIdx, buffer, pos);
         }
         pos = writeArrayTypes(context, arrayTypeEntry, layoutIdx, indirectLayoutIdx, buffer, pos);
+
+        /*  Write a declaration for the special Class object pseudo-static field */
+        pos = writeClassConstantDeclaration(context, arrayTypeEntry, buffer, pos);
+
         /*
          * Write a terminating null attribute.
          */
