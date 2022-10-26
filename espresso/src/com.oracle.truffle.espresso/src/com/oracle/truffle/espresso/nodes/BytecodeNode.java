@@ -2093,11 +2093,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
         CompilerAsserts.neverPartOfCompilation();
         return atomic(() -> {
-            // Note that another thread might have already generify-ed our node at this point.
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);
+            BaseQuickNode currentQuick = nodes[nodeIndex];
+            if (!(currentQuick instanceof InlinedMethodNode)) {
+                // Another thread might have already generify-ed our node at this point.
+                // Might be racy, as read is not volatile, but redoing the work should be OK.
+                return currentQuick;
+            }
             BaseQuickNode invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
-            nodes[nodeIndex] = nodes[nodeIndex].replace(invoke);
+            nodes[nodeIndex] = currentQuick.replace(invoke);
             return invoke;
         });
     }
