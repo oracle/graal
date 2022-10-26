@@ -819,7 +819,7 @@ public class NativeImageClassLoaderSupport {
             var destinationMap = builderURILocations.contains(classesEntries.getKey()) ? builderClasses : applicationClasses;
             destinationMap.put(classesEntries.getKey(), classesEntries.getValue());
         }
-        boolean tolerateViolations = SubstrateOptions.TolerateBuilderClassesOnImageClasspath.getValue(parsedHostedOptions);
+        boolean tolerateViolations = SubstrateOptions.AllowDeprecatedBuilderClassesOnImageClasspath.getValue(parsedHostedOptions);
         MapCursor<URI, EconomicSet<String>> applicationClassesEntries = applicationClasses.getEntries();
         while (applicationClassesEntries.advance()) {
             var applicationClassContainer = applicationClassesEntries.getKey();
@@ -833,8 +833,8 @@ public class NativeImageClassLoaderSupport {
                         if (!tolerateViolations) {
                             String errorMessage = String.join(" ", message,
                                             "This can be caused by a fat-jar that illegally includes svm.jar (or graal-sdk.jar) due to its build-time dependency on it.",
-                                            "As a temporary workaround, %s allows turning this error into a warning.");
-                            throw UserError.abort(errorMessage, SubstrateOptionsParser.commandArgument(SubstrateOptions.TolerateBuilderClassesOnImageClasspath, "+"));
+                                            "As a workaround, %s allows turning this error into a warning. Note that this option is deprecated and will be removed in a future version.");
+                            throw UserError.abort(errorMessage, SubstrateOptionsParser.commandArgument(SubstrateOptions.AllowDeprecatedBuilderClassesOnImageClasspath, "+"));
                         } else {
                             System.out.println("Warning: " + message);
                         }

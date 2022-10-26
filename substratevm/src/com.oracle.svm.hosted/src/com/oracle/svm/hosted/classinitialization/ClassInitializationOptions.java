@@ -91,6 +91,9 @@ public final class ClassInitializationOptions {
     @Option(help = "A comma-separated list of classes appended with their initialization strategy (':build_time', ':rerun', or ':run_time')", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ClassInitialization = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @Option(help = "Instead of abort, only warn if --initialize-at-build-time= is used.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> AllowDeprecatedInitializeAllClassesAtBuildTime = new HostedOptionKey<>(false);
+
     @Option(help = "Prints class initialization info for all classes detected by analysis.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> PrintClassInitialization = new HostedOptionKey<>(false);
 
