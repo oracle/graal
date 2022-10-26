@@ -74,6 +74,10 @@ public class JfrManager {
         this.hostedEnabled = hostedEnabled;
     }
 
+    public static boolean isJFREnabled() {
+        return SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
+    }
+
     @Fold
     public static JfrManager get() {
         return ImageSingletons.lookup(JfrManager.class);
@@ -82,7 +86,7 @@ public class JfrManager {
     public RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
-            if (SubstrateOptions.FlightRecorder.getValue()) {
+            if (isJFREnabled()) {
                 periodicEventSetup();
                 initRecording();
             }
@@ -91,7 +95,7 @@ public class JfrManager {
 
     public RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
-            if (SubstrateOptions.FlightRecorder.getValue()) {
+            if (isJFREnabled()) {
                 // Everything should already have been torn down by JVM.destroyJFR(), which is
                 // called in a shutdown hook. So in this method we should only unregister periodic
                 // events.

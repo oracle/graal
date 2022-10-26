@@ -65,9 +65,9 @@ Follow the steps below to practice building a native executable with JFR support
 
 4. Run the executable and start recording:
     ```shell
-    ./jfrdemo -XX:+FlightRecorder -XX:StartFlightRecording="filename=recording.jfr"
+    ./jfrdemo -XX:StartFlightRecording="filename=recording.jfr"
     ```
-    It runs the application as a native executable. The `-XX:+FlightRecorder` flag enables the built-in Flight Recorder and starts recording to a specified binary file, `recording.jfr`.
+    It runs the application as a native executable. The `-XX:StartFlightRecording` option enables the built-in Flight Recorder and starts recording to a specified binary file, `recording.jfr`.
 
 5. Start [VisualVM](https://visualvm.github.io/) to view the contents of the recording file in a user-friendly way. GraalVM provides VisualVM in the core installation. To start the tool, run:
 

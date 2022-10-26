@@ -42,7 +42,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
@@ -97,26 +96,16 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateDumpRuntimeCompilationOnSignal);
-
-    public static void validateDumpRuntimeCompilationOnSignal(OptionKey<?> optionKey) {
-        if (DumpRuntimeCompilationOnSignal.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
-            throw signalAPIRequiredError(optionKey, "SIGUSR2");
-        }
-    }
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateDumpThreadStacksOnSignal);
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
-    public static void validateDumpThreadStacksOnSignal(OptionKey<?> optionKey) {
-        if (DumpThreadStacksOnSignal.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
-            throw signalAPIRequiredError(optionKey, "SIGQUIT/SIGBREAK");
+    private static void validateOnSignalOption(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw UserError.abort("The option %s requires the Signal API, but the Signal API is disabled. Please enable with `-H:+%s`.",
+                            optionKey.getName(), SubstrateOptions.EnableSignalAPI.getName());
         }
-    }
-
-    private static UserException signalAPIRequiredError(OptionKey<?> optionKey, String requiredSignals) {
-        return UserError.abort("The option %s requires the Signal API to install signal handler(s) for %s, but the Signal API is disabled. Please enable with `-H:+%s`.",
-                        optionKey.getName(), requiredSignals, SubstrateOptions.EnableSignalAPI.getName());
     }
 
     static class DeprecatedOptions {
