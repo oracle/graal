@@ -778,7 +778,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
         extraVMArgs = []
-        if mx.get_jdk().javaCompliance >= '9':
+        if mx.get_jdk(tag='default').javaCompliance >= '9':
             extraVMArgs += ["--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
                             "--add-opens=java.desktop/sun.swing=ALL-UNNAMED",
                             "--add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED",
@@ -790,7 +790,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
                             "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
                             "--add-opens=java.base/java.util=ALL-UNNAMED",
                             "--add-opens=java.base/java.text=ALL-UNNAMED"]
-        jmeterCmd = [mx.get_jdk().java] + extraVMArgs + ["-jar", jmeterPath,
+        jmeterCmd = [mx.get_jdk(tag='default').java] + extraVMArgs + ["-jar", jmeterPath,
                                                          "-t", self.workloadConfigurationPath(),
                                                          "-n", "-j", "/dev/stdout"] + self.extraJMeterArgs()
         mx.log("Running JMeter: {0}".format(jmeterCmd))
