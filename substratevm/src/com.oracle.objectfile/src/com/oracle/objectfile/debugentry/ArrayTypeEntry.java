@@ -48,6 +48,7 @@ public class ArrayTypeEntry extends StructureTypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
         DebugArrayTypeInfo debugArrayTypeInfo = (DebugArrayTypeInfo) debugTypeInfo;
         ResolvedJavaType eltType = debugArrayTypeInfo.elementType();
         this.elementType = debugInfoBase.lookupTypeEntry(eltType);

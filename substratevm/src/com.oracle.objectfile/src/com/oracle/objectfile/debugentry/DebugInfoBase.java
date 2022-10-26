@@ -181,6 +181,10 @@ public abstract class DebugInfoBase {
      * Number of bits in oop which are guaranteed 0 by virtue of alignment.
      */
     private int oopAlignShift;
+    /**
+     * The type entry for java.lang.Class
+     */
+    private ClassEntry hubClassEntry;
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
@@ -191,6 +195,7 @@ public abstract class DebugInfoBase {
         this.pointerSize = 0;
         this.oopAlignment = 0;
         this.oopAlignShift = 0;
+        this.hubClassEntry = null;
     }
 
     /**
@@ -317,6 +322,9 @@ public abstract class DebugInfoBase {
             case INSTANCE: {
                 FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
                 typeEntry = new ClassEntry(typeName, fileEntry, size);
+                if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
+                    hubClassEntry = (ClassEntry) typeEntry;
+                }
                 break;
             }
             case INTERFACE: {
@@ -622,5 +630,9 @@ public abstract class DebugInfoBase {
             return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
         }
         return DwarfDebugInfo.DW_ABBREV_CODE_class_layout1;
+    }
+
+    public ClassEntry getHubClassEntry() {
+        return hubClassEntry;
     }
 }
