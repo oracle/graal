@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class InlinedSetterNode extends InlinedMethodNode {
@@ -54,13 +55,18 @@ public final class InlinedSetterNode extends InlinedMethodNode {
 
     public static InlinedMethodNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
         assert isInlineCandidate(inlinedMethod, opCode);
-        setterNodes.inc();
-        InlinedMethodNode node = new InlinedSetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
-        if (!isUnconditionalInlineCandidate(inlinedMethod, opCode)) {
-            leafSetterNodes.inc();
-            node = new GuardedInlinedMethodNode(node, GuardedInlinedMethodNode.InlinedMethodGuard.LEAF_ASSUMPTION_CHECK);
+        try {
+            InlinedMethodNode node = new InlinedSetterNode(inlinedMethod, top, opCode, curBCI, statementIndex);
+            setterNodes.inc();
+            if (!isUnconditionalInlineCandidate(inlinedMethod, opCode)) {
+                leafSetterNodes.inc();
+                node = new GuardedInlinedMethodNode(node, GuardedInlinedMethodNode.InlinedMethodGuard.LEAF_ASSUMPTION_CHECK);
+            }
+            return node;
+        } catch (EspressoException e) {
+            // likely a field resolution failure.
+            return null;
         }
-        return node;
     }
 
     @Override
