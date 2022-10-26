@@ -560,7 +560,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
                     MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
                     MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
-                    if (mh == null && mt == null) {
+                    if (mh == null || mt == null) {
                         return false;
                     }
                     final MethodHandle asType;
