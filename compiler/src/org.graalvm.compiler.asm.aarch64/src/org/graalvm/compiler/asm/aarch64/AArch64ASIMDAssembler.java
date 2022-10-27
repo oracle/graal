@@ -2230,8 +2230,8 @@ public abstract class AArch64ASIMDAssembler {
     /**
      * Load multiple 4-element structures to four registers, with de-interleaving.<br>
      *
-     * This instruction loads multiple 4-element structures from memory and writes the result to four
-     * registers. Note the four registers must be consecutive (modulo the number of SIMD
+     * This instruction loads multiple 4-element structures from memory and writes the result to
+     * four registers. Note the four registers must be consecutive (modulo the number of SIMD
      * registers).<br>
      *
      * <code>
@@ -2854,25 +2854,21 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     * Store multiple 2-element structures to memory, with interleaving.<br>
      *
-     * This instruction loads multiple 4-element structures from memory and writes the result to four
-     * registers. Note the four registers must be consecutive (modulo the number of SIMD
-     * registers).<br>
+     * Note the registers must be consecutive (modulo the number of SIMD registers).<br>
      *
      * <code>
-     * memory at addr: b0 b1 b2 b3 b4 ... <br>
-     * result in src1: b0 b4 b8 ... <br>
-     * result in src2: b1 b5 b9 ... <br>
-     * result in dst3: b2 b6 b10 ... <br>
-     * result in dst4: b3 b7 b11 ... <br>
+     * src1: b0 b2 b4 ... <br>
+     * src2: b1 b3 b5 ... <br>
+     * result in memory at addr: b0 b1 b2 b3 b4 ... <br>
      * </code>
      *
      * @param size register size.
      * @param eSize element size.
-     * @param src1 destination of structure's first value.
-     * @param src2 destination of structure's second value. Must be register after src1.
-     * @param addr address of first structure.
+     * @param src1 structure's first value.
+     * @param src2 structure's second value. Must be register after src1.
+     * @param addr destination address of first structure.
      */
     public void st2MultipleVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2);
@@ -2880,27 +2876,25 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     * Store multiple 4-element structures to memory, with interleaving.<br>
      *
-     * This instruction loads multiple 4-element structures from memory and writes the result to four
-     * registers. Note the four registers must be consecutive (modulo the number of SIMD
-     * registers).<br>
+     * Note the registers must be consecutive (modulo the number of SIMD registers).<br>
      *
      * <code>
-     * memory at addr: b0 b1 b2 b3 b4 ... <br>
-     * result in src1: b0 b4 b8 ... <br>
-     * result in src2: b1 b5 b9 ... <br>
-     * result in src3: b2 b6 b10 ... <br>
-     * result in src4: b3 b7 b11 ... <br>
+     * src1: b0 b4 b8 ... <br>
+     * src2: b1 b5 b9 ... <br>
+     * src3: b2 b6 b10 ... <br>
+     * src4: b3 b7 b11 ... <br>
+     * result in memory at addr: b0 b1 b2 b3 b4 ... <br>
      * </code>
      *
      * @param size register size.
      * @param eSize element size.
-     * @param src1 destination of structure's first value.
-     * @param src2 destination of structure's second value. Must be register after src1.
-     * @param src3 destination of structure's third value. Must be register after src2.
-     * @param src4 destination of structure's fourth value. Must be register after src3.
-     * @param addr address of first structure.
+     * @param src1 structure's first value.
+     * @param src2 structure's second value. Must be register after src1.
+     * @param src3 structure's third value. Must be register after src2.
+     * @param src4 structure's fourth value. Must be register after src3.
+     * @param addr destination address of first structure.
      */
     public void st4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);

@@ -532,11 +532,17 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    private AllocatableValue emitConvertNullToZero(Value value) {
+        AllocatableValue result = newVariable(value.getValueKind());
+        emitConvertNullToZero(result, value);
+        return result;
+    }
+
     @Override
     public Variable emitArrayRegionCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayRegionCompareToOp(this, strideA, strideB, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), null));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null));
         return result;
     }
 
@@ -544,20 +550,20 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitArrayRegionCompareTo(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayRegionCompareToOp(this, null, null, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(dynamicStrides)));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(dynamicStrides)));
         return result;
     }
 
     @Override
     public void emitArrayCopyWithConversion(Stride strideSrc, Stride strideDst, EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
         append(new AArch64ArrayCopyWithConversionsOp(this, strideSrc, strideDst,
-                        asAllocatable(arrayDst), asAllocatable(offsetDst), asAllocatable(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), null));
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), null));
     }
 
     @Override
     public void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
         append(new AArch64ArrayCopyWithConversionsOp(this, null, null,
-                        asAllocatable(arrayDst), asAllocatable(offsetDst), asAllocatable(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
     }
 
     @Override
@@ -567,7 +573,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         Stride stride = Stride.fromJavaKind(kind);
         append(new AArch64ArrayEqualsOp(this, stride, stride, stride, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
         return result;
     }
 
@@ -575,7 +581,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitArrayEquals(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, strideA, strideB, strideB, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
         return result;
     }
 
@@ -583,7 +589,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitArrayEqualsDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, null, null, null, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), null, asAllocatable(dynamicStrides)));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, asAllocatable(dynamicStrides)));
         return result;
     }
 
@@ -592,7 +598,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                     Value mask, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, strideA, strideB, strideMask, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask), null));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask), null));
         return result;
     }
 
@@ -601,7 +607,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                     Value dynamicStrides) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, null, null, null, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask), asAllocatable(dynamicStrides)));
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask),
+                        asAllocatable(dynamicStrides)));
         return result;
     }
 
@@ -613,7 +620,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         for (int i = 0; i < searchValues.length; i++) {
             allocatableSearchValues[i] = asAllocatable(searchValues[i]);
         }
-        append(new AArch64ArrayIndexOfOp(stride, findTwoConsecutive, withMask, this, result, asAllocatable(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
+        append(new AArch64ArrayIndexOfOp(stride, findTwoConsecutive, withMask, this, result, emitConvertNullToZero(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
                         asAllocatable(fromIndex), allocatableSearchValues));
         return result;
     }
@@ -698,7 +705,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length, boolean assumeValid) {
         Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AArch64Kind.QWORD : AArch64Kind.DWORD));
-        append(new AArch64CalcStringAttributesOp(this, encoding, asAllocatable(array), asAllocatable(offset), asAllocatable(length), result, assumeValid));
+        append(new AArch64CalcStringAttributesOp(this, encoding, emitConvertNullToZero(array), asAllocatable(offset), asAllocatable(length), result, assumeValid));
         return result;
     }
 
