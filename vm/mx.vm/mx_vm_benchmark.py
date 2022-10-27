@@ -818,7 +818,7 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # GR-40154 --pgo-sampling does not work with G1 for some reason
+        # GR-40154 --pgo-sampling does not work with G1
         if self.gc == 'G1':
             instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         else:
@@ -835,7 +835,7 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-40154 --pgo-sampling does not work with G1 for some reason
+        # GR-40154 --pgo-sampling does not work with G1
         if self.pgo_aot_inline and self.gc != 'G1':
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
