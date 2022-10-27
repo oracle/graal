@@ -1,9 +1,12 @@
 {
   local common = import "../../common.jsonnet",
+  local tools      = import "ci_common/tools.libsonnet",
 
   local t(limit) = {timelimit: limit},
 
   local gate(name, tags) = common.disable_proxies + {
+    mxgate_tags:: std.split(tags, ","),
+    mxgate_name:: name,
     name: "gate-svm-" + name + "-jdk" + self.jdk_version + "-" + self.os + "-" + self.arch,
     setup+: [
       ["cd", "./substratevm"],
@@ -78,4 +81,5 @@
     windows_jdk17     + gate("basics", "build,helloworld,test,svmjunit") + t("1:30:00"),
     windows_jdk17     + gate("basics-quickbuild", "build,helloworld_quickbuild,test_quickbuild,svmjunit_quickbuild") + t("1:30:00"),
   ],
+  assert tools.check_names($.builds),
 }
