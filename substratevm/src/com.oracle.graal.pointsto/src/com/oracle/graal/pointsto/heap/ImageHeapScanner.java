@@ -91,7 +91,7 @@ public abstract class ImageHeapScanner {
     protected ObjectScanningObserver scanningObserver;
 
     /** Marker object installed when encountering scanning issues like illegal objects. */
-    private static final ImageHeapConstant NULL_IMAGE_HEAP_OBJECT = new ImageHeapInstance(JavaConstant.NULL_POINTER, 0);
+    private static final ImageHeapConstant NULL_IMAGE_HEAP_OBJECT = new ImageHeapInstance(null, JavaConstant.NULL_POINTER, 0);
 
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {

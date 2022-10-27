@@ -40,19 +40,19 @@ public final class ImageHeapArray extends ImageHeapConstant {
     private final JavaConstant[] arrayElementValues;
 
     public ImageHeapArray(ResolvedJavaType type, int length) {
-        this(type, null, new JavaConstant[length], false);
+        this(type, null, new JavaConstant[length]);
     }
 
     public ImageHeapArray(ResolvedJavaType type, JavaConstant object, int length) {
-        this(type, object, new JavaConstant[length], false);
+        this(type, object, new JavaConstant[length]);
     }
 
     ImageHeapArray(ResolvedJavaType type, JavaConstant object, JavaConstant[] arrayElementValues) {
-        this(type, object, arrayElementValues, false);
+        this(type, object, arrayElementValues, createIdentityHashCode(object), false);
     }
 
-    private ImageHeapArray(ResolvedJavaType type, JavaConstant object, JavaConstant[] arrayElementValues, boolean compressed) {
-        super(type, object, compressed);
+    private ImageHeapArray(ResolvedJavaType type, JavaConstant object, JavaConstant[] arrayElementValues, int identityHashCode, boolean compressed) {
+        super(type, object, identityHashCode, compressed);
         assert type.isArray();
         this.arrayElementValues = arrayElementValues;
     }
@@ -76,13 +76,13 @@ public final class ImageHeapArray extends ImageHeapConstant {
     @Override
     public JavaConstant compress() {
         assert !compressed;
-        return new ImageHeapArray(type, hostedObject, arrayElementValues, true);
+        return new ImageHeapArray(type, hostedObject, arrayElementValues, identityHashCode, true);
     }
 
     @Override
     public JavaConstant uncompress() {
         assert compressed;
-        return new ImageHeapArray(type, hostedObject, arrayElementValues, false);
+        return new ImageHeapArray(type, hostedObject, arrayElementValues, identityHashCode, false);
     }
 
     @Override
