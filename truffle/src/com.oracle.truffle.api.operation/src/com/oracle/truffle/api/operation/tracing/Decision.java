@@ -2,6 +2,7 @@ package com.oracle.truffle.api.operation.tracing;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.operation.tracing.OperationsStatistics.GlobalOperationStatistics;
@@ -105,8 +106,11 @@ abstract class Decision {
         protected String createsInstruction(GlobalOperationStatistics stats) {
             String s = stats.instrNames[instruction] + ".q";
 
-            for (int spec : specializations) {
-                s += "." + stats.specNames[instruction][spec];
+            List<String> specs = Arrays.stream(specializations).mapToObj(x -> stats.specNames[instruction][x]).collect(Collectors.toList());
+            specs.sort(null);
+
+            for (String spec : specs) {
+                s += "." + spec;
             }
 
             return s;

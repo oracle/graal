@@ -209,4 +209,8 @@ public class OperationsData extends Template {
         return kinds;
     }
 
+    public boolean isOptimized() {
+        return !isTracing() && getDecisionsFilePath() != null;
+    }
+
 }

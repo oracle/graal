@@ -431,7 +431,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "UNCOMMON_EXECUTE = new BytecodeNode()"));
 
-        if (m.getDecisionsFilePath() != null) {
+        if (m.isOptimized()) {
             typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, typBytecodeBase.asType(), "COMMON_EXECUTE = new CommonBytecodeNode()"));
             initialExecute = "COMMON_EXECUTE";
         } else {
@@ -503,7 +503,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             builderUncachedBytecodeNodeType = null;
         }
 
-        if (m.getDecisionsFilePath() != null) {
+        if (m.isOptimized()) {
             builderCommonBytecodeNodeType = new OperationsBytecodeCodeGenerator(typOperationNodeImpl, typBytecodeBase, typOperationNodeImpl, typExceptionHandler, m, false, false,
                             true).createBuilderBytecodeNode();
             typOperationNodeImpl.add(builderCommonBytecodeNodeType);

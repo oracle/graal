@@ -437,6 +437,7 @@ public class OperationsBytecodeCodeGenerator {
         b.caseDefault().startCaseBlock();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         if (isCommonOnly) {
+            b.statement("System.err.println(\" hit \" + curOpcode + \" @ \" + $bci)");
             b.statement("$this.changeInterpreters(UNCOMMON_EXECUTE)");
             b.startReturn().string("($sp << 16) | $bci").end();
         } else {

@@ -330,7 +330,7 @@ public class OperationGeneratorUtils {
     public static CodeTree extractInstruction(OperationsContext ctx, CodeTree instr) {
         if (ctx.hasBoxingElimination()) {
             return CodeTreeBuilder.createBuilder().startParantheses().tree(instr).string(" >> " + OperationGeneratorFlags.BOXING_ELIM_BITS).end().string(
-                            " & " + (1 << (16 - OperationGeneratorFlags.BOXING_ELIM_BITS) - 1)).build();
+                            " & " + ((1 << (16 - OperationGeneratorFlags.BOXING_ELIM_BITS)) - 1)).build();
         } else {
             return instr;
         }
