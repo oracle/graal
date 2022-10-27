@@ -387,7 +387,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeClassType(context, classEntry, buffer, pos);
         }
 
-        int classObjectDeclarationOffset = pos;
         /* Write a declaration for the special Class object pseudo-static field */
         pos = writeClassConstantDeclaration(context, classEntry, buffer, pos);
 
@@ -478,7 +477,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeClassType(context, classEntry, buffer, pos);
         }
 
-        int classObjectDeclarationOffset = pos;
         /* Write a declaration for the special Class object pseudo-static field */
         pos = writeClassConstantDeclaration(context, classEntry, buffer, pos);
 
