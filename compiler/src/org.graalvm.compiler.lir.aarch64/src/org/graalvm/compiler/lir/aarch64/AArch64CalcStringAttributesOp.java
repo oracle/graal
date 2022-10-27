@@ -53,6 +53,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -674,11 +675,11 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // 32 byte loop tail
             Label skipTail = new Label();
             asm.mov(64, arr, refAddress);
-            asm.and(64, len, asRegister(length), 31);
-            asm.cbz(64, len, skipTail);
+            asm.and(32, len, asRegister(length), 31);
+            asm.cbz(32, len, skipTail);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
             loadDataSectionAddress(crb, asm, tmp, maskTail);
-            asm.add(64, tmp, tmp, len);
+            asm.add(64, tmp, tmp, len, AArch64Assembler.ExtendType.UXTW, 0);
             asm.fldp(128, vecTmp1, vecTmp2, AArch64Address.createPairBaseRegisterOnlyAddress(128, tmp));
             asm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp1);
             asm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp2);
@@ -865,7 +866,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.mov(64, arr, refAddress);
             asm.fldr(128, vecArray1, createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arr, 16));
             loadDataSectionAddress(crb, asm, tmp, maskTail);
-            asm.and(64, tmp2, asRegister(length), 15);
+            asm.and(32, tmp2, asRegister(length), 15);
             asm.add(64, tmp, tmp, 16);
             asm.neg(64, tmp2, tmp2);
             asm.fldr(128, vecTmp1, AArch64Address.createRegisterOffsetAddress(128, tmp, tmp2, false));
@@ -1217,7 +1218,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // 32 byte surrogate loop tail
             Label skipTail = new Label();
             asm.mov(64, arr, refAddress);
-            asm.and(64, len, asRegister(length), 15);
+            asm.and(32, len, asRegister(length), 15);
             asm.cbz(64, len, skipTail);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
             asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
@@ -1323,7 +1324,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
             asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
             loadDataSectionAddress(crb, asm, tmp, maskTail);
-            asm.and(64, tmp2, asRegister(length), 15);
+            asm.and(32, tmp2, asRegister(length), 15);
             asm.add(64, tmp, tmp, 16);
             asm.neg(64, tmp2, tmp2);
             asm.fldr(128, vecTmp1, AArch64Address.createRegisterOffsetAddress(128, tmp, tmp2, false));

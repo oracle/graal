@@ -331,16 +331,18 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
 
                 for (Stride strideA : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                     for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                        if (strideA.log2 <= strideB.log2) {
+                        if (strideA.log2 == strideB.log2 || !withMask() && strideA.log2 < strideB.log2) {
                             continue;
                         }
-                        masm.align(preferredBranchTargetAlignment(crb));
-                        // use the same implementation for e.g. stride 1-2 and 2-1 by swapping the
-                        // arguments in one variant
-                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
-                        masm.movq(tmp, arrayA);
-                        masm.movq(arrayA, arrayB);
-                        masm.movq(arrayB, tmp);
+                        if (!withMask()) {
+                            masm.align(preferredBranchTargetAlignment(crb));
+                            // use the same implementation for e.g. stride 1-2 and 2-1 by swapping
+                            // the arguments in one variant
+                            masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
+                            masm.movq(tmp, arrayA);
+                            masm.movq(arrayA, arrayB);
+                            masm.movq(arrayB, tmp);
+                        }
                         masm.align(crb.target.wordSize * 2);
                         masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
                         emitArrayCompare(crb, masm, strideA, strideB, strideB, result, arrayA, arrayB, mask, length, done, false);

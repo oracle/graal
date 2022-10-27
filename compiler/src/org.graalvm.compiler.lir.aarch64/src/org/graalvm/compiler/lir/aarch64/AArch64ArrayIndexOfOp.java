@@ -461,7 +461,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
 
         Label searchByChunk = new Label();
         int chunkByteSize = 32;
-        masm.compare(64, searchLength, chunkByteSize / stride.value);
+        masm.compare(32, searchLength, chunkByteSize / stride.value);
         masm.branchConditionally(ConditionFlag.GE, searchByChunk);
 
         /* Search sequentially for short arrays */

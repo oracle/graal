@@ -37,7 +37,7 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEqualsNode> {
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
+    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;

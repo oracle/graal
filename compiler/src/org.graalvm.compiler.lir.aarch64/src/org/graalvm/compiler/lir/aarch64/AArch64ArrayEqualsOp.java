@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,18 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD2_MULTIPLE_2R;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD4_MULTIPLE_4R;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createBaseRegisterOnlyAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createPairBaseRegisterOnlyAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureImmediatePostIndexAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.asElementSize;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -36,7 +43,6 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
@@ -52,7 +58,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -63,70 +68,72 @@ import jdk.vm.ci.meta.Value;
 public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
     public static final LIRInstructionClass<AArch64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AArch64ArrayEqualsOp.class);
 
-    private final Stride argStride1;
-    private final Stride argStride2;
+    private final Stride argStrideA;
+    private final Stride argStrideB;
     private final Stride argStrideM;
 
     @Def({REG}) protected Value resultValue;
-    @Alive({REG}) protected Value array1Value;
-    @Alive({REG, ILLEGAL}) protected Value offset1Value;
-    @Alive({REG}) protected Value array2Value;
-    @Alive({REG, ILLEGAL}) protected Value offset2Value;
+    @Alive({REG}) protected Value arrayAValue;
+    @Alive({REG, ILLEGAL}) protected Value offsetAValue;
+    @Alive({REG}) protected Value arrayBValue;
+    @Alive({REG, ILLEGAL}) protected Value offsetBValue;
     @Alive({REG}) protected Value lengthValue;
     @Alive({REG, ILLEGAL}) protected Value arrayMaskValue;
     @Alive({REG, ILLEGAL}) private Value dynamicStridesValue;
-    @Temp({REG}) protected AllocatableValue[] temp;
-    @Temp({REG}) protected AllocatableValue[] vectorTemp;
+    @Temp({REG}) protected Value[] temp;
+    @Temp({REG}) protected Value[] vectorTemp;
 
-    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, Stride stride1, Stride stride2, Stride strideM, Value result, Value array1, Value offset1, Value array2, Value offset2, Value length, Value mask,
-                    Value dynamicStrides) {
+    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, Stride strideA, Stride strideB, Stride strideM, Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length,
+                    Value mask, Value dynamicStrides) {
         super(TYPE);
-        this.argStride1 = stride1;
-        this.argStride2 = stride2;
+        this.argStrideA = strideA;
+        this.argStrideB = strideB;
         this.argStrideM = strideM;
 
-        GraalError.guarantee(strideM == null || Stride.max(stride1, stride2).value >= strideM.value, "mask array stride must not be greater than other strides");
+        if (strideM != null && strideM != strideB) {
+            GraalError.guarantee(strideA == Stride.S2 && strideB == Stride.S2 && strideM == Stride.S1 || strideA == Stride.S1 && strideB == Stride.S2 && strideM == Stride.S1,
+                            "The only supported cases where strideMask is not equal to strideB are : S2 - S2 - S1 and S1 - S2 - S1");
+        }
 
         assert result.getPlatformKind() == AArch64Kind.DWORD;
-        assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
-        assert offset1 == null || offset1.getPlatformKind() == AArch64Kind.QWORD;
-        assert offset2 == null || offset2.getPlatformKind() == AArch64Kind.QWORD;
+        assert arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind();
+        assert offsetA == null || offsetA.getPlatformKind() == AArch64Kind.QWORD;
+        assert offsetB == null || offsetB.getPlatformKind() == AArch64Kind.QWORD;
         assert length.getPlatformKind() == AArch64Kind.DWORD;
 
         this.resultValue = result;
-        this.array1Value = array1;
-        this.offset1Value = offset1 == null ? Value.ILLEGAL : offset1;
-        this.array2Value = array2;
-        this.offset2Value = offset2 == null ? Value.ILLEGAL : offset2;
+        this.arrayAValue = arrayA;
+        this.offsetAValue = offsetA == null ? Value.ILLEGAL : offsetA;
+        this.arrayBValue = arrayB;
+        this.offsetBValue = offsetB == null ? Value.ILLEGAL : offsetB;
         this.lengthValue = length;
         this.arrayMaskValue = mask == null ? Value.ILLEGAL : mask;
         this.dynamicStridesValue = dynamicStrides == null ? Value.ILLEGAL : dynamicStrides;
 
-        temp = allocateTempRegisters(tool, withMask() ? 5 : 4);
-        vectorTemp = allocateVectorRegisters(tool, withMask() ? 6 : 4);
+        temp = allocateTempRegisters(tool, withMask() ? 3 : 2);
+        vectorTemp = allocateConsecutiveVectorRegisters(withMask() ? 12 : 8);
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        Register length = asRegister(temp[0]);
-        Register array1 = asRegister(temp[1]);
-        Register array2 = asRegister(temp[2]);
-        Register tmp = asRegister(temp[3]);
-        Register mask = withMask() ? asRegister(temp[4]) : null;
-        Label breakLabel = new Label();
+        try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
+            Register ret = asRegister(resultValue);
+            Register arrayA = sc1.getRegister();
+            Register arrayB = sc2.getRegister();
+            Register length = asRegister(temp[0]);
+            Register tmp = asRegister(temp[1]);
+            Register mask = withMask() ? asRegister(temp[2]) : null;
+            Label end = new Label();
 
-        // Load array base addresses.
-        masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
-        masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
-        if (withMask()) {
-            masm.mov(64, mask, asRegister(arrayMaskValue));
-        }
+            // Load array base addresses.
+            masm.add(64, arrayA, asRegister(arrayAValue), asRegister(offsetAValue));
+            masm.add(64, arrayB, asRegister(arrayBValue), asRegister(offsetBValue));
+            if (withMask()) {
+                masm.mov(64, mask, asRegister(arrayMaskValue));
+            }
 
-        // Get array length and store as a 64-bit value.
-        masm.mov(32, length, asRegister(lengthValue));
-
-        try (ScratchRegister sc = masm.getScratchRegister()) {
-            Register hasMismatch = sc.getRegister();
+            // Get array length and store as a 64-bit value.
+            masm.mov(32, length, asRegister(lengthValue));
             if (withDynamicStrides()) {
                 Label[] variants = new Label[9];
                 for (int i = 0; i < variants.length; i++) {
@@ -134,8 +141,8 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 }
                 AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
 
-                // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting
-                // the length
+                // reuse the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply
+                // shifting the length
                 masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
                 masm.lsl(64, length, length, 1);
@@ -144,36 +151,37 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 masm.lsl(64, length, length, 1);
                 masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
-                emitArrayEquals(masm, Stride.S1, Stride.S1, Stride.S1, array1, array2, mask, length, hasMismatch, breakLabel);
-                masm.jmp(breakLabel);
+                emitArrayEquals(masm, Stride.S1, Stride.S1, Stride.S1, arrayA, arrayB, mask, length, tmp, ret, end);
+                masm.jmp(end);
 
-                for (Stride stride1 : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                    for (Stride stride2 : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                        if (stride1.log2 <= stride2.log2) {
+                for (Stride strideA : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
+                    for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
+                        if (strideA.log2 == strideB.log2 || !withMask() && strideA.log2 < strideB.log2) {
                             continue;
                         }
+                        if (!withMask()) {
+                            masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
+                            // use the same implementation for e.g. stride 1-2 and 2-1 by swapping
+                            // the arguments in one variant
+                            masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
+                            masm.mov(64, tmp, arrayA);
+                            masm.mov(64, arrayA, arrayB);
+                            masm.mov(64, arrayB, tmp);
+                        }
                         masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
-                        // use the same implementation for e.g. stride 1-2 and 2-1 by swapping the
-                        // arguments in one variant
-                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(stride2, stride1)]);
-                        masm.mov(64, tmp, array1);
-                        masm.mov(64, array1, array2);
-                        masm.mov(64, array2, tmp);
-                        masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
-                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(stride1, stride2)]);
-                        emitArrayEquals(masm, stride1, stride2, stride2, array1, array2, mask, length, hasMismatch, breakLabel);
-                        masm.jmp(breakLabel);
+                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                        emitArrayEquals(masm, strideA, strideB, strideB, arrayA, arrayB, mask, length, tmp, ret, end);
+                        masm.jmp(end);
                     }
                 }
             } else {
-                emitArrayEquals(masm, argStride1, argStride2, argStrideM, array1, array2, mask, length, hasMismatch, breakLabel);
+                emitArrayEquals(masm, argStrideA, argStrideB, argStrideM, arrayA, arrayB, mask, length, tmp, ret, end);
             }
 
             // Return: hasMismatch is non-zero iff the arrays differ
             masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
-            masm.bind(breakLabel);
-            masm.cmp(64, hasMismatch, zr);
-            masm.cset(32, asRegister(resultValue), ConditionFlag.EQ);
+            masm.bind(end);
+            masm.cset(32, ret, ConditionFlag.EQ);
         }
     }
 
@@ -185,322 +193,597 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         return !isIllegal(dynamicStridesValue);
     }
 
-    private void emitArrayEquals(AArch64MacroAssembler masm, Stride stride1, Stride stride2, Stride strideM, Register array1, Register array2, Register mask, Register length, Register hasMismatch,
-                    Label breakLabel) {
+    private void emitArrayEquals(AArch64MacroAssembler asm,
+                    Stride strideA,
+                    Stride strideB,
+                    Stride strideM,
+                    Register arrayA,
+                    Register arrayB,
+                    Register arrayM,
+                    Register len,
+                    Register tmp,
+                    Register ret,
+                    Label end) {
+        Label tailLessThan64 = new Label();
+        Label tailLessThan32 = new Label();
+        Label tailLessThan16 = new Label();
+        Label tailLessThan8 = new Label();
+        Label tailLessThan4 = new Label();
+        Label tailLessThan2 = new Label();
 
-        try (ScratchRegister sc = masm.getScratchRegister()) {
-            Label scalarCompare = new Label();
-            Register scratch = sc.getRegister();
+        Label vectorLoop = new Label();
+        Label tail = new Label();
 
-            Stride maxStride = Stride.max(stride1, stride2);
-            masm.compare(32, length, 32 / maxStride.value);
-            masm.branchConditionally(ConditionFlag.LE, scalarCompare);
+        Register arrayMax = strideB.value < strideA.value ? arrayA : arrayB;
+        Register arrayMin = strideB.value < strideA.value ? arrayB : arrayA;
 
-            emitSIMDCompare(masm, stride1, stride2, strideM, array1, array2, mask, length, hasMismatch, scratch, breakLabel);
+        Stride strideMax = Stride.max(strideB, strideA);
+        Stride strideMin = Stride.min(strideB, strideA);
 
-            masm.bind(scalarCompare);
-            if (stride1 == stride2 && stride1 == strideM) {
-                emitSameStrideScalarCompare(masm, stride1, array1, array2, mask, length, hasMismatch, scratch, breakLabel);
-            } else {
-                emitMixedStrideScalarCompare(masm, stride1, stride2, strideM, array1, array2, mask, length, breakLabel, hasMismatch);
-            }
+        // subtract 64 from len. if the result is negative, jump to branch for less than 64 bytes
+        asm.subs(64, len, len, 64 >> strideMax.log2);
+        asm.branchConditionally(ConditionFlag.MI, tailLessThan64);
+
+        Register refAddress = len;
+        asm.add(64, refAddress, arrayMax, len, ShiftType.LSL, strideMax.log2);
+
+        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM);
+        asm.branchConditionally(ConditionFlag.NE, end);
+
+        asm.cmp(64, refAddress, arrayMax);
+        asm.branchConditionally(ConditionFlag.LS, tail);
+
+        // align addresses to chunk size
+        asm.and(64, tmp, arrayMax, 63);
+        asm.sub(64, arrayMin, arrayMin, tmp, ShiftType.LSR, strideMax.log2 - strideMin.log2);
+        if (withMask()) {
+            asm.sub(64, arrayM, arrayM, tmp, ShiftType.LSR, strideMax.log2 - strideM.log2);
         }
+        asm.bic(64, arrayMax, arrayMax, 63);
+
+        // 64 byte loop
+        asm.align(PREFERRED_LOOP_ALIGNMENT);
+        asm.bind(vectorLoop);
+        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM);
+        asm.branchConditionally(ConditionFlag.NE, end);
+        asm.cmp(64, arrayMax, refAddress);
+        asm.branchConditionally(ConditionFlag.LO, vectorLoop);
+
+        asm.bind(tail);
+        // 64 byte loop tail
+        asm.sub(64, tmp, arrayMax, refAddress);
+        asm.mov(64, arrayMax, refAddress);
+        asm.sub(64, arrayMin, arrayMin, tmp, ShiftType.LSR, strideMax.log2 - strideMin.log2);
+        if (withMask()) {
+            asm.sub(64, arrayM, arrayM, tmp, ShiftType.LSR, strideMax.log2 - strideM.log2);
+        }
+
+        simdCompare64(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM);
+        asm.jmp(end);
+
+        // tail for 32 - 63 bytes
+        tail32(asm, strideMax, strideMin, strideA, strideM, arrayMax, arrayMin, arrayM, len, tailLessThan64, tailLessThan32, end);
+        // tail for 16 - 31 bytes
+        tail16(asm, strideA, strideB, strideM, strideMax, strideMin, arrayA, arrayB, arrayM, len, tailLessThan32, tailLessThan16, end);
+        // tail for 8 - 15 bytes
+        tailLessThan16(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, tmp, ret, tailLessThan16, tailLessThan8, end, 8);
+        // tail for 4 - 7 bytes
+        tailLessThan16(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, tmp, ret, tailLessThan8, tailLessThan4, end, 4);
+        // tail for 2 - 3 bytes
+        tailLessThan16(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, tmp, ret, tailLessThan4, tailLessThan2, end, 2);
+        // tail for 0 - 1 bytes
+        tailLessThan16(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, tmp, ret, tailLessThan2, null, end, 1);
     }
 
-    private void emitSameStrideScalarCompare(AArch64MacroAssembler masm, Stride stride, Register array1, Register array2, Register mask, Register byteArrayLength, Register hasMismatch,
-                    Register scratch,
-                    Label breakLabel) {
-        // convert length to byte-length
-        if (stride.log2 > 0) {
-            masm.lsl(64, byteArrayLength, byteArrayLength, stride.log2);
-        }
-        masm.mov(64, scratch, byteArrayLength); // copy
-
-        emit8ByteCompare(masm, scratch, array1, array2, mask, byteArrayLength, breakLabel, hasMismatch);
-        emitTailCompares(masm, stride, scratch, array1, array2, mask, breakLabel, hasMismatch);
+    private Register v(int index) {
+        return asRegister(vectorTemp[index]);
     }
 
-    /**
-     * Vector size used in {@link #emit8ByteCompare}.
-     */
-    private static final int VECTOR_SIZE = 8;
-
-    /**
-     * Emits code that uses 8-byte vector compares.
-     */
-    private void emit8ByteCompare(AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register mask, Register length, Label breakLabel, Register rscratch1) {
-        Label loop = new Label();
-        Label compareTail = new Label();
-
-        Register tmp = asRegister(temp[3]);
-
-        masm.and(64, result, result, VECTOR_SIZE - 1); // tail count (in bytes)
-        masm.ands(64, length, length, ~(VECTOR_SIZE - 1));  // vector count (in bytes)
-        masm.branchConditionally(ConditionFlag.EQ, compareTail);
-
-        masm.add(64, array1, array1, length);
-        masm.add(64, array2, array2, length);
-        if (withMask()) {
-            masm.add(64, mask, mask, length);
-        }
-        masm.sub(64, length, zr, length);
-
-        // Align the main loop
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(loop);
-        masm.ldr(64, tmp, AArch64Address.createRegisterOffsetAddress(64, array1, length, false));
-        if (withMask()) {
-            masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, mask, length, false));
-            masm.orr(64, tmp, tmp, rscratch1);
-        }
-        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, array2, length, false));
-        masm.eor(64, rscratch1, tmp, rscratch1);
-        masm.cbnz(64, rscratch1, breakLabel);
-        masm.add(64, length, length, VECTOR_SIZE);
-        masm.cbnz(64, length, loop);
-
-        masm.cbz(64, result, breakLabel);
-
-        /*
-         * Compare the remaining bytes with an unaligned memory load aligned to the end of the
-         * array.
-         */
-        masm.add(64, array1, array1, -VECTOR_SIZE);
-        masm.add(64, array2, array2, -VECTOR_SIZE);
-        if (withMask()) {
-            masm.add(64, mask, mask, -VECTOR_SIZE);
-        }
-        masm.ldr(64, tmp, AArch64Address.createRegisterOffsetAddress(64, array1, result, false));
-        if (withMask()) {
-            masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, mask, result, false));
-            masm.orr(64, tmp, tmp, rscratch1);
-        }
-        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, array2, result, false));
-        masm.eor(64, rscratch1, tmp, rscratch1);
-        masm.jmp(breakLabel);
-
-        masm.bind(compareTail);
-    }
-
-    /**
-     * Emits code to compare the remaining 1 to 4 bytes.
-     *
-     */
-    private void emitTailCompares(AArch64MacroAssembler masm, Stride stride, Register result, Register array1, Register array2, Register mask, Label breakLabel, Register rscratch1) {
-        Label compare2Bytes = new Label();
-        Label compare1Byte = new Label();
-        Label end = new Label();
-
-        Register tmp = asRegister(temp[3]);
-
-        if (stride.value <= 4) {
-            // Compare trailing 4 bytes, if any.
-            tailCompare(masm, result, array1, array2, mask, breakLabel, rscratch1, compare2Bytes, tmp, 4);
-
-            masm.bind(compare2Bytes);
-            if (stride.value <= 2) {
-                // Compare trailing 2 bytes, if any.
-                tailCompare(masm, result, array1, array2, mask, breakLabel, rscratch1, compare1Byte, tmp, 2);
-
-                // The one-byte tail compare is only required for boolean and byte arrays.
-                masm.bind(compare1Byte);
-                if (stride.value <= 1) {
-                    // Compare trailing byte, if any.
-                    tailCompare(masm, result, array1, array2, mask, breakLabel, rscratch1, end, tmp, 1);
+    private void simdCompare64(AArch64MacroAssembler asm,
+                    Stride strideMax,
+                    Stride strideMin,
+                    Stride strideA,
+                    Stride strideMask,
+                    Register arrayMax,
+                    Register arrayMin,
+                    Register arrayMask) {
+        ElementSize minESize = asElementSize(strideMin);
+        switch (strideMax.log2 - strideMin.log2) {
+            case 0:
+                // direct comparison
+                asm.fldp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMin, 32));
+                asm.fldp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMax, 32));
+                if (withMask()) {
+                    asm.fldp(128, v(8), v(9), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMask, 32));
                 }
-            }
+                asm.fldp(128, v(4), v(5), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMin, 32));
+                asm.fldp(128, v(6), v(7), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMax, 32));
+                if (withMask()) {
+                    int arrayA1 = strideA == strideMin ? 0 : 2;
+                    int arrayA2 = strideA == strideMin ? 1 : 3;
+                    if (strideMask == strideMax) {
+                        asm.fldp(128, v(10), v(11), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMask, 32));
+                    } else {
+                        // special case for java.lang.String
+                        assert strideMax == Stride.S2 && strideMask == Stride.S1;
+                        asm.neon.uxtlVV(ElementSize.Byte, v(10), v(9));
+                        asm.neon.uxtl2VV(ElementSize.Byte, v(11), v(9));
+                        asm.neon.uxtl2VV(ElementSize.Byte, v(9), v(8));
+                        asm.neon.uxtlVV(ElementSize.Byte, v(8), v(8));
+                    }
+                    // OR mask to arrayA
+                    asm.neon.orrVVV(FullReg, v(arrayA1), v(arrayA1), v(8));
+                    asm.neon.orrVVV(FullReg, v(arrayA2), v(arrayA2), v(9));
+                }
+                // EOR arrayA and arrayB, first 32 bytes
+                asm.neon.eorVVV(FullReg, v(0), v(0), v(2));
+                asm.neon.eorVVV(FullReg, v(1), v(1), v(3));
+                if (withMask()) {
+                    int arrayA3 = strideA == strideMin ? 4 : 6;
+                    int arrayA4 = strideA == strideMin ? 5 : 7;
+                    // OR mask to arrayA
+                    asm.neon.orrVVV(FullReg, v(arrayA3), v(arrayA3), v(10));
+                    asm.neon.orrVVV(FullReg, v(arrayA4), v(arrayA4), v(11));
+                }
+                // EOR arrayA and arrayB second 32 bytes
+                asm.neon.eorVVV(FullReg, v(4), v(4), v(6));
+                asm.neon.eorVVV(FullReg, v(5), v(5), v(7));
+                // combine results
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
+                asm.neon.orrVVV(FullReg, v(4), v(4), v(5));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(4));
+                break;
+            case 1:
+                // 1 -> 2 byte comparison
+                // de-interleaving load to separate lower and upper bytes
+                asm.neon.ld2MultipleVV(FullReg, minESize, v(0), v(1), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMax, 32));
+                asm.neon.ld2MultipleVV(FullReg, minESize, v(2), v(3), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMax, 32));
+                if (withMask()) {
+                    if (strideMask == strideMin) {
+                        asm.fldp(128, v(6), v(7), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMask, 32));
+                    } else {
+                        asm.neon.ld2MultipleVV(FullReg, minESize, v(6), v(7), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMask, 32));
+                        asm.neon.ld2MultipleVV(FullReg, minESize, v(8), v(9), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMask, 32));
+                    }
+                }
+                asm.fldp(128, v(4), v(5), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMin, 32));
+                if (withMask()) {
+                    int arrayA1 = strideA == strideMax ? 0 : 4;
+                    int arrayA2 = strideA == strideMax ? 2 : 5;
+                    int arrayM1 = 6;
+                    int arrayM2 = strideMask == strideMin ? 7 : 8;
+                    // OR lower half elements to arrayA
+                    asm.neon.orrVVV(FullReg, v(arrayA1), v(arrayA1), v(arrayM1));
+                    asm.neon.orrVVV(FullReg, v(arrayA2), v(arrayA2), v(arrayM2));
+                    if (strideMask == strideMax) {
+                        if (strideA == strideMax) {
+                            // OR upper elements to arrayA
+                            asm.neon.orrVVV(FullReg, v(1), v(1), v(7));
+                            asm.neon.orrVVV(FullReg, v(3), v(3), v(9));
+                        } else {
+                            // EOR upper elements to arrayB
+                            asm.neon.eorVVV(FullReg, v(1), v(1), v(7));
+                            asm.neon.eorVVV(FullReg, v(3), v(3), v(9));
+                        }
+                    }
+                }
+                asm.neon.eorVVV(FullReg, v(0), v(0), v(4));
+                asm.neon.eorVVV(FullReg, v(2), v(2), v(5));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
+                asm.neon.orrVVV(FullReg, v(2), v(2), v(3));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
+                break;
+            case 2:
+                // 1 -> 4 byte comparison
+                asm.neon.ld4MultipleVVVV(FullReg, minESize, v(0), v(1), v(2), v(3), createStructureImmediatePostIndexAddress(LD4_MULTIPLE_4R, FullReg, minESize, arrayMax, 64));
+                if (withMask()) {
+                    if (strideMask == strideMin) {
+                        asm.fldr(128, v(5), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 16));
+                    } else {
+                        asm.neon.ld4MultipleVVVV(FullReg, minESize, v(5), v(6), v(7), v(8), createStructureImmediatePostIndexAddress(LD4_MULTIPLE_4R, FullReg, minESize, arrayMask, 64));
+                    }
+                }
+                asm.fldr(128, v(4), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 16));
+                if (withMask()) {
+                    int arrayA1 = strideA == strideMax ? 0 : 4;
+                    int arrayM1 = 5;
+                    // OR lower half elements to arrayA
+                    asm.neon.orrVVV(FullReg, v(arrayA1), v(arrayA1), v(arrayM1));
+                    if (strideMask == strideMax) {
+                        if (strideA == strideMax) {
+                            // OR upper elements to arrayA
+                            asm.neon.orrVVV(FullReg, v(1), v(1), v(6));
+                            asm.neon.orrVVV(FullReg, v(2), v(2), v(7));
+                            asm.neon.orrVVV(FullReg, v(3), v(3), v(8));
+                        } else {
+                            // EOR upper elements to arrayB
+                            asm.neon.eorVVV(FullReg, v(1), v(1), v(6));
+                            asm.neon.eorVVV(FullReg, v(2), v(2), v(7));
+                            asm.neon.eorVVV(FullReg, v(3), v(3), v(8));
+                        }
+                    }
+                }
+                asm.neon.eorVVV(FullReg, v(0), v(0), v(4));
+                asm.neon.orrVVV(FullReg, v(2), v(2), v(3));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
+                break;
+            default:
+                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
         }
-        masm.bind(end);
-        masm.mov(64, rscratch1, zr);
+        asm.neon.umaxvSV(FullReg, ElementSize.Word, v(0), v(0));
+        asm.fcmpZero(64, v(0));
     }
 
-    private void tailCompare(AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register mask, Label breakLabel, Register rscratch1, Label nextTail, Register tmp,
+    private void tail32(AArch64MacroAssembler asm,
+                    Stride strideMax,
+                    Stride strideMin,
+                    Stride strideA,
+                    Stride strideMask,
+                    Register arrayMax,
+                    Register arrayMin,
+                    Register arrayMask,
+                    Register len,
+                    Label entry,
+                    Label nextTail,
+                    Label end) {
+
+        asm.bind(entry);
+        asm.adds(64, len, len, 32 >> strideMax.log2);
+        asm.branchConditionally(ConditionFlag.MI, nextTail);
+
+        ElementSize minESize = asElementSize(strideMin);
+        switch (strideMax.log2 - strideMin.log2) {
+            case 0:
+                // direct comparison
+                asm.fldp(128, v(0), v(1), createPairBaseRegisterOnlyAddress(128, arrayMin));
+                asm.fldp(128, v(2), v(3), createPairBaseRegisterOnlyAddress(128, arrayMax));
+                if (withMask()) {
+                    if (strideMask == strideMax) {
+                        asm.fldp(128, v(8), v(9), createPairBaseRegisterOnlyAddress(128, arrayMask));
+                    } else {
+                        asm.fldr(128, v(8), createBaseRegisterOnlyAddress(128, arrayMask));
+                    }
+                }
+                asm.add(64, arrayMin, arrayMin, len, ShiftType.LSL, strideMin.log2);
+                asm.add(64, arrayMax, arrayMax, len, ShiftType.LSL, strideMax.log2);
+                if (withMask()) {
+                    asm.add(64, arrayMask, arrayMask, len, ShiftType.LSL, strideMask.log2);
+                }
+                asm.fldp(128, v(4), v(5), createPairBaseRegisterOnlyAddress(128, arrayMin));
+                asm.fldp(128, v(6), v(7), createPairBaseRegisterOnlyAddress(128, arrayMax));
+                if (withMask()) {
+                    int arrayA1 = strideA == strideMin ? 0 : 2;
+                    int arrayA2 = strideA == strideMin ? 1 : 3;
+                    if (strideMask == strideMax) {
+                        asm.fldp(128, v(10), v(11), createPairBaseRegisterOnlyAddress(128, arrayMask));
+                    } else {
+                        asm.fldr(128, v(10), createBaseRegisterOnlyAddress(128, arrayMask));
+                        assert strideMax == Stride.S2 && strideMask == Stride.S1;
+                        asm.neon.uxtl2VV(ElementSize.Byte, v(9), v(8));
+                        asm.neon.uxtl2VV(ElementSize.Byte, v(11), v(10));
+                        asm.neon.uxtlVV(ElementSize.Byte, v(8), v(8));
+                        asm.neon.uxtlVV(ElementSize.Byte, v(10), v(10));
+                    }
+                    asm.neon.orrVVV(FullReg, v(arrayA1), v(arrayA1), v(8));
+                    asm.neon.orrVVV(FullReg, v(arrayA2), v(arrayA2), v(9));
+                }
+                asm.neon.eorVVV(FullReg, v(0), v(0), v(2));
+                asm.neon.eorVVV(FullReg, v(1), v(1), v(3));
+                if (withMask()) {
+                    int arrayA3 = strideA == strideMin ? 4 : 6;
+                    int arrayA4 = strideA == strideMin ? 5 : 7;
+                    asm.neon.orrVVV(FullReg, v(arrayA3), v(arrayA3), v(10));
+                    asm.neon.orrVVV(FullReg, v(arrayA4), v(arrayA4), v(11));
+                }
+                asm.neon.eorVVV(FullReg, v(4), v(4), v(6));
+                asm.neon.eorVVV(FullReg, v(5), v(5), v(7));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
+                asm.neon.orrVVV(FullReg, v(4), v(4), v(5));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(4));
+                break;
+            case 1:
+                asm.sub(64, len, len, 32 >> strideMax.log2);
+                // 1 -> 2 byte comparison
+                asm.neon.ld2MultipleVV(FullReg, minESize, v(0), v(1), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMax, 32));
+                asm.fldr(128, v(4), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 16));
+                if (withMask()) {
+                    if (strideMask == strideMin) {
+                        asm.fldr(128, v(6), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 16));
+                    } else {
+                        asm.neon.ld2MultipleVV(FullReg, minESize, v(6), v(7), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMask, 32));
+                    }
+                }
+                asm.add(64, arrayMin, arrayMin, len, ShiftType.LSL, strideMin.log2);
+                asm.add(64, arrayMax, arrayMax, len, ShiftType.LSL, strideMax.log2);
+                if (withMask()) {
+                    asm.add(64, arrayMask, arrayMask, len, ShiftType.LSL, strideMask.log2);
+                }
+                asm.neon.ld2MultipleVV(FullReg, minESize, v(2), v(3), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMax, 32));
+                asm.fldr(128, v(5), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 16));
+                if (withMask()) {
+                    if (strideMask == strideMin) {
+                        asm.fldr(128, v(7), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 16));
+                    } else {
+                        asm.neon.ld2MultipleVV(FullReg, minESize, v(8), v(9), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMask, 32));
+                    }
+                    int arrayA1 = strideA == strideMax ? 0 : 4;
+                    int arrayA2 = strideA == strideMax ? 2 : 5;
+                    int arrayM1 = 6;
+                    int arrayM2 = strideMask == strideMin ? 7 : 8;
+                    // OR lower half elements to arrayA
+                    asm.neon.orrVVV(FullReg, v(arrayA1), v(arrayA1), v(arrayM1));
+                    asm.neon.orrVVV(FullReg, v(arrayA2), v(arrayA2), v(arrayM2));
+                    if (strideMask == strideMax) {
+                        if (strideA == strideMax) {
+                            // OR upper elements to arrayA
+                            asm.neon.orrVVV(FullReg, v(1), v(1), v(7));
+                            asm.neon.orrVVV(FullReg, v(3), v(3), v(9));
+                        } else {
+                            // EOR upper elements to arrayB
+                            asm.neon.eorVVV(FullReg, v(1), v(1), v(7));
+                            asm.neon.eorVVV(FullReg, v(3), v(3), v(9));
+                        }
+                    }
+                }
+                asm.neon.eorVVV(FullReg, v(0), v(0), v(4));
+                asm.neon.eorVVV(FullReg, v(2), v(2), v(5));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
+                asm.neon.orrVVV(FullReg, v(2), v(2), v(3));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
+                break;
+            case 2:
+                asm.sub(64, len, len, 32 >> strideMax.log2);
+                // 1 -> 4 byte comparison
+                asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(0), v(1), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMax, 32));
+                asm.fldr(64, v(4), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 8));
+                if (withMask()) {
+                    if (strideMask == strideMin) {
+                        asm.fldr(64, v(6), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 8));
+                    } else {
+                        asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(6), v(7), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMask, 32));
+                    }
+                }
+                asm.add(64, arrayMin, arrayMin, len, ShiftType.LSL, strideMin.log2);
+                asm.add(64, arrayMax, arrayMax, len, ShiftType.LSL, strideMax.log2);
+                if (withMask()) {
+                    asm.add(64, arrayMask, arrayMask, len, ShiftType.LSL, strideMask.log2);
+                }
+                asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(2), v(3), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMax, 32));
+                asm.fldr(64, v(5), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 8));
+                asm.neon.uxtlVV(minESize, v(4), v(4));
+                asm.neon.uxtlVV(minESize, v(5), v(5));
+                if (withMask()) {
+                    if (strideMask == strideMin) {
+                        asm.fldr(64, v(7), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 8));
+                        asm.neon.uxtlVV(minESize, v(6), v(6));
+                        asm.neon.uxtlVV(minESize, v(7), v(7));
+                    } else {
+                        asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(8), v(9), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMask, 32));
+                    }
+                    int arrayA1 = strideA == strideMax ? 0 : 4;
+                    int arrayA2 = strideA == strideMax ? 2 : 5;
+                    int arrayM1 = 6;
+                    int arrayM2 = strideMask == strideMin ? 7 : 8;
+                    // OR lower elements to arrayA
+                    asm.neon.orrVVV(FullReg, v(arrayA1), v(arrayA1), v(arrayM1));
+                    asm.neon.orrVVV(FullReg, v(arrayA2), v(arrayA2), v(arrayM2));
+                    if (strideMask == strideMax) {
+                        if (strideA == strideMax) {
+                            // OR upper elements to arrayA
+                            asm.neon.orrVVV(FullReg, v(1), v(1), v(7));
+                            asm.neon.orrVVV(FullReg, v(3), v(3), v(9));
+                        } else {
+                            // EOR upper elements to arrayB
+                            asm.neon.eorVVV(FullReg, v(1), v(1), v(7));
+                            asm.neon.eorVVV(FullReg, v(3), v(3), v(9));
+                        }
+                    }
+                }
+                asm.neon.eorVVV(FullReg, v(0), v(0), v(4));
+                asm.neon.eorVVV(FullReg, v(2), v(2), v(5));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
+                asm.neon.orrVVV(FullReg, v(2), v(2), v(3));
+                asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
+                break;
+            default:
+                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
+        }
+        asm.neon.umaxvSV(FullReg, ElementSize.Word, v(0), v(0));
+        asm.fcmpZero(64, v(0));
+        asm.jmp(end);
+    }
+
+    private void tail16(AArch64MacroAssembler asm,
+                    Stride strideA,
+                    Stride strideB,
+                    Stride strideM,
+                    Stride strideMax,
+                    Stride strideMin,
+                    Register arrayA,
+                    Register arrayB,
+                    Register arrayM,
+                    Register len,
+                    Label entry,
+                    Label nextTail,
+                    Label end) {
+        Register vecArrayA1 = v(0);
+        Register vecArrayA2 = v(1);
+        Register vecArrayB1 = v(2);
+        Register vecArrayB2 = v(3);
+        Register vecArrayM1 = withMask() ? v(4) : null;
+        Register vecArrayM2 = withMask() ? v(5) : null;
+        tailLoad(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, vecArrayA1, vecArrayA2, vecArrayB1, vecArrayB2, vecArrayM1, vecArrayM2, entry, nextTail, 16);
+        ElementSize minESize = asElementSize(strideMin);
+        Register vecArrayMin1 = strideA == strideMin ? vecArrayA1 : vecArrayB1;
+        Register vecArrayMin2 = strideA == strideMin ? vecArrayA2 : vecArrayB2;
+        switch (strideMax.log2 - strideMin.log2) {
+            case 0:
+                // direct comparison
+                if (withMask() && strideM.value < strideMin.value) {
+                    asm.neon.uxtlVV(asElementSize(strideM), vecArrayM1, vecArrayM1);
+                    asm.neon.uxtlVV(asElementSize(strideM), vecArrayM2, vecArrayM2);
+                }
+                break;
+            case 1:
+                asm.neon.uxtlVV(minESize, vecArrayMin1, vecArrayMin1);
+                asm.neon.uxtlVV(minESize, vecArrayMin2, vecArrayMin2);
+                if (withMask() && strideM == strideMin) {
+                    asm.neon.uxtlVV(minESize, vecArrayM1, vecArrayM1);
+                    asm.neon.uxtlVV(minESize, vecArrayM2, vecArrayM2);
+                }
+                // 1 -> 2 byte comparison
+                break;
+            case 2:
+                asm.neon.uxtlVV(minESize, vecArrayMin1, vecArrayMin1);
+                asm.neon.uxtlVV(minESize, vecArrayMin2, vecArrayMin2);
+                asm.neon.uxtlVV(minESize.expand(), vecArrayMin1, vecArrayMin1);
+                asm.neon.uxtlVV(minESize.expand(), vecArrayMin2, vecArrayMin2);
+                if (withMask() && strideM == strideMin) {
+                    asm.neon.uxtlVV(minESize, vecArrayM1, vecArrayM1);
+                    asm.neon.uxtlVV(minESize, vecArrayM2, vecArrayM2);
+                    asm.neon.uxtlVV(minESize.expand(), vecArrayM1, vecArrayM1);
+                    asm.neon.uxtlVV(minESize.expand(), vecArrayM2, vecArrayM2);
+                }
+                // 1 -> 4 byte comparison
+                break;
+            default:
+                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
+        }
+        if (withMask()) {
+            asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayM1);
+            asm.neon.orrVVV(FullReg, vecArrayA2, vecArrayA2, vecArrayM2);
+        }
+        asm.neon.eorVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayB1);
+        asm.neon.eorVVV(FullReg, vecArrayA2, vecArrayA2, vecArrayB2);
+        asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayA2);
+
+        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecArrayA1, vecArrayA1);
+        asm.fcmpZero(64, vecArrayA1);
+        asm.jmp(end);
+    }
+
+    private void tailLoad(AArch64MacroAssembler asm,
+                    Stride strideA,
+                    Stride strideB,
+                    Stride strideM,
+                    Stride strideMax,
+                    Register arrayA,
+                    Register arrayB,
+                    Register arrayM,
+                    Register len,
+                    Register vecArrayA1,
+                    Register vecArrayA2,
+                    Register vecArrayB1,
+                    Register vecArrayB2,
+                    Register vecArrayM1,
+                    Register vecArrayM2,
+                    Label entry,
+                    Label nextTail,
                     int nBytes) {
-        int srcSize = nBytes * 8;
-        masm.ands(32, zr, result, nBytes);
-        masm.branchConditionally(ConditionFlag.EQ, nextTail);
-        masm.ldr(srcSize, tmp, AArch64Address.createImmediateAddress(srcSize, AddressingMode.IMMEDIATE_POST_INDEXED, array1, nBytes));
+        int bitsA = loadBits(strideA, strideMax, nBytes);
+        int bitsB = loadBits(strideB, strideMax, nBytes);
+        int bitsM = loadBits(strideM, strideMax, nBytes);
+        asm.bind(entry);
+        // check if length is big enough for current load size
+        asm.adds(64, len, len, nBytes >> strideMax.log2);
+        asm.branchConditionally(ConditionFlag.MI, nextTail);
+        // load from start of arrays
+        asm.fldr(bitsA, vecArrayA1, createBaseRegisterOnlyAddress(bitsA, arrayA));
+        asm.fldr(bitsB, vecArrayB1, createBaseRegisterOnlyAddress(bitsB, arrayB));
         if (withMask()) {
-            masm.ldr(srcSize, rscratch1, AArch64Address.createImmediateAddress(srcSize, AddressingMode.IMMEDIATE_POST_INDEXED, mask, nBytes));
-            masm.orr(32, tmp, tmp, rscratch1);
+            asm.fldr(bitsM, vecArrayM1, createBaseRegisterOnlyAddress(bitsM, arrayM));
         }
-        masm.ldr(srcSize, rscratch1, AArch64Address.createImmediateAddress(srcSize, AddressingMode.IMMEDIATE_POST_INDEXED, array2, nBytes));
-        masm.eor(32, rscratch1, tmp, rscratch1);
-        masm.cbnz(32, rscratch1, breakLabel);
+        asm.add(64, arrayA, arrayA, len, ShiftType.LSL, strideA.log2);
+        asm.add(64, arrayB, arrayB, len, ShiftType.LSL, strideB.log2);
+        if (withMask()) {
+            asm.add(64, arrayM, arrayM, len, ShiftType.LSL, strideM.log2);
+        }
+        // load from end of arrays
+        asm.fldr(bitsA, vecArrayA2, createBaseRegisterOnlyAddress(bitsA, arrayA));
+        asm.fldr(bitsB, vecArrayB2, createBaseRegisterOnlyAddress(bitsB, arrayB));
+        if (withMask()) {
+            asm.fldr(bitsM, vecArrayM2, createBaseRegisterOnlyAddress(bitsM, arrayM));
+        }
     }
 
-    /**
-     * Emits code that uses 8-byte vector compares.
-     */
-    private void emitMixedStrideScalarCompare(AArch64MacroAssembler masm, Stride stride1, Stride stride2, Stride strideM, Register array1, Register array2, Register mask, Register length,
-                    Label breakLabel, Register rscratch1) {
-        Label loop = new Label();
-
-        Register tmp = asRegister(temp[3]);
-
-        // check for length == 0
-        masm.mov(64, rscratch1, zr);
-        masm.cbz(64, length, breakLabel);
-
-        // main loop
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(loop);
-        masm.ldr(stride1.getBitCount(), tmp, AArch64Address.createImmediateAddress(stride1.getBitCount(), AddressingMode.IMMEDIATE_POST_INDEXED, array1, stride1.value));
-        if (withMask()) {
-            masm.ldr(strideM.getBitCount(), rscratch1, AArch64Address.createImmediateAddress(strideM.getBitCount(), AddressingMode.IMMEDIATE_POST_INDEXED, mask, strideM.value));
-            masm.orr(64, tmp, tmp, rscratch1);
+    private void tailLessThan16(AArch64MacroAssembler asm,
+                    Stride strideA,
+                    Stride strideB,
+                    Stride strideM,
+                    Stride strideMax,
+                    Register arrayA,
+                    Register arrayB,
+                    Register arrayM,
+                    Register len,
+                    Register tmp,
+                    Register ret,
+                    Label entry,
+                    Label nextTail,
+                    Label end,
+                    int nBytes) {
+        Register vecArrayA1 = v(0);
+        Register vecArrayA2 = v(1);
+        Register vecArrayB1 = v(2);
+        Register vecArrayB2 = v(3);
+        Register vecArrayM1 = withMask() ? v(4) : null;
+        Register vecArrayM2 = withMask() ? v(5) : null;
+        assert nBytes <= 8;
+        int bitsA = loadBits(strideA, strideMax, nBytes);
+        int bitsB = loadBits(strideB, strideMax, nBytes);
+        int bitsM = loadBits(strideM, strideMax, nBytes);
+        if (strideMax.value < nBytes) {
+            // load array start and end vectors
+            tailLoad(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, vecArrayA1, vecArrayA2, vecArrayB1, vecArrayB2, vecArrayM1, vecArrayM2, entry, nextTail, nBytes);
+            // combine results into single vectors
+            asm.neon.insXX(ElementSize.fromSize(bitsA), vecArrayA1, 1, vecArrayA2, 0);
+            asm.neon.insXX(ElementSize.fromSize(bitsB), vecArrayB1, 1, vecArrayB2, 0);
+            if (withMask()) {
+                asm.neon.insXX(ElementSize.fromSize(bitsM), vecArrayM1, 1, vecArrayM2, 0);
+            }
+            // expand elements if necessary
+            tailExtend(asm, strideA, strideMax, vecArrayA1);
+            tailExtend(asm, strideB, strideMax, vecArrayB1);
+            if (withMask()) {
+                tailExtend(asm, strideM, strideMax, vecArrayM1);
+                asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayM1);
+            }
+            asm.neon.eorVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayB1);
+            asm.neon.umaxvSV(FullReg, ElementSize.Word, vecArrayA1, vecArrayA1);
+            asm.fcmpZero(64, vecArrayA1);
+        } else if (strideMax.value == nBytes) {
+            asm.bind(entry);
+            // tail for length == 1
+            asm.adds(64, len, len, (nBytes << 1) >> strideMax.log2);
+            asm.branchConditionally(ConditionFlag.EQ, end);
+            asm.ldr(strideA.getBitCount(), tmp, createBaseRegisterOnlyAddress(strideA.getBitCount(), arrayA));
+            if (withMask()) {
+                asm.ldr(strideM.getBitCount(), ret, createBaseRegisterOnlyAddress(strideM.getBitCount(), arrayM));
+                asm.orr(64, tmp, tmp, ret);
+            }
+            asm.ldr(strideB.getBitCount(), ret, createBaseRegisterOnlyAddress(strideB.getBitCount(), arrayB));
+            asm.cmp(64, tmp, ret);
         }
-        masm.ldr(stride2.getBitCount(), rscratch1, AArch64Address.createImmediateAddress(stride2.getBitCount(), AddressingMode.IMMEDIATE_POST_INDEXED, array2, stride2.value));
-        masm.eor(64, rscratch1, tmp, rscratch1);
-        masm.cbnz(64, rscratch1, breakLabel);
-        masm.sub(64, length, length, 1);
-        masm.cbnz(64, length, loop);
+        asm.jmp(end);
     }
 
-    /**
-     * This implementation is similar to (AArch64ArrayIndexOfOp.emitSIMDCompare). The main
-     * difference is that it is only necessary to find any mismatch, not a match. In the case of a
-     * mismatch, the loop is exited immediately. To ensure accesses on array1 are aligned, the first
-     * loop iteration is peeled.
-     *
-     * @formatter:off
-     *  1. Get the references that point to the first characters of the source and target array.
-     *  2. Read and compare array chunk-by-chunk.
-     *   2.1 Store end index at the beginning of the last chunk ('refAddress'). This ensures that we
-     *   don't read beyond the array boundary.
-     *   2.2 Read a 32-byte chunk from source and target array each in two SIMD registers.
-     *  3. XOR the 32-byte chunks from both arrays. The result of the comparison is now in two SIMD registers.
-     *  4. Detect a mismatch by checking if any element of the two SIMD registers is nonzero.
-     *   4.1 Combine the result of comparison from Step 3 into one SIMD register by performing logical OR.
-     *   4.2 Mismatch is detected if any of the bits in the XOR result is set. Thus, find the maximum
-     *   element across the vector. Here, element size doesn't matter as the objective is to detect a mismatch.
-     *   4.3 Read the maximum value from Step 4.2 and sign-extend it to 8 bytes. There is a mismatch
-     *   if the result != 0.
-     *  5. Repeat the process until the end of the arrays.
-     * @formatter:on
-     */
-    private void emitSIMDCompare(AArch64MacroAssembler masm, Stride stride1, Stride stride2, Stride strideM, Register array1, Register array2, Register mask, Register byteArrayLength,
-                    Register hasMismatch, Register scratch,
-                    Label endLabel) {
-        Register refAddress = asRegister(temp[3]);
-        Register endOfMaxStrideArray = scratch;
-
-        Label compareByChunkHead = new Label();
-        Label compareByChunkTail = new Label();
-        Label processTail = new Label();
-
-        Stride maxStride = Stride.max(stride1, stride2);
-        Stride minStride = Stride.min(stride1, stride2);
-        assert strideM.value <= maxStride.value;
-        Register maxStrideArray = stride1.value < stride2.value ? array2 : array1;
-        Register minStrideArray = stride1.value < stride2.value ? array1 : array2;
-
-        // convert length to byte-length
-        if (maxStride.log2 > 0) {
-            masm.lsl(64, byteArrayLength, byteArrayLength, maxStride.log2);
+    private static void tailExtend(AArch64MacroAssembler asm, Stride stride, Stride strideMax, Register vecArray) {
+        switch (strideMax.log2 - stride.log2) {
+            case 0:
+                break;
+            case 1:
+                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
+                break;
+            case 2:
+                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
+                asm.neon.uxtlVV(asElementSize(stride).expand(), vecArray, vecArray);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
         }
-
-        /*
-         * 2.1 Set endOfArray1 pointing to byte next to the last valid element in array1 and
-         * 'refAddress1' pointing to the beginning of the last chunk.
-         */
-        masm.add(64, endOfMaxStrideArray, maxStrideArray, byteArrayLength);
-        masm.sub(64, refAddress, endOfMaxStrideArray, 32);
-
-        /*
-         * **********************************
-         *
-         * START PEELED FIRST LOOP ITERATION.
-         *
-         * **********************************
-         */
-
-        simdCompare(masm, stride1, stride2, strideM, hasMismatch, array1, array2, mask);
-        /* If there is mismatch, then no more searching is necessary */
-        masm.cbnz(64, hasMismatch, endLabel);
-
-        /* 5. No mismatch; proceed to next loop iteration. */
-        /*
-         * Extra first loop iteration step: align array1 to a 32-byte boundary.
-         *
-         * Determine how much to subtract from array2 to match aligned array1. Using the result
-         * register as a temporary.
-         */
-        Register arrayAlignment = asRegister(resultValue);
-        masm.and(64, arrayAlignment, maxStrideArray, 31);
-        masm.sub(64, minStrideArray, minStrideArray, arrayAlignment, ShiftType.LSR, maxStride.log2 - minStride.log2);
-        if (withMask()) {
-            masm.sub(64, mask, mask, arrayAlignment, ShiftType.LSR, maxStride.log2 - strideM.log2);
-        }
-        masm.bic(64, maxStrideArray, maxStrideArray, 31);
-
-        /*
-         * ********************************
-         *
-         * END PEELED FIRST LOOP ITERATION.
-         *
-         * ********************************
-         */
-
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(compareByChunkHead);
-        masm.cmp(64, refAddress, maxStrideArray);
-        masm.branchConditionally(ConditionFlag.LO, processTail);
-        masm.bind(compareByChunkTail);
-
-        /* 2.2 Read a 32-byte chunk from source and target array each in two SIMD registers. */
-        simdCompare(masm, stride1, stride2, strideM, hasMismatch, array1, array2, mask);
-        /* 5. No mismatch; jump to next loop iteration. */
-        masm.cbz(64, hasMismatch, compareByChunkHead);
-        /* If there is mismatch, then no more searching is necessary */
-        masm.jmp(endLabel);
-
-        masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
-        masm.bind(processTail);
-        masm.cmp(64, maxStrideArray, endOfMaxStrideArray);
-        masm.branchConditionally(ConditionFlag.HS, endLabel);
-        /* Adjust array1 and array2 to access last 32 bytes. */
-        masm.sub(64, arrayAlignment, maxStrideArray, refAddress);
-        masm.mov(64, maxStrideArray, refAddress);
-        masm.sub(64, minStrideArray, minStrideArray, arrayAlignment, ShiftType.LSR, maxStride.log2 - minStride.log2);
-        if (withMask()) {
-            masm.sub(64, mask, mask, arrayAlignment, ShiftType.LSR, maxStride.log2 - strideM.log2);
-        }
-        masm.jmp(compareByChunkTail);
     }
 
-    private void simdCompare(AArch64MacroAssembler masm,
-                    Stride stride1,
-                    Stride stride2,
-                    Stride strideM, Register hasMismatch,
-                    Register array1,
-                    Register array2, Register mask) {
-
-        Register array1Part1RegV = asRegister(vectorTemp[0]);
-        Register array1Part2RegV = asRegister(vectorTemp[1]);
-        Register array2Part1RegV = asRegister(vectorTemp[2]);
-        Register array2Part2RegV = asRegister(vectorTemp[3]);
-        Register maskPart1RegV = withMask() ? asRegister(vectorTemp[4]) : null;
-        Register maskPart2RegV = withMask() ? asRegister(vectorTemp[5]) : null;
-
-        Stride strideMax = Stride.max(stride1, stride2);
-        /* 2.2 Read a 32-byte chunk from source and target array each in two SIMD registers. */
-        masm.loadAndExtend(strideMax, stride1, array1, array1Part1RegV, array1Part2RegV);
-        masm.loadAndExtend(strideMax, stride2, array2, array2Part1RegV, array2Part2RegV);
-        if (withMask()) {
-            masm.loadAndExtend(strideMax, strideM, mask, maskPart1RegV, maskPart2RegV);
-            masm.neon.orrVVV(FullReg, array1Part1RegV, array1Part1RegV, maskPart1RegV);
-            masm.neon.orrVVV(FullReg, array1Part2RegV, array1Part2RegV, maskPart2RegV);
-        }
-        /* 3. XOR arrays in the 32-byte chunk */
-        masm.neon.eorVVV(FullReg, array1Part1RegV, array1Part1RegV, array2Part1RegV);
-        masm.neon.eorVVV(FullReg, array1Part2RegV, array1Part2RegV, array2Part2RegV);
-        /* 4. Determining if they are identical. */
-        /* 4.1 Combine two registers into 1 register */
-        masm.neon.orrVVV(FullReg, array1Part1RegV, array1Part1RegV, array1Part2RegV);
-        /* 4.2 Find the maximum value across the vector */
-        masm.neon.umaxvSV(FullReg, ElementSize.Word, array1Part1RegV, array1Part1RegV);
-        /* 4.3 If result != 0, then there is a mismatch somewhere. */
-        masm.neon.moveFromIndex(ElementSize.DoubleWord, ElementSize.Word, hasMismatch, array1Part1RegV, 0);
+    private static int loadBits(Stride strideA, Stride strideMax, int nBytes) {
+        return (nBytes << 3) >> (strideMax.log2 - strideA.log2);
     }
 }

@@ -102,7 +102,7 @@ public abstract class TStringTest extends MethodSubstitutionTest {
         }
     }
 
-    static int readValue(byte[] array, int stride, int index) {
+    protected static int readValue(byte[] array, int stride, int index) {
         int i = index << stride;
         if (stride == 0) {
             return Byte.toUnsignedInt(array[i]);

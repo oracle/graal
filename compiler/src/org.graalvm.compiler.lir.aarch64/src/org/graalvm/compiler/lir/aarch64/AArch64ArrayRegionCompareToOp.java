@@ -115,6 +115,8 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
             masm.add(64, arrayA, asRegister(arrayAValue), asRegister(offsetAValue));
             masm.add(64, arrayB, asRegister(arrayBValue), asRegister(offsetBValue));
 
+            masm.mov(32, length, asRegister(lengthValue));
+
             if (withDynamicStrides()) {
                 Label[] variants = new Label[9];
                 for (int i = 0; i < variants.length; i++) {
@@ -179,7 +181,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         asm.fldr(128, vecMask, AArch64Address.createBaseRegisterOnlyAddress(128, tmp));
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
-        asm.subs(64, len, asRegister(lengthValue), 32 >> strideMax.log2);
+        asm.subs(64, len, len, 32 >> strideMax.log2);
         asm.branchConditionally(ConditionFlag.MI, tailLessThan32);
 
         Register refAddress = len;
