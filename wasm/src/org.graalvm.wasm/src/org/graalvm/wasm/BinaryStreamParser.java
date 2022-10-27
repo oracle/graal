@@ -85,22 +85,33 @@ public abstract class BinaryStreamParser {
     }
 
     /**
-     * Unchecked version of {@link #peekUnsignedInt32AndLength}.
+     * Unchecked and manually unrolled version of {@link #peekUnsignedInt32AndLength}.
      */
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long rawPeekUnsignedInt32AndLength(byte[] data, int initialOffset) {
         int result = 0;
-        int shift = 0;
-        int currentOffset = initialOffset;
-        byte b = (byte) 0x80;
-        while (shift < 42 && (b & 0x80) != 0) {
-            b = rawPeek1(data, currentOffset);
-            currentOffset++;
-            result |= (b & 0x7F) << shift;
-            shift += 7;
+        byte b = data[initialOffset];
+        result |= (b & 0x7F);
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 1);
         }
-
-        return packValueAndLength(result, currentOffset - initialOffset);
+        b = data[initialOffset + 1];
+        result |= (b & 0x7F) << 7;
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 2);
+        }
+        b = data[initialOffset + 2];
+        result |= (b & 0x7F) << 14;
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 3);
+        }
+        b = data[initialOffset + 3];
+        result |= (b & 0x7F) << 21;
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 4);
+        }
+        b = data[initialOffset + 4];
+        result |= (b & 0x7F) << 28;
+        return packValueAndLength(result, 5);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -130,26 +141,45 @@ public abstract class BinaryStreamParser {
     }
 
     /**
-     * Unchecked version of {@link #peekSignedInt32AndLength}.
+     * Unchecked and manually unrolled version of {@link #peekSignedInt32AndLength}.
      */
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long rawPeekSignedInt32AndLength(byte[] data, int initialOffset) {
         int result = 0;
-        int shift = 0;
-        int currentOffset = initialOffset;
-        byte b = (byte) 0x80;
-        while (shift < 42 && (b & 0x80) != 0) {
-            b = rawPeek1(data, currentOffset);
-            currentOffset++;
-            result |= (b & 0x7F) << shift;
-            shift += 7;
+        byte b = data[initialOffset];
+        result |= (b & 0x7F);
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 7);
+            }
+            return packValueAndLength(result, 1);
         }
-
-        if (shift < 35 && (b & 0x40) != 0) {
-            result |= (~0 << shift);
+        b = data[initialOffset + 1];
+        result |= (b & 0x7F) << 7;
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 14);
+            }
+            return packValueAndLength(result, 2);
         }
-
-        return packValueAndLength(result, currentOffset - initialOffset);
+        b = data[initialOffset + 2];
+        result |= (b & 0x7F) << 14;
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 21);
+            }
+            return packValueAndLength(result, 3);
+        }
+        b = data[initialOffset + 3];
+        result |= (b & 0x7F) << 21;
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 28);
+            }
+            return packValueAndLength(result, 4);
+        }
+        b = data[initialOffset + 4];
+        result |= (b & 0x7F) << 28;
+        return packValueAndLength(result, 5);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -352,6 +382,31 @@ public abstract class BinaryStreamParser {
             length++;
         }
         return length;
+    }
+
+    /**
+     *
+     * Manually unrolled version of {@link #peekLeb128Length(byte[], int)}
+     *
+     */
+    public static byte rawPeekLeb128IntLength(byte[] data, int initialOffset) {
+        byte b = data[initialOffset];
+        if ((b & 0x80) == 0) {
+            return 1;
+        }
+        b = data[initialOffset + 1];
+        if ((b & 0x80) == 0) {
+            return 2;
+        }
+        b = data[initialOffset + 2];
+        if ((b & 0x80) == 0) {
+            return 3;
+        }
+        b = data[initialOffset + 3];
+        if ((b & 0x80) == 0) {
+            return 4;
+        }
+        return 5;
     }
 
     @TruffleBoundary

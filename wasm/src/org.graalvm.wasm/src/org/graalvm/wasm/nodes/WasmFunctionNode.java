@@ -545,22 +545,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case BR: {
                     final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
+                    final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
                     final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
                     final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    if (CompilerDirectives.inInterpreter()) {
-                        final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
-                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
-                        if (targetUnwindType == PRIMITIVE_UNWIND) {
-                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                        } else if (targetUnwindType == REFERENCE_UNWIND) {
-                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
-                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                        }
-                    } else {
+                    CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                    if (targetUnwindType == PRIMITIVE_UNWIND) {
+                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    } else if (targetUnwindType == REFERENCE_UNWIND) {
+                        unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    } else if (targetUnwindType == UNKNOWN_UNWIND) {
                         unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                     }
+
                     // Jump to the target block.
                     offset += secondValueSigned(extraData, extraOffset, compact);
                     extraOffset += firstValueSigned(extraData, extraOffset, compact);
@@ -573,20 +570,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
+                        final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
                         final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
                         final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                        if (CompilerDirectives.inInterpreter()) {
-                            final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
-                            CompilerAsserts.partialEvaluationConstant(targetUnwindType);
-                            if (targetUnwindType == PRIMITIVE_UNWIND) {
-                                unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                            } else if (targetUnwindType == REFERENCE_UNWIND) {
-                                unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                            } else if (targetUnwindType == UNKNOWN_UNWIND) {
-                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
-                            }
-                        } else {
+                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
                             unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
                         }
 
@@ -596,7 +589,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         stackPointer = targetStackPointer + targetResultCount;
                     } else {
                         // Skip label index.
-                        offset += offsetDelta(data, offset);
+                        offset += intOffsetDelta(data, offset);
                         // Jump to next extra data entry after the branch.
                         extraOffset += compact ? COMPACT_BR_IF_LENGTH : EXTENDED_BR_IF_LENGTH;
                     }
@@ -648,10 +641,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
+                                final int targetUnwindType = thirdValueUnsigned(extraData, indexOffset, compact);
                                 final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
                                 final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                if (targetUnwindType == PRIMITIVE_UNWIND) {
+                                    unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                } else if (targetUnwindType == REFERENCE_UNWIND) {
+                                    unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                                    unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                }
 
                                 // Jump to the branch target.
                                 offset += secondValueSigned(extraData, indexOffset, compact);
@@ -1026,7 +1026,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case I32_LOAD: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    int memAlignOffsetDelta = offsetDelta(data, offset);
+                    int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
                     // region Load LEB128 Unsigned32 -> memOffset
@@ -1057,7 +1057,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    int memAlignOffsetDelta = offsetDelta(data, offset);
+                    int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
                     // region Load LEB128 Unsigned32 -> memOffset
@@ -1080,7 +1080,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I64_STORE_16:
                 case I64_STORE_32: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    int memAlignOffsetDelta = offsetDelta(data, offset);
+                    int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
                     // region Load LEB128 Unsigned32 -> memOffset
@@ -3341,7 +3341,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
         }
         for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-            dropPrimitive(frame, i);
+            drop(frame, i);
         }
     }
 
@@ -3353,7 +3353,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
         }
         for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-            dropReference(frame, i);
+            drop(frame, i);
         }
     }
 
@@ -3383,6 +3383,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static long signedLongConstant(byte[] data, int offset) {
         return BinaryStreamParser.peekSignedInt64(data, offset, false);
+    }
+
+    private static int intOffsetDelta(byte[] data, int offset) {
+        return BinaryStreamParser.rawPeekLeb128IntLength(data, offset);
     }
 
     private static int offsetDelta(byte[] data, int offset) {
