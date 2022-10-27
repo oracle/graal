@@ -210,7 +210,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         }
         Class<?> nonNullType = PiNode.piCastNonNullClass(type, SnippetAnchorNode.anchor());
         if (probability(DEOPT_PROBABILITY,
-                        DynamicNewInstanceNode.throwsInstantiationException(nonNullType, classClass))) {
+                        DynamicNewInstanceNode.throwsInstantiationExceptionInjectedProbability(DEOPT_PROBABILITY, nonNullType, classClass))) {
             DeoptimizeNode.deopt(None, RuntimeConstraint);
         }
         return nonNullType;

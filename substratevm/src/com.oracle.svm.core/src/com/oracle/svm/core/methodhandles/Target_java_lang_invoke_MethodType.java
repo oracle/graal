@@ -46,7 +46,7 @@ final class Target_java_lang_invoke_MethodType {
      * MethodType completely. But this recomputation seems less intrusive.
      */
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.lang.invoke.MethodType$ConcurrentWeakInternSet") //
-    private static Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet internTable;
+    static Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet internTable;
 
     /**
      * This field is lazily initialized. We need a stable value, otherwise the initialization can
@@ -66,6 +66,11 @@ final class Target_java_lang_invoke_MethodType {
 final class Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet {
 }
 
+/**
+ * The substitutions are needed to replace identity comparison ({@code ==}) with
+ * {@code MethodType.equal} calls. We do not keep
+ * {@link Target_java_lang_invoke_MethodType#internTable}, so we cannot guarantee identity.
+ */
 @TargetClass(className = "java.lang.invoke.Invokers")
 final class Target_java_lang_invoke_Invokers {
     @Substitute
@@ -74,6 +79,31 @@ final class Target_java_lang_invoke_Invokers {
             throw new WrongMethodTypeException("expected " + expected + " but found " + mh.type());
         }
     }
+
+    @Substitute
+    static MethodHandle checkVarHandleGenericType(Target_java_lang_invoke_VarHandle handle, Target_java_lang_invoke_VarHandle_AccessDescriptor ad) {
+        // Test for exact match on invoker types
+        // TODO match with erased types and add cast of return value to lambda form
+        MethodHandle mh = handle.getMethodHandle(ad.mode);
+        if (mh.type().equals(ad.symbolicMethodTypeInvoker)) {
+            return mh;
+        } else {
+            return mh.asType(ad.symbolicMethodTypeInvoker);
+        }
+    }
+
+    @Substitute
+    static MethodHandle checkVarHandleExactType(Target_java_lang_invoke_VarHandle handle, Target_java_lang_invoke_VarHandle_AccessDescriptor ad) {
+        MethodHandle mh = handle.getMethodHandle(ad.mode);
+        MethodType mt = mh.type();
+        if (!mt.equals(ad.symbolicMethodTypeInvoker)) {
+            throw newWrongMethodTypeException(mt, ad.symbolicMethodTypeInvoker);
+        }
+        return mh;
+    }
+
+    @Alias
+    static native WrongMethodTypeException newWrongMethodTypeException(MethodType actual, MethodType expected);
 }
 
 @TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator")

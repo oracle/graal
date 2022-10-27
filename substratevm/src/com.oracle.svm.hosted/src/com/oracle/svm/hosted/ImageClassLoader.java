@@ -104,6 +104,7 @@ public final class ImageClassLoader {
             executor.shutdown();
             executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         }
+        classLoaderSupport.reportBuilderClassesInApplication();
     }
 
     private void findSystemElements(Class<?> systemClass) {

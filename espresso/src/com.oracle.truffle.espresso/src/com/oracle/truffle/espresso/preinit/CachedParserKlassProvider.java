@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public final class CachedParserKlassProvider extends AbstractCachedKlassProvider implements ParserKlassProvider {
     private final ParserKlassProvider fallbackProvider;
@@ -45,10 +46,9 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
 
     @Override
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
-        assert (info.isAnonymousClass() && typeOrNull == null) || (!info.isAnonymousClass() && typeOrNull != null);
-        if (shouldCacheClass(info)) {
+        if (shouldCacheClass(info) && typeOrNull != null) {
             ParserKlassCacheKey key = null;
-            ParserKlass parserKlass = null;
+            ParserKlass parserKlass;
 
             boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
 
@@ -57,7 +57,9 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
                 parserKlass = bootParserKlassCache.get(typeOrNull);
             } else {
                 // For other class loaders, query the application cache
-                key = new ParserKlassCacheKey(bytes);
+                boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+                assert !info.isAnonymousClass() && !info.isHidden() && info.patches == null;
+                key = new ParserKlassCacheKey(bytes, typeOrNull, verifiable);
                 parserKlass = appParserKlassCache.get(key);
             }
 
@@ -88,10 +90,21 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
     private static final class ParserKlassCacheKey {
         private final byte[] bytes;
         private final int hash;
+        private final Symbol<Symbol.Type> type;
+        private final boolean verifiable;
 
-        ParserKlassCacheKey(byte[] bytes) {
+        ParserKlassCacheKey(byte[] bytes, Symbol<Symbol.Type> type, boolean verifiable) {
             this.bytes = bytes;
-            this.hash = Arrays.hashCode(bytes);
+            this.type = type;
+            this.verifiable = verifiable;
+            this.hash = computeHash(bytes, type, verifiable);
+        }
+
+        private static int computeHash(byte[] bytes, Symbol<Symbol.Type> typeOrNull, boolean verifiable) {
+            int result = Arrays.hashCode(bytes);
+            result = 31 * result + typeOrNull.hashCode();
+            result = 31 * result + Boolean.hashCode(verifiable);
+            return result;
         }
 
         @Override
@@ -103,7 +116,10 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
                 return false;
             }
             ParserKlassCacheKey other = (ParserKlassCacheKey) o;
-            return this.hash == other.hash && Arrays.equals(this.bytes, other.bytes);
+            if (this.hash != other.hash) {
+                return false;
+            }
+            return Arrays.equals(this.bytes, other.bytes) && this.type.equals(other.type) && this.verifiable == other.verifiable;
         }
 
         @Override

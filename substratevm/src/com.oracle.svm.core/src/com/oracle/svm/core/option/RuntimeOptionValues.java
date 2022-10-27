@@ -191,7 +191,11 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             valueString = valueString.substring(0, valueString.length() - 1);
         }
 
-        return Long.parseLong(valueString) * scale;
+        try {
+            return Long.parseLong(valueString) * scale;
+        } catch (NumberFormatException nfe) {
+            throw new IllegalArgumentException(String.format("Invalid value \"%s\". Allowed values are [1, inf)(|<k>|<m>|<g>|<t>).", v));
+        }
     }
 }
 

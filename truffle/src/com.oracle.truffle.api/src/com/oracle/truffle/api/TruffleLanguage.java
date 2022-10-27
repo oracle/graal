@@ -87,6 +87,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -2249,13 +2250,37 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if access to IO is allowed, else <code>false</code>.
+         * Returns {@code true} if access to files is allowed, else {@code false}.
          *
          * @since 22.3
+         * @deprecated since 23.0; replaced by {@link #isFileIOAllowed()}.
          */
+        @Deprecated(since = "23.0")
         public boolean isIOAllowed() {
+            return isFileIOAllowed();
+        }
+
+        /**
+         * Returns {@code true} if access to files is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isFileIOAllowed() {
             try {
                 return LanguageAccessor.engineAccess().isIOAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns {@code true} if access to network sockets is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isSocketIOAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isSocketIOAllowed(polyglotLanguageContext);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2680,8 +2705,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns a {@link TruffleFile} for given path. The returned {@link TruffleFile} access
          * depends on the file system used by the context and can vary from all access in case of
-         * {@link Builder#allowIO(boolean) allowed IO} to no access in case of denied IO. When IO is
-         * not enabled by the {@code Context} the {@link TruffleFile} operations throw
+         * {@link IOAccess#ALL allowed IO} to no access in case of {@link IOAccess#NONE denied IO}.
+         * When IO is not enabled by the {@code Context} the {@link TruffleFile} operations throw
          * {@link SecurityException}. The {@code getPublicTruffleFile} method should be used to
          * access user files or to implement language IO builtins.
          *
@@ -2689,6 +2714,8 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
+         * @see IOAccess
+         * @see Builder#allowIO(IOAccess)
          * @since 19.3.0
          */
         @TruffleBoundary

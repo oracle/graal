@@ -66,7 +66,7 @@
         "gate", 
         "--strict-mode",
         "--jacoco-omit-excluded",
-        "--jacoco-generic-paths",
+        "--jacoco-relativize-paths",
         "--jacoco-omit-src-gen",
         "--jacocout",
         "coverage",
@@ -75,9 +75,10 @@
       ],
     ],
     teardown+: [
-      ["mx", "sversions", "--print-related-repos", "|", "coverage-uploader.py", "--associated-repos", "-"],
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     targets: ["weekly"],
+    notify_groups:: ["tools"],
   },
 
   builds: [

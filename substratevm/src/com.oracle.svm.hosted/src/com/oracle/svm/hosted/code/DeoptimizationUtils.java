@@ -246,11 +246,7 @@ class DeoptimizationUtils {
 
                 boolean isDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
                 if (infopoint instanceof DeoptEntryInfopoint) {
-                    if (!isDeoptEntry) {
-                        System.out.println("curious");
-                    }
-                    // Temp removed
-                    // assert isDeoptEntry;
+                    assert isDeoptEntry;
                 } else if (rootFrame.duringCall && isDeoptEntry) {
                     assert infopoint instanceof Call || isSingleSteppingInfopoint(infopoint);
                 } else {

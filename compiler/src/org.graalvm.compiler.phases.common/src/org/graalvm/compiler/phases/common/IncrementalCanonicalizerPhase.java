@@ -64,9 +64,9 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         GraalError.guarantee(!theTool.finalCanonicalization(), "Final canonicalization must not be incremental");
-        return super.canApply(graphState);
+        return super.notApplicableTo(graphState);
     }
 
     @Override

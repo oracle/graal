@@ -107,7 +107,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public int getPCRelativeOffset(Label label) {
         assert label.isBound();
         int offset = label.position() - position();
-        assert (offset & 0x3) == 0 : "unexpected alignment";
+        assert (offset & 0b11) == 0 : "unexpected alignment";
         return offset;
     }
 
@@ -1741,7 +1741,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         static int encode(PatchLabelKind patchKind, int extraInformation) {
-            assert NumUtil.isUnsignedNbit(32 - INFORMATION_OFFSET, extraInformation);
+            GraalError.guarantee(NumUtil.isUnsignedNbit(32 - INFORMATION_OFFSET, extraInformation), "unable to encode patch information 0x%x", extraInformation);
             return patchKind.encoding | (extraInformation << INFORMATION_OFFSET);
         }
 
@@ -1752,7 +1752,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public void adr(Register dst, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
             super.adr(dst, getPCRelativeOffset(label));
         } else {
@@ -1770,7 +1769,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void cbnz(int size, Register cmp, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         assert size == 32 || size == 64;
         if (label.isBound()) {
             super.cbnz(size, cmp, getPCRelativeOffset(label));
@@ -1791,7 +1789,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void cbz(int size, Register cmp, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         assert size == 32 || size == 64;
         if (label.isBound()) {
             super.cbz(size, cmp, getPCRelativeOffset(label));
@@ -1812,10 +1809,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 16-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void tbnz(Register cmp, int uimm6, Label label) {
-        assert NumUtil.isUnsignedNbit(6, uimm6);
         if (label.isBound()) {
             super.tbnz(cmp, uimm6, getPCRelativeOffset(label));
         } else {
+            ImmediateOpChecks.validateUnsigned(6, uimm6);
             label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << 6;
             int extraInformation = regEncoding | uimm6;
@@ -1831,10 +1828,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 16-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void tbz(Register cmp, int uimm6, Label label) {
-        assert NumUtil.isUnsignedNbit(6, uimm6);
         if (label.isBound()) {
             super.tbz(cmp, uimm6, getPCRelativeOffset(label));
         } else {
+            ImmediateOpChecks.validateUnsigned(6, uimm6);
             label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << 6;
             int extraInformation = regEncoding | uimm6;
@@ -1849,7 +1846,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void branchConditionally(ConditionFlag condition, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
             super.b(condition, getPCRelativeOffset(label));
         } else {
@@ -1876,7 +1872,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void jmp(Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
             super.b(getPCRelativeOffset(label));
         } else {
@@ -2009,7 +2004,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void align(int modulus) {
-        assert modulus > 0 && (modulus & 0x3) == 0 : "Modulus has to be a positive multiple of 4.";
+        assert modulus > 0 && (modulus & 0b11) == 0 : "Modulus has to be a positive multiple of 4.";
         if (position() % modulus == 0) {
             return;
         }
@@ -2026,6 +2021,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     protected void patchJumpTarget(int patchPos, int jumpTarget) {
         final int instruction = getInt(patchPos);
         final int pcRelativeOffset = jumpTarget - patchPos;
+        assert (pcRelativeOffset & 0b11) == 0 : "unexpected alignment " + pcRelativeOffset;
         PatchLabelKind type = PatchLabelKind.fromEncoding(instruction);
         final int extraInformation = PatchLabelKind.decodeExtraInformation(instruction);
         switch (type) {

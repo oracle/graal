@@ -103,11 +103,11 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.FSA, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
     }
 
     @Override

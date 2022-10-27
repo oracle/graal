@@ -261,7 +261,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word thread = getThread();
         byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
         // If the concurrent marker is not enabled or the vector length is zero, return.
-        if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0 || length == 0)) {
+        if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0) || probability(NOT_FREQUENT_PROBABILITY, length == 0)) {
             return;
         }
 

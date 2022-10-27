@@ -65,6 +65,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.graalvm.polyglot.io.IOAccess.Builder;
 
 /**
  * Service-provider for {@code Truffle} files.
@@ -478,7 +479,8 @@ public interface FileSystem {
      * }
      * </pre>
      *
-     * @see org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+     * @see Builder#fileSystem(FileSystem)
+     * @see org.graalvm.polyglot.Context.Builder#allowIO(IOAccess)
      *
      * @since 20.2.0
      */

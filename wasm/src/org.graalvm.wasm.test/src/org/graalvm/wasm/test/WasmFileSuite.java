@@ -66,6 +66,7 @@ import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -317,7 +318,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enable-io"));
             if (enableIO) {
-                contextBuilder.allowIO(true);
+                contextBuilder.allowIO(IOAccess.ALL);
                 tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
                 contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
                 contextBuilder.option("wasm.WasiMapDirs", "test::" + tempWorkingDirectory);

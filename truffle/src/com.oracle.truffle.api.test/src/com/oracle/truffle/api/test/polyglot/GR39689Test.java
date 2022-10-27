@@ -48,6 +48,7 @@ import java.util.Set;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -72,7 +73,8 @@ public class GR39689Test extends AbstractPolyglotTest {
 
     @Before
     public void setUp() {
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(new MockExistsFileSystem()).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new MockExistsFileSystem()).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build());
     }
 
     @Test

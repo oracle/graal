@@ -157,7 +157,7 @@ public class PluginGenerator {
             plugin.extraImports(processor, extra);
             extra.add("org.graalvm.compiler.nodes.graphbuilderconf." + plugin.pluginSuperclass());
             if (plugin.needsReplacement(processor)) {
-                extra.add("org.graalvm.compiler.nodes.graphbuilderconf.JacocoIgnoreGenerated");
+                extra.add("org.graalvm.compiler.options.ExcludeFromJacocoGeneratedReport");
                 extra.add("org.graalvm.compiler.graph.NodeInputList");
                 if (plugin.isWithExceptionReplacement(processor)) {
                     extra.add("org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode");

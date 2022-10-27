@@ -15,6 +15,9 @@
     ],
     targets: ["gate"],
     timelimit: "30:00",
+  },
+
+  local guard = {
     guard: {
         includes: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"],
     }
@@ -108,16 +111,16 @@
 
   builds: std.flattenArrays([
       [
-        linux_amd64  + jdk + sigtest,
+        linux_amd64  + jdk + sigtest + guard,
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
-        darwin_amd64 + jdk + truffle_weekly + gate_lite,
+        darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
       ] for jdk in [common.oraclejdk11, common.oraclejdk17]
     ]) + [
-    linux_amd64 + common.oraclejdk11 + truffle_gate + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    linux_amd64 + common.oraclejdk11 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    truffle_common + linux_amd64 + common.oraclejdk11 {
+    truffle_common + linux_amd64 + common.oraclejdk11 + guard {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],
@@ -125,7 +128,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk11 {
+    truffle_common + linux_amd64 + common.oraclejdk11 + guard {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -136,7 +139,7 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] +{
+    truffle_common + windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + guard {
       name: "gate-truffle-nfi-windows-11",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
@@ -146,15 +149,16 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + {
+    truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + guard + {
       name: "weekly-truffle-coverage-11-linux-amd64",
       run: [
-        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-generic-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       ],
       teardown+: [
         ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
       ],
       targets: ["weekly"],
+      notify_groups:: ["truffle"],
     },
 
     # BENCHMARKS

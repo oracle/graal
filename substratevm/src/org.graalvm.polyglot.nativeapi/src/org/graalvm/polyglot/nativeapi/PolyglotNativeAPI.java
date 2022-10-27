@@ -69,6 +69,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.nativeapi.types.CBoolPointer;
 import org.graalvm.polyglot.nativeapi.types.CInt16Pointer;
 import org.graalvm.polyglot.nativeapi.types.CInt32Pointer;
@@ -367,7 +368,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_context_builder_allow_io(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_IO) {
         resetErrorState();
         Context.Builder contextBuilder = fetchHandle(context_builder);
-        contextBuilder.allowIO(allow_IO);
+        contextBuilder.allowIO(allow_IO ? IOAccess.ALL : IOAccess.NONE);
         return poly_ok;
     }
 

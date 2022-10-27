@@ -87,4 +87,11 @@
     }
   else
     build,
+
+  # std.get is not available in all versions
+  std_get(o, f, default=null, inc_hidden=true)::
+    local objectHas = if inc_hidden then std.objectHasAll else std.objectHas;
+    if objectHas(o, f) then o[f] else default
+  ,
+
 }

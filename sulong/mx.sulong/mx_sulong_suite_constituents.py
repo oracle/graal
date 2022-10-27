@@ -137,7 +137,8 @@ class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
                 if self.buildRef:
                     self.results.append(os.path.join(t, mx.exe_suffix('ref.out')))
                 for v in self.getVariants():
-                    result_file = v + '.so' if self.buildSharedObject else v + '.bc'
+                    # TODO: [GR-41902] use mx.add_lib_suffix
+                    result_file = mx_sulong._lib_suffix(v) if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
         return super(SulongTestSuiteMixin, self).getResults(replaceVar=replaceVar)
 
@@ -422,8 +423,8 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         # add properties from the project
         if hasattr(self.subject, "getJavaProperties"):
             for key, value in sorted(self.subject.getJavaProperties().items()):
-                jvm_args.append("-D" + key + "=" + value)
-        command = [java] + jvm_args + extra_props + [main_class, all_params]
+                jvm_args.append(_quote("-D" + key + "=" + value))
+        command = [_quote(java)] + jvm_args + extra_props + [main_class, all_params]
         # create script
         if mx.is_windows():
             return "@echo off\n" + " ".join(command) + "\n"

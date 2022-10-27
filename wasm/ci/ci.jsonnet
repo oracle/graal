@@ -23,6 +23,7 @@
         BENCH_VM: 'server',
         BENCH_VM_CONFIG: 'graal-core',
       },
+      notify_groups:: ['wasm'],
     },
   ],
 }

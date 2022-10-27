@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion" : "6.8.0",
+    "mxversion" : "6.9.9",
     "name": "substratevm",
     "version" : "23.0.0",
     "release" : False,
@@ -723,7 +723,7 @@ suite = {
             "os_arch" : {
                 "windows": {
                     "amd64" : {
-                        "cflags": ["-MD", "-Zi", "-O2"],
+                        "cflags": ["-MD", "-Zi", "-O2", "-DJNIEXPORT="],
                     },
                 },
                 "<others>": {
@@ -1245,6 +1245,7 @@ suite = {
                     "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.graal.snippets           to jdk.internal.vm.compiler",
                     "com.oracle.svm.hosted.fieldfolding           to jdk.internal.vm.compiler",
+                    "com.oracle.svm.hosted.phases                 to jdk.internal.vm.compiler",
                     "com.oracle.svm.hosted.reflect                to jdk.internal.vm.compiler",
                 ],
                 "requires": [
@@ -1569,6 +1570,7 @@ suite = {
                 "name" : "org.graalvm.nativeimage.base",
                 "exports" : [
                     "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise",
+                    "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver",
                 ],
             }

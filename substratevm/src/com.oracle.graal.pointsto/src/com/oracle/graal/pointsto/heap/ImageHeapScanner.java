@@ -255,10 +255,10 @@ public abstract class ImageHeapScanner {
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type);
             for (AnalysisField field : type.getInstanceFields(true)) {
-                final ScanReason fieldReason = new FieldScan(field, object, reason);
                 if (field.isRead() && isValueAvailable(field)) {
                     final JavaConstant fieldValue = instance.readFieldValue(field);
                     /* If field is read scan its value immediately. */
+                    final ScanReason fieldReason = new FieldScan(field, object, reason);
                     onFieldValueReachable(field, instance, fieldValue, fieldReason, onAnalysisModified);
                 } else {
                     /*
@@ -297,6 +297,7 @@ public abstract class ImageHeapScanner {
                         // imageHeap.setValue(value, (ImageHeapObject) scannedFieldValue);
                         // @formatter:on
 
+                        final ScanReason fieldReason = new FieldScan(field, object, reason);
                         onFieldValueReachable(field, instance, originalFieldValue, fieldReason, onAnalysisModified);
                         /* Re-install the original constant value. */
                         instance.setFieldValue(field, originalFieldValue);
@@ -362,7 +363,6 @@ public abstract class ImageHeapScanner {
             AnalysisField[] instanceFields = type.getInstanceFields(true);
             newImageHeapConstant = new ImageHeapInstance(type, constant, instanceFields.length);
             for (AnalysisField field : instanceFields) {
-                ScanReason fieldReason = new FieldScan(field, constant, reason);
                 ValueSupplier<JavaConstant> rawFieldValue;
                 try {
                     rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
@@ -372,6 +372,7 @@ public abstract class ImageHeapScanner {
                 }
                 ImageHeapInstance finalObject = (ImageHeapInstance) newImageHeapConstant;
                 finalObject.setFieldTask(field, new AnalysisFuture<>(() -> {
+                    ScanReason fieldReason = new FieldScan(field, constant, reason);
                     JavaConstant value = onFieldValueReachable(field, finalObject, rawFieldValue, fieldReason, onAnalysisModified);
                     finalObject.setFieldValue(field, value);
                     return value;

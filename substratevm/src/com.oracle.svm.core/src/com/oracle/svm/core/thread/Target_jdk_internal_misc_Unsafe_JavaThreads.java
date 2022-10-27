@@ -24,14 +24,19 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.jfr.events.ThreadParkEvent;
-import com.oracle.svm.core.jfr.JfrTicks;
 import java.util.concurrent.locks.LockSupport;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.ThreadParkEvent;
+import com.oracle.svm.core.util.TimeUtils;
+
 @TargetClass(className = "jdk.internal.misc.Unsafe")
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"static-method"})
 final class Target_jdk_internal_misc_Unsafe_JavaThreads {
 

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.code;
 
+import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
+
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +34,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -102,9 +103,10 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -511,18 +513,19 @@ public class CompileQueue {
             CompilationResult result = task.result;
 
             CompilationInfo ci = method.compilationInfo;
-            if (!ci.isDeoptTarget()) {
+            if (!method.isDeoptTarget()) {
                 numberOfMethods += 1;
                 sizeAllMethods += result.getTargetCodeSize();
                 System.out.format("%8d; %5d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesAfterParsing, ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation,
                                 ci.isTrivialMethod ? "T" : " ");
 
                 int deoptMethodSize = 0;
-                if (ci.deoptTarget != null) {
-                    CompilationInfo dci = ci.deoptTarget.compilationInfo;
+                HostedMethod deoptTargetMethod = method.getMultiMethod(DEOPT_TARGET_METHOD);
+                if (deoptTargetMethod != null) {
+                    CompilationInfo dci = deoptTargetMethod.compilationInfo;
 
                     numberOfDeopt += 1;
-                    deoptMethodSize = compilations.get(ci.deoptTarget).result.getTargetCodeSize();
+                    deoptMethodSize = compilations.get(deoptTargetMethod).result.getTargetCodeSize();
                     sizeDeoptMethods += deoptMethodSize;
                     sizeDeoptMethodsInNonDeopt += result.getTargetCodeSize();
                     totalNumDeoptEntryPoints += dci.numDeoptEntryPoints;
@@ -607,7 +610,7 @@ public class CompileQueue {
          */
         universe.getMethods().stream()
                         .filter(method -> SubstrateCompilationDirectives.singleton().isDeoptTarget(method))
-                        .forEach(method -> ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason()));
+                        .forEach(method -> ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
 
         /*
          * Deoptimization target code for deoptimization testing: all methods that are not
@@ -616,12 +619,10 @@ public class CompileQueue {
          */
         universe.getMethods().stream()
                         .filter(method -> method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll))
-                        .forEach(this::ensureParsedForDeoptTesting);
-    }
-
-    private void ensureParsedForDeoptTesting(HostedMethod method) {
-        method.compilationInfo.canDeoptForTesting = true;
-        ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason());
+                        .forEach(method -> {
+                            method.compilationInfo.canDeoptForTesting = true;
+                            ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason());
+                        });
     }
 
     private static boolean checkTrivial(HostedMethod method, StructuredGraph graph) {
@@ -643,12 +644,15 @@ public class CompileQueue {
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
 
                 executor.init();
-                universe.getMethods().stream()
-                                .filter(method -> method.compilationInfo.getCompilationGraph() != null)
-                                .forEach(method -> executor.execute(new TrivialInlineTask(method)));
-                universe.getMethods().stream()
-                                .map(method -> method.compilationInfo.getDeoptTargetMethod()).filter(Objects::nonNull)
-                                .forEach(deoptTargetMethod -> executor.execute(new TrivialInlineTask(deoptTargetMethod)));
+                universe.getMethods().forEach(method -> {
+                    assert method.getMultiMethodKey() == MultiMethod.ORIGINAL_METHOD;
+                    for (MultiMethod multiMethod : method.getAllMultiMethods()) {
+                        HostedMethod hMethod = (HostedMethod) multiMethod;
+                        if (hMethod.compilationInfo.getCompilationGraph() != null) {
+                            executor.execute(new TrivialInlineTask(hMethod));
+                        }
+                    }
+                });
                 executor.start();
                 executor.complete();
                 executor.shutdown();
@@ -799,7 +803,7 @@ public class CompileQueue {
                     ensureCompiled(impl, new EntryPointReason());
                 }
             }
-            HostedMethod deoptTargetMethod = method.compilationInfo.getDeoptTargetMethod();
+            HostedMethod deoptTargetMethod = method.getMultiMethod(DEOPT_TARGET_METHOD);
             if (deoptTargetMethod != null) {
                 ensureCompiled(deoptTargetMethod, new EntryPointReason());
             }
@@ -1011,7 +1015,7 @@ public class CompileQueue {
     }
 
     private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
-        if (method.getAnnotation(Specialize.class) != null && !method.compilationInfo.isDeoptTarget() && invokeTarget.getAnnotation(DeoptTest.class) != null) {
+        if (method.getAnnotation(Specialize.class) != null && !method.isDeoptTarget() && invokeTarget.getAnnotation(DeoptTest.class) != null) {
             /*
              * Collect the constant arguments to a method which should be specialized.
              */
@@ -1138,8 +1142,8 @@ public class CompileQueue {
                                 .filter(invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false))
                                 .count();
 
-                Suites suites = method.compilationInfo.isDeoptTarget() ? deoptTargetSuites : regularSuites;
-                LIRSuites lirSuites = method.compilationInfo.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
+                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : regularSuites;
+                LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
 
@@ -1149,7 +1153,7 @@ public class CompileQueue {
                 }
                 method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
 
-                if (method.compilationInfo.isDeoptTarget()) {
+                if (method.isDeoptTarget()) {
                     assert DeoptimizationUtils.verifyDeoptTarget(method, graph, result);
                 }
                 ensureCalleesCompiled(method, reason, result);

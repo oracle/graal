@@ -36,9 +36,9 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
  */
 public abstract class AbstractInliningPhase extends BasePhase<HighTierContext> {
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.mustRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.unlessRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState));
     }
 }

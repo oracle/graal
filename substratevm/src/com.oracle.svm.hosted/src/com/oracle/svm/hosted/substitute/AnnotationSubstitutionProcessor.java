@@ -91,7 +91,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      * The number of array dimensions we create for @{@link Substitute} types, i.e., the maximum
      * array dimension allowed by the JVM spec. For @{@link Alias} types the array substitution
      * mappings are created on demand.
-     * 
+     *
      * @see <a href= "https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.9">
      *      Constraints on Java Virtual Machine Code</a>
      */
@@ -246,7 +246,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * When a type is aliased there is a mapping from the alias type to the original type. There
          * is no mapping from the original type to the annotated type since that would be wrong, the
          * original type is not substituted by the annotated type.
-         * 
+         *
          * If the type is an array type then it's alias is constructed on demand, but there should
          * be a mapping from the aliased component type to the original component type.
          */
@@ -421,7 +421,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleMethodInAliasClass(Executable annotatedMethod, Class<?> originalClass) {
-        if (!NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedMethod, Platforms.class))) {
+        if (skipExcludedPlatform(annotatedMethod)) {
             return;
         }
 
@@ -468,8 +468,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
+    private boolean skipExcludedPlatform(AnnotatedElement annotatedMethod) {
+        return !NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedMethod, Platforms.class));
+    }
+
     private void handleFieldInAliasClass(Field annotatedField, Class<?> originalClass) {
-        if (!NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedField, Platforms.class))) {
+        if (skipExcludedPlatform(annotatedField)) {
             return;
         }
 
@@ -702,6 +706,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAnnotatedMethodInSubstitutionClass(Executable annotatedMethod, Class<?> originalClass) {
+        if (skipExcludedPlatform(annotatedMethod)) {
+            return;
+        }
+
         if (annotatedMethod.isSynthetic()) {
             /*
              * Synthetic bridge methods for co-variant return types inherit the annotations. We
@@ -738,6 +746,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAnnotatedFieldInSubstitutionClass(Field annotatedField, Class<?> originalClass) {
+        if (skipExcludedPlatform(annotatedField)) {
+            return;
+        }
+
         Substitute substituteAnnotation = lookupAnnotation(annotatedField, Substitute.class);
 
         if (substituteAnnotation == null) {

@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
@@ -43,6 +44,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredImageSingleton
 public class SubstrateCompilationDirectives {
+
+    public static final MultiMethod.MultiMethodKey DEOPT_TARGET_METHOD = new MultiMethod.MultiMethodKey() {
+        @Override
+        public String toString() {
+            return "Deopt_Target_Method_Key";
+        }
+    };
+
+    public static final MultiMethod.MultiMethodKey RUNTIME_COMPILED_METHOD = new MultiMethod.MultiMethodKey() {
+        @Override
+        public String toString() {
+            return "Runtime_Compiled_Method_Key";
+        }
+    };
 
     /**
      * Stores the value kinds present at a deoptimization point's (deoptimization source)
@@ -180,7 +195,7 @@ public class SubstrateCompilationDirectives {
         return deoptEntries.containsKey(toAnalysisMethod(method));
     }
 
-    protected boolean isDeoptEntry(ResolvedJavaMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isDeoptEntry(ResolvedJavaMethod method, int bci, boolean duringCall, boolean rethrowException) {
         assert seal();
         Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod(method));
         assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";

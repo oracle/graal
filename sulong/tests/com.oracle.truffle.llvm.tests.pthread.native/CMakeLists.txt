@@ -31,4 +31,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
 
+if(WIN32)
+  link_libraries(pthread)
+else()
+  set(CMAKE_C_FLAGS "-pthread")
+  set(CMAKE_C_LINK_FLAGS "-pthread")
+endif()
+
 include(SulongTestSuite)

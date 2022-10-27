@@ -151,6 +151,7 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     public LLVMPointer getSpecific(int keyId) {
         final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
         if (value != null) {
@@ -161,6 +162,7 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     public boolean setSpecific(int keyId, LLVMPointer value) {
         final ConcurrentMap<Long, LLVMPointer> specificStore = pThreadKeyStorage.get(keyId);
         if (specificStore != null) {
@@ -171,6 +173,7 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId) {
         return getAndRemoveSpecificUnlessNull(keyId, Thread.currentThread().getId());
     }
@@ -194,6 +197,7 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     public Thread createThread(Runnable runnable) {
         synchronized (threadLock) {
             if (isCreateThreadAllowed) {
@@ -239,6 +243,7 @@ public final class LLVMPThreadContext {
         return pthreadCallTarget;
     }
 
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
     public void callDestructors(LLVMContext context) {
         callDestructors(context, Thread.currentThread().getId());
     }

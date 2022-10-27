@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.Platforms;
 
 /**
  * Supported API is available to replace this non-API annotation: Instead of using this annotation,
- * use {@code "--features <fqn.of.FeatureClass>"} in the {@code Args} of a
+ * use {@code --features=fully.qualified.name.of.FeatureClass} in the {@code Args} of a
  * {@code native-image.properties} file to ensure a user-provided feature gets processed.
  *
  * Feature classes that use this annotation are unconditionally added when they are reachable on the

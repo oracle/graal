@@ -33,6 +33,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.tools.insight.test.InsightObjectFactory;
 import org.graalvm.tools.insight.test.heap.HeapApi.At;
 import org.graalvm.tools.insight.test.heap.HeapApi.Event;
@@ -68,7 +69,7 @@ public class HeapObjectTest {
             dumpFile = File.createTempFile("heap", ".hprof");
             dumpFile.deleteOnExit();
             b.option("heap.dump", dumpFile.getAbsolutePath());
-            b.allowIO(true);
+            b.allowIO(IOAccess.ALL);
             b.allowHostAccess(HostAccess.EXPLICIT);
             Context ctx = InsightObjectFactory.newContext(b);
             context = ctx;

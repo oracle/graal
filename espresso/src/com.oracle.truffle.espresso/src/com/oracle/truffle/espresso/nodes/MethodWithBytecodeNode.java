@@ -22,12 +22,17 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
@@ -37,6 +42,7 @@ import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
  * This class exists to conform to the Truffle instrumentation APIs, namely {@link RootTag} and
  * {@link RootBodyTag} in order to support proper unwind and re-enter.
  */
+@ExportLibrary(NodeLibrary.class)
 final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
 
     @Child AbstractInstrumentableBytecodeNode bytecodeNode;
@@ -70,5 +76,21 @@ final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
             return true;
         }
         return false;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    public Object getScope(Frame frame, boolean nodeEnter) {
+        return getScopeSlowPath(frame != null ? frame.materialize() : null, nodeEnter);
+    }
+
+    @TruffleBoundary
+    private Object getScopeSlowPath(MaterializedFrame frame, boolean nodeEnter) {
+        return bytecodeNode.getScope(frame, nodeEnter);
     }
 }

@@ -35,6 +35,8 @@ local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 # VM
 local vm = import 'vm/ci/ci_includes/vm.jsonnet';
 
+local verify_ci = (import 'ci-check.libsonnet').verify_ci;
+
 {
   # Ensure that entries in common.jsonnet can be resolved.
   _checkCommon: (import 'common.jsonnet'),
@@ -53,5 +55,6 @@ local vm = import 'vm/ci/ci_includes/vm.jsonnet';
     truffle.builds +
     javadoc.builds +
     vm.builds
-  )]
+  )],
+  assert verify_ci(self.builds),
 }
