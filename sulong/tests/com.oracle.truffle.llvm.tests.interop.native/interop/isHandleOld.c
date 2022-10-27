@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,14 @@
  */
 #include <graalvm/llvm/polyglot.h>
 #include <truffle.h>
+#include <stdint.h>
 
 int main() {
     void *p = polyglot_import("object");
     void *p1 = truffle_handle_for_managed(p);
     void *p2 = truffle_deref_handle_for_managed(p);
-    long l_p1 = (long) p1;
-    long l_p2 = (long) p2;
+    int64_t l_p1 = (int64_t) p1;
+    int64_t l_p2 = (int64_t) p2;
     void *n = calloc(sizeof(char), 2);
 
     if (!truffle_is_handle_to_managed(p1)) {
