@@ -424,14 +424,15 @@ public class SubstrateJVM {
 
     /** See {@link JVM#flush}. */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) { // *** seems like its for the java buffers
         assert writer != null;
         assert uncommittedSize >= 0;
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
         assert oldBuffer.isNonNull();
-
+//        threadLocal.lockJava();
         JfrBuffer newBuffer = JfrThreadLocal.flush(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
+//        threadLocal.unlockJava();
         if (newBuffer.isNull()) {
             // The flush failed for some reason, so mark the EventWriter as invalid for this write
             // attempt.
@@ -454,7 +455,6 @@ public class SubstrateJVM {
         return false;
     }
 
-//    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void flush() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock(); //does this make it a safepoint? [NO]
         try {
@@ -462,7 +462,7 @@ public class SubstrateJVM {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
                     chunkWriter.flush(metadataDescriptor, repositories, threadRepo);
-                    System.out.println("*** Flushed");
+                    System.out.println("*** Done Flush");
                 }
             }
         } finally {

@@ -127,7 +127,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     private static void writeClass(JfrChunkWriter writer, TypeInfo typeInfo, Class<?> clazz, boolean flush) {
-        System.out.println("*** --- Writing Class:"+clazz.getName());
+//        System.out.println("*** --- Writing Class:"+clazz.getName());
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));  // key
         writer.writeCompressedLong(typeInfo.getClassLoaderId(clazz.getClassLoader()));

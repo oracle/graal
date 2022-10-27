@@ -30,7 +30,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
@@ -42,8 +41,10 @@ import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+
+import com.oracle.svm.core.jfr.JfrThreadLocal.JfrBufferNode;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -82,6 +83,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private int lastMetadataId = 0;
     private int currentMetadataId = 0;
     private boolean staticConstantsSerialized = false;
+    private boolean newChunk = true;
 
     public void setCurrentMetadataId(){
         currentMetadataId++;
@@ -130,15 +132,15 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public boolean openFile(String outputFile) {
         assert lock.isHeldByCurrentThread();
+        generation = 1;
+        newChunk = true;
         System.out.println("*** ChunkWriter openfile");
         chunkStartNanos = JfrTicks.currentTimeNanos();
         chunkStartTicks = JfrTicks.elapsedTicks();
         filename = outputFile;
         fd = getFileSupport().open(filename, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         writeFileHeader();
-        generation = 1;
         lastCheckpointOffset = -1;// must reset this on new chunk
-        currentMetadataId = -1;
         return true;
     }
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.") // *** top pointer (of the buffer) like if it gets reinit.
@@ -161,7 +163,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             // We lost some data because the write failed.
             return false;
         }
-        // *** need to save pointer position so we can return to it when writing next
         return getFileSupport().position(fd).greaterThan(WordFactory.signed(notificationThreshold));
     }
 
@@ -175,8 +176,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.
          */
+        System.out.println("*** safepoint start");
         JfrChangeEpochOperation op = new JfrChangeEpochOperation(false);
         op.enqueue();
+        System.out.println("*** safepoint end");
 
         /*
          * After changing the epoch, all subsequently triggered JFR events will be recorded into the
@@ -201,8 +204,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
         assert lock.isHeldByCurrentThread();// fd should always be correct because its cleared and set within locked critical section
 
-        JfrChangeEpochOperation op = new JfrChangeEpochOperation(true);
-        op.enqueue();
+//        JfrChangeEpochOperation op = new JfrChangeEpochOperation(true);
+//        op.enqueue();
+        flushStorage();
+
         if (threadRepo.isDirty(true)){
             writeThreadCheckpointEvent(threadRepo, true);
         }
@@ -353,8 +358,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private SignedWord writeMetadataEvent(byte[] metadataDescriptor) {
         // *** works to prevent duplicate metadata from being written to disk
-        if (currentMetadataId != lastMetadataId) {
+        if (currentMetadataId != lastMetadataId || newChunk) {
             lastMetadataId = currentMetadataId;
+            newChunk = false; //always write metadata on a new chunk!
         } else {
             return _metadataPosition;
         }
@@ -520,27 +526,34 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         private void changeEpoch() {
             // Write unflushed data from the thread local buffers but do *not* reinitialize them
             // The thread local code will handle space reclamation on their own time
-            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-                JfrBuffer buffer = JfrThreadLocal.getJavaBuffer(thread);
-                if (buffer.isNonNull()) {
-                    write(buffer);
-                    JfrThreadLocal.notifyEventWriter(thread);
-                }
-                buffer = JfrThreadLocal.getNativeBuffer(thread);
-                if (buffer.isNonNull()) {
-                    write(buffer);
-                }
-            }
+//            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+//                JfrBuffer buffer = JfrThreadLocal.getJavaBuffer(thread);
+//                if (buffer.isNonNull()) {
+//                    write(buffer);
+//                    JfrThreadLocal.notifyEventWriter(thread);
+//                }
+//                buffer = JfrThreadLocal.getNativeBuffer(thread);
+//                if (buffer.isNonNull()) {
+//                    write(buffer);
+//                }
+//            }
+
+            JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
+            JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
+
+            traverseList(javaBuffers, true, true);
+
+            traverseList(nativeBuffers, false, true);
 
             JfrBuffers buffers = globalMemory.getBuffers();
             for (int i = 0; i < globalMemory.getBufferCount(); i++) {
                 JfrBuffer buffer = buffers.addressOf(i).read();
-                assert !JfrBufferAccess.isAcquired(buffer);
+                VMError.guarantee(!JfrBufferAccess.isAcquired(buffer), "^^^6");//assert !JfrBufferAccess.isAcquired(buffer);
                 write(buffer);
                 JfrBufferAccess.reinitialize(buffer);
             }
             if (!flush) {
-                JfrTraceIdEpoch.getInstance().changeEpoch(); // *** this needs to be changed for flushes
+                JfrTraceIdEpoch.getInstance().changeEpoch();
 
                 // Now that the epoch changed, re-register all running threads for the new epoch.
                 SubstrateJVM.getThreadRepo().registerRunningThreads();
@@ -548,6 +561,177 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
+    @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
+    private void flushStorage() {
+        JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
+        JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
+//        int count = javaBuffers.getSize(); // in case other threads are adding nodes
+
+        traverseList(javaBuffers, true, false);
+        traverseList(nativeBuffers, false, false);
+
+        JfrBuffers buffers = globalMemory.getBuffers();
+        for (int i = 0; i < globalMemory.getBufferCount(); i++) {
+            JfrBuffer buffer = buffers.addressOf(i).read();
+            if(!JfrBufferAccess.acquire(buffer)){ // one attempt
+                continue;
+            }
+//            assert !JfrBufferAccess.isAcquired(buffer); // *** need to deal with this too
+            write(buffer);
+            JfrBufferAccess.reinitialize(buffer);
+            JfrBufferAccess.release(buffer);
+        }
+    }
+//    @Uninterruptible(reason = "Called from uninterruptible code.")
+//    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
+//        // Try to lock list
+//        if (!safepoint) {
+//            for (int retry = 0; retry < 100; retry++) {
+//                if (linkedList.acquire()) {
+//                    break;
+//                }
+//            }
+//            if (!linkedList.isAcquired()) {
+//                VMError.guarantee(!safepoint, "^^^4");//assert !safepoint; // if safepoint, no one else should hold the lock on the LL.
+//                return; // wasn't able to get the lock
+//            }
+//        }
+//
+//        JfrBufferNode node = linkedList.getHead();
+//        JfrBufferNode prev = WordFactory.nullPointer();
+//        int count = 0;
+//
+//        while (node.isNonNull()) {
+//            count++;
+//            VMError.guarantee(count < 1000, "^^^26");
+//
+//            // An optimization
+//            if (linkedList.isAcquired()) { // evaluate this first
+//                if (node != linkedList.getHead()) {
+//                    // only need lock when dealing with head. Because other threads add nodes in direction opposite to traversal.
+//                    VMError.guarantee(prev.isNonNull(), "^^^2");//assert prev.isNonNull();
+//                    linkedList.release();
+//                }
+//            }
+//
+//            JfrBufferNode next = node.getNext();
+//
+//            // Try to get node if not in safepoint
+//            if (!safepoint && !JfrBufferNodeLinkedList.acquire(node)) { //make one attempt
+//                VMError.guarantee(!safepoint, "^^^1"); //if safepoint, no one else should hold the lock on the LL node. TODO: causes error when checked at safepoint (common)
+//                prev = node;
+//                node = next;
+//                continue;
+//            }
+//
+//            // Try to write to disk. (If thread doesn't flush at death, this is always safe to do because we remove nodes afterward)
+//            JfrBuffer buffer = node.getValue();
+//            VMError.guarantee(buffer.isNonNull(), "^^^3");//assert buffer.isNonNull();
+//            if (!safepoint && JfrBufferAccess.acquire(buffer)) {
+//                VMError.guarantee(JfrBufferAccess.isAcquired(buffer), "^^^5"); // TODO: causes error when checked at safepoint
+//                write(buffer);
+//                JfrBufferAccess.release(buffer);
+//            }else {
+//                write(buffer);
+//            }
+//            if (java) {
+//                VMError.guarantee(node.getThread().isNonNull(), "^^^20");
+//                JfrThreadLocal.notifyEventWriter(node.getThread());
+//            }
+//
+//            if (!safepoint) {
+//                JfrBufferNodeLinkedList.release(node);
+//            }
+//
+//            // Try to remove if needed (If thread doesn't flush at death, this must be after flushing to disk block)
+//            if (!node.getAlive()){
+//                linkedList.removeNode(prev, node);
+//                // don't update previous here!
+//                node = next;
+//                continue;
+//            }
+//
+//            prev = node; // prev is always the last node still in the list before the current node. Prev may not be alive.
+//            node = next;
+//        }
+//
+//        if (linkedList.isAcquired()) {
+//            linkedList.release();
+//        }
+//    }
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
+    // Try to lock list
+    if (!safepoint) {
+        for (int retry = 0; retry < 100; retry++) {
+            if (linkedList.acquire()) {
+                break;
+            }
+        }
+        if (!linkedList.isAcquired()) {
+            VMError.guarantee(!safepoint, "^^^4");//assert !safepoint; // if safepoint, no one else should hold the lock on the LL.
+            return; // wasn't able to get the lock
+        }
+    }
+
+    JfrBufferNode node = linkedList.getHead();
+    JfrBufferNode prev = WordFactory.nullPointer();
+    int count = 0;
+
+    while (node.isNonNull()) {
+        count++;
+        VMError.guarantee(count < 1000, "^^^26");
+
+        // An optimization
+        if (linkedList.isAcquired()) { // evaluate this first
+            if (node != linkedList.getHead()) {
+                // only need lock when dealing with head. Because other threads add nodes in direction opposite to traversal.
+                VMError.guarantee(prev.isNonNull(), "^^^2");//assert prev.isNonNull();
+                linkedList.release();
+            }
+        }
+
+        JfrBufferNode next = node.getNext();
+        JfrBuffer buffer = node.getValue();
+        VMError.guarantee(buffer.isNonNull(), "^^^3");//assert buffer.isNonNull();
+
+        // Try to get BUFFER if not in safepoint
+        if (!safepoint && !JfrBufferAccess.acquire(buffer)) { //make one attempt
+            VMError.guarantee(!safepoint, "^^^1"); //if safepoint, no one else should hold the lock on the LL node. TODO: causes error when checked at safepoint (common)
+            prev = node;
+            node = next;
+            continue;
+        }
+        VMError.guarantee(JfrBufferAccess.isAcquired(buffer) || safepoint, "^^^5");
+        write(buffer);
+
+        // Try to write to disk. (If thread doesn't flush at death, this is always safe to do because we remove nodes afterward)
+        if (!safepoint) {
+            JfrBufferAccess.release(buffer);
+        }
+
+        if (java) {
+            VMError.guarantee(node.getThread().isNonNull(), "^^^20");
+            JfrThreadLocal.notifyEventWriter(node.getThread());
+        }
+
+
+        // Try to remove if needed (If thread doesn't flush at death, this must be after flushing to disk block)
+        if (!node.getAlive()){
+            linkedList.removeNode(prev, node);
+            // don't update previous here!
+            node = next;
+            continue;
+        }
+
+        prev = node; // prev is always the last node still in the list before the current node. Prev may not be alive.
+        node = next;
+    }
+
+    if (linkedList.isAcquired()) {
+        linkedList.release();
+    }
+}
     public long getChunkStartNanos() {
         return chunkStartNanos;
     }
