@@ -118,7 +118,6 @@
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  local exploded_builds = [{'defined_in': std.thisFile} + b for b in self.processed_builds.list],
-  builds: self.processed_builds.list,
+  builds: [{'defined_in': std.thisFile} + b for b in self.processed_builds.list],
   assert tools.check_names($.builds),
 }
