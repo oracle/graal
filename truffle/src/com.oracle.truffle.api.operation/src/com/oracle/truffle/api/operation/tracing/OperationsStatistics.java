@@ -630,7 +630,6 @@ public class OperationsStatistics {
         }
 
         private void calcNumNodesWithInstruction(GlobalOperationStatistics stats) {
-            System.err.println("Hit count = " + hitCount);
             nodesWithInstruction.forEach((k, v) -> {
                 long totalCount = v.stream().map(hitCount::get).filter(x -> x != null).reduce(0L, EnabledExecutionTracer::saturatingAdd);
                 numNodesWithInstruction.merge(k, totalCount, EnabledExecutionTracer::saturatingAdd);

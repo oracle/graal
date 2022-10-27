@@ -57,4 +57,6 @@ public class OperationGeneratorFlags {
     public static final boolean ENABLE_SERIALIZATION = true;
 
     public static final int BOXING_ELIM_BITS = 3;
+
+    public static final boolean CREATE_COMMON_EXECUTE = false;
 }
