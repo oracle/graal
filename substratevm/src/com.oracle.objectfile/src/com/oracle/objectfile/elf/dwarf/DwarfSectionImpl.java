@@ -499,24 +499,40 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     /*
      * Write a heap location expression preceded by a ULEB block size count as appropriate for an
-     * attribute with FORM exprloc.
+     * attribute with FORM exprloc. If a heapbase register is in use the generated expression computes
+     * the location as a constant offset from the runtime heap base register. If a heapbase register is
+     * not in use it computes the location as a fixed, relocatable offset from the link-time heap base
+     * address.
      */
     protected int writeHeapLocationExprLoc(long offset, byte[] buffer, int p) {
+        return writeHeapLocationExprLoc(offset, dwarfSections.useHeapBase(), buffer, p);
+    }
+
+    /*
+     * Write a heap location expression preceded by a ULEB block size count as appropriate for an
+     * attribute with FORM exprloc. If useHeapBase is true the generated expression computes the
+     * location as a constant offset from the runtime heap base register. If useHeapBase is false
+     * it computes the location as a fixed, relocatable offset from the link-time heap base address.
+     */
+    protected int writeHeapLocationExprLoc(long offset, boolean useHeapBase, byte[] buffer, int p) {
         int pos = p;
         /*
          * We have to size the DWARF location expression by writing it to the scratch buffer so we
          * can write its size as a ULEB before the expression itself.
          */
-        int size = writeHeapLocation(offset, null, 0);
+        int size = writeHeapLocation(offset, useHeapBase, null, 0);
 
         /* Write the size and expression into the output buffer. */
         pos = writeULEB(size, buffer, pos);
-        return writeHeapLocation(offset, buffer, pos);
+        return writeHeapLocation(offset, useHeapBase, buffer, pos);
     }
 
     /*
      * Write a heap location expression preceded by a ULEB block size count as appropriate for
-     * location list in the debug_loc section.
+     * location list in the debug_loc section. If a heapbase register is in use the generated
+     * expression computes the location as a constant offset from the runtime heap base register.
+     * If a heapbase register is not in use it computes the location as a fixed, relocatable
+     * offset from the link-time heap base address.
      */
     protected int writeHeapLocationLocList(long offset, byte[] buffer, int p) {
         int pos = p;
@@ -524,7 +540,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         int lenPos = pos;
         // write dummy length
         pos = writeShort(len, buffer, pos);
-        pos = writeHeapLocation(offset, buffer, pos);
+        pos = writeHeapLocation(offset, dwarfSections.useHeapBase(), buffer, pos);
         pos = writeByte(DW_OP_stack_value, buffer, pos);
         // backpatch length
         len = (short) (pos - (lenPos + 2));
@@ -533,10 +549,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /*
-     * Write a bare heap location expression as appropriate for a single location.
+     * Write a bare heap location expression as appropriate for a single location. If useHeapBase
+     * is true the generated expression computes the location as a constant offset from the runtime
+     * heap base register. If useHeapBase is false it computes the location as a fixed, relocatable
+     * offset from the link-time heap base address.
      */
-    protected int writeHeapLocation(long offset, byte[] buffer, int p) {
-        if (dwarfSections.useHeapBase()) {
+    protected int writeHeapLocation(long offset, boolean useHeapBase, byte[] buffer, int p) {
+        if (useHeapBase) {
             return writeHeapLocationBaseRelative(offset, buffer, p);
         } else {
             return writeHeapLocationRelocatable(offset, buffer, p);
