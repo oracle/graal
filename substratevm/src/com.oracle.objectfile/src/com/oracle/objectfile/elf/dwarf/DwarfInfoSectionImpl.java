@@ -539,9 +539,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = uniqueDebugString(typeEntry.getTypeName() + ".class");
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
-        /* use the indirect layout type for hub class to type the class constant */
+        /*
+         * This is a direct reference to the object rather than a compressed oop reference.
+         * So, we need to use the direct layout type for hub class to type it.
+         */
         ClassEntry valueType = dwarfSections.getHubClassEntry();
-        int typeIdx = (valueType == null ? -1 : getIndirectLayoutIndex(valueType));
+        int typeIdx = (valueType == null ? -1 : getLayoutIndex(valueType));
         log(context, "  [0x%08x]     type  0x%x (<hub type>)", pos, typeIdx);
         pos = writeInfoSectionOffset(typeIdx, buffer, pos);
         log(context, "  [0x%08x]     accessibility public static final", pos);
@@ -550,9 +553,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     definition(true)", pos);
         pos = writeFlag((byte) 1, buffer, pos);
-        /* Field offset needs to be relocated relative to static object base. */
+        /*
+         * We need to force encoding of this location as a heap base relative relocatable address rather
+         * than an offset from the heapbase register.
+         */
         log(context, "  [0x%08x]     location  heapbase + 0x%x (class constant)", pos, offset);
-        pos = writeHeapLocationExprLoc(offset, buffer, pos);
+        pos = writeHeapLocationExprLoc(offset, false, buffer, pos);
         return pos;
     }
 
