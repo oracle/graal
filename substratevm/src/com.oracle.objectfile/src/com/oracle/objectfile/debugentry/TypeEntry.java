@@ -44,8 +44,8 @@ public abstract class TypeEntry {
     protected String typeName;
 
     /**
-     * The offset of the java.lang.Class instance for this class in the image heap or -1
-     * if no such object exists.
+     * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
+     * object exists.
      */
     private long classOffset;
 

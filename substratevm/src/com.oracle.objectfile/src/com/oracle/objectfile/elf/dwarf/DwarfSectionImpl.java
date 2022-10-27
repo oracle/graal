@@ -499,10 +499,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     /*
      * Write a heap location expression preceded by a ULEB block size count as appropriate for an
-     * attribute with FORM exprloc. If a heapbase register is in use the generated expression computes
-     * the location as a constant offset from the runtime heap base register. If a heapbase register is
-     * not in use it computes the location as a fixed, relocatable offset from the link-time heap base
-     * address.
+     * attribute with FORM exprloc. If a heapbase register is in use the generated expression
+     * computes the location as a constant offset from the runtime heap base register. If a heapbase
+     * register is not in use it computes the location as a fixed, relocatable offset from the
+     * link-time heap base address.
      */
     protected int writeHeapLocationExprLoc(long offset, byte[] buffer, int p) {
         return writeHeapLocationExprLoc(offset, dwarfSections.useHeapBase(), buffer, p);
@@ -511,8 +511,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     /*
      * Write a heap location expression preceded by a ULEB block size count as appropriate for an
      * attribute with FORM exprloc. If useHeapBase is true the generated expression computes the
-     * location as a constant offset from the runtime heap base register. If useHeapBase is false
-     * it computes the location as a fixed, relocatable offset from the link-time heap base address.
+     * location as a constant offset from the runtime heap base register. If useHeapBase is false it
+     * computes the location as a fixed, relocatable offset from the link-time heap base address.
      */
     protected int writeHeapLocationExprLoc(long offset, boolean useHeapBase, byte[] buffer, int p) {
         int pos = p;
@@ -530,9 +530,9 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     /*
      * Write a heap location expression preceded by a ULEB block size count as appropriate for
      * location list in the debug_loc section. If a heapbase register is in use the generated
-     * expression computes the location as a constant offset from the runtime heap base register.
-     * If a heapbase register is not in use it computes the location as a fixed, relocatable
-     * offset from the link-time heap base address.
+     * expression computes the location as a constant offset from the runtime heap base register. If
+     * a heapbase register is not in use it computes the location as a fixed, relocatable offset
+     * from the link-time heap base address.
      */
     protected int writeHeapLocationLocList(long offset, byte[] buffer, int p) {
         int pos = p;
@@ -549,8 +549,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /*
-     * Write a bare heap location expression as appropriate for a single location. If useHeapBase
-     * is true the generated expression computes the location as a constant offset from the runtime
+     * Write a bare heap location expression as appropriate for a single location. If useHeapBase is
+     * true the generated expression computes the location as a constant offset from the runtime
      * heap base register. If useHeapBase is false it computes the location as a fixed, relocatable
      * offset from the link-time heap base address.
      */

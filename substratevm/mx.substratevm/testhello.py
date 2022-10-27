@@ -179,6 +179,8 @@ def test():
     execute("set print pretty on")
     # enable demangling of symbols in assembly code listings
     execute("set print asm-demangle on")
+    # disable printing of address symbols
+    execute("set print symbol off")
 
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
@@ -300,6 +302,45 @@ def test():
         checker = Checker("print static field value contents",
                           r"%s = 1000"%(wildcard_pattern))
         checker.check(exec_string, skip_fails=False)
+
+        # ensure we can print class constants
+        exec_string = execute("print /x 'hello.Hello.class'")
+        rexp = [r"%s = {"%(wildcard_pattern),
+                r"%s<java.lang.Object> = {"%(spaces_pattern),
+                r"%s<_objhdr> = {"%(spaces_pattern),
+                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%s}, <No data fields>},"%(spaces_pattern),
+                r"%smembers of java\.lang\.Class:"%(spaces_pattern),
+                r"%sname = %s,"%(spaces_pattern, address_pattern),
+                "}"]
+
+        checker = Checker("print hello.Hello.class", rexp)
+
+        checker.check(exec_string, skip_fails=True)
+
+        # ensure we can access fields of class constants
+        exec_string = execute("print 'java.lang.String[].class'.name->value->data")
+        rexp = r'%s = %s "\[Ljava.lang.String;"'%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print 'java.lang.String[].class'.name->value->data", rexp)
+
+        checker.check(exec_string)
+
+        exec_string = execute("print 'long.class'.name->value->data")
+        rexp = r'%s = %s "long"'%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print 'long.class'.name->value->data", rexp)
+
+        checker.check(exec_string)
+
+        exec_string = execute("print 'byte[].class'.name->value->data")
+        rexp = r'%s = %s "\[B"'%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print 'byte[].class'.name->value->data", rexp)
+
+        checker.check(exec_string)
+
 
     # look up greet methods
     # expect "All functions matching regular expression "greet":"
