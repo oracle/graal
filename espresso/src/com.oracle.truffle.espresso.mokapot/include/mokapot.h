@@ -344,6 +344,8 @@ typedef uint64_t julong;
     V(JVM_ReferenceClear) \
     V(JVM_ReferenceRefersTo) \
     V(JVM_RegisterLambdaProxyClassForArchiving)
+//     /* Java 19 VM methods */ \
+//     V(JVM_VirtualThreadUnmountEnd)
 
 #ifdef __cplusplus
 extern "C" {

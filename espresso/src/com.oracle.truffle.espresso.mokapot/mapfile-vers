@@ -326,6 +326,12 @@ SUNWprivate_1.1 {
                 JVM_DumpClassListToFile;
                 JVM_DumpDynamicArchive;
 
+                # JDK 19
+                JVM_VirtualThreadMountBegin;
+                JVM_VirtualThreadMountEnd;
+                JVM_VirtualThreadUnmountBegin;
+                JVM_VirtualThreadUnmountEnd;
+
                 # miscellaneous functions
                 jio_fprintf;
                 jio_printf;

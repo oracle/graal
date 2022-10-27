@@ -1551,6 +1551,22 @@ JNIEXPORT void JNICALL JVM_DumpDynamicArchive(JNIEnv *env, jstring archiveName) 
   UNIMPLEMENTED(JVM_DumpDynamicArchive);
 }
 
+JNIEXPORT void JNICALL JVM_VirtualThreadMountBegin(JNIEnv* env, jobject vthread, jboolean first_mount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountBegin);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadMountEnd(JNIEnv* env, jobject vthread, jboolean first_mount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadUnmountBegin(JNIEnv* env, jobject vthread, jboolean last_unmount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountBegin);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread, jboolean last_unmount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
+}
+
 // region Invocation API
 
 jboolean is_supported_jni_version(jint version) {
