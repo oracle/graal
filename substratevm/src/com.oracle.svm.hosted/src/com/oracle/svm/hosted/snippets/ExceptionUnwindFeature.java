@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,36 +24,33 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import static com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
-final class ImplicitExceptionsFeature implements InternalFeature {
-
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
+final class ExceptionUnwindFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
-        for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
-        }
-        if (SubstrateOptions.VerifyTypes.getValue()) {
-            access.getBigBang().addRootMethod((AnalysisMethod) NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR.findMethod(access.getMetaAccess()), true);
+        for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()),
+                            true);
         }
     }
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(ImplicitExceptions.FOREIGN_CALLS);
-        if (SubstrateOptions.VerifyTypes.getValue()) {
-            foreignCalls.register(NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR);
-        }
+        foreignCalls.register(ExceptionUnwind.FOREIGN_CALLS);
     }
 }
