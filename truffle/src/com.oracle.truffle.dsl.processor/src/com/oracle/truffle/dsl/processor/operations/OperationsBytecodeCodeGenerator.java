@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -310,6 +311,12 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("int", varCurOpcode.getName(), CodeTreeBuilder.createBuilder().tree(OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci)).string(" & 0xffff").build());
 
+        if (isUncached) {
+            b.startAssign("curOpcode");
+            b.tree(OperationGeneratorUtils.extractInstruction(ctx, CodeTreeBuilder.singleString("curOpcode")));
+            b.end();
+        }
+
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
         if (varTracer != null) {
@@ -325,13 +332,12 @@ public class OperationsBytecodeCodeGenerator {
         b.startAssert().variable(vars.sp).string(" >= maxLocals : \"stack underflow @ \" + $bci").end();
 
         b.startSwitch();
-        if (isUncached) {
-            b.tree(OperationGeneratorUtils.extractInstruction(ctx, CodeTreeBuilder.singleString("curOpcode")));
-        } else {
-            b.string("curOpcode");
-        }
+        b.string("curOpcode");
         b.end();
         b.startBlock();
+
+        List<Instruction> outerInstructions = new ArrayList<>();
+        List<Instruction> innerInstructions = new ArrayList<>();
 
         for (Instruction op : m.getInstructions()) {
             if (op.isInstrumentationOnly() && !withInstrumentation) {
@@ -346,102 +352,42 @@ public class OperationsBytecodeCodeGenerator {
                 continue;
             }
 
-            for (String line : op.dumpInfo().split("\n")) {
-                b.lineComment(line);
-            }
-
-            Consumer<String> createBody = (String name) -> {
-                if (m.isTracing()) {
-                    b.startStatement().startCall(varTracer, "traceInstruction");
-                    b.variable(vars.bci);
-                    b.variable(op.opcodeIdField);
-                    b.string(op.isBranchInstruction() ? "1" : "0");
-                    b.string(op.isVariadic() ? "1" : "0");
-                    b.end(2);
-                }
-
-                Consumer<CodeTreeBuilder> createBodyInner = b2 -> {
-                    if (isUncached) {
-                        b2.tree(op.createExecuteUncachedCode(vars));
-                    } else {
-                        b2.tree(op.createExecuteCode(vars));
-                    }
-
-                };
-
-                if (op.neverWrapInMethod()) {
-                    createBodyInner.accept(b);
-                } else {
-                    b.tree(OperationGeneratorUtils.wrapExecuteInMethod(ctx, vars, "execute" + (isUncached ? "Uncached" : "") + "_" + op.internalName + name, isUncached, b2 -> {
-                        createBodyInner.accept(b2);
-
-                        if (!op.isBranchInstruction()) {
-                            b2.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
-                            b2.tree(OperationGeneratorUtils.encodeExecuteReturn());
-                        }
-                    }));
-                    b.statement("continue loop");
-                }
-
-            };
-
-            if (ctx.hasBoxingElimination() && !isUncached) {
-                if (op.splitOnBoxingElimination()) {
-                    for (FrameKind kind : op.getBoxingEliminationSplits()) {
-                        b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
-                        b.startBlock();
-                        vars.specializedKind = kind;
-                        createBody.accept("_" + kind);
-                        vars.specializedKind = null;
-                        b.end();
-                    }
-                    if (op.hasGeneric()) {
-                        b.startCase().tree(combineBoxingBits(ctx, op, 7)).end();
-                        b.startBlock();
-                        createBody.accept("_GENERIC");
-                        b.end();
-                    }
-                } else if (op.alwaysBoxed()) {
-                    b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
-                    b.startBlock();
-                    createBody.accept("");
-                    b.end();
-                } else {
-                    for (FrameKind kind : op.getBoxingEliminationSplits()) {
-                        b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
-                    }
-
-                    b.startBlock();
-                    b.declaration("short", "primitiveTag", "(short) ((curOpcode >> 13) & 0x0007)");
-                    createBody.accept("");
-                    b.end();
-                }
+            if (op.neverWrapInMethod()) {
+                outerInstructions.add(op);
             } else {
-                if (isUncached) {
-                    b.startCase().variable(op.opcodeIdField).end();
-                } else {
-                    b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
-                }
-                b.startBlock();
-                if (ctx.hasBoxingElimination()) {
-                    vars.specializedKind = FrameKind.OBJECT;
-                }
-                createBody.accept("");
-                vars.specializedKind = null;
-                b.end();
+                innerInstructions.add(op);
             }
-            vars.inputs = null;
-            vars.results = null;
+        }
+
+        for (Instruction op : outerInstructions) {
+            generateExecuteCase(ctx, vars, b, varTracer, op);
         }
 
         b.caseDefault().startCaseBlock();
-        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-        if (isCommonOnly) {
-            b.statement("$this.changeInterpreters(UNCOMMON_EXECUTE)");
-            b.startReturn().string("($sp << 16) | $bci").end();
-        } else {
-            b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
-        }
+        b.tree(OperationGeneratorUtils.wrapExecuteInMethod(ctx, vars, context.makeName(), isUncached, bInner -> {
+
+            bInner.startSwitch();
+            bInner.string("curOpcode");
+            bInner.end();
+            bInner.startBlock();
+
+            for (Instruction op : innerInstructions) {
+                generateExecuteCase(ctx, vars, bInner, varTracer, op);
+            }
+
+            bInner.caseDefault().startCaseBlock();
+            bInner.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            if (isCommonOnly) {
+                bInner.statement("$this.changeInterpreters(UNCOMMON_EXECUTE)");
+                bInner.startReturn().string("($sp << 16) | $bci").end();
+            } else {
+                bInner.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
+            }
+            bInner.end();
+
+            bInner.end(); // switch block
+        }));
+        b.statement("continue loop");
         b.end();
 
         b.end(); // switch block
@@ -491,6 +437,94 @@ public class OperationsBytecodeCodeGenerator {
         }
 
         return mContinueAt;
+    }
+
+    private void generateExecuteCase(OperationsContext ctx, ExecutionVariables vars, CodeTreeBuilder b, CodeVariableElement varTracer, Instruction op) {
+        for (String line : op.dumpInfo().split("\n")) {
+            b.lineComment(line);
+        }
+
+        Consumer<String> createBody = (String name) -> {
+            if (m.isTracing()) {
+                b.startStatement().startCall(varTracer, "traceInstruction");
+                b.variable(vars.bci);
+                b.variable(op.opcodeIdField);
+                b.string(op.isBranchInstruction() ? "1" : "0");
+                b.string(op.isVariadic() ? "1" : "0");
+                b.end(2);
+            }
+
+            Consumer<CodeTreeBuilder> createBodyInner = b2 -> {
+                if (isUncached) {
+                    b2.tree(op.createExecuteUncachedCode(vars));
+                } else {
+                    b2.tree(op.createExecuteCode(vars));
+                }
+
+            };
+
+            if (op.neverWrapInMethod()) {
+                createBodyInner.accept(b);
+            } else {
+                b.startReturn().tree(OperationGeneratorUtils.wrapExecuteInMethod(ctx, vars, "execute" + (isUncached ? "Uncached" : "") + "_" + op.internalName + name, isUncached, b2 -> {
+                    createBodyInner.accept(b2);
+
+                    if (!op.isBranchInstruction()) {
+                        b2.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
+                        b2.tree(OperationGeneratorUtils.encodeExecuteReturn());
+                    }
+                }, false)).end();
+            }
+
+        };
+
+        if (ctx.hasBoxingElimination() && !isUncached) {
+            if (op.splitOnBoxingElimination()) {
+                for (FrameKind kind : op.getBoxingEliminationSplits()) {
+                    b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
+                    b.startBlock();
+                    vars.specializedKind = kind;
+                    createBody.accept("_" + kind);
+                    vars.specializedKind = null;
+                    b.end();
+                }
+                if (op.hasGeneric()) {
+                    b.startCase().tree(combineBoxingBits(ctx, op, 7)).end();
+                    b.startBlock();
+                    createBody.accept("_GENERIC");
+                    b.end();
+                }
+            } else if (op.alwaysBoxed()) {
+                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
+                b.startBlock();
+                createBody.accept("");
+                b.end();
+            } else {
+                for (FrameKind kind : op.getBoxingEliminationSplits()) {
+                    b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
+                }
+
+                b.startBlock();
+                b.declaration("short", "primitiveTag", "(short) ((curOpcode >> 13) & 0x0007)");
+                createBody.accept("");
+                b.end();
+            }
+        } else {
+            if (isUncached) {
+                b.startCase().variable(op.opcodeIdField).end();
+            } else {
+                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
+            }
+            b.startBlock();
+            if (ctx.hasBoxingElimination()) {
+                vars.specializedKind = FrameKind.OBJECT;
+            }
+            createBody.accept("");
+            vars.specializedKind = null;
+            b.end();
+        }
+        vars.inputs = null;
+        vars.results = null;
     }
 
     private void createExplodeLoop(CodeExecutableElement mContinueAt) {

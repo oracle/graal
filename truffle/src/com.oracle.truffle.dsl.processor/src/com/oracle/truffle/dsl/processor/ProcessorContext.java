@@ -268,4 +268,10 @@ public class ProcessorContext {
         }
         return (Map<K, V>) cacheMap;
     }
+
+    int nameCounter;
+
+    public String makeName() {
+        return "__helper" + (nameCounter++);
+    }
 }

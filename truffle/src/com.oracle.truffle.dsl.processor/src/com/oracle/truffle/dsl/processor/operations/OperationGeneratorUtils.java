@@ -52,10 +52,10 @@ import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -349,10 +349,14 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree wrapExecuteInMethod(OperationsContext ctx, ExecutionVariables vars, String name, boolean isUncached, Consumer<CodeTreeBuilder> build) {
+        return wrapExecuteInMethod(ctx, vars, name, isUncached, build, true);
+    }
+
+    public static CodeTree wrapExecuteInMethod(OperationsContext ctx, ExecutionVariables vars, String name, boolean isUncached, Consumer<CodeTreeBuilder> build, boolean doDecode) {
         ProcessorContext context = ProcessorContext.getInstance();
         createHelperMethod(ctx.outerType, name, () -> {
             CodeExecutableElement m = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), context.getType(int.class), name);
-
+            m.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType("com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch")));
             m.addParameter(vars.stackFrame);
             if (ctx.getData().enableYield) {
                 m.addParameter(vars.localFrame);
@@ -365,6 +369,7 @@ public class OperationGeneratorUtils {
             m.addParameter(vars.children);
             m.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
             m.addParameter(new CodeVariableElement(new GeneratedTypeMirror("", "Counter"), "loopCounter"));
+            m.addParameter(new CodeVariableElement(context.getType(int.class), "curOpcode"));
             if (ctx.hasBoxingElimination()) {
                 m.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
             }
@@ -384,7 +389,10 @@ public class OperationGeneratorUtils {
         });
 
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startAssign("int _enc").startCall(name);
+        if (doDecode) {
+            b.startAssign("int _enc");
+        }
+        b.startCall(name);
 
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
@@ -398,6 +406,7 @@ public class OperationGeneratorUtils {
         b.variable(vars.children);
         b.string("$conditionProfiles");
         b.string("loopCounter");
+        b.string("curOpcode");
         if (ctx.hasBoxingElimination()) {
             b.string("$localTags");
         }
@@ -407,10 +416,13 @@ public class OperationGeneratorUtils {
         if (isUncached) {
             b.string("uncachedExecuteCount");
         }
-        b.end(2);
+        b.end();
 
-        b.startAssign(vars.bci).string("_enc & 0xffff").end();
-        b.startAssign(vars.sp).string("(_enc >> 16) & 0xffff").end();
+        if (doDecode) {
+            b.end();
+            b.startAssign(vars.bci).string("_enc & 0xffff").end();
+            b.startAssign(vars.sp).string("(_enc >> 16) & 0xffff").end();
+        }
 
         return b.build();
     }
