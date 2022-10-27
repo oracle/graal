@@ -41,9 +41,9 @@ public final class HeapImplMemoryMXBean extends AbstractMemoryMXBean {
 
     @Override
     public MemoryUsage getHeapMemoryUsage() {
-        long heapUsed = HeapImpl.getHeapImpl().getUsedBytes().rawValue();
-        long heapCommitted = HeapImpl.getHeapImpl().getCommittedBytes().rawValue();
-        long heapMax = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
-        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, heapUsed, heapCommitted, heapMax);
+        long used = HeapImpl.getHeapImpl().getUsedBytes().rawValue();
+        long committed = HeapImpl.getHeapImpl().getCommittedBytes().rawValue();
+        long max = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
+        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, committed, max);
     }
 }
