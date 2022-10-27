@@ -1216,7 +1216,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeClassConstantAbbrev(DebugContext context, byte[] buffer, int p) {
+    private int writeClassConstantAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
         pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_class_constant, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_constant, buffer, pos);

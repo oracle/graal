@@ -106,7 +106,7 @@ public abstract class TypeEntry {
         return isClass() || isHeader();
     }
 
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+    public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
         /* Record the location of the Class instance in the heap if there is one */
         this.classOffset = debugTypeInfo.classOffset();
     }
