@@ -366,6 +366,12 @@ JNIEXPORT void JNICALL JVM_Yield(JNIEnv *env, jclass threadClass) {
 JNIEXPORT void JNICALL JVM_Sleep(JNIEnv *env, jclass threadClass, jlong millis) {
   UNIMPLEMENTED(JVM_Sleep);
 
+
+}
+
+JNIEXPORT jobject JNICALL JVM_CurrentCarrierThread(JNIEnv *env, jclass threadClass) {
+  UNIMPLEMENTED(JVM_CurrentCarrierThread);
+  return NULL;
 }
 
 JNIEXPORT jobject JNICALL JVM_CurrentThread(JNIEnv *env, jclass threadClass) {

@@ -350,6 +350,9 @@ JNIEXPORT void JNICALL
 JVM_Sleep(JNIEnv *env, jclass threadClass, jlong millis);
 
 JNIEXPORT jobject JNICALL
+JVM_CurrentCarrierThread(JNIEnv *env, jclass threadClass);
+
+JNIEXPORT jobject JNICALL
 JVM_CurrentThread(JNIEnv *env, jclass threadClass);
 
 JNIEXPORT jint JNICALL

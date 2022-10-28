@@ -327,6 +327,7 @@ SUNWprivate_1.1 {
                 JVM_DumpDynamicArchive;
 
                 # JDK 19
+                JVM_CurrentCarrierThread;
                 JVM_VirtualThreadMountBegin;
                 JVM_VirtualThreadMountEnd;
                 JVM_VirtualThreadUnmountBegin;
