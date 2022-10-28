@@ -102,7 +102,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
         suite.appendPhase(new BasePhase<HighTierContext>() {
             @Override
-            public Optional<NotApplicable> canApply(GraphState graphState) {
+            public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
                 return ALWAYS_APPLICABLE;
             }
 

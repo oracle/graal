@@ -39,7 +39,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.c.libc.MuslLibC;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -55,6 +54,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
@@ -67,6 +67,8 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 
@@ -530,7 +532,13 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (ModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty()) {
+                boolean isLLVMBackendMissing;
+                if (ModuleSupport.modulePathBuild) {
+                    isLLVMBackendMissing = ModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty();
+                } else {
+                    isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
+                }
+                if (isLLVMBackendMissing) {
                     throw UserError.abort("Please install the LLVM backend for GraalVM Native Image via `$JAVA_HOME/bin/gu install native-image-llvm-backend`.");
                 }
 
@@ -656,6 +664,9 @@ public class SubstrateOptions {
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
+
+    @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
+    public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
 
     @Fold
     public static boolean supportCompileInIsolates() {
@@ -845,5 +856,8 @@ public class SubstrateOptions {
             return (Boolean) values.get(this, this.getDefaultValue());
         }
     };
+
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = Debug)//
+    public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
 }

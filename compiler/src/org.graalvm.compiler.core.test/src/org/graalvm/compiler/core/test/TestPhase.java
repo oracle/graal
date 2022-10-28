@@ -31,12 +31,12 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
 
 /**
- * Base class for {@link Phase}s used in tests. The {@link BasePhase#canApply(GraphState)} method of
- * this class always returns {@link Optional#empty}.
+ * Base class for {@link Phase}s used in tests. The {@link BasePhase#notApplicableTo(GraphState)}
+ * method of this class always returns {@link Optional#empty}.
  */
 public abstract class TestPhase extends Phase {
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 }

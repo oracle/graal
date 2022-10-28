@@ -595,11 +595,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FIXED_READS, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtSideEffects(), Optional.of(new NotApplicable("This phase must run after FSA."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.FIXED_READS, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtSideEffects(), "This phase must run after FSA"));
     }
 
     @Override

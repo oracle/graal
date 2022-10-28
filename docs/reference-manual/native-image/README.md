@@ -271,4 +271,4 @@ Consider running interactive workshops to get some practical experience: go to [
 
 If you have stumbled across a potential bug, please [submit an issue in GitHub](https://github.com/oracle/graal/issues/new/choose).
 
-If you would like to contribute to Native Image, follow our standard [contributing workflow](Contributing.md).
+If you would like to contribute to Native Image, follow our standard [contributing workflow](contribute/Contributing.md).

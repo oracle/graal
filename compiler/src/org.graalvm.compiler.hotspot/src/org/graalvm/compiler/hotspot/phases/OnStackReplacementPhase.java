@@ -107,7 +107,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
     private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup("OSRLocal", int.class, Stamp.class, int.class);
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

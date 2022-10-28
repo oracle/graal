@@ -367,13 +367,13 @@ public class FeatureImpl {
             bb.markFieldAccessed(aField);
         }
 
-        public void registerAsRead(Field field) {
+        public void registerAsRead(Field field, Object reason) {
             getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
-            registerAsRead(getMetaAccess().lookupJavaField(field));
+            registerAsRead(getMetaAccess().lookupJavaField(field), reason);
         }
 
-        public void registerAsRead(AnalysisField aField) {
-            bb.markFieldRead(aField);
+        public void registerAsRead(AnalysisField aField, Object reason) {
+            bb.markFieldRead(aField, reason);
         }
 
         @Override

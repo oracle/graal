@@ -131,9 +131,7 @@ public abstract class AbstractImage {
     public abstract void build(String imageName, DebugContext debug);
 
     /**
-     * Write the image to the named file. This also writes debug information -- either to the same
-     * or a different file, as decided by the implementation of {@link #getOrCreateDebugObjectFile}.
-     * If {@link #getOrCreateDebugObjectFile} is not called, no debug information is written.
+     * Write the image to the named file.
      */
     public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config);
 
@@ -166,7 +164,7 @@ public abstract class AbstractImage {
 
     public abstract long getImageHeapSize();
 
-    public abstract ObjectFile getOrCreateDebugObjectFile();
+    public abstract ObjectFile getObjectFile();
 
     public boolean requiresCustomDebugRelocation() {
         return false;

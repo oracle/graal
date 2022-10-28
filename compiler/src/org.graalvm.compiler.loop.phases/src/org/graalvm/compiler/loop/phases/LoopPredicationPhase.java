@@ -81,11 +81,11 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.undefinedSpeculationLog(this, graphState),
-                        NotApplicable.notApplicableIf(!graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards must be allowed."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.withoutSpeculationLog(this, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed."));
     }
 
     @Override

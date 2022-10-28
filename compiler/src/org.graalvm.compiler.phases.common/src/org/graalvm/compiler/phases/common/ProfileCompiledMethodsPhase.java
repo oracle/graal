@@ -104,7 +104,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static final boolean WITH_INVOKES = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_INVOKES", "true"));
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

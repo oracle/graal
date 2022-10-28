@@ -72,7 +72,7 @@ public class DeadCodeEliminationPhase extends Phase {
     private final boolean optional;
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

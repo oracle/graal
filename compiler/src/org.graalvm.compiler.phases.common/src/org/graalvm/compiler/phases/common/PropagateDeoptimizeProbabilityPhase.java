@@ -50,8 +50,8 @@ import org.graalvm.compiler.phases.BasePhase;
 public class PropagateDeoptimizeProbabilityPhase extends BasePhase<CoreProviders> {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.notApplicableIf(!graphState.getGuardsStage().areDeoptsFixed(), Optional.of(new NotApplicable(this.getName() + " expects fixed deopts.")));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.when(!graphState.getGuardsStage().areDeoptsFixed(), "%s expects fixed deopts", getName());
     }
 
     @Override

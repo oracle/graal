@@ -201,7 +201,7 @@ public abstract class LoopFragment {
             finishDuplication();
             nodes = new NodeBitMap(graph());
 
-            assert checkNoNulls(duplicationMap);
+            checkNoNulls(duplicationMap);
 
             nodes.markAll(duplicationMap.getValues());
             nodesReady = true;
@@ -210,13 +210,12 @@ public abstract class LoopFragment {
         }
     }
 
-    private boolean checkNoNulls(EconomicMap<Node, Node> dupMap) {
+    private void checkNoNulls(EconomicMap<Node, Node> dupMap) {
         MapCursor<Node, Node> c = dupMap.getEntries();
         while (c.advance()) {
             GraalError.guarantee(c.getKey() != null, "Key must not be null when patching nodes for %s", this);
             GraalError.guarantee(c.getValue() != null, "Value is null for %s when patching nodes for %s", c.getKey(), this);
         }
-        return true;
     }
 
     protected static void computeNodes(NodeBitMap nodes, Graph graph, LoopEx loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {

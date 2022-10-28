@@ -259,10 +259,11 @@
     local daily_name = "daily-" + base_name,
     local weekly_name = "weekly-" + base_name,
     local monthly_name = "monthly-" + base_name,
+
     local is_gate = $.manifest_match(gates_manifest, gate_name),
     local is_daily = $.manifest_match(dailies_manifest, daily_name),
-    local is_weekly = $.manifest_match(weeklies_manifest, weekly_name),
-    local is_monthly = !is_gate && !is_daily && !is_weekly,
+    local is_monthly = $.manifest_match(monthlies_manifest, monthly_name),
+    local is_weekly = !is_gate && !is_daily && !is_monthly, # Default to weekly
     local is_windows = $.contains(os_arch, "windows"),
     local extra = if is_gate then
         $.get(gates_manifest, gate_name, {})
@@ -270,7 +271,7 @@
         $.get(dailies_manifest, daily_name, {})
       else if is_weekly then
         $.get(weeklies_manifest, weekly_name, {})
-      else
+      else if is_monthly then
         $.get(monthlies_manifest, monthly_name, {}),
 
     build: {

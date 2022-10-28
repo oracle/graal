@@ -719,6 +719,20 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
     }
 
+    static class ImmediateOpChecks {
+        static void validateSigned(int numBits, int imm) {
+            GraalError.guarantee(NumUtil.isSignedNbit(numBits, imm), "Immediate has to be %sbit signed number. Got value 0x%x", numBits, imm);
+        }
+
+        static void validateUnsigned(int numBits, int uimm) {
+            GraalError.guarantee(NumUtil.isUnsignedNbit(numBits, uimm), "Immediate has to be %sbit unsigned number. Got value 0x%x", numBits, uimm);
+        }
+
+        static void validate4ByteAlignment(int value) {
+            GraalError.guarantee((value & 0b11) == 0, "Expected 4-byte alignment. Got value 0x%x", value);
+        }
+    }
+
     private static final int RdOffset = 0;
     private static final int Rs1Offset = 5;
     private static final int Rs2Offset = 16;
@@ -1233,7 +1247,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * C6.2.25 Branch conditionally.
      *
      * @param condition may not be null.
-     * @param imm21 Signed 21-bit offset, has to be word aligned.
+     * @param imm21 Signed 21-bit offset, has to be 4-byte aligned.
      */
     protected void b(ConditionFlag condition, int imm21) {
         b(condition, imm21, -1);
@@ -1243,14 +1257,18 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * C6.2.25 Branch conditionally. Inserts instruction into code buffer at pos.
      *
      * @param condition may not be null.
-     * @param imm21 Signed 21-bit offset, has to be word aligned.
+     * @param imm21 Signed 21-bit offset, has to be 4-byte aligned.
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void b(ConditionFlag condition, int imm21, int pos) {
+        ImmediateOpChecks.validateSigned(21, imm21);
+        ImmediateOpChecks.validate4ByteAlignment(imm21);
+
+        int encoding = Instruction.BCOND.encoding | getConditionalBranchImm(imm21) | condition.encoding;
         if (pos == -1) {
-            emitInt(Instruction.BCOND.encoding | getConditionalBranchImm(imm21) | condition.encoding);
+            emitInt(encoding);
         } else {
-            emitInt(Instruction.BCOND.encoding | getConditionalBranchImm(imm21) | condition.encoding, pos);
+            emitInt(encoding, pos);
         }
     }
 
@@ -1259,10 +1277,12 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param size Instruction size in bits. Should be either 32 or 64.
-     * @param imm21 Signed 21-bit offset, has to be word aligned.
+     * @param imm21 Signed 21-bit offset, has to be 4-byte aligned.
      */
     protected void cbnz(int size, Register reg, int imm21) {
         assert verifySizeAndRegistersR(size, reg);
+        ImmediateOpChecks.validateSigned(21, imm21);
+        ImmediateOpChecks.validate4ByteAlignment(imm21);
 
         compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBNZ, -1);
     }
@@ -1272,11 +1292,13 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param size Instruction size in bits. Should be either 32 or 64.
-     * @param imm21 Signed 21-bit offset, has to be word aligned.
+     * @param imm21 Signed 21-bit offset, has to be 4-byte aligned.
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void cbnz(int size, Register reg, int imm21, int pos) {
         assert verifySizeAndRegistersR(size, reg);
+        ImmediateOpChecks.validateSigned(21, imm21);
+        ImmediateOpChecks.validate4ByteAlignment(imm21);
 
         compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBNZ, pos);
     }
@@ -1286,10 +1308,12 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param size Instruction size in bits. Should be either 32 or 64.
-     * @param imm21 Signed 21-bit offset, has to be word aligned.
+     * @param imm21 Signed 21-bit offset, has to be 4-byte aligned.
      */
     protected void cbz(int size, Register reg, int imm21) {
         assert verifySizeAndRegistersR(size, reg);
+        ImmediateOpChecks.validateSigned(21, imm21);
+        ImmediateOpChecks.validate4ByteAlignment(imm21);
 
         compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, -1);
     }
@@ -1299,11 +1323,13 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param size Instruction size in bits. Should be either 32 or 64.
-     * @param imm21 Signed 21-bit offset, has to be word aligned.
+     * @param imm21 Signed 21-bit offset, has to be 4-byte aligned.
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void cbz(int size, Register reg, int imm21, int pos) {
         assert verifySizeAndRegistersR(size, reg);
+        ImmediateOpChecks.validateSigned(21, imm21);
+        ImmediateOpChecks.validate4ByteAlignment(imm21);
 
         compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, pos);
     }
@@ -1313,7 +1339,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param uimm6 Unsigned 6-bit bit index.
-     * @param imm16 signed 16 bit offset
+     * @param imm16 signed 16 bit offset, has to be 4-byte aligned.
      */
     protected void tbnz(Register reg, int uimm6, int imm16) {
         tbnz(reg, uimm6, imm16, -1);
@@ -1324,7 +1350,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param uimm6 Unsigned 6-bit bit index.
-     * @param imm16 signed 16 bit offset
+     * @param imm16 signed 16 bit offset, has to be 4-byte aligned.
      */
     protected void tbz(Register reg, int uimm6, int imm16) {
         tbz(reg, uimm6, imm16, -1);
@@ -1335,14 +1361,14 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param uimm6 Unsigned 6-bit bit index.
-     * @param imm16 signed 16 bit offset
+     * @param imm16 signed 16 bit offset, has to be 4-byte aligned.
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void tbnz(Register reg, int uimm6, int imm16, int pos) {
         assert verifyRegistersR(reg);
-        assert NumUtil.isUnsignedNbit(6, uimm6);
-        assert NumUtil.isSignedNbit(16, imm16) : String.format("Offset value must fit in 16 bits signed: 0x%x", imm16);
-        assert (imm16 & 3) == 0 : String.format("Lower two bits must be zero: 0x%x", imm16 & 3);
+        ImmediateOpChecks.validateUnsigned(6, uimm6);
+        ImmediateOpChecks.validateSigned(16, imm16);
+        ImmediateOpChecks.validate4ByteAlignment(imm16);
 
         // size bit is overloaded as top bit of uimm6 bit index
         int size = (((uimm6 >> 5) & 1) == 0 ? 32 : 64);
@@ -1363,14 +1389,14 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param reg general purpose register. May not be null, zero-register or stackpointer.
      * @param uimm6 Unsigned 6-bit bit index.
-     * @param imm16 signed 16 bit offset
+     * @param imm16 signed 16 bit offset, has to be 4-byte aligned.
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void tbz(Register reg, int uimm6, int imm16, int pos) {
         assert verifyRegistersR(reg);
-        assert NumUtil.isUnsignedNbit(6, uimm6);
-        assert NumUtil.isSignedNbit(16, imm16) : String.format("Offset value must fit in 16 bits signed: 0x%x", imm16);
-        assert (imm16 & 3) == 0 : String.format("Lower two bits must be zero: 0x%x", imm16 & 3);
+        ImmediateOpChecks.validateUnsigned(6, uimm6);
+        ImmediateOpChecks.validateSigned(16, imm16);
+        ImmediateOpChecks.validate4ByteAlignment(imm16);
 
         // size bit is overloaded as top bit of uimm6 bit index
         int size = (((uimm6 >> 5) & 1) == 0 ? 32 : 64);
@@ -1388,15 +1414,17 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
     private void compareRegisterAndBranchInstruction(Register reg, int imm21, InstructionType type, Instruction instr, int pos) {
         int instrEncoding = instr.encoding | CompareBranchOp;
+        int encoding = type.encoding | instrEncoding | getConditionalBranchImm(imm21) | rd(reg);
         if (pos == -1) {
-            emitInt(type.encoding | instrEncoding | getConditionalBranchImm(imm21) | rd(reg));
+            emitInt(encoding);
         } else {
-            emitInt(type.encoding | instrEncoding | getConditionalBranchImm(imm21) | rd(reg), pos);
+            emitInt(encoding, pos);
         }
     }
 
     private static int getConditionalBranchImm(int imm21) {
-        assert NumUtil.isSignedNbit(21, imm21) && (imm21 & 0x3) == 0 : String.format("Immediate has to be 21bit signed number and word aligned got value 0x%x", imm21);
+        // Note this condition is Guaranteed in the callers of this method.
+        assert NumUtil.isSignedNbit(21, imm21) && (imm21 & 0b11) == 0 : String.format("Immediate has to be a 21-bit signed number and 4-byte aligned. Got value 0x%x", imm21);
 
         int imm = (imm21 & NumUtil.getNbitNumberInt(21)) >> 2;
         return imm << ConditionalBranchImmOffset;
@@ -1434,17 +1462,19 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void unconditionalBranchImmInstruction(int imm28, Instruction instr, int pos, boolean needsImmAnnotation) {
-        assert NumUtil.isSignedNbit(28, imm28) && (imm28 & 0x3) == 0 : "Immediate has to be 28bit signed number and word aligned";
-
-        int imm = (imm28 & NumUtil.getNbitNumberInt(28)) >> 2;
-        int instrEncoding = instr.encoding | UnconditionalBranchImmOp;
         if (needsImmAnnotation) {
             annotatePatchingImmediate(pos == -1 ? position() : pos, instr, 26, 0, 2);
         }
+
+        ImmediateOpChecks.validateSigned(28, imm28);
+        ImmediateOpChecks.validate4ByteAlignment(imm28);
+
+        int imm = (imm28 & NumUtil.getNbitNumberInt(28)) >> 2;
+        int encoding = instr.encoding | UnconditionalBranchImmOp | imm;
         if (pos == -1) {
-            emitInt(instrEncoding | imm);
+            emitInt(encoding);
         } else {
-            emitInt(instrEncoding | imm, pos);
+            emitInt(encoding, pos);
         }
     }
 
@@ -2002,9 +2032,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param imm21 Signed 21-bit offset.
      */
     public void adr(Register dst, int imm21) {
-        assert verifyRegistersR(dst);
-
-        emitInt(ADR.encoding | PcRelImmOp | rd(dst) | getPcRelativeImmEncoding(imm21));
+        adr(dst, imm21, -1);
     }
 
     /**
@@ -2018,18 +2046,20 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      */
     public void adr(Register dst, int imm21, int pos) {
         assert verifyRegistersR(dst);
-
-        emitInt(ADR.encoding | PcRelImmOp | rd(dst) | getPcRelativeImmEncoding(imm21), pos);
-    }
-
-    private static int getPcRelativeImmEncoding(int imm21) {
-        assert NumUtil.isSignedNbit(21, imm21);
+        ImmediateOpChecks.validateSigned(21, imm21);
+        ImmediateOpChecks.validate4ByteAlignment(imm21);
         int imm = imm21 & NumUtil.getNbitNumberInt(21);
         // higher 19 bit
         int immHi = (imm >> 2) << PcRelImmHiOffset;
         // lower 2 bit
         int immLo = (imm & 0x3) << PcRelImmLoOffset;
-        return immHi | immLo;
+
+        int encoding = ADR.encoding | PcRelImmOp | rd(dst) | immHi | immLo;
+        if (pos == -1) {
+            emitInt(encoding);
+        } else {
+            emitInt(encoding, pos);
+        }
     }
 
     /* Arithmetic (Immediate) (5.4.1) */
@@ -2123,7 +2153,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @return Representation of immediate for use with arithmetic instructions.
      */
     private static int encodeAddSubtractImm(int imm) {
-        assert isAddSubtractImmediate(imm, false) : "Immediate has to be legal add/substract immediate value " + imm;
+        GraalError.guarantee(isAddSubtractImmediate(imm, false), "Immediate has to be legal add/subtract. Immediate value %s", imm);
 
         if (NumUtil.isUnsignedNbit(12, imm)) {
             return imm << ImmediateOffset;
@@ -2284,7 +2314,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void moveWideImmInstruction(Instruction instr, Register dst, int uimm16, int shiftAmt, InstructionType type) {
-        assert NumUtil.isUnsignedNbit(16, uimm16) : "Immediate has to be unsigned 16bit";
+        ImmediateOpChecks.validateUnsigned(16, uimm16);
         assert shiftAmt == 0 || shiftAmt == 16 || (type == InstructionType.General64 && (shiftAmt == 32 || shiftAmt == 48)) : "Invalid shift amount: " + shiftAmt;
 
         int shiftValue = shiftAmt >> 4;
@@ -3727,7 +3757,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void exceptionInstruction(Instruction instr, int uimm16) {
-        assert NumUtil.isUnsignedNbit(16, uimm16);
+        ImmediateOpChecks.validateUnsigned(16, uimm16);
 
         emitInt(instr.encoding | ExceptionOp | uimm16 << SystemImmediateOffset);
     }

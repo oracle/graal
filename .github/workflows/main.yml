@@ -39,7 +39,6 @@ env:
   JAVA_HOME: ${{ github.workspace }}/jdk
   JDT: builtin
   LANG: en_US.UTF-8
-  MX_GATE_OPTS: "--strict-mode"
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
   MX_PYTHON: python3.8
@@ -49,7 +48,7 @@ permissions:
 
 jobs:
   build-graalvm:
-    name: ${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE }} JDK${{ matrix.env.JDK_VERSION }} ${{ matrix.env.WITHOUT_VCS }}
+    name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -58,66 +57,72 @@ jobs:
           # /compiler
           - env:
               JDK_VERSION: "19"
-              GATE: "style,fullbuild,test"
+              GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,bootstraplite"
+              GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
           - env:
               JDK_VERSION: "17" # espresso does not support JDK19 yet
-              GATE: "style,fullbuild"
+              GATE_TAGS: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
           - env:
               JDK_VERSION: "19"
-              GATE: "style,fullbuild"
+              GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,test,helloworld"
+              GATE_TAGS: "build,test,helloworld"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,test,helloworld_debug"
+              GATE_TAGS: "build,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "build,debuginfotest"
+              GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "19"
-              GATE: "hellomodule"
+              GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
           - env:
               JDK_VERSION: "19"
-              GATE: "style,fullbuild,sulongBasic"
-              MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
+              GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
+          # /truffle
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "" # Truffle does not use tags
+              PRIMARY: "truffle"
           # /vm
           - env:
               JDK_VERSION: "19"
-              GATE: "build,sulong"
-              MX_GATE_OPTS: "--strict-mode --no-warning-as-error" # sulong throws deprecation warnings
+              GATE_TAGS: "build,sulong"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
               JDK_VERSION: "17"
-              GATE: "build"
+              GATE_TAGS: "build"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
+    env:
+      MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
+      MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v3
       with:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
-        fetch-depth: "${{ contains(matrix.env.GATE, 'style') && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
+        fetch-depth: "${{ env.MX_RUNS_STYLE && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
@@ -143,20 +148,20 @@ jobs:
         mkdir jdk-dl
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
-      if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
+      if: ${{ env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
       run: sudo apt update
     - name: Install debug dependencies
-      if: ${{ contains(matrix.env.GATE, 'debug') }}
+      if: ${{ env.MX_RUNS_DEBUG == 'true' }}
       run: sudo apt install gdb
     - name: Install style dependencies
-      if: ${{ contains(matrix.env.GATE, 'style') }}
+      if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         sudo apt install python3-pip python-setuptools
         jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
         ${MX_PYTHON} -m pip install jsonschema==4.6.1
     - name: Download Eclipse
-      if: ${{ contains(matrix.env.GATE, 'style') }}
+      if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         ECLIPSE_TAR=eclipse.tar.gz
         ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
@@ -167,6 +172,11 @@ jobs:
     - name: Remove .git directory
       if: ${{ matrix.env.WITHOUT_VCS }}
       run: rm -rf .git
-    - name: Build GraalVM and run gate
+    - name: Build GraalVM and run gate with tags
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate ${MX_GATE_OPTS} --tags ${GATE}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE_TAGS}
+      if: ${{ matrix.env.GATE_TAGS != '' }}
+    - name: Build GraalVM and run gate without tags
+      env: ${{ matrix.env }}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode
+      if: ${{ matrix.env.GATE_TAGS == '' }}

@@ -45,6 +45,7 @@ import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.macho.MachOObjectFile.MachOSection;
 import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
+import org.graalvm.compiler.debug.GraalError;
 
 class MachORelocationElement extends MachOObjectFile.LinkEditElement {
     /*
@@ -296,7 +297,7 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
         int symbolNum;
         if (isAddendKind()) {
             assert !isExtern() : "addend must be encoded as a local";
-            assert NumUtil.isSignedNbit(24, addend);
+            GraalError.guarantee(NumUtil.isSignedNbit(24, addend), "Addend has to be 24bit signed number. Got value 0x%x", addend);
             // store addend as symbolnum
             symbolNum = addend;
         } else if (isExtern()) {

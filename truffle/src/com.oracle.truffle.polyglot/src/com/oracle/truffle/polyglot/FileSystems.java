@@ -92,7 +92,6 @@ final class FileSystems {
      */
     static final FileSystem INVALID_FILESYSTEM = new InvalidFileSystem();
     private static final AtomicReference<FileSystemProvider> DEFAULT_FILE_SYSTEM_PROVIDER = new AtomicReference<>();
-    private static final String TMP_FILE = System.getProperty("java.io.tmpdir");
 
     private FileSystems() {
         throw new IllegalStateException("No instance allowed");
@@ -900,10 +899,11 @@ final class FileSystems {
         public Path getTempDirectory() {
             Path result = tmpDir;
             if (result == null) {
-                if (TMP_FILE == null) {
+                String tmpDirPath = EngineAccessor.RUNTIME.getSavedProperty("java.io.tmpdir");
+                if (tmpDirPath == null) {
                     throw new IllegalStateException("The java.io.tmpdir is not set.");
                 }
-                result = parsePath(TMP_FILE);
+                result = parsePath(tmpDirPath);
                 tmpDir = result;
             }
             return result;

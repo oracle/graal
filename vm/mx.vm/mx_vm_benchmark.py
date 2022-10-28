@@ -130,7 +130,7 @@ class NativeImageVM(GraalVm):
     class BenchmarkConfig:
         def __init__(self, vm, bm_suite, args):
             self.bmSuite = bm_suite
-            self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
+            self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
             self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
@@ -319,9 +319,10 @@ class NativeImageVM(GraalVm):
 
                 def generate_profiling_package_prefixes():
                     # run the native-image-configure tool to gather the jdk package prefixes
-                    native_image_configure_command = mx.cmd_suffix(join(mx_sdk_vm.graalvm_home(), 'bin', 'native-image-configure'))
+                    graalvm_home_bin = os.path.join(mx_sdk_vm.graalvm_home(), 'bin')
+                    native_image_configure_command = mx.cmd_suffix(join(graalvm_home_bin, 'native-image-configure'))
                     if not exists(native_image_configure_command):
-                        mx.abort('Failed to find the native-image-configure command at {}.'.format(native_image_configure_command))
+                        mx.abort('Failed to find the native-image-configure command at {}. \nContent {}: \n\t{}'.format(native_image_configure_command, graalvm_home_bin, '\n\t'.join(os.listdir(graalvm_home_bin))))
                     tmp = tempfile.NamedTemporaryFile()
                     ret = mx.run([native_image_configure_command, 'generate-filters',
                                   '--include-packages-from-modules=java.base',

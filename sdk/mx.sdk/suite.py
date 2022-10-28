@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.8.0",
+  "mxversion" : "6.9.9",
   "name" : "sdk",
   "version" : "23.0.0",
   "release" : False,
@@ -76,14 +76,6 @@ suite = {
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "UPL",
-  "imports": {
-    "suites": [
-      {
-        "name": "docs",
-        "subdir": True,
-      },
-    ]
-  },
   "ignore_suite_commit_info": True,
   "libraries" : {
     "WRK_MULTIARCH": {
