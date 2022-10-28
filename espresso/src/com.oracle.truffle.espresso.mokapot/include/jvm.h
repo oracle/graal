@@ -370,6 +370,9 @@ JVM_IsInterrupted(JNIEnv *env, jobject thread, jboolean clearInterrupted);
 JNIEXPORT jboolean JNICALL
 JVM_HoldsLock(JNIEnv *env, jclass threadClass, jobject obj);
 
+JNIEXPORT jobject JNICALL
+JVM_GetStackTrace(JNIEnv *env, jobject thread);
+
 JNIEXPORT void JNICALL
 JVM_DumpAllStacks(JNIEnv *env, jclass unused);
 
@@ -382,6 +385,21 @@ JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jstring name);
 /* getStackTrace() and getAllStackTraces() method */
 JNIEXPORT jobjectArray JNICALL
 JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threads);
+
+JNIEXPORT jobject JNICALL
+JVM_ExtentLocalCache(JNIEnv *env, jclass threadClass);
+
+JNIEXPORT void JNICALL
+JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, jobject theCache);
+
+JNIEXPORT jlong JNICALL
+JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass);
+
+/*
+ * jdk.internal.vm.Continuation
+ */
+JNIEXPORT void JNICALL
+JVM_RegisterContinuationMethods(JNIEnv *env, jclass cls);
 
 /*
  * java.lang.SecurityManager

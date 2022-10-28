@@ -403,6 +403,11 @@ JNIEXPORT jboolean JNICALL JVM_HoldsLock(JNIEnv *env, jclass threadClass, jobjec
   return 0;
 }
 
+JNIEXPORT jobject JNICALL JVM_GetStackTrace(JNIEnv *env, jobject thread) {
+  UNIMPLEMENTED(JVM_GetStackTrace);
+  return NULL;
+}
+
 JNIEXPORT void JNICALL JVM_DumpAllStacks(JNIEnv *env, jclass unused) {
   UNIMPLEMENTED(JVM_DumpAllStacks);
 
@@ -421,6 +426,24 @@ JNIEXPORT void JNICALL JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jst
 JNIEXPORT jobjectArray JNICALL JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threads) {
   UNIMPLEMENTED(JVM_DumpThreads);
   return NULL;
+}
+
+JNIEXPORT jobject JNICALL JVM_ExtentLocalCache(JNIEnv *env, jclass threadClass) {
+  UNIMPLEMENTED(JVM_ExtentLocalCache);
+  return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, jobject theCache) {
+  UNIMPLEMENTED(JVM_SetExtentLocalCache);
+}
+
+JNIEXPORT jlong JNICALL JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass) {
+  UNIMPLEMENTED(JVM_GetNextThreadIdOffset);
+  return 0L;
+}
+
+JNIEXPORT void JNICALL JVM_RegisterContinuationMethods(JNIEnv *env, jclass cls) {
+  UNIMPLEMENTED(JVM_RegisterContinuationMethods);
 }
 
 JNIEXPORT jclass JNICALL JVM_CurrentLoadedClass(JNIEnv *env) {
