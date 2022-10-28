@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
@@ -148,10 +147,12 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason) {
         super.onObjectReachable(imageHeapConstant, reason);
 
-        if (metaAccess.isInstanceOf(imageHeapConstant, Field.class) || metaAccess.isInstanceOf(imageHeapConstant, Executable.class)) {
-            reflectionSupport.registerHeapReflectionObject((AccessibleObject) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()));
+        if (metaAccess.isInstanceOf(imageHeapConstant, Field.class)) {
+            reflectionSupport.registerHeapReflectionField((Field) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
+        } else if (metaAccess.isInstanceOf(imageHeapConstant, Executable.class)) {
+            reflectionSupport.registerHeapReflectionExecutable((Executable) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
         } else if (metaAccess.isInstanceOf(imageHeapConstant, DynamicHub.class)) {
-            reflectionSupport.registerHeapDynamicHub(SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()));
+            reflectionSupport.registerHeapDynamicHub(SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
         }
     }
 }
