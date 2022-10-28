@@ -336,6 +336,7 @@ SUNWprivate_1.1 {
                 JVM_RegisterContinuationMethods;
                 JVM_IsPreviewEnabled;
                 JVM_IsContinuationsSupported;
+                JVM_SetStackWalkContinuation;
                 JVM_VirtualThreadMountBegin;
                 JVM_VirtualThreadMountEnd;
                 JVM_VirtualThreadUnmountBegin;

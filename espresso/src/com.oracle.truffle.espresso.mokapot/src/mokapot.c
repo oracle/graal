@@ -1469,6 +1469,10 @@ JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong
   return (*getEnv())->JVM_MoreStackWalk(env, stackStream, mode, anchor, frame_count, start_index, frames);
 }
 
+JNIEXPORT void JNICALL JVM_SetStackWalkContinuation(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont) {
+  UNIMPLEMENTED(JVM_SetStackWalkContinuation);
+}
+
 JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {
   IMPLEMENTED(JVM_SetBootLoaderUnnamedModule);
   (*getEnv())->JVM_SetBootLoaderUnnamedModule(env, module);

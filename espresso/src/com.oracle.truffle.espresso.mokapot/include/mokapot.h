@@ -958,6 +958,8 @@ jboolean (*JVM_IsPreviewEnabled)();
 
 jboolean (*JVM_IsContinuationsSupported)();
 
+void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
+
 };
 
 struct MokapotEnv_ {

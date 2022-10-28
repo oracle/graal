@@ -328,6 +328,9 @@ JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
                   jint frame_count, jint start_index,
                   jobjectArray frames);
 
+JNIEXPORT void JNICALL
+JVM_SetStackWalkContinuation(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
+
 /*
  * java.lang.Thread
  */
