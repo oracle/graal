@@ -195,7 +195,7 @@ native-image [options] -jar jarfile [imagename]
 4. Create a native executable:
 
     ```
-    native-image --jar App.jar
+    native-image -jar App.jar
     ```
     It will produce a native executable in the project root directory.
 5. Run the native executable:
