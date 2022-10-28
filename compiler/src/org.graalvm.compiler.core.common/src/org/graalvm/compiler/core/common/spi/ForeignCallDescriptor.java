@@ -50,7 +50,12 @@ public class ForeignCallDescriptor {
     protected final boolean isGuaranteedSafepoint;
     protected final LocationIdentity[] killedLocations;
 
-    public ForeignCallDescriptor(String name, Class<?> resultType, Class<?>[] argumentTypes, boolean isReexecutable, LocationIdentity[] killedLocations, boolean canDeoptimize,
+    public ForeignCallDescriptor(String name,
+                    Class<?> resultType,
+                    Class<?>[] argumentTypes,
+                    boolean isReexecutable,
+                    LocationIdentity[] killedLocations,
+                    boolean canDeoptimize,
                     boolean isGuaranteedSafepoint) {
         this.isReexecutable = isReexecutable;
         this.killedLocations = killedLocations;

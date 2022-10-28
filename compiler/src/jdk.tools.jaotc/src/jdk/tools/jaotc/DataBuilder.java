@@ -30,11 +30,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
-import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.HotSpotHostBackend;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
-import org.graalvm.compiler.hotspot.stubs.Stub;
 
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.ByteContainer;
@@ -186,15 +184,6 @@ final class DataBuilder {
     private AOTCompiledClass retrieveStubCode(DebugContext debug) {
         ArrayList<CompiledMethodInfo> stubs = new ArrayList<>();
         HotSpotForeignCallsProvider foreignCallsProvider = backend.getProviders().getForeignCalls();
-        for (Stub stub : foreignCallsProvider.getStubs()) {
-            try (DebugContext.Scope scope = debug.scope("CompileStubs")) {
-                CompilationResult result = stub.getCompilationResult(debug, backend);
-                CompiledMethodInfo cm = new CompiledMethodInfo(result, new AOTStub(stub, backend, debug.getOptions()));
-                stubs.add(cm);
-            } catch (Throwable e) {
-                throw debug.handle(e);
-            }
-        }
         AOTCompiledClass stubCompiledCode = new AOTCompiledClass(stubs);
         CodeSectionProcessor codeSectionProcessor = new CodeSectionProcessor(this);
         codeSectionProcessor.process(stubCompiledCode);

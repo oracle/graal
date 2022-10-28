@@ -282,7 +282,7 @@ public class CGlobalDataFeature implements GraalFeature {
             if (data.symbolName != null && !info.isSymbolReference()) {
                 createSymbol.apply(info.getOffset(), data.symbolName);
             }
-            if (data.nonConstant) {
+            if (data.nonConstant && data.symbolName != null) {
                 createSymbolReference.apply(info.getOffset(), data.symbolName);
             }
         }
