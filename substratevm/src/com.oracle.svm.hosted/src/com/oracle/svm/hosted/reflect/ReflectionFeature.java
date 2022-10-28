@@ -258,6 +258,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         aUniverse = access.getUniverse();
+        reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
 
         ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
@@ -271,18 +272,23 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        reflectionData.beforeAnalysis(analysisAccess);
         /* duplicated to reduce the number of analysis iterations */
         reflectionData.flushConditionalConfiguration(access);
+
+        /*
+         * This has to be registered before registering methods below since this causes the analysis
+         * to see SubstrateMethodAccessor.vtableOffset before we register the transformer.
+         */
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
+
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object[].class.getMethods());
-
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         reflectionData.flushConditionalConfiguration(access);
-        reflectionData.duringAnalysis(access);
     }
 
     @Override
