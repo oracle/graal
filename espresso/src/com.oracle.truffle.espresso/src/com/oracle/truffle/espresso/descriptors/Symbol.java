@@ -263,6 +263,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> priority = StaticSymbols.putName("priority");
         public static final Symbol<Name> remove = StaticSymbols.putName("remove");
         public static final Symbol<Name> stop = StaticSymbols.putName("stop");
+        public static final Symbol<Name> synchronizedAddStrong = StaticSymbols.putName("synchronizedAddStrong");
         public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
         public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> contextClassLoader = StaticSymbols.putName("contextClassLoader");
@@ -694,6 +695,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_reflect_InvocationTargetException = StaticSymbols.putType("Ljava/lang/reflect/InvocationTargetException;");
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType("Ljava/lang/Thread;");
+        public static final Symbol<Type> java_lang_Thread_FieldHolder = StaticSymbols.putType("Ljava/lang/Thread$FieldHolder;");
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType("Ljava/lang/ThreadGroup;");
         public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType("Ljava/lang/Runnable;");
 
