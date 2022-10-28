@@ -293,7 +293,7 @@ public class CGlobalDataFeature implements InternalFeature {
             if (data.symbolName != null && !info.isSymbolReference()) {
                 createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
-            if (data.nonConstant) {
+            if (data.nonConstant && data.symbolName != null) {
                 createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
         }
