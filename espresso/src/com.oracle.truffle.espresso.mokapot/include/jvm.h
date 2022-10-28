@@ -207,6 +207,12 @@ JVM_IsSupportedJNIVersion(jint version);
 JNIEXPORT jobjectArray JNICALL
 JVM_GetVmArguments(JNIEnv *env);
 
+JNIEXPORT jboolean JNICALL
+JVM_IsPreviewEnabled(void);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsContinuationsSupported(void);
+
 JNIEXPORT void JNICALL
 JVM_InitializeFromArchive(JNIEnv* env, jclass cls);
 

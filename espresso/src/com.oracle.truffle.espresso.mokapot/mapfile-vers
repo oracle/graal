@@ -334,6 +334,8 @@ SUNWprivate_1.1 {
                 JVM_SetExtentLocalCache;
                 JVM_GetNextThreadIdOffset;
                 JVM_RegisterContinuationMethods;
+                JVM_IsPreviewEnabled;
+                JVM_IsContinuationsSupported;
                 JVM_VirtualThreadMountBegin;
                 JVM_VirtualThreadMountEnd;
                 JVM_VirtualThreadUnmountBegin;

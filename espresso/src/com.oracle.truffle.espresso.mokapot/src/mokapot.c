@@ -1424,6 +1424,16 @@ JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
   return (*getEnv())->JVM_GetVmArguments(env);
 }
 
+JNIEXPORT jboolean JNICALL JVM_IsPreviewEnabled(void) {
+  UNIMPLEMENTED(JVM_IsPreviewEnabled);
+  return JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL JVM_IsContinuationsSupported(void) {
+  UNIMPLEMENTED(JVM_IsContinuationsSupported);
+  return JNI_FALSE;
+}
+
 JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {
   IMPLEMENTED(JVM_HasReferencePendingList);
   return (*getEnv())->JVM_HasReferencePendingList(env);

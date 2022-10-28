@@ -954,6 +954,10 @@ jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
 
 void (*JVM_RegisterContinuationMethods)(JNIEnv *env, jclass cls);
 
+jboolean (*JVM_IsPreviewEnabled)();
+
+jboolean (*JVM_IsContinuationsSupported)();
+
 };
 
 struct MokapotEnv_ {
