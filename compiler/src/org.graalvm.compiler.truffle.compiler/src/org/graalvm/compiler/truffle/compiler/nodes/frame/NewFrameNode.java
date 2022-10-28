@@ -364,14 +364,14 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         return this;
     }
 
-    public VirtualArrayNode getTagArray(VirtualFrameAccessType type) {
+    public ValueNode getTagArray(VirtualFrameAccessType type) {
         /*
          * If one of these casts fails, there's an access into a zero-length array, which should not
          * get to this point.
          */
         switch (type) {
             case Indexed:
-                return (VirtualArrayNode) virtualFrameArrays.get(INDEXED_TAGS_ARRAY);
+                return virtualFrameArrays.get(INDEXED_TAGS_ARRAY);
             case Auxiliary:
                 return null;
             default:
@@ -379,29 +379,29 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         }
     }
 
-    public VirtualArrayNode getObjectArray(VirtualFrameAccessType type) {
+    public ValueNode getObjectArray(VirtualFrameAccessType type) {
         /*
          * If one of these casts fails, there's an access into a zero-length array, which should not
          * get to this point.
          */
         switch (type) {
             case Indexed:
-                return (VirtualArrayNode) virtualFrameArrays.get(INDEXED_OBJECT_ARRAY);
+                return virtualFrameArrays.get(INDEXED_OBJECT_ARRAY);
             case Auxiliary:
-                return (VirtualArrayNode) virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY);
+                return virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY);
             default:
                 throw GraalError.shouldNotReachHere();
         }
     }
 
-    public VirtualArrayNode getPrimitiveArray(VirtualFrameAccessType type) {
+    public ValueNode getPrimitiveArray(VirtualFrameAccessType type) {
         /*
          * If one of these casts fails, there's an access into a zero-length array, which should not
          * get to this point.
          */
         switch (type) {
             case Indexed:
-                return (VirtualArrayNode) virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY);
+                return virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY);
             case Auxiliary:
                 return null;
             default:
