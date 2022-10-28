@@ -355,6 +355,9 @@ JVM_CurrentCarrierThread(JNIEnv *env, jclass threadClass);
 JNIEXPORT jobject JNICALL
 JVM_CurrentThread(JNIEnv *env, jclass threadClass);
 
+JNIEXPORT void JNICALL
+JVM_SetCurrentThread(JNIEnv *env, jobject thisThread, jobject theThread);
+
 JNIEXPORT jint JNICALL
 JVM_CountStackFrames(JNIEnv *env, jobject thread);
 

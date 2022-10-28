@@ -345,7 +345,8 @@ typedef uint64_t julong;
     V(JVM_ReferenceRefersTo) \
     V(JVM_RegisterLambdaProxyClassForArchiving) \
     /* Java 19 VM methods */ \
-    V(JVM_CurrentCarrierThread)
+    V(JVM_CurrentCarrierThread) \
+    V(JVM_SetCurrentThread)
 
 #ifdef __cplusplus
 extern "C" {
@@ -935,6 +936,8 @@ jboolean (*JVM_ReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
 void (*JVM_ReferenceClear)(JNIEnv *env, jobject ref);
 
 jobject (*JVM_CurrentCarrierThread)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetCurrentThread)(JNIEnv *env, jobject thisThread, jobject theThread);
 
 };
 

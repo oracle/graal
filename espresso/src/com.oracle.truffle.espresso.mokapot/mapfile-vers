@@ -328,6 +328,7 @@ SUNWprivate_1.1 {
 
                 # JDK 19
                 JVM_CurrentCarrierThread;
+                JVM_SetCurrentThread;
                 JVM_VirtualThreadMountBegin;
                 JVM_VirtualThreadMountEnd;
                 JVM_VirtualThreadUnmountBegin;

@@ -379,6 +379,10 @@ JNIEXPORT jobject JNICALL JVM_CurrentThread(JNIEnv *env, jclass threadClass) {
   return NULL;
 }
 
+JNIEXPORT void JVM_SetCurrentThread(JNIEnv *env, jobject thisThread, jobject theThread) {
+  UNIMPLEMENTED(JVM_SetCurrentThread);
+}
+
 JNIEXPORT jint JNICALL JVM_CountStackFrames(JNIEnv *env, jobject thread) {
   UNIMPLEMENTED(JVM_CountStackFrames);
   return 0;
