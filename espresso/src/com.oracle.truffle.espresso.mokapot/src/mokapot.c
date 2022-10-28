@@ -829,6 +829,15 @@ JNIEXPORT jboolean JNICALL JVM_SupportsCX8(void) {
   return (*getEnv())->JVM_SupportsCX8();
 }
 
+JNIEXPORT void JNICALL JVM_ReportFinalizationComplete(JNIEnv *env, jobject finalizee) {
+  UNIMPLEMENTED(JVM_ReportFinalizationComplete);
+}
+
+JNIEXPORT jboolean JNICALL JVM_IsFinalizationEnabled(JNIEnv *env) {
+  UNIMPLEMENTED(JVM_IsFinalizationEnabled);
+  return JNI_FALSE;
+}
+
 JNIEXPORT jint JNICALL JVM_DTraceGetVersion(JNIEnv *env) {
   UNIMPLEMENTED(JVM_DTraceGetVersion);
   return 0;

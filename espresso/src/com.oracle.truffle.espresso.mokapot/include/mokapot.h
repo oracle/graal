@@ -960,6 +960,10 @@ jboolean (*JVM_IsContinuationsSupported)();
 
 void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
 
+void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
+
+jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
+
 };
 
 struct MokapotEnv_ {
