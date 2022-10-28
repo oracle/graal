@@ -33,6 +33,7 @@ import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -768,6 +769,22 @@ public class SubstrateOptions {
             return getValueOrDefault(values.getMap());
         }
     };
+
+    @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
+    public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
+
+    /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
+    public static final String getHeapDumpPath(String defaultFilename) {
+        String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
+        if (heapDumpFilenameOrDirectory.isEmpty()) {
+            return defaultFilename;
+        }
+        var targetPath = Paths.get(heapDumpFilenameOrDirectory);
+        if (Files.isDirectory(targetPath)) {
+            targetPath = targetPath.resolve(defaultFilename);
+        }
+        return targetPath.toFile().getAbsolutePath();
+    }
 
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
