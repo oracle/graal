@@ -300,13 +300,22 @@ public abstract class PlatformThreads {
     }
 
     /** Before detaching a thread, run any Java cleanup code. */
-    static void cleanupBeforeDetach(IsolateThread thread) {
+    static void threadExit(IsolateThread thread) {
         VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
 
         Thread javaThread = currentThread.get(thread);
         if (javaThread != null) {
             toTarget(javaThread).exit();
-            ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), javaThread);
+        }
+    }
+
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
+    static void afterThreadExit(IsolateThread thread) {
+        VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
+
+        Thread javaThread = currentThread.get(thread);
+        if (javaThread != null) {
+            ThreadListenerSupport.get().afterThreadExit(thread, javaThread);
         }
     }
 
@@ -678,6 +687,7 @@ public abstract class PlatformThreads {
         return !VMOperationControl.isDedicatedVMOperationThread(isolateThread);
     }
 
+    /** This method should only be used to exit the main thread. */
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
     public static void exit(Thread thread) {
         /*

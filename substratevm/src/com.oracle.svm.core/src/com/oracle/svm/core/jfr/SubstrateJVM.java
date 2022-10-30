@@ -385,6 +385,8 @@ public class SubstrateJVM {
 
         if (millis > 0) {
             SubstrateJVM.get().setEnabled(type, true);
+            /* Stacktrace walk is disabled by default for ExecutionSample. */
+            SubstrateJVM.get().setStackTraceEnabled(type, true);
         } else {
             millis = 0;
         }

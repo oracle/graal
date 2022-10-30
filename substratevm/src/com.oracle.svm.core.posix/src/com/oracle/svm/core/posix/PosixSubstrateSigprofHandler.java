@@ -78,7 +78,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
 
         /* Register sa_sigaction signal handler */
-        structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER());
+        structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER() | Signal.SA_RESTART());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
         Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
     }

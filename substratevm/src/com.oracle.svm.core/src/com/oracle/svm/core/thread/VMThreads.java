@@ -42,8 +42,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -338,11 +338,14 @@ public abstract class VMThreads {
             nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
         }
 
-        cleanupBeforeDetach(thread);
+        exit(thread);
+        /* Only uninterruptible code may be executed from now on. */
+        PlatformThreads.afterThreadExit(thread);
 
-        // From this point on, all code must be fully uninterruptible because this thread either
-        // holds the THREAD_MUTEX (see the JavaDoc on THREAD_MUTEX) or because the IsolateThread was
-        // already freed.
+        /*
+         * Here, all code is uninterruptible because this thread either holds the THREAD_MUTEX (see
+         * the JavaDoc on THREAD_MUTEX) or because the IsolateThread was already freed.
+         */
         lockThreadMutexInNativeCode();
         OSThreadHandle threadToCleanup;
         try {
@@ -466,17 +469,17 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false)
-    private static void cleanupBeforeDetach(IsolateThread thread) {
-        PlatformThreads.cleanupBeforeDetach(thread);
+    private static void exit(IsolateThread thread) {
+        PlatformThreads.threadExit(thread);
     }
 
     /**
      * Detaches all manually attached native threads, but not those threads that were launched from
      * Java, which must be notified to individually exit in the immediately following tear-down.
      *
-     * We cannot {@linkplain #cleanupBeforeDetach clean up} the threads we detach here because
-     * cleanup code needs to run in the detaching thread itself. We assume that this is tolerable
-     * considering the immediately following tear-down.
+     * We cannot clean up the threads we detach here because cleanup code needs to run in the
+     * detaching thread itself. We assume that this is tolerable considering the immediately
+     * following tear-down.
      */
     public static void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
         DetachAllThreadsExceptCurrentOperation vmOp = new DetachAllThreadsExceptCurrentOperation();
