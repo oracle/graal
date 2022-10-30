@@ -24,14 +24,28 @@
  */
 package org.graalvm.profdiff.core.pair;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
+import org.graalvm.profdiff.core.CompilationFragment;
+import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.Method;
+import org.graalvm.profdiff.core.inlining.InliningPath;
+import org.graalvm.profdiff.core.inlining.InliningTree;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * A pair of experiments.
@@ -89,5 +103,75 @@ public class ExperimentPair {
             methodPairs.add(new MethodPair(experiment1.getMethodOrCreate(methodName), experiment2.getMethodOrCreate(methodName)));
         }
         return () -> methodPairs.stream().sorted(Comparator.comparingLong(pair -> -pair.getTotalPeriod())).iterator();
+    }
+
+    public void createCompilationFragments() throws ExperimentParserError {
+        createCompilationFragments(experiment1, experiment2);
+        createCompilationFragments(experiment2, experiment1);
+    }
+
+    private static void createCompilationFragments(Experiment destination, Experiment source) throws ExperimentParserError {
+        for (Method method : collect(destination.getMethodsByName().getValues())) {
+            if (!method.isHot()) {
+                continue;
+            }
+            for (CompilationUnit compilationUnit : collect(method.getHotCompilationUnits())) {
+                if (compilationUnit instanceof CompilationFragment) {
+                    continue;
+                }
+                InliningTree inliningTree = compilationUnit.loadTrees().getInliningTree();
+                // we will check that the path is unique
+                // a path is not unique after duplication, unrolling...
+                // duplicated paths make it impossible to attribute optimizations
+                EconomicMap<InliningTreeNode, InliningPath> nodePaths = EconomicMap.create(Equivalence.IDENTITY);
+                inliningTree.getRoot().forEach(node -> nodePaths.put(node, InliningPath.fromRootToNode(node)));
+                inliningTree.getRoot().forEach(node -> {
+                    // make sure the node is actually inlined, and it is not the root node
+                    if (node.getName() == null || !node.isPositive() || method.getMethodName().equals(node.getName())) {
+                        return;
+                    }
+                    // make sure that the method is hot in the other (source) experiment as well
+                    Method methodInSource = source.getMethodsByName().get(node.getName());
+                    if (methodInSource == null || !methodInSource.isHot()) {
+                        return;
+                    }
+                    // check that the method is not inlined in at least one compilation unit of the
+                    // other experiment
+                    InliningPath pathToNode = nodePaths.get(node);
+                    // this is expensive but actually makes things faster
+                    for (CompilationUnit otherCompilationUnit : source.getMethodOrCreate(method.getMethodName()).getHotCompilationUnits()) {
+                        if (otherCompilationUnit instanceof CompilationFragment) {
+                            continue;
+                        }
+                        try {
+                            List<InliningTreeNode> otherNodes = new ArrayList<>();
+                            otherCompilationUnit.loadTrees().getInliningTree().getRoot().forEach(otherNode -> {
+                                if (otherNode != null && otherNode.isPositive() && otherNode.pathElement().matches(node.pathElement())) {
+                                    otherNodes.add(otherNode);
+                                }
+                            });
+                            for (InliningTreeNode otherNode : otherNodes) {
+                                if (InliningPath.fromRootToNode(otherNode).matches(pathToNode)) {
+                                    return;
+                                }
+                            }
+                        } catch (ExperimentParserError e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    // make sure the path is unique
+                    if (CollectionsUtil.anyMatch(nodePaths.getValues(), otherPath -> otherPath != pathToNode && pathToNode.matches(otherPath))) {
+                        return;
+                    }
+                    destination.getMethodOrCreate(node.getName()).addCompilationFragment(compilationUnit, pathToNode);
+                });
+            }
+        }
+    }
+
+    private static <T> List<T> collect(Iterable<T> iterable) {
+        List<T> list = new ArrayList<>();
+        iterable.forEach(list::add);
+        return list;
     }
 }

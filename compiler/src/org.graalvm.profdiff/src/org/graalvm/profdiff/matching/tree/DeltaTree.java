@@ -203,4 +203,18 @@ public class DeltaTree<T extends TreeNode<T>> {
         });
         visitor.afterVisit();
     }
+
+    public void expand() {
+        forEach(node -> {
+            if (node.isDeletion()) {
+                for (T child : node.getLeft().getChildren()) {
+                    node.addChild(false, child, null);
+                }
+            } else if (node.isInsertion()) {
+                for (T child : node.getRight().getChildren()) {
+                    node.addChild(false, null, child);
+                }
+            }
+        });
+    }
 }

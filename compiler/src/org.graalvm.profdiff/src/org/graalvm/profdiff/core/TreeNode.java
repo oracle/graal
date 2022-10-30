@@ -47,6 +47,10 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      */
     private final String name;
 
+    public T getParent() {
+        return parent;
+    }
+
     /**
      * The parent node of this node in the tree.
      */
@@ -59,8 +63,8 @@ public abstract class TreeNode<T extends TreeNode<T>> {
 
     protected TreeNode(String name) {
         this.name = name;
-        this.parent = null;
-        this.children = new ArrayList<>();
+        parent = null;
+        children = new ArrayList<>();
     }
 
     @SuppressWarnings("unchecked")

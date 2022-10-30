@@ -31,7 +31,7 @@ import org.graalvm.profdiff.util.Writer;
 /**
  * Writes a representation of an inlining delta tree (the diff of 2 inlining trees) to a writer.
  */
-public class InliningDeltaTreeWriterVisitor implements DeltaTreeVisitor<InliningTreeNode> {
+public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<InliningTreeNode> {
     /**
      * The prefix of an inlined method.
      */
@@ -47,36 +47,8 @@ public class InliningDeltaTreeWriterVisitor implements DeltaTreeVisitor<Inlining
      */
     public static final String REASONING_IN_EXPERIMENT = "  |_ reasoning in experiment ";
 
-    /**
-     * The destination writer.
-     */
-    private final Writer writer;
-
-    /**
-     * The base indentation level of the destination writer (before visit).
-     */
-    private int baseIndentLevel;
-
     public InliningDeltaTreeWriterVisitor(Writer writer) {
-        this.writer = writer;
-        this.baseIndentLevel = 0;
-    }
-
-    @Override
-    public void beforeVisit() {
-        baseIndentLevel = writer.getIndentLevel();
-    }
-
-    @Override
-    public void afterVisit() {
-        writer.setIndentLevel(baseIndentLevel);
-    }
-
-    @Override
-    public void visitIdentity(DeltaTreeNode<InliningTreeNode> node) {
-        adjustIndentLevel(node);
-        writer.write(EditScript.IDENTITY_PREFIX);
-        node.getLeft().writeHead(writer);
+        super(writer);
     }
 
     @Override
@@ -91,26 +63,6 @@ public class InliningDeltaTreeWriterVisitor implements DeltaTreeVisitor<Inlining
         writelnNameBCI(node.getLeft());
         writeReasoning(node.getLeft(), ExperimentId.ONE);
         writeReasoning(node.getRight(), ExperimentId.TWO);
-    }
-
-    @Override
-    public void visitDeletion(DeltaTreeNode<InliningTreeNode> node) {
-        adjustIndentLevel(node);
-        writer.setPrefixAfterIndent(EditScript.DELETE_PREFIX);
-        node.getLeft().writeRecursive(writer);
-        writer.clearPrefixAfterIndent();
-    }
-
-    @Override
-    public void visitInsertion(DeltaTreeNode<InliningTreeNode> node) {
-        adjustIndentLevel(node);
-        writer.setPrefixAfterIndent(EditScript.INSERT_PREFIX);
-        node.getRight().writeRecursive(writer);
-        writer.clearPrefixAfterIndent();
-    }
-
-    private void adjustIndentLevel(DeltaTreeNode<InliningTreeNode> node) {
-        writer.setIndentLevel(node.getDepth() + baseIndentLevel);
     }
 
     private void writelnNameBCI(InliningTreeNode node) {

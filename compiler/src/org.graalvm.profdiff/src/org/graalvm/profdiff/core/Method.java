@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.util.Writer;
 
 /**
@@ -107,6 +108,13 @@ public class Method {
         return compilationUnit;
     }
 
+    public CompilationFragment addCompilationFragment(CompilationUnit parentCompilationUnit, InliningPath pathFromRoot) {
+        // assert Objects.equals(rootInliningTreeNode.getName(), methodName);
+        CompilationFragment compilationFragment = new CompilationFragment(this, parentCompilationUnit, pathFromRoot);
+        compilationUnits.add(compilationFragment);
+        return compilationFragment;
+    }
+
     /**
      * Gets the sum of execution periods of the method's compilation units.
      */
@@ -160,6 +168,17 @@ public class Method {
                 writer.writeln(" (" + compilationUnit.createExecutionSummary() + ((compilationUnit.isHot()) ? ") *hot*" : ")"));
             } else {
                 writer.writeln();
+            }
+            if (compilationUnit instanceof CompilationFragment) {
+                CompilationFragment fragment = (CompilationFragment) compilationUnit;
+                boolean first = true;
+                for (InliningPath.PathElement element : fragment.getPathFromRoot().elements()) {
+                    writer.write(first ? "  |_ a fragment of " : "                   ");
+                    writer.write(element.getMethodName());
+                    writer.write(" at bci ");
+                    writer.writeln(Integer.toString(element.getCallsiteBCI()));
+                    first = false;
+                }
             }
         }
         writer.decreaseIndent(2);

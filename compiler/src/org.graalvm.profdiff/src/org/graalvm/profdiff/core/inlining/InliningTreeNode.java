@@ -153,4 +153,8 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         }
         return (positive ? 1 : 0) - (other.positive ? 1 : 0);
     }
+
+    public InliningPath.PathElement pathElement() {
+        return new InliningPath.PathElement(getName(), getBCI());
+    }
 }

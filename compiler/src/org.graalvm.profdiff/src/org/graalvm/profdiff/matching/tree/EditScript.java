@@ -47,22 +47,22 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
     /**
      * The prefix of an identity operation.
      */
-    public static final String IDENTITY_PREFIX = "    ";
+    public static final String IDENTITY_PREFIX = ". ";
 
     /**
      * The prefix of a delete operation.
      */
-    public static final String DELETE_PREFIX = "  - ";
+    public static final String DELETE_PREFIX = "- ";
 
     /**
      * The prefix of an insert operation.
      */
-    public static final String INSERT_PREFIX = "  + ";
+    public static final String INSERT_PREFIX = "+ ";
 
     /**
      * The prefix of a relabeling operation.
      */
-    public static final String RELABEL_PREFIX = "  * ";
+    public static final String RELABEL_PREFIX = "* ";
 
     /**
      * An operation that modifies a rooted, ordered and labeled tree. It is a node of the delta

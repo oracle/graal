@@ -24,6 +24,7 @@
  */
 package org.graalvm.profdiff.core.pair;
 
+import java.util.Iterator;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.profdiff.core.ExperimentId;
@@ -112,7 +113,7 @@ public class MethodPair {
      * @return an iterable over pairs of hot compilation units
      */
     public Iterable<CompilationUnitPair> getHotCompilationUnitPairsByDescendingPeriod() {
-        return () -> StreamSupport.stream(CollectionsUtil.zipLongest(method1.getHotCompilationUnitsByDescendingPeriod(), method2.getHotCompilationUnitsByDescendingPeriod()).spliterator(), false).map(
+        return () -> StreamSupport.stream(CollectionsUtil.cartesianProduct(method1.getHotCompilationUnitsByDescendingPeriod(), method2.getHotCompilationUnitsByDescendingPeriod()).spliterator(), false).map(
                         pair -> new CompilationUnitPair(pair.getLeft(), pair.getRight())).iterator();
     }
 

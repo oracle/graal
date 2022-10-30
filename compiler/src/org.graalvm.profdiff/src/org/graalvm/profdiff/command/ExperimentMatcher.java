@@ -25,6 +25,8 @@
 package org.graalvm.profdiff.command;
 
 import org.graalvm.profdiff.core.CompilationUnit;
+import org.graalvm.profdiff.core.OptimizationContextTree;
+import org.graalvm.profdiff.core.OptimizationContextTreeNode;
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
@@ -34,9 +36,11 @@ import org.graalvm.profdiff.core.pair.CompilationUnitPair;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
 import org.graalvm.profdiff.core.pair.MethodPair;
 import org.graalvm.profdiff.matching.tree.DeltaTree;
+import org.graalvm.profdiff.matching.tree.DeltaTreeWriterVisitor;
 import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
+import org.graalvm.profdiff.matching.tree.OptimizationContextTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
 import org.graalvm.profdiff.util.Writer;
@@ -55,6 +59,8 @@ public class ExperimentMatcher {
      * Matches inlining trees of two compilation units.
      */
     private final SelkowTreeMatcher<InliningTreeNode> inliningTreeMatcher = new SelkowTreeMatcher<>(new InliningTreeEditPolicy());
+
+    private final SelkowTreeMatcher<OptimizationContextTreeNode> optimizationContextTreeMatcher = new SelkowTreeMatcher<>(new OptimizationContextTreeEditPolicy());
 
     /**
      * The destination writer of the output.
@@ -77,6 +83,7 @@ public class ExperimentMatcher {
      * @param experimentPair the pair of experiments to be matched
      */
     public void match(ExperimentPair experimentPair) throws Exception {
+        experimentPair.createCompilationFragments();
         VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
         for (MethodPair methodPair : experimentPair.getHotMethodPairsByDescendingPeriod()) {
             writer.writeln();
@@ -96,8 +103,10 @@ public class ExperimentMatcher {
                 if (compilationUnitPair.bothHot()) {
                     CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();
                     CompilationUnit.TreePair treePair2 = compilationUnitPair.getCompilationUnit2().loadTrees();
-                    matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
-                    matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
+                    contextualizeAndMatch(treePair1, treePair2);
+                    // matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
+                    // matchOptimizationTrees(treePair1.getOptimizationTree(),
+                    // treePair2.getOptimizationTree());
                 } else if (!verbosityLevel.shouldShowOnlyDiff()) {
                     compilationUnitPair.firstNonNull().write(writer);
                 }
@@ -122,6 +131,7 @@ public class ExperimentMatcher {
             if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
                 inliningDeltaTree.pruneIdentities();
             }
+            inliningDeltaTree.expand();
             InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
             inliningDeltaTree.accept(inliningDeltaTreeWriter);
         } else {
@@ -137,11 +147,32 @@ public class ExperimentMatcher {
         optimizationTree1.preprocess(writer.getVerbosityLevel());
         optimizationTree2.preprocess(writer.getVerbosityLevel());
         EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(optimizationTree1.getRoot(), optimizationTree2.getRoot());
+        DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
         if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
-            DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
             optimizationDeltaTree.pruneIdentities();
-            optimizationTreeMatching = optimizationDeltaTree.asEditScript();
         }
-        optimizationTreeMatching.write(writer);
+        optimizationDeltaTree.expand();
+        DeltaTreeWriterVisitor<OptimizationTreeNode> optimizationDeltaTreeWriter = new DeltaTreeWriterVisitor<>(writer);
+        optimizationDeltaTree.accept(optimizationDeltaTreeWriter);
+    }
+
+    private void contextualizeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
+        if (treePair1.getInliningTree().getRoot() == null || treePair2.getInliningTree().getRoot() == null) {
+            return;
+        }
+        treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());
+        treePair2.getInliningTree().preprocess(writer.getVerbosityLevel());
+        treePair1.getOptimizationTree().preprocess(writer.getVerbosityLevel());
+        treePair2.getOptimizationTree().preprocess(writer.getVerbosityLevel());
+        OptimizationContextTree optimizationContextTree1 = OptimizationContextTree.createFrom(treePair1.getInliningTree(), treePair1.getOptimizationTree());
+        OptimizationContextTree optimizationContextTree2 = OptimizationContextTree.createFrom(treePair2.getInliningTree(), treePair2.getOptimizationTree());
+        EditScript<OptimizationContextTreeNode> optimizationContextTreeMatching = optimizationContextTreeMatcher.match(optimizationContextTree1.getRoot(), optimizationContextTree2.getRoot());
+        DeltaTree<OptimizationContextTreeNode> deltaTree = DeltaTree.fromEditScript(optimizationContextTreeMatching);
+        if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+            deltaTree.pruneIdentities();
+        }
+        deltaTree.expand();
+        DeltaTreeWriterVisitor<OptimizationContextTreeNode> deltaTreeWriter = new DeltaTreeWriterVisitor<>(writer);
+        deltaTree.accept(deltaTreeWriter);
     }
 }

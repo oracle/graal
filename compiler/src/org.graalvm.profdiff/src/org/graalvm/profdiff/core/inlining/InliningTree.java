@@ -24,8 +24,12 @@
  */
 package org.graalvm.profdiff.core.inlining;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.util.Writer;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * The inlining tree of a compilation unit. Each {@link InliningTreeNode node} in the tree
@@ -124,6 +128,57 @@ public class InliningTree {
             writer.increaseIndent();
             root.writeRecursive(writer);
             writer.decreaseIndent();
+        }
+    }
+
+    public boolean allInliningPathsAreDistinct() {
+        if (root == null) {
+            return true;
+        }
+        List<InliningTreeNode> nodes = new ArrayList<>();
+        root.forEach(nodes::add);
+        List<InliningPath> paths = new ArrayList<>();
+        for (InliningTreeNode node : nodes) {
+            InliningPath path = InliningPath.fromRootToNode(node);
+            if (CollectionsUtil.anyMatch(paths, otherPath -> otherPath.matches(path))) {
+                return false;
+            }
+            paths.add(path);
+        }
+        return true;
+    }
+
+    public InliningTreeNode getNodeAt(InliningPath path) {
+        InliningTreeNode node = null;
+        List<InliningTreeNode> children = List.of(root);
+        nextPathNode: for (InliningPath.PathElement element : path.elements()) {
+            for (InliningTreeNode child : children) {
+                if (element.matches(child.pathElement())) {
+                    node = child;
+                    children = node.getChildren();
+                    continue nextPathNode;
+                }
+            }
+            return null;
+        }
+        return node;
+    }
+
+    public InliningTree cloneSubtreeAt(InliningPath path) {
+        InliningTreeNode rootNode = getNodeAt(path);
+        if (rootNode == null) {
+            return new InliningTree(null);
+        }
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), -1, rootNode.isPositive(), null);
+        cloneSubtreeInto(rootNode, clonedNode);
+        return new InliningTree(clonedNode);
+    }
+
+    private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
+        for (InliningTreeNode originalChild : originalNode.getChildren()) {
+            InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason());
+            cloneSubtreeInto(originalChild, clonedChild);
+            clonedNode.addChild(clonedChild);
         }
     }
 }

@@ -30,6 +30,7 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.profdiff.core.TreeNode;
+import org.graalvm.profdiff.core.inlining.InliningPath;
 
 /**
  * Marks a node in the optimization tree. The nodes in the optimization tree are phases and
@@ -98,4 +99,6 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
             }
         }
     }
+
+    public abstract OptimizationTreeNode cloneMatchingPath(InliningPath prefix);
 }

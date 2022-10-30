@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.matching.tree;
 
 import org.graalvm.profdiff.core.TreeNode;
+import org.graalvm.profdiff.util.Writer;
 
 /**
  * A node in the delta-tree representation of a tree diff. Each node is a pair of nodes, denote them
@@ -41,7 +42,7 @@ import org.graalvm.profdiff.core.TreeNode;
  *
  * @param <T> the type of the node of the diffed tree
  */
-public class DeltaTreeNode<T> extends TreeNode<DeltaTreeNode<T>> {
+public class DeltaTreeNode<T extends TreeNode<T>> extends TreeNode<DeltaTreeNode<T>> {
     /**
      * The depth of this node in the delta tree, which is equal to the depths of the original nodes
      * {@link #left} and {@link #right}.
@@ -151,5 +152,29 @@ public class DeltaTreeNode<T> extends TreeNode<DeltaTreeNode<T>> {
      */
     public int getDepth() {
         return depth;
+    }
+
+    public T firstNonNull() {
+        return left == null ? right : left;
+    }
+
+    @Override
+    public void writeHead(Writer writer) {
+        if (isIdentity()) {
+            writer.write(EditScript.IDENTITY_PREFIX);
+        } else if (isInsertion()) {
+            writer.write(EditScript.INSERT_PREFIX);
+        } else if (isDeletion()) {
+            writer.write(EditScript.DELETE_PREFIX);
+        } else if (isRelabeling()) {
+            writer.write(EditScript.RELABEL_PREFIX);
+        }
+        if (left != null) {
+            left.writeHead(writer);
+        } else if (right != null) {
+            right.writeHead(writer);
+        } else {
+            super.writeHead(writer);
+        }
     }
 }
