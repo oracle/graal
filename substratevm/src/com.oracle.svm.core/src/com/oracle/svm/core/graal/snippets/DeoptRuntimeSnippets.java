@@ -91,13 +91,14 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
         }
     }
 }
+
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class DeoptRuntimeSnippetFeature implements InternalFeature {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
-                                  Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         if (!hosted) {
             DeoptRuntimeSnippets.registerLowerings(options, providers, lowerings);
         }

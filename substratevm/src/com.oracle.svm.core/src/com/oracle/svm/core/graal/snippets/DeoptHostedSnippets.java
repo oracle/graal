@@ -226,14 +226,13 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
     }
 }
 
-
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class DeoptHostedSnippetFeature implements InternalFeature {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
-                                  Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         if (hosted) {
             DeoptHostedSnippets.registerLowerings(options, providers, lowerings);
         }

@@ -339,7 +339,8 @@ public class NativeImageGenerator {
         this(loader, optionProvider, mainEntryPoint, reporter, new FeatureHandler());
     }
 
-    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter, FeatureHandler featureHandler) {
+    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter,
+                    FeatureHandler featureHandler) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
         this.featureHandler = featureHandler;
