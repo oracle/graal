@@ -217,13 +217,13 @@ public class StandardGraphBuilderPlugins {
     public static void registerInvocationPlugins(SnippetReflectionProvider snippetReflection,
                     InvocationPlugins plugins,
                     Replacements replacements,
-                    boolean allowDeoptimization,
+                    boolean useExactMathPlugins,
                     boolean explicitUnsafeNullChecks,
                     boolean supportsStubBasedPlugins,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
-        registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
+        registerMathPlugins(plugins, useExactMathPlugins, replacements, lowerer);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
         registerStringPlugins(plugins, replacements, snippetReflection, supportsStubBasedPlugins);
@@ -908,9 +908,9 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean allowDeoptimization, Replacements replacements, LoweringProvider lowerer) {
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean useExactMathPlugins, Replacements replacements, LoweringProvider lowerer) {
         Registration r = new Registration(plugins, Math.class, replacements);
-        if (allowDeoptimization) {
+        if (useExactMathPlugins) {
             for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
                 Class<?> type = kind.toJavaClass();
                 r.register(new InvocationPlugin("decrementExact", type) {

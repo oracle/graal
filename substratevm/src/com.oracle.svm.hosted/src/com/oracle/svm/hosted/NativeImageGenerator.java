@@ -1293,9 +1293,10 @@ public class NativeImageGenerator {
             }
         }
 
+        final boolean useExactMathPlugins = SubstrateOptions.useLIRBackend();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
         registerInvocationPlugins(providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
-                        reason == ParsingReason.JITCompilation, true, supportsStubBasedPlugins, providers.getLowerer());
+                        useExactMathPlugins, true, supportsStubBasedPlugins, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
