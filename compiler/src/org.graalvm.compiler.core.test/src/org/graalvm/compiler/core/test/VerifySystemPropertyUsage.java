@@ -101,7 +101,7 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             // * its JDK substitutions to mimic required JDK semantics
             // * native-image for config info
             return;
-        }
+        } 
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             if (callee.getDeclaringClass().equals(systemType)) {
