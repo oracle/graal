@@ -44,15 +44,10 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -222,19 +217,6 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             args.addConst("mustNotAllocate", mustNotAllocate(graph.method()));
             args.add("message", message);
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
-        }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-final class DeoptHostedSnippetFeature implements InternalFeature {
-
-    @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        if (hosted) {
-            DeoptHostedSnippets.registerLowerings(options, providers, lowerings);
         }
     }
 }
