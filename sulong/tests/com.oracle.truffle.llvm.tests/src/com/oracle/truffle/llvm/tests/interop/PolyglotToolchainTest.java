@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,7 +70,7 @@ public class PolyglotToolchainTest extends InteropTestBase {
     public void testCC() throws IOException {
         try (CaptureOutput out = new CaptureNativeOutput()) {
             testLibrary.getMember("print_cc").execute();
-            Assert.assertEquals(String.format("CC=%s\n", getToolchain().getToolPath("CC").toString()), out.getStdOut());
+            Assert.assertEquals(String.format("CC=%s%n", getToolchain().getToolPath("CC").toString()), out.getStdOut());
         }
     }
 
@@ -78,7 +78,7 @@ public class PolyglotToolchainTest extends InteropTestBase {
     public void testLDLibraryPath() throws IOException {
         try (CaptureOutput out = new CaptureNativeOutput()) {
             testLibrary.getMember("print_ld_library_path").execute();
-            Assert.assertEquals(String.format("LD_LIBRARY_PATH=%s\n",
+            Assert.assertEquals(String.format("LD_LIBRARY_PATH=%s%n",
                             getToolchain().getPaths("LD_LIBRARY_PATH").stream().map(TruffleFile::toString).collect(Collectors.joining(":"))),
                             out.getStdOut());
         }
@@ -88,7 +88,7 @@ public class PolyglotToolchainTest extends InteropTestBase {
     public void testIdentifier() throws IOException {
         try (CaptureOutput out = new CaptureNativeOutput()) {
             testLibrary.getMember("print_id").execute();
-            Assert.assertEquals(String.format("ID=%s\n", getToolchain().getIdentifier().toString()), out.getStdOut());
+            Assert.assertEquals(String.format("ID=%s%n", getToolchain().getIdentifier().toString()), out.getStdOut());
         }
     }
 }
