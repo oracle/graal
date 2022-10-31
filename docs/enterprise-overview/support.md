@@ -36,13 +36,13 @@ The development team welcomes feedback on experimental features, but users shoul
 
 For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
-The following table lists supported and experimental features in GraalVM Enterprise Edition 22.2 by platform.
+The following table lists supported and experimental features in GraalVM Enterprise Edition 22.3 by platform.
 
 | Feature         | Linux AMD64   | Linux ARM64   | macOS AMD64   | Windows AMD64 |
 |-----------------|---------------|---------------|---------------|---------------|
 | Native Image    | supported     | supported     | supported     | supported     |
-| LLVM runtime    | supported     | supported     | supported     | not available |
-| LLVM toolchain  | supported     | supported     | supported     | not available |
+| LLVM runtime    | supported     | supported     | supported     | experimental  |
+| LLVM toolchain  | supported     | supported     | supported     | experimental  |
 | JavaScript      | supported     | supported     | supported     | supported     |
 | Node.js         | supported     | supported     | supported     | supported     |
 | Java on Truffle | supported     | experimental  | experimental  | experimental  |
