@@ -4,5 +4,8 @@
  */
 
 function main() {  
-  println("Hello World!");  
-}  
+  delay_compilation_here();  
+  println("Hello World!");
+}
+
+function delay_compilation_here() {}
