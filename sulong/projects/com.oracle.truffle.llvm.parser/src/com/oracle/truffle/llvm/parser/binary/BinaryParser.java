@@ -175,7 +175,7 @@ public final class BinaryParser {
                 }
                 return parseBitcode(xarBitcode, source);
             case COFF_INTEL_AMD64:
-                CoffFile coffFile = CoffFile.create(bytes);
+                CoffFile coffFile = CoffFile.create(source, bytes);
                 ImageSectionHeader coffBcSection = coffFile.getSection(".llvmbc");
                 if (coffBcSection == null) {
                     // COFF File does not contain an .llvmbc section
@@ -183,7 +183,7 @@ public final class BinaryParser {
                 }
                 return parseBitcode(coffBcSection.getData(), source);
             case MS_DOS:
-                PEFile peFile = PEFile.create(bytes);
+                PEFile peFile = PEFile.create(source, bytes);
                 ImageSectionHeader peBcSection = peFile.getCoffFile().getSection(".llvmbc");
                 if (peBcSection == null) {
                     // PE/COFF File does not contain an .llvmbc section

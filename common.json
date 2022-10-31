@@ -126,6 +126,7 @@
       },
       "windows": {
         "packages": {
+          "msvc_source": "==14.0",
           "pip:cmake": "==3.18.4"
         }
       }

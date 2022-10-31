@@ -201,6 +201,11 @@ public abstract class ClangLikeBase extends Driver {
         sulongArgs.addAll(Arrays.asList("-flto=full", "-O1"));
         sulongArgs.addAll(getVectorInstructionSetFlags());
         getDebugCompilerArgs(sulongArgs);
+
+        if (os == OS.WINDOWS) {
+            sulongArgs.add("-stdlib++-isystem");
+            sulongArgs.add(getSulongHome().resolve("include").resolve("c++").resolve("v1").toString());
+        }
     }
 
     private List<String> getVectorInstructionSetFlags() {

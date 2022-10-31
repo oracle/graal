@@ -202,7 +202,7 @@ public abstract class BaseSuiteHarness {
 
         int sulongRet = result.getReturnValue();
         if (sulongRet != (sulongRet & 0xFF)) {
-            throw fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value: " + sulongRet));
+            throw fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value: " + sulongRet + "\n" + result.toString()));
         }
 
         if (referenceBinary != null) {

@@ -9,8 +9,6 @@ cpp\test047.cpp.dir
 cpp\test048.cpp.dir
 cpp\test049.cpp.dir
 cpp\test050.cpp.dir
-cpp\testStaticReferenceInitFunction.cpp.dir
-cpp\testStdOnce.cpp.dir
 libc\file-operations\fopen-append-newfile.c.dir
 libc\file-operations\fopen-null.c.dir
 libc\printf\printf-int-args.c.dir

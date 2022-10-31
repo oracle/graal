@@ -28,40 +28,53 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SULONG_THREADS_H
-#define SULONG_THREADS_H
+extern "C" {
+#include <graalvm/llvm/threads.h>
+}
+#include <stdio.h>
 
-#include <stdint.h>
+typedef unsigned long long __libcpp_thread_id;
+typedef void *__libcpp_thread_t;
 
-enum {
-    sulong_thread_success = 0,
-    sulong_thread_error = 1,
-};
+#define LIBCPP_EXPORT __declspec(dllexport)
 
-/*
- * On different platforms, pthread_t and pthread_key_t might be different types
- * (e.g. on Linux they are long/int, on Darwin they are pointer/long). We do an
- * indirection here to abstract away the difference. On GraalVM, both are just
- * implemented as IDs.
- */
+namespace std::__1 {
 
-typedef uint64_t __sulong_thread_t;
-typedef int __sulong_key_t;
+LIBCPP_EXPORT int __libcpp_thread_create(__libcpp_thread_t *__t, void *(*__func)(void *), void *__arg) {
+    __sulong_thread_t sthread;
+    int ret = __sulong_thread_create(&sthread, __func, __arg);
+    if (ret == 0) {
+        *__t = (__libcpp_thread_t) sthread;
+    }
+    return ret;
+}
 
-typedef void *(*__sulong_thread_start_t)(void *);
+LIBCPP_EXPORT int __libcpp_thread_join(__libcpp_thread_t *__t) {
+    void *ret = __sulong_thread_join((__sulong_thread_t) *__t);
+    return 0;
+}
 
-int __sulong_thread_create(__sulong_thread_t *thread, __sulong_thread_start_t fn, void *arg);
-void *__sulong_thread_join(__sulong_thread_t thread);
-__sulong_thread_t __sulong_thread_self();
-int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name);
-int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, uint64_t len);
+LIBCPP_EXPORT bool __libcpp_thread_equal(__libcpp_thread_id __lhs, __libcpp_thread_id __rhs) {
+    return __lhs == __rhs;
+}
 
-void __sulong_thread_yield();
-int __sulong_thread_sleep(int64_t millis, int32_t nanos);
+LIBCPP_EXPORT bool __libcpp_thread_less(__libcpp_thread_id __lhs, __libcpp_thread_id __rhs) {
+    return __lhs < __rhs;
+}
 
-__sulong_key_t __sulong_thread_key_create(void (*destructor)(void *));
-void __sulong_thread_key_delete(__sulong_key_t key);
-void *__sulong_thread_getspecific(__sulong_key_t key);
-void __sulong_thread_setspecific(__sulong_key_t key, const void *value);
+LIBCPP_EXPORT bool __libcpp_thread_is_null(const __libcpp_thread_t *__t) {
+    return *__t == 0;
+}
 
-#endif // SULONG_THREADS_H
+LIBCPP_EXPORT __libcpp_thread_id __libcpp_thread_get_current_id() {
+    return (__libcpp_thread_id) __sulong_thread_self();
+}
+
+LIBCPP_EXPORT __libcpp_thread_id __libcpp_thread_get_id(const __libcpp_thread_t *__t) {
+    return (__libcpp_thread_id) *__t;
+}
+
+LIBCPP_EXPORT void __libcpp_thread_yield() {
+    __sulong_thread_yield();
+}
+} // namespace std::__1

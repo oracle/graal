@@ -769,7 +769,7 @@ suite = {
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
-        "CMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
@@ -844,7 +844,7 @@ suite = {
      ],
      "cmakeConfig" : {
        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
-       "CMAKE_BUILD_TYPE" : "Release",
+       "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
        "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
        "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
@@ -890,7 +890,7 @@ suite = {
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
-        "CMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
         "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
         "CMAKE_RC_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
@@ -946,7 +946,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       ],
       "cmakeConfig" : {
-        "CMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
@@ -998,6 +998,7 @@ suite = {
               "LIBCXX_INCLUDE_TESTS": "NO",
               "LIBCXX_ENABLE_STATIC" : "NO",
               "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+              "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
               "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
               "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
               "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
