@@ -58,12 +58,16 @@ public class ForeignCallSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        final SnippetInfo handlePendingException = snippet(ForeignCallSnippets.class, "handlePendingException");
-        final SnippetInfo getAndClearObjectResult = snippet(ForeignCallSnippets.class, "getAndClearObjectResult", OBJECT_RESULT_LOCATION);
-        final SnippetInfo verifyObject = snippet(ForeignCallSnippets.class, "verifyObject");
+        final SnippetInfo handlePendingException;
+        final SnippetInfo getAndClearObjectResult;
+        final SnippetInfo verifyObject;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.handlePendingException = snippet(providers, ForeignCallSnippets.class, "handlePendingException");
+            this.getAndClearObjectResult = snippet(providers, ForeignCallSnippets.class, "getAndClearObjectResult", OBJECT_RESULT_LOCATION);
+            this.verifyObject = snippet(providers, ForeignCallSnippets.class, "verifyObject");
         }
     }
 

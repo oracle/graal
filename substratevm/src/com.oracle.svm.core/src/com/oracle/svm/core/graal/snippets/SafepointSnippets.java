@@ -67,8 +67,12 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
+    private final SnippetInfo safepoint;
+
     SafepointSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
+        this.safepoint = snippet(providers, SafepointSnippets.class, "safepointSnippet", getKilledLocations());
         lowerings.put(SafepointNode.class, new SafepointLowering());
     }
 
@@ -83,8 +87,6 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
     private static native void callSlowPathSafepointCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     class SafepointLowering implements NodeLoweringProvider<SafepointNode> {
-        private final SnippetInfo safepoint = snippet(SafepointSnippets.class, "safepointSnippet", getKilledLocations());
-
         @Override
         public void lower(SafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
@@ -94,7 +96,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
                     throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger));
                 }
                 Arguments args = new Arguments(safepoint, node.graph().getGuardsStage(), tool.getLoweringStage());
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
     }

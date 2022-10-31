@@ -35,7 +35,7 @@ public abstract class AbstractTypeReader implements TypeReader {
         return read();
     }
 
-    public static long decodeSign(long value) {
+    private static long decodeSign(long value) {
         return (value >>> 1) ^ -(value & 1);
     }
 

@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 23.0.0
+* GR-38526 Added `TruffleLanguage.Env#isSocketIOAllowed()`. The method returns true if access to network sockets is allowed.
+* GR-41634 Added `TruffleLanguage.Env#isFileIOAllowed()`. The method returns true if access to files is allowed.
+* Deprecated `TruffleLanguage.Env#isIOAllowed()`. To migrate, use `TruffleLanguage.Env#isFileIOAllowed()`.
+
 ## Version 22.3.0
 
 * GR-40069 Added additional methods to the static frame API.
@@ -30,7 +35,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-40163 Added `TruffleContext.initializePublic(Node, String)` and `TruffleContext.initializeInternal(Node, String)` to initialize a public or internal language of an inner context.
 * GR-39354 TruffleStrings: added ErrorHandling parameter to CreateForwardIteratorNode and CreateBackwardIteratorNode.
 * GR-40062 `String.indexOf` methods are no longer considered PE safe and using them will now fail the native-image block list check. Use `TruffleString` instead or put them behind a `@TruffleBoundary`.
-
 * GR-39354 TruffleStrings: added ErrorHandling parameter to ByteLengthOfCodePointNode, CodePointAtIndexNode and CodePointAtByteIndexNode.
 * GR-39219 Removed several deprecated APIs:
     * Removed deprecated `FrameSlot` API. The API was deprecated in 22.0.
@@ -43,21 +47,17 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Removed deprecated `get()` method from `LanguageContext` and `ContextReference` API. The API was deprecated in 21.3.
     * Removed deprecated equality `ValueProfile` . The API was deprecated in 21.2.
     * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
-    
 * GR-35797 The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
 * Added the `@HostCompilerDirectives.InliningCutoff` annotation that allows to manually tune inlining decisions for host inlining.
 * Tuned host inlining heuristic for reduced code size. A new host inlining tuning guide is available in the [docs](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md#host-inlining)
 * GR-35007 (EE-only) The Truffle sandboxing CPU time limits (`sandbox.MaxCPUTime`) are also supported on the native image.
 * GR-24927 The Truffle annotation processor now emits an error for methods annotated by a `@TruffleBoundary` annotation and a `Frame` parameter. Previously, the processor only reported an error for `VirtualFrame` parameters. To resolve this, either change the parameter to a `MaterializedFrame` , remove the parameter or remove the `@TruffleBoundary`.
 * GR-24927 Truffle DSL now automatically materalizes frames when a `Frame` parameter is used in an uncached instance of a `@Specialization`. For example, if it rewrites itself to an uncached version due to the usage of a `@CachedLibrary`.
-* (GR-35007)(EE-only) The Truffle sandboxing CPU time limits (`sandbox.MaxCPUTime`) are also supported on the native image.
+* GR-35007 (EE-only) The Truffle sandboxing CPU time limits (`sandbox.MaxCPUTime`) are also supported on the native image.
 * GR-28705 Added `TruffleInstrument.Env#createSystemThread` to create a new thread designed to process instrument tasks in the background.
 * GR-28705 Added `TruffleLanguage.Env#createSystemThread` to create a new thread designed to process language internal tasks in the background.
-
 * GR-31304 `Debugger.disableStepping()` and `Debugger.restoreStepping()` added to disable/restore stepping on a dedicated thread on a specific code path.
-* (GR-35797) The [SnippetRun#getException()](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.SnippetRun.html#getException--) now provides an `IllegalArgumentException` thrown during the snippet execution. The `IllegalArgumentException` is converted to a `PolyglotException` before it is returned.
 * GR-39415 Experimental options are on by default in the TCK test Context. Added `LanguageProviders.additionalOptions()` which allows TCK providers to set their language's options in the test context (Attempts to set other languages' options will result in an `IllegalArgumentException` while creation the context).
-
 * GR-38163 Introduced [RootNode.getParentFrameDescriptor](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#getParentFrameDescriptor) to support identifying lexical scope parents of hot methods and compiling them earlier.
 
 ## Version 22.2.0

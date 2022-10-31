@@ -46,11 +46,11 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3669,
-          lineEnd   = 3761,
-          commit    = "0c6094e79602fe85a88e3131710bb39813364ad2",
-          sha1      = "107806ac7386b8d7e692d5b8ad868934c60dac34")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
+          lineStart = 1001,
+          lineEnd   = 1094,
+          commit    = "9d76ac8a4453bc51d9dca2ad6c60259cfb2c4203",
+          sha1      = "c1bcb7c379a8c694f005688d419cba6238276b8a")
 // @formatter:on
 public final class AMD64AESDecryptOp extends AMD64LIRInstruction {
 

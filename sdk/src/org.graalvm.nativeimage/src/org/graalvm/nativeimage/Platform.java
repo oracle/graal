@@ -117,7 +117,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface AMD64 extends Platform {
+    interface AMD64 extends Platform, InternalPlatform.NATIVE_ONLY {
 
         /**
          * Returns string representing AMD64 architecture.
@@ -134,7 +134,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface AARCH64 extends Platform {
+    interface AARCH64 extends Platform, InternalPlatform.NATIVE_ONLY {
 
         /**
          * Returns string representing AARCH64 architecture.
@@ -154,7 +154,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface LINUX extends InternalPlatform.PLATFORM_JNI {
+    interface LINUX extends InternalPlatform.PLATFORM_JNI, InternalPlatform.NATIVE_ONLY {
 
         /**
          * Returns string representing LINUX OS.
@@ -188,7 +188,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface DARWIN extends InternalPlatform.PLATFORM_JNI {
+    interface DARWIN extends InternalPlatform.PLATFORM_JNI, InternalPlatform.NATIVE_ONLY {
     }
 
     /**
@@ -230,7 +230,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface WINDOWS extends InternalPlatform.PLATFORM_JNI {
+    interface WINDOWS extends InternalPlatform.PLATFORM_JNI, InternalPlatform.NATIVE_ONLY {
 
         /**
          * Returns string representing WINDOWS OS.

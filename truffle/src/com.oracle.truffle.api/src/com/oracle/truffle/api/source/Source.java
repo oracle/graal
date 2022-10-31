@@ -1050,7 +1050,7 @@ public abstract class Source {
                     }
                 }
             } catch (UnsupportedOperationException uoe) {
-                if (ALLOW_IO && SourceAccessor.hasAllAccess(useFileSystemContext)) {
+                if (ALLOW_IO && SourceAccessor.isSocketIOAllowed(useFileSystemContext)) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
@@ -1259,7 +1259,7 @@ public abstract class Source {
             // swallow and go on
         }
 
-        if (!ALLOW_IO || !SourceAccessor.hasAllAccess(fileSystemContext)) {
+        if (!ALLOW_IO || !SourceAccessor.isSocketIOAllowed(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 

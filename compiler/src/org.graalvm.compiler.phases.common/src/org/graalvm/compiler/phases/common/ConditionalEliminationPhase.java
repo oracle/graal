@@ -166,8 +166,6 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     }
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("StampsRegistered");
-    private static final CounterKey counterIfsKilled = DebugContext.counter("CE_KilledIfs");
-    private static final CounterKey counterPhiStampsImproved = DebugContext.counter("CE_ImprovedPhis");
     private final boolean fullSchedule;
     private final boolean moveGuards;
 
@@ -181,7 +179,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 
@@ -316,7 +314,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                     } else {
                                         guard.replaceAndDelete(newGuard);
                                     }
-                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After combining %s and %s to new %s in the dominator", guard, otherGuard, newGuard);
+                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", guard);
                                 }
                             }
                         }
@@ -409,6 +407,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     node.replaceAtUsages(valueAnchor);
                     node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "ConditionAnchorElimination", node);
                 return true;
             });
         }
@@ -438,6 +437,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                         graph.addAfterFixed(beginNode, node.graph().add(deopt));
                     }
                 }
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardElimination", node);
                 return true;
             })) {
                 registerNewCondition(node.getCondition(), node.isNegated(), node);
@@ -450,17 +450,14 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
-                    debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Killed fixed %s guard because of %s", node, guard);
                     if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
                         rebuildPiNodes((DeoptimizingGuard) guard);
                     }
-                    debug.log("Kill fixed guard %s because of %s", node, guard);
                 } else {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
                     // Don't kill this branch immediately, see `processGuard`.
-                    debug.log("Set condition on fixed guard %s to be delted because of %s", node, guard);
-                    debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Killed fixed guard %s because of %s by setting condition instead of direct kill", node, guard);
                 }
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "FixedGuardElimination", node);
                 return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node);
@@ -509,16 +506,14 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                  * appear unrelated so there's we must skip the replacement.
                                  */
                                 if (alternatePi.stamp(NodeView.DEFAULT).join(existing.stamp(NodeView.DEFAULT)).equals(alternatePi.stamp(NodeView.DEFAULT))) {
-                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: Before replacing %s with alternate %s", existing, alternatePi);
                                     existing.replaceAndDelete(alternatePi);
-                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: After replacing %s with alternate %s", existing, alternatePi);
+                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "PiImprovement", existing);
                                 }
                             }
                             continue;
                         }
-                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: Before replacing %s with %s", existing, pi);
                         existing.replaceAndDelete(pi);
-                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: After replacing %s with %s", existing, pi);
+                        graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "PiImprovement", existing);
                     }
                 }
             }
@@ -530,7 +525,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
                 // Don't kill the other branch immediately, see `processGuard`.
-                counterIfsKilled.increment(debug);
+                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "IfElimination", node);
                 return true;
             });
         }
@@ -725,8 +720,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                 }
                                 newPhi.addInput(valueAt);
                             }
-                            counterPhiStampsImproved.increment(debug);
                             phi.replaceAtUsagesAndDelete(newPhi);
+                            graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "PhiImprovement", phi);
                         }
                     }
                 }
@@ -954,13 +949,10 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     boolean mustDeopt = result == otherGuard.isNegated();
                     if (rewireGuardFunction.rewire(guard, mustDeopt == thisGuard.isNegated(), innerGuardedValueStamp, newInput)) {
                         if (!mustDeopt) {
-                            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Fold guard:thisGuard=%s otherGuard=%s, replacing condition from %s to %s", thisGuard, otherGuard,
-                                            otherGuard.getCondition(),
-                                            condition);
                             otherGuard.setCondition(condition, thisGuard.isNegated());
                             otherGuard.setAction(action);
                             otherGuard.setReason(thisGuard.getReason());
-                            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After guard folding at %s", otherGuard);
+                            graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardFolding", thisGuard.asNode());
                         }
                         return true;
                     }

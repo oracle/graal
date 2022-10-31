@@ -79,10 +79,10 @@ abstract class LLVMDebugValue {
     }
 
     private static String canonizeType(String type) {
-        if ("long".equals(type)) {
+        if ("long".equals(type) || "int64_t".equals(type)) {
             return "long int";
         }
-        if ("unsigned long".equals(type)) {
+        if ("unsigned long".equals(type) || "uint64_t".equals(type)) {
             return "long unsigned int";
         }
         return type;

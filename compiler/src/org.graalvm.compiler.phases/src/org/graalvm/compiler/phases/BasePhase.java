@@ -28,13 +28,11 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Formatter;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -53,7 +51,6 @@ import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.GraphState.FrameStateVerification;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
@@ -78,6 +75,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      * Explains why a phase cannot be applied to a given graph.
      */
     public static class NotApplicable {
+
         /**
          * Describes why a phase cannot be applied at this point of the compilation.
          */
@@ -112,88 +110,79 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         /**
-         * @return the given {@link Optional#of} {@link NotApplicable} if the condition is
-         *         {@code true}. Otherwise, returns {@link #ALWAYS_APPLICABLE}.
+         * @return a {@link NotApplicable} for {@code reason} if {@code condition == true} else
+         *         {@link #ALWAYS_APPLICABLE}.
          */
-        public static Optional<NotApplicable> notApplicableIf(boolean condition, Optional<NotApplicable> notApplicable) {
+        public static Optional<NotApplicable> when(boolean condition, String reason) {
             if (condition) {
-                return notApplicable;
+                return Optional.of(new NotApplicable(reason));
             }
             return ALWAYS_APPLICABLE;
         }
 
         /**
-         * Constructs an {@link Optional} from a {@link NotApplicable} stating the given phase must
-         * run before the given {@link StageFlag} if the {@link GraphState} is already after that
-         * stage. Otherwise, returns {@link #ALWAYS_APPLICABLE}. This can be used to create a return
-         * value for {@link BasePhase#canApply}.
+         * @return a {@link NotApplicable} for {@code String.format(reasonFormat, reasonArgs)} if
+         *         {@code condition == true} else {@link #ALWAYS_APPLICABLE}
          */
-        public static Optional<NotApplicable> mustRunBefore(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
-            return notApplicableIf(graphState.isAfterStage(flag), Optional.of(new NotApplicable(phase.getName() + " must run before the " + flag + " stage")));
+        public static Optional<NotApplicable> when(boolean condition, String reasonFormat, Object... reasonArgs) {
+            if (condition) {
+                return Optional.of(new NotApplicable(String.format(reasonFormat, reasonArgs)));
+            }
+            return ALWAYS_APPLICABLE;
         }
 
         /**
-         * Constructs an {@link Optional} from a {@link NotApplicable} stating the given phase must
-         * run after the given {@link StageFlag} if the {@link GraphState} is before that stage.
-         * Otherwise, returns {@link #ALWAYS_APPLICABLE}. This can be used to create a return value
-         * for {@link BasePhase#canApply}.
+         * If {@code graphState} is after stage {@code flag}, returns a {@link NotApplicable}
+         * explaining that {@code phase} must be run before stage {@code flag}. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
          */
-        public static Optional<NotApplicable> mustRunAfter(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
-            return notApplicableIf(graphState.isBeforeStage(flag), Optional.of(new NotApplicable(phase.getName() + " must run after the " + flag + " stage")));
+        public static Optional<NotApplicable> unlessRunBefore(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
+            return when(graphState.isAfterStage(flag), "%s must run before the %s stage", phase.getName(), flag);
         }
 
         /**
-         * Constructs an {@link Optional} from a {@link NotApplicable} stating the given stage was
-         * already applied and cannot be applied a second time if the stage is already applied to
-         * the {@link GraphState}. Otherwise, returns {@link #ALWAYS_APPLICABLE}. This can be used
-         * to create a return value for {@link BasePhase#canApply}.
+         * If {@code graphState} is before stage {@code flag}, returns a {@link NotApplicable}
+         * explaining that {@code phase} must be run after stage {@code flag}. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
          */
-        public static Optional<NotApplicable> canOnlyApplyOnce(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
-            return notApplicableIf(graphState.isAfterStage(flag), Optional.of(new NotApplicable("Cannot apply " + phase.getName() + " because the graph is already after " + flag + " stage")));
+        public static Optional<NotApplicable> unlessRunAfter(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
+            return when(graphState.isBeforeStage(flag), "%s must run after the %s stage (already applied stages: %s)",
+                            phase.getName(), flag, graphState.getStageFlags());
         }
 
         /**
-         * Constructs an {@link Optional} from a {@link NotApplicable} stating the
-         * {@link FrameStateVerification} cannot be weakened if the
-         * {@linkplain GraphState#getFrameStateVerification() frame state verification} has already
-         * been weakened past the desired stage. Otherwise, returns {@link #ALWAYS_APPLICABLE}. This
-         * can be used to create a return value for {@link BasePhase#canApply}.
-         */
-        public static Optional<NotApplicable> mustWeakenFrameStateVerification(BasePhase<?> phase, FrameStateVerification flag, GraphState graphState) {
-            return notApplicableIf(!graphState.canWeakenFrameStateVerification(flag), Optional.of(
-                            new NotApplicable("Cannot apply " + phase.getName() + " because the frame state verification has already been weakened to " + graphState.getFrameStateVerification())));
-        }
-
-        /**
-         * Constructs an {@link Optional} from a {@link NotApplicable} stating the given phase needs
-         * a defined {@link SpeculationLog} if the given {@link GraphState} does not have one.
-         * Otherwise, returns {@link #ALWAYS_APPLICABLE}. This can be used to create a return value
-         * for {@link BasePhase#canApply}.
-         */
-        public static Optional<NotApplicable> undefinedSpeculationLog(BasePhase<?> phase, GraphState graphState) {
-            return notApplicableIf(graphState.getSpeculationLog() == null, Optional.of(new NotApplicable(phase.getName() + " needs a " + SpeculationLog.class)));
-        }
-
-        /**
-         * Combines the given constraints.
+         * If {@code graphState} is after stage {@code flag}, returns a {@link NotApplicable}
+         * explaining that {@code phase} must be run after stage {@code flag}. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
          *
-         * @return {@link Optional#empty()} if all the constraints are empty,
-         *         {@link Optional#of(NotApplicable)} containing all the constraints that make this
-         *         phase not applicable otherwise.
+         * This is equivalent to {@link #unlessRunBefore} but is preferred to identify phases that
+         * can be applied at most once.
+         */
+        public static Optional<NotApplicable> ifApplied(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
+            return when(graphState.isAfterStage(flag), "Cannot apply %s because graph is already after %s stage", phase.getName(), flag);
+        }
+
+        /**
+         * If {@code graphState} has a no speculation log, returns a {@link NotApplicable}
+         * explaining that {@code phase} requires a non-null speculation log. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
+         */
+        public static Optional<NotApplicable> withoutSpeculationLog(BasePhase<?> phase, GraphState graphState) {
+            return when(graphState.getSpeculationLog() == null, "%s needs a %s", phase.getName(), SpeculationLog.class.getSimpleName());
+        }
+
+        /**
+         * @return the first {@linkplain Optional#isPresent() present} element in
+         *         {@code constraints} or {@link #ALWAYS_APPLICABLE} if no element is present.
          */
         @SafeVarargs
-        public static Optional<NotApplicable> combineConstraints(Optional<NotApplicable>... constraints) {
-            Formatter formatter = new Formatter();
+        public static Optional<NotApplicable> ifAny(Optional<NotApplicable>... constraints) {
             for (Optional<NotApplicable> constraint : constraints) {
                 if (constraint.isPresent()) {
-                    formatter.format("%s%n", constraint.get().toString());
+                    return constraint;
                 }
             }
-            String notApplicable = formatter.toString();
-            if (notApplicable.isEmpty()) {
-                return ALWAYS_APPLICABLE;
-            }
-            return Optional.of(new NotApplicable(notApplicable));
+            return ALWAYS_APPLICABLE;
         }
 
     }
@@ -311,21 +300,20 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     /**
-     * Checks if all the preconditions to {@link #apply(StructuredGraph, Object, boolean)} the phase
-     * are met.
+     * Gets a precondition that prevents {@linkplain #apply(StructuredGraph, Object, boolean)
+     * applying} this phase to a graph whose state is {@code graphState}.
      *
-     * @param graphState represents the state of the {@link StructuredGraph} used for compilation
-     *            and contains the required information to determine if a phase can be applied.
+     * @param graphState the state of graph to which the caller wants to apply this phase
      *
-     * @return {@link Optional#empty()} if all the checks pass, {@link Optional#of(NotApplicable)}
-     *         containing why this phase is not applicable on this {@code graphState} otherwise.
+     * @return a {@link NotApplicable} detailing why this phase cannot be applied or a value equal
+     *         to {@link Optional#empty} if the phase can be applied
      */
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return Optional.of(new NotApplicable("BasePhase's canApply should be implemented by each phase"));
     }
 
     /**
-     * Represents that a phase is applicable and will have {@link #canApply} that will return
+     * Represents that a phase is applicable and will have {@link #notApplicableTo} that will return
      * {@link Optional#empty()}.
      */
     public static final Optional<NotApplicable> ALWAYS_APPLICABLE = Optional.empty();
@@ -400,18 +388,17 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         OptionValues options = graph.getOptions();
-        if (GraalOptions.VerifyPhasePlan.getValue(options)) {
-            Optional<NotApplicable> canBeApplied = this.canApply(graph.getGraphState());
-            if (canBeApplied.isPresent()) {
-                String name = this.getClass().getName();
-                if (name.contains(".svm.") || name.contains(".truffle.")) {
-                    // GR-39494: canApply(GraphState) not yet implemented by SVM or Truffle
-                    // phases.
-                } else {
-                    GraalError.shouldNotReachHere(graph + ": " + name + ": " + canBeApplied.get());
-                }
+
+        Optional<NotApplicable> cannotBeApplied = this.notApplicableTo(graph.getGraphState());
+        if (cannotBeApplied.isPresent()) {
+            String name = this.getClass().getName();
+            if (name.contains(".svm.") || name.contains(".truffle.")) {
+                // Not yet implemented by SVM (GR-41437) or Truffle (GR-39494).
+            } else {
+                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get());
             }
         }
+
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;

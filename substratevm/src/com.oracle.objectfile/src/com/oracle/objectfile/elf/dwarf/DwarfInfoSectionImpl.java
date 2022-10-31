@@ -198,7 +198,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
 
         /* Write child entries for basic Java types. */
 
@@ -351,7 +351,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
@@ -363,6 +363,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* However, we still generate a statement list in case they include inlined methods */
         log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
         pos = writeLineSectionOffset(lineIndex, buffer, pos);
+
+        /* if the class has a loader then embed the children in a namespace */
+        String loaderId = classEntry.getLoaderId();
+        if (!loaderId.isEmpty()) {
+            pos = writeNameSpace(context, loaderId, buffer, pos);
+        }
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
@@ -385,6 +391,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Terminate children with null entry. */
 
         pos = writeAttrNull(buffer, pos);
+
+        /* if we opened a namespace then terminate its children */
+
+        if (!loaderId.isEmpty()) {
+            pos = writeAttrNull(buffer, pos);
+        }
 
         /* Fix up the CU length. */
 
@@ -420,7 +432,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fileName), fileName);
@@ -438,6 +450,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrAddress(hi, buffer, pos);
         log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
         pos = writeLineSectionOffset(lineIndex, buffer, pos);
+
+        /* if the class has a loader then embed the children in a namespace */
+        String loaderId = classEntry.getLoaderId();
+        if (!loaderId.isEmpty()) {
+            pos = writeNameSpace(context, loaderId, buffer, pos);
+        }
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
@@ -466,10 +484,29 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         pos = writeAttrNull(buffer, pos);
 
+        /* if we opened a namespace then terminate its children */
+
+        if (!loaderId.isEmpty()) {
+            pos = writeAttrNull(buffer, pos);
+        }
+
         /* Fix up the CU length. */
 
         patchLength(lengthPos, buffer, pos);
 
+        return pos;
+    }
+
+    private int writeNameSpace(DebugContext context, String id, byte[] buffer, int p) {
+        int pos = p;
+        String name = uniqueDebugString(id);
+        assert !id.isEmpty();
+        log(context, "  [0x%08x] namespace %s", pos, name);
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_namespace;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        pos = writeStrSectionOffset(name, buffer, pos);
         return pos;
     }
 
@@ -658,11 +695,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
         String methodKey = method.getSymbolName();
-        String linkageName = uniqueDebugString(classEntry.getTypeName() + "::" + method.methodName());
+        String linkageName = uniqueDebugString(methodKey);
         setMethodDeclarationIndex(method, pos);
         int modifiers = method.getModifiers();
         boolean isStatic = Modifier.isStatic(modifiers);
-        log(context, "  [0x%08x] method declaration %s", pos, methodKey);
+        log(context, "  [0x%08x] method declaration %s::%s", pos, classEntry.getTypeName(), method.methodName());
         int abbrevCode = (isStatic ? DwarfDebugInfo.DW_ABBREV_CODE_method_declaration_static : DwarfDebugInfo.DW_ABBREV_CODE_method_declaration);
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -702,7 +739,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             int objectPointerIndex = pos;
             /*
              * Write a dummy ref address to move pos on to where the first parameter gets written.
-             * 
+             *
              * n.b. buffer is passed as null so we don't attempt to create a reloc!
              */
             pos = writeInfoSectionOffset(0, null, pos);
@@ -1117,10 +1154,17 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DwarfDebugInfo.DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         String name = arrayTypeEntry.getTypeName();
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
+
+        /* if the array base type is a class with a loader then embed the children in a namespace */
+        String loaderId = arrayTypeEntry.getLoaderId();
+        if (!loaderId.isEmpty()) {
+            pos = writeNameSpace(context, loaderId, buffer, pos);
+        }
+
         /* Write the array layout and array reference DIEs. */
         TypeEntry elementType = arrayTypeEntry.getElementType();
         int size = arrayTypeEntry.getSize();
@@ -1135,6 +1179,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Write a terminating null attribute.
          */
         pos = writeAttrNull(buffer, pos);
+
+        /* if we opened a namespace then terminate its children */
+        if (!loaderId.isEmpty()) {
+            pos = writeAttrNull(buffer, pos);
+        }
 
         /* Fix up the CU length. */
         patchLength(lengthPos, buffer, pos);
@@ -1299,7 +1348,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DwarfDebugInfo.DW_LANG_Java");
-        pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
@@ -1455,8 +1504,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeAbstractInlineMethod(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
-        String methodKey = method.getSymbolName();
-        log(context, "  [0x%08x] abstract inline method %s", pos, method.getSymbolName());
+        log(context, "  [0x%08x] abstract inline method %s::%s", pos, classEntry.getTypeName(), method.methodName());
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_abstract_inline_method;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -1468,7 +1516,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     external  true", pos);
         pos = writeFlag(DwarfDebugInfo.DW_FLAG_true, buffer, pos);
         int methodSpecOffset = getMethodDeclarationIndex(method);
-        log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
+        log(context, "  [0x%08x]     specification  0x%x", pos, methodSpecOffset);
         pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
         /*
          * Write parameter and local declarations

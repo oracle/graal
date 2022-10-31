@@ -39,7 +39,7 @@ import com.oracle.svm.core.Uninterruptible;
  *
  * @see SamplerSpinLock
  */
-class SamplerBufferStack {
+public class SamplerBufferStack {
 
     private SamplerBuffer head;
     private final SamplerSpinLock spinLock;

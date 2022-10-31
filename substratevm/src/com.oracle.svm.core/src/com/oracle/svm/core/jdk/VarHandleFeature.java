@@ -41,13 +41,11 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -471,20 +469,4 @@ final class Target_java_lang_invoke_VarHandleObjects_FieldStaticReadOnly {
     Object base;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
-}
-
-@TargetClass(className = "java.lang.invoke.VarHandle")
-final class Target_java_lang_invoke_VarHandle {
-
-    /**
-     * JDK 11 does not have an override of toString(), but later JDK versions do. The implementation
-     * collects details about the MemberName, which are method handle internals that must not be
-     * reachable.
-     */
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    @Substitute
-    @Override
-    public String toString() {
-        return "VarHandle[printing VarHandle details is not supported on Substrate VM]";
-    }
 }

@@ -112,7 +112,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
      * <li>Loop over the phases that modify the {@link GraphState} (see
      * {@link #getSingleApplyPhases()}) by applying a mandatory stage and insert them in the tier
      * plan if the resulting {@link MinimalFuzzedTierPlan#getPhaseSuite} can be applied (see
-     * {@link PhaseSuite#canApply}). <br>
+     * {@link PhaseSuite#notApplicableTo(GraphState)}). <br>
      * This is done until all the {@code mandatoryStages} are applied by one of the phase in the
      * tier plan or the maximum number of attempts has been reached. <br>
      * </li>
@@ -258,15 +258,15 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
 
     /**
      * Inserts a phase at the given index in the tier plan if it results in a correct plan (see
-     * {@link BasePhase#canApply(GraphState)}).
+     * {@link BasePhase#notApplicableTo(GraphState)}).
      *
      * @return {@code true} if the phase was inserted successfully, {@code false} otherwise.
      */
     protected boolean insertPhaseAtIndex(BasePhase<? super C> phase, int index, GraphState graphState) {
         PhaseSuite<C> newFuzzedPhaseSuite = getPhaseSuite().copy();
         newFuzzedPhaseSuite.insertAtIndex(index, phase);
-        Optional<NotApplicable> canNewSuiteBeApplied = newFuzzedPhaseSuite.canApply(graphState.copy());
-        if (canNewSuiteBeApplied.isEmpty()) {
+        Optional<NotApplicable> suiteNotApplicable = newFuzzedPhaseSuite.notApplicableTo(graphState.copy());
+        if (suiteNotApplicable.isEmpty()) {
             getIgnoredPhases().remove(phase);
             setPhaseSuite(newFuzzedPhaseSuite);
             return true;

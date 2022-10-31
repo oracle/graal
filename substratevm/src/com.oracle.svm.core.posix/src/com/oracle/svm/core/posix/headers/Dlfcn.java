@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import com.oracle.svm.core.posix.linux.libc.GLibC;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCSpecific;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

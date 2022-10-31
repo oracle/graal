@@ -64,6 +64,8 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -465,17 +467,19 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
 
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
+    private final SnippetInfo stackOverflowCheck;
+
     StackOverflowCheckSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings,
                     Predicate<ResolvedJavaMethod> mustNotAllocatePredicate) {
         super(options, providers);
+
+        this.stackOverflowCheck = snippet(providers, StackOverflowCheckSnippets.class, "stackOverflowCheckSnippet", StackOverflowCheckImpl.stackBoundaryTL.getLocationIdentity());
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
         lowerings.put(StackOverflowCheckNode.class, new StackOverflowCheckLowering());
     }
 
     final class StackOverflowCheckLowering implements NodeLoweringProvider<StackOverflowCheckNode> {
-        private final SnippetInfo stackOverflowCheck = snippet(StackOverflowCheckSnippets.class, "stackOverflowCheckSnippet", StackOverflowCheckImpl.stackBoundaryTL.getLocationIdentity());
-
         @Override
         public void lower(StackOverflowCheckNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
@@ -486,12 +490,13 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
             args.addConst("mustNotAllocate", mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(graph.method()));
             args.addConst("hasDeoptFrameSize", deoptFrameSize > 0);
             args.add("deoptFrameSize", deoptFrameSize);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class StackOverflowCheckFeature implements InternalFeature {
 
     @Override

@@ -27,7 +27,9 @@ package com.oracle.svm.hosted.phases;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.lang.invoke.WrongMethodTypeException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -36,7 +38,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.hosted.meta.HostedType;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -48,10 +49,15 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -98,11 +104,14 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.FrameAccess;
@@ -114,6 +123,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
@@ -163,12 +173,14 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static final Field varHandleVFormField;
     private static final Method varFormInitMethod;
+    private static final Method varHandleGetMethodHandleMethod;
 
     static {
         varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
         try {
             Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
             varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+            varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -179,7 +191,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private final ParsingReason reason;
     private final Providers parsingProviders;
-    private final Providers universeProviders;
+    private final HostedProviders universeProviders;
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
 
@@ -190,7 +202,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final ResolvedJavaType methodHandleType;
     private final ResolvedJavaType varHandleType;
 
-    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, HostedProviders providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.reason = reason;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
@@ -280,9 +292,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         return notAlwaysNullPhiInput;
     }
 
-    private static boolean hasMethodHandleArgument(ValueNode[] args) {
+    private boolean hasMethodHandleArgument(ValueNode[] args) {
         for (ValueNode argument : args) {
-            if (argument.isConstant() && argument.getStackKind() == JavaKind.Object && SubstrateObjectConstant.asObject(argument.asJavaConstant()) instanceof MethodHandle) {
+            if (argument.isConstant() && argument.getStackKind() == JavaKind.Object &&
+                            (((UniverseMetaAccess) universeProviders.getMetaAccess()).isInstanceOf(argument.asJavaConstant(), methodHandleType))) {
                 return true;
             }
         }
@@ -332,12 +345,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * Force initialization of the @Stable field VarHandle.vform.memberName_table.
                      * Starting with JDK 17, this field is lazily initialized.
                      */
-                    varHandle.isAccessModeSupported(accessMode);
+                    boolean isAccessModeSupported = varHandle.isAccessModeSupported(accessMode);
                     /*
                      * Force initialization of the @Stable field
                      * VarHandle.typesAndInvokers.methodType_table.
                      */
                     varHandle.accessModeType(accessMode);
+
+                    if (isAccessModeSupported) {
+                        /*
+                         * Force initialization of the @Stable field VarHandle.methodHandleTable (or
+                         * VarHandle.typesAndInvokers.methodHandle_tabel on JDK <= 17) .
+                         */
+                        varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
+                    }
                 }
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
@@ -430,6 +451,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * ones they are, but they are all be from the same package.
                  */
                 return createStandardInlineInfo(method);
+            } else if (className.equals("sun.invoke.util.ValueConversions")) {
+                /*
+                 * Inline trivial helper methods for value conversion.
+                 */
+                return new InlineDuringParsingPlugin().shouldInlineInvoke(b, method, args);
             }
             return null;
         }
@@ -466,7 +492,16 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
-    private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
+        for (ResolvedJavaField field : type.getInstanceFields(false)) {
+            if (field.getName().equals(name)) {
+                return field;
+            }
+        }
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
+    }
+
+    private void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
             @Override
@@ -477,6 +512,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * class initialization check manually later on when appending nodes to the target
                  * graph.
                  */
+                GraalError.guarantee(receiver.isConstant(), "Not a java constant %s", receiver.get());
+                ResolvedJavaField memberField = findField(targetMethod.getDeclaringClass(), "member");
+                JavaConstant member = b.getConstantReflection().readFieldValue(memberField, receiver.get().asJavaConstant());
+                ResolvedJavaField clazzField = findField(memberField.getType().resolve(memberField.getDeclaringClass()), "clazz");
+                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, member);
+                b.add(new DirectMethodHandleEnsureInitializedNode(b.getConstantReflection().asJavaType(clazz)));
                 return true;
             }
         });
@@ -504,6 +545,36 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 b.push(JavaKind.Object, b.addNonNullCast(object));
                 return true;
+            }
+        });
+        r = new Registration(plugins, MethodHandle.class, replacements);
+        r.register(new RequiredInvocationPlugin("asType", Receiver.class, MethodType.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newTypeNode) {
+                ValueNode methodHandleNode = receiver.get(false);
+                if (methodHandleNode.isJavaConstant() && newTypeNode.isJavaConstant()) {
+                    /*
+                     * If both, the MethodHandle and the MethodType are constant, we can evaluate
+                     * asType eagerly and embed the result as a constant in the graph.
+                     */
+                    SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
+                    MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
+                    MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
+                    if (mh == null || mt == null) {
+                        return false;
+                    }
+                    final MethodHandle asType;
+                    try {
+                        asType = mh.asType(mt);
+                    } catch (WrongMethodTypeException t) {
+                        return false;
+                    }
+                    JavaConstant asTypeConstant = snippetReflection.forObject(asType);
+                    ConstantNode asTypeNode = ConstantNode.forConstant(asTypeConstant, b.getMetaAccess(), b.getGraph());
+                    b.push(JavaKind.Object, asTypeNode);
+                    return true;
+                }
+                return false;
             }
         });
     }
@@ -744,6 +815,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 transplanted.put(oNew, tNew);
                 return true;
 
+            } else if (oNode.getClass() == DirectMethodHandleEnsureInitializedNode.class) {
+                DirectMethodHandleEnsureInitializedNode oInit = (DirectMethodHandleEnsureInitializedNode) oNode;
+                ResolvedJavaType tInstanceClass = lookup(oInit.instanceClass());
+                maybeEmitClassInitialization(b, true, tInstanceClass);
+                return true;
             } else {
                 return false;
             }
@@ -770,6 +846,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 ConstantNode oConstant = (ConstantNode) oNode;
                 tNode = ConstantNode.forConstant(constant(oConstant.getValue()), universeProviders.getMetaAccess());
 
+            } else if (oNode.getClass() == DirectMethodHandleEnsureInitializedNode.class) {
+                return null;
             } else if (oNode.getClass() == PiNode.class) {
                 PiNode oPi = (PiNode) oNode;
                 tNode = new PiNode(node(oPi.object()), stamp(oPi.piStamp()), node(oPi.getGuard().asNode()));
@@ -962,5 +1040,22 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private JavaConstant toOriginal(JavaConstant constant) {
         return aUniverse.toHosted(constant);
+    }
+}
+
+@NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
+final class DirectMethodHandleEnsureInitializedNode extends FixedWithNextNode {
+
+    public static final NodeClass<DirectMethodHandleEnsureInitializedNode> TYPE = NodeClass.create(DirectMethodHandleEnsureInitializedNode.class);
+
+    private final ResolvedJavaType clazz;
+
+    protected DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
+        super(TYPE, StampFactory.forVoid());
+        this.clazz = clazz;
+    }
+
+    public ResolvedJavaType instanceClass() {
+        return clazz;
     }
 }

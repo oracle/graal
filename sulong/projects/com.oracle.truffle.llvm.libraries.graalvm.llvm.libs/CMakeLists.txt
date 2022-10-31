@@ -59,9 +59,12 @@ add_library(graalvm-llvm SHARED
 )
 
 if(WIN32)
-  target_sources(graalvm-llvm PRIVATE graalvm-llvm.def)
+  target_sources(graalvm-llvm PRIVATE
+    src/threads.c
+    graalvm-llvm.def)
 endif()
 
 target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
+target_include_directories(graalvm-llvm PRIVATE include)
 set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
 install(TARGETS graalvm-llvm DESTINATION bin)

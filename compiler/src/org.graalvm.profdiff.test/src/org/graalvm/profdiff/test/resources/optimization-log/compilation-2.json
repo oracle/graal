@@ -1,0 +1,21 @@
+{
+    "compilationId": "2",
+    "compilationMethodName": "org.example.myMethod(org.example.Foo, org.example.Class$Context)",
+    "rootPhase": {
+        "phaseName": "RootPhase",
+        "optimizations": [
+            {
+                "optimizationName": "LoopTransformation",
+                "eventName": "PartialUnroll",
+                "position": {"org.example.myMethod(org.example.Foo, org.example.Class$Context)": 2},
+                "unrollFactor": 1
+            },
+            {
+                "optimizationName": "LoopTransformation",
+                "eventName": "PartialUnroll",
+                "position": null,
+                "unrollFactor": 2
+            }
+        ]
+    }
+}

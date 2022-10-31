@@ -60,6 +60,7 @@ import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
@@ -635,6 +636,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public int getArrayLengthOffset() {
             return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
         }
+
+        @Override
+        public Register getHeapBaseRegister() {
+            return ReservedRegisters.singleton().getHeapBaseRegister();
+        }
     }
 
     public final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
@@ -1026,8 +1032,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public AArch64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
                 return super.createLoad(dst, getZeroConstant(dst));
-            } else if (src instanceof SubstrateObjectConstant) {
-                return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            } else if (src instanceof CompressibleConstant) {
+                return loadObjectConstant(dst, (CompressibleConstant) src);
             } else if (src instanceof SubstrateMethodPointerConstant) {
                 return new AArch64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
@@ -1038,15 +1044,15 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public LIRInstruction createStackLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
                 return super.createStackLoad(dst, getZeroConstant(dst));
-            } else if (src instanceof SubstrateObjectConstant) {
-                return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            } else if (src instanceof CompressibleConstant) {
+                return loadObjectConstant(dst, (CompressibleConstant) src);
             } else if (src instanceof SubstrateMethodPointerConstant) {
                 return new AArch64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
 
-        protected AArch64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
+        protected AArch64LIRInstruction loadObjectConstant(AllocatableValue dst, CompressibleConstant constant) {
             if (ReferenceAccess.singleton().haveCompressedReferences()) {
                 RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
                 return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
@@ -1068,14 +1074,14 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     public static final class LoadCompressedObjectConstantOp extends PointerCompressionOp implements LoadConstantOp {
         public static final LIRInstructionClass<LoadCompressedObjectConstantOp> TYPE = LIRInstructionClass.create(LoadCompressedObjectConstantOp.class);
 
-        static JavaConstant asCompressed(SubstrateObjectConstant constant) {
+        static Constant asCompressed(CompressibleConstant constant) {
             // We only want compressed references in code
             return constant.isCompressed() ? constant : constant.compress();
         }
 
-        private final SubstrateObjectConstant constant;
+        private final CompressibleConstant constant;
 
-        public LoadCompressedObjectConstantOp(AllocatableValue result, SubstrateObjectConstant constant, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
+        public LoadCompressedObjectConstantOp(AllocatableValue result, CompressibleConstant constant, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
             super(TYPE, result, new ConstantValue(lirKindTool.getNarrowOopKind(), asCompressed(constant)), baseRegister, encoding, true, lirKindTool);
             this.constant = constant;
         }

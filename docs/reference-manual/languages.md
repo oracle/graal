@@ -12,6 +12,7 @@ GraalVM's polyglot capabilities make it possible to mix multiple programming lan
 
 If you are mostly interested in GraalVM's support for a specific language, here you can find the most extensive documentation:
 * [Java](java/README.md)
+* [Java on Truffle](java-on-truffle/README.md)
 * [JavaScript and Node.js](https://github.com/oracle/graaljs/blob/master/docs/user/README.md)
 * [LLVM Languages](llvm/README.md)
 * [Python](https://github.com/oracle/graalpython/blob/master/docs/user/README.md)

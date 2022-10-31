@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -62,7 +63,7 @@ import java.util.ListIterator;
  * null checks performed by access to the objects that need to be null checked. The second phase
  * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
  */
-public class GuardLoweringPhase extends BasePhase<CoreProviders> {
+public class GuardLoweringPhase extends BasePhase<CoreProviders> implements FloatingGuardPhase {
 
     private static class LowerGuards extends ScheduledNodeIterator {
 
@@ -114,10 +115,10 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.GUARD_LOWERING, graphState),
-                        NotApplicable.notApplicableIf(!graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards must be allowed."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.GUARD_LOWERING, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed"));
     }
 
     @Override

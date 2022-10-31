@@ -45,7 +45,9 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
@@ -90,8 +92,8 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class CFunctionSnippets extends SubstrateTemplates implements Snippets {
 
-    private final SnippetInfo prologue = snippet(CFunctionSnippets.class, "prologueSnippet");
-    private final SnippetInfo epilogue = snippet(CFunctionSnippets.class, "epilogueSnippet");
+    private final SnippetInfo prologue;
+    private final SnippetInfo epilogue;
 
     /**
      * A unique object that identifies the frame anchor stack value. Multiple C function calls
@@ -140,6 +142,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
+        this.prologue = snippet(providers, CFunctionSnippets.class, "prologueSnippet");
+        this.epilogue = snippet(providers, CFunctionSnippets.class, "epilogueSnippet");
+
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
         lowerings.put(CFunctionEpilogueNode.class, new CFunctionEpilogueLowering());
     }
@@ -166,9 +171,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("newThreadStatus", newThreadStatus);
-            SnippetTemplate template = template(node, args);
+            SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
-            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -186,9 +191,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
-            SnippetTemplate template = template(node, args);
+            SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
-            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -244,6 +249,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 }
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {
 
     @Override

@@ -37,6 +37,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -73,6 +74,22 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
                 if (!method.isNative()) {
                     try {
                         StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, AllowAssumptions.YES, null);
+                        if (graph != null) {
+                            boolean canCompile = true;
+                            for (ForeignCallNode foreignCall : graph.getNodes().filter(ForeignCallNode.class)) {
+                                if (foreignCall.canDeoptimize()) {
+                                    /*
+                                     * We cannot guarantee a valid framestate for this call when
+                                     * parsed in an intrinsic context.
+                                     */
+                                    canCompile = false;
+                                    break;
+                                }
+                            }
+                            if (!canCompile) {
+                                break;
+                            }
+                        }
                         getCode(method, graph);
                     } catch (AssertionError e) {
                         throw new GraalError(e, "Assertion error at %s", intrinsic.toString());

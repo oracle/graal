@@ -41,8 +41,8 @@ import static org.graalvm.jniutils.JNIUtil.findClass;
 import static org.graalvm.jniutils.JNIUtil.getJVMCIClassLoader;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
-import org.graalvm.jniutils.HotSpotCalls.HotSpotCall;
-import org.graalvm.jniutils.HotSpotCalls.JNIMethod;
+import org.graalvm.jniutils.JNICalls.JNICall;
+import org.graalvm.jniutils.JNICalls.JNIMethod;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -519,35 +519,35 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static JThrowable callCreateException(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), CreateException.resolve(env), args);
+        return JNICalls.getDefault().callStaticJObject(env, getEntryPoints(env), CreateException.resolve(env), args);
     }
 
     private static <T extends JObject> T callUpdateStackTrace(JNIEnv env, JObject p0, JByteArray p1) {
         JNI.JValue args = StackValue.get(2, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
         args.addressOf(1).setJObject(p1);
-        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), UpdateStackTrace.resolve(env), args);
+        return JNICalls.getDefault().callStaticJObject(env, getEntryPoints(env), UpdateStackTrace.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends JObject> T callGetThrowableMessage(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetThrowableMessage.resolve(env), args);
+        return JNICalls.getDefault().callStaticJObject(env, getEntryPoints(env), GetThrowableMessage.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     static <T extends JObject> T callGetClassName(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetClassName.resolve(env), args);
+        return JNICalls.getDefault().callStaticJObject(env, getEntryPoints(env), GetClassName.resolve(env), args);
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends JObject> T callGetStackTrace(JNIEnv env, JObject p0) {
         JNI.JValue args = StackValue.get(1, JNI.JValue.class);
         args.addressOf(0).setJObject(p0);
-        return HotSpotCalls.getDefault().callStaticJObject(env, getHotSpotEntryPoints(env), GetStackTrace.resolve(env), args);
+        return JNICalls.getDefault().callStaticJObject(env, getEntryPoints(env), GetStackTrace.resolve(env), args);
     }
 
     private static final class JNIMethodResolver implements JNIMethod {
@@ -564,7 +564,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
         JNIMethodResolver resolve(JNIEnv jniEnv) {
             JNI.JMethodID res = methodId;
             if (res.isNull()) {
-                JNI.JClass entryPointClass = getHotSpotEntryPoints(jniEnv);
+                JNI.JClass entryPointClass = getEntryPoints(jniEnv);
                 try (CTypeConversion.CCharPointerHolder name = toCString(methodName); CTypeConversion.CCharPointerHolder sig = toCString(methodSignature)) {
                     res = GetStaticMethodID(jniEnv, entryPointClass, name.get(), sig.get());
                     if (res.isNull()) {
@@ -591,7 +591,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
         }
     }
 
-    private static JNI.JClass getHotSpotEntryPoints(JNIEnv env) {
+    private static JNI.JClass getEntryPoints(JNIEnv env) {
         JNI.JClass res = entryPointsClass;
         if (res.isNull()) {
             String binaryName = getBinaryName(HS_ENTRYPOINTS_CLASS);
@@ -630,18 +630,18 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Names of the methods in the {@link HotSpotCalls} class annotated by the {@link HotSpotCall}.
+     * Names of the methods in the {@link JNICalls} class annotated by the {@link JNICall}.
      */
     private static final Set<String> JNI_TRANSITION_METHODS;
     private static final String JNI_TRANSITION_CLASS;
     static {
         Map<String, Method> entryPoints = new HashMap<>();
         Map<String, Method> others = new HashMap<>();
-        for (Method m : HotSpotCalls.class.getDeclaredMethods()) {
-            if (m.getAnnotation(HotSpotCall.class) != null) {
+        for (Method m : JNICalls.class.getDeclaredMethods()) {
+            if (m.getAnnotation(JNICall.class) != null) {
                 Method existing = entryPoints.put(m.getName(), m);
                 if (existing != null) {
-                    throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
+                    throw new InternalError("Method annotated by " + JNICall.class.getSimpleName() +
                                     " must have unique name: " + m + " and " + existing);
                 }
             } else {
@@ -651,11 +651,11 @@ public final class JNIExceptionWrapper extends RuntimeException {
         for (Map.Entry<String, Method> e : entryPoints.entrySet()) {
             Method existing = others.get(e.getKey());
             if (existing != null) {
-                throw new InternalError("Method annotated by " + HotSpotCall.class.getSimpleName() +
+                throw new InternalError("Method annotated by " + JNICall.class.getSimpleName() +
                                 " must have unique name: " + e.getValue() + " and " + existing);
             }
         }
-        JNI_TRANSITION_CLASS = HotSpotCalls.class.getName();
+        JNI_TRANSITION_CLASS = JNICalls.class.getName();
         JNI_TRANSITION_METHODS = Set.copyOf(entryPoints.keySet());
     }
 }

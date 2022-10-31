@@ -93,12 +93,12 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(),
-                                        java.util.Optional.of(new NotApplicable("This phase creates guard nodes, i.e., the graph must allow guard insertion."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtDeopts(),
+                                        "This phase creates guard nodes, i.e., the graph must allow guard insertion"));
     }
 
     @Override
@@ -249,7 +249,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                             }
                             survivingSuccessor.replaceAtUsages(newGuard, InputType.Guard);
 
-                            graph.getDebug().log("Converting deopt on %-5s branch of %s to guard for remaining branch %s.", negateGuardCondition, ifNode, survivingSuccessor);
+                            graph.getOptimizationLog().report(ConvertDeoptimizeToGuardPhase.class, "DeoptimizeToGuardConversion", deopt.asNode());
                             FixedNode next = pred.next();
                             pred.setNext(guard);
                             guard.setNext(next);
@@ -276,6 +276,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
             if (next != deopt.asNode()) {
                 node.setNext(node.graph().add(new DeoptimizeNode(deopt.getAction(), deopt.getReason(), deopt.getSpeculation())));
                 GraphUtil.killCFG(next);
+                node.graph().getOptimizationLog().report(ConvertDeoptimizeToGuardPhase.class, "DeoptimizeMovement", deopt.asNode());
             }
         }
     }

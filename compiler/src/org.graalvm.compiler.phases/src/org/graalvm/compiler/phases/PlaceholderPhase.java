@@ -50,7 +50,7 @@ public class PlaceholderPhase<C> extends BasePhase<C> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return Optional.of(new NotApplicable("This is a " + this.getName() + " for " + phaseClass));
     }
 

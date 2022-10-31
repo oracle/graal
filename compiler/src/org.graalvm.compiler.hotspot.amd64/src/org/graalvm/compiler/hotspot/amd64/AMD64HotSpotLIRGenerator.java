@@ -633,4 +633,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public int getArrayLengthOffset() {
         return config.arrayOopDescLengthOffset();
     }
+
+    @Override
+    public Register getHeapBaseRegister() {
+        return getProviders().getRegisters().getHeapBaseRegister();
+    }
 }

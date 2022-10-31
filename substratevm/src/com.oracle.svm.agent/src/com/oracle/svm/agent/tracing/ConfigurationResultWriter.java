@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
@@ -47,15 +49,16 @@ public class ConfigurationResultWriter extends Tracer implements TracingResultWr
     }
 
     @Override
-    protected void traceEntry(Map<String, Object> entry) {
+    protected void traceEntry(EconomicMap<String, Object> entry) {
         processor.processEntry(arraysToLists(entry), configuration);
     }
 
     /** {@link TraceProcessor} expects {@link List} objects instead of plain arrays. */
-    public static Map<String, Object> arraysToLists(Map<String, Object> map) {
-        for (Map.Entry<String, Object> mapEntry : map.entrySet()) {
-            if (mapEntry.getValue() instanceof Object[]) {
-                mapEntry.setValue(arraysToLists((Object[]) mapEntry.getValue()));
+    public static EconomicMap<String, Object> arraysToLists(EconomicMap<String, Object> map) {
+        MapCursor<String, Object> cursor = map.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getValue() instanceof Object[]) {
+                cursor.setValue(arraysToLists((Object[]) cursor.getValue()));
             }
         }
         return map;

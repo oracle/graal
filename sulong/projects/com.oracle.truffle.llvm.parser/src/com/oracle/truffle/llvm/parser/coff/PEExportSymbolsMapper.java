@@ -67,10 +67,7 @@ public class PEExportSymbolsMapper extends ExportSymbolsMapper {
 
         Map<Integer, String> symbolMappings = new HashMap<>();
         for (ImageSymbol symbol : peFile.getCoffFile().getSymbols()) {
-            if (symbol.isFunction() && symbol.hasValidSectionNumber()) {
-                ImageSectionHeader sectionHeader = file.getSectionByNumber(symbol.sectionNumber);
-                symbolMappings.put(symbol.value + sectionHeader.virtualAddress, symbol.name);
-            } else if (symbol.sectionNumber > 0) {
+            if (symbol.hasValidSectionNumber()) {
                 ImageSectionHeader sectionHeader = file.getSectionByNumber(symbol.sectionNumber);
                 symbolMappings.put(symbol.value + sectionHeader.virtualAddress, symbol.name);
             }

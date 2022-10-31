@@ -26,11 +26,12 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
 import org.junit.Test;
 
+import com.oracle.svm.test.jfr.events.ThreadEvent;
+
 /**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
+ * Test if event ({@link ThreadEvent}) with {@link Thread} payload is working.
  */
 public class TestThreadEvent extends JfrTest {
     @Override

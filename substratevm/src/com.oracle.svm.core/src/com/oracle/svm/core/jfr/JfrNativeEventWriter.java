@@ -275,7 +275,7 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static boolean accommodate(JfrNativeEventWriterData data, UnsignedWord uncommitted, int requested) {
-        JfrBuffer newBuffer = accomodate0(data, uncommitted, requested);
+        JfrBuffer newBuffer = accommodate0(data, uncommitted, requested);
         if (newBuffer.isNull()) {
             cancel(data);
             return false;
@@ -288,7 +288,7 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static JfrBuffer accomodate0(JfrNativeEventWriterData data, UnsignedWord uncommitted, int requested) {
+    private static JfrBuffer accommodate0(JfrNativeEventWriterData data, UnsignedWord uncommitted, int requested) {
         JfrBuffer oldBuffer = data.getJfrBuffer();
         switch (oldBuffer.getBufferType()) {
             case THREAD_LOCAL_NATIVE:

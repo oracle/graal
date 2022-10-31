@@ -63,9 +63,12 @@ void writeGlobal(void *object) {
 
 char buffer[10240];
 
+#if !defined(_WIN32)
+// fmemopen is not supported under Windows
 FILE *open_buffer() {
     return fmemopen(buffer, sizeof(buffer), "w");
 }
+#endif
 
 void concurrent_put(FILE *f, int id) {
     for (int i = 0; i < 20; i++) {

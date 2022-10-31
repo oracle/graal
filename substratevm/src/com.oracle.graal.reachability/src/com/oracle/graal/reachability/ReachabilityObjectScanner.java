@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -97,11 +98,6 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     }
 
     private AnalysisType constantType(JavaConstant constant) {
-        return access.lookupJavaType(constantAsObject(constant).getClass());
+        return access.lookupJavaType(constant);
     }
-
-    private Object constantAsObject(JavaConstant constant) {
-        return bb.getSnippetReflectionProvider().asObject(Object.class, constant);
-    }
-
 }

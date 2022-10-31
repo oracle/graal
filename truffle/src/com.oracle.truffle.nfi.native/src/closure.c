@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,12 +53,7 @@
 #include <ffi.h>
 #include "internal.h"
 
-enum closure_arg_type {
-    ARG_BUFFER,
-    ARG_STRING,
-    ARG_OBJECT,
-    ARG_SKIP
-};
+enum closure_arg_type { ARG_BUFFER, ARG_STRING, ARG_OBJECT, ARG_SKIP };
 
 /**
  * It is very important that this struct contains no strong references to anything that might
@@ -78,7 +73,6 @@ struct closure_data {
     enum closure_arg_type argTypes[0];
 };
 
-
 void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, struct __TruffleContextInternal **context) {
     if (closure->envArgIdx >= 0) {
         struct __TruffleEnvInternal *env = *(struct __TruffleEnvInternal **) args[closure->envArgIdx];
@@ -86,15 +80,16 @@ void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, s
         *context = env->context;
     } else {
         JavaVM *vm = closure->context->javaVM;
-        int ret = (*vm)->GetEnv(vm, (void**) jniEnv, JNI_VERSION_1_6);
+        int ret = (*vm)->GetEnv(vm, (void **) jniEnv, JNI_VERSION_1_6);
         if (ret == JNI_EDETACHED) {
-            ret = (*vm)->AttachCurrentThread(vm, (void**) jniEnv, NULL);
+            ret = (*vm)->AttachCurrentThread(vm, (void **) jniEnv, NULL);
         }
         *context = closure->context;
     }
 }
 
-static jobjectArray create_arg_buffers(struct __TruffleContextInternal *ctx, JNIEnv *env, struct closure_data *data, ffi_cif *cif, void **args, jobject retBuffer) {
+static jobjectArray create_arg_buffers(struct __TruffleContextInternal *ctx, JNIEnv *env, struct closure_data *data, ffi_cif *cif, void **args,
+                                       jobject retBuffer) {
     int length = cif->nargs;
     jobjectArray argBuffers;
     int i;
@@ -110,19 +105,17 @@ static jobjectArray create_arg_buffers(struct __TruffleContextInternal *ctx, JNI
     for (i = 0; i < cif->nargs; i++) {
         switch (data->argTypes[i]) {
             case ARG_BUFFER: {
-                    jobject buffer = (*env)->AllocObject(env, ctx->NativeArgumentBuffer_Pointer);
-                    (*env)->SetLongField(env, buffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong)(intptr_t) args[i]);
-                    (*env)->SetObjectArrayElement(env, argBuffers, i, buffer);
-                    (*env)->DeleteLocalRef(env, buffer);
-                }
-                break;
+                jobject buffer = (*env)->AllocObject(env, ctx->NativeArgumentBuffer_Pointer);
+                (*env)->SetLongField(env, buffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong) (intptr_t) args[i]);
+                (*env)->SetObjectArrayElement(env, argBuffers, i, buffer);
+                (*env)->DeleteLocalRef(env, buffer);
+            } break;
 
             case ARG_STRING: {
-                    jstring str = (*env)->NewStringUTF(env, *(const char **) args[i]);
-                    (*env)->SetObjectArrayElement(env, argBuffers, i, str);
-                    (*env)->DeleteLocalRef(env, str);
-                }
-                break;
+                jstring str = (*env)->NewStringUTF(env, *(const char **) args[i]);
+                (*env)->SetObjectArrayElement(env, argBuffers, i, str);
+                (*env)->DeleteLocalRef(env, str);
+            } break;
 
             case ARG_OBJECT:
                 (*env)->SetObjectArrayElement(env, argBuffers, i, *(jobject *) args[i]);
@@ -152,7 +145,7 @@ static void serialize_ret_string(struct __TruffleContextInternal *ctx, JNIEnv *e
         *((const char **) retPtr) = strdup(chars);
         (*env)->ReleaseStringUTFChars(env, str, chars);
     } else if ((*env)->IsInstanceOf(env, ret, ctx->NativeString)) {
-        *((const char **) retPtr) = (const char *)(intptr_t)(*env)->GetLongField(env, ret, ctx->NativeString_nativePointer);
+        *((const char **) retPtr) = (const char *) (intptr_t) (*env)->GetLongField(env, ret, ctx->NativeString_nativePointer);
     } else {
         // unsupported type
         *((void **) retPtr) = NULL;
@@ -175,7 +168,7 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
     (*env)->PushLocalFrame(env, 8);
 
     retBuffer = (*env)->AllocObject(env, ctx->NativeArgumentBuffer_Pointer);
-    (*env)->SetLongField(env, retBuffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong)(intptr_t) ret);
+    (*env)->SetLongField(env, retBuffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong) (intptr_t) ret);
 
     argBuffers = create_arg_buffers(ctx, env, data, cif, args, retBuffer);
 
@@ -286,16 +279,18 @@ static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *
     errno = errnoMirror;
 }
 
-jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject receiver, jobject callTarget, void (*invoke_closure)(ffi_cif *cif, void *ret, void **args, void *user_data)) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
-    ffi_cif *cif = (ffi_cif*)(intptr_t)(*env)->GetLongField(env, signature, ctx->LibFFISignature_cif);
+jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject receiver, jobject callTarget,
+                        void (*invoke_closure)(ffi_cif *cif, void *ret, void **args, void *user_data)) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) (intptr_t) context;
+    ffi_cif *cif = (ffi_cif *) (intptr_t) (*env)->GetLongField(env, signature, ctx->LibFFISignature_cif);
 
     jobject sigInfo;
     jobjectArray argTypes;
     int i;
 
     void *code;
-    struct closure_data *data = (struct closure_data *) ffi_closure_alloc(sizeof(struct closure_data) + cif->nargs * sizeof(enum closure_arg_type), &code);
+    struct closure_data *data =
+        (struct closure_data *) ffi_closure_alloc(sizeof(struct closure_data) + cif->nargs * sizeof(enum closure_arg_type), &code);
 
     data->callTarget = (*env)->NewWeakGlobalRef(env, callTarget);
     if (receiver) {
@@ -327,28 +322,36 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject r
 
     ffi_prep_closure_loc(&data->closure, cif, invoke_closure, data, code);
 
-    return (*env)->CallObjectMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_createClosureNativePointer, (jlong)(intptr_t)data, (jlong)(intptr_t)code, callTarget, signature, receiver);
+    return (*env)->CallObjectMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_createClosureNativePointer, (jlong) (intptr_t) data,
+                                    (jlong) (intptr_t) code, callTarget, signature, receiver);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureObjectRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureObjectRet(JNIEnv *env, jclass self,
+                                                                                                            jlong nativeContext, jobject signature,
+                                                                                                            jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_object_ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureStringRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureStringRet(JNIEnv *env, jclass self,
+                                                                                                            jlong nativeContext, jobject signature,
+                                                                                                            jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_string_ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureBufferRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureBufferRet(JNIEnv *env, jclass self,
+                                                                                                            jlong nativeContext, jobject signature,
+                                                                                                            jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_buffer_ret);
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureVoidRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureVoidRet(JNIEnv *env, jclass self,
+                                                                                                          jlong nativeContext, jobject signature,
+                                                                                                          jobject callTarget, jobject receiver) {
     return prepare_closure(env, nativeContext, signature, receiver, callTarget, invoke_closure_void_ret);
 }
 
-
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer_freeClosure(JNIEnv *env, jclass self, jlong ptr) {
-    struct closure_data *data = (struct closure_data *)(intptr_t)ptr;
+    struct closure_data *data = (struct closure_data *) (intptr_t) ptr;
     (*env)->DeleteWeakGlobalRef(env, data->callTarget);
     if (data->receiver) {
         (*env)->DeleteWeakGlobalRef(env, data->receiver);

@@ -30,6 +30,12 @@
 
 #include <graalvm/llvm/polyglot.h>
 
+#if defined(_WIN32)
+#define EXPORT_FUNCTION __declspec(dllexport)
+#else
+#define EXPORT_FUNCTION
+#endif
+
 #define CALLBACK(str)                                                                                                                                \
     {                                                                                                                                                \
         void (*callback)(const polyglot_value) = (void *) polyglot_import("callback");                                                               \

@@ -177,7 +177,6 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
-
         /**
          *  *** Why do we need locks here? Avoid simultaneously flushing to disk TLB and promoting it (here).
          *  // *** no blocking on java buffer bc it is null! When guarantee nonNull, it blocks!   doesn't seem like adding the isolateThread param makes a diff
@@ -239,6 +238,11 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getParentThreadId(IsolateThread isolateThread) {
         return parentThreadId.get(isolateThread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getThreadLocalBufferSize() {
+        return threadLocalBufferSize;
     }
 
     public Target_jdk_jfr_internal_EventWriter getEventWriter() {

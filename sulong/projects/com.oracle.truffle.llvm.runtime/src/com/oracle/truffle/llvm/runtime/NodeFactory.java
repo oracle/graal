@@ -179,6 +179,8 @@ public interface NodeFactory {
 
     LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, int unwindBlock, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites);
 
+    LLVMControlFlowNode createCatchReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites);
+
     LLVMControlFlowNode createResumeInstruction(int exceptionSlot);
 
     LLVMExpressionNode createCompareExchangeInstruction(AggregateType returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode, LLVMExpressionNode newNode);

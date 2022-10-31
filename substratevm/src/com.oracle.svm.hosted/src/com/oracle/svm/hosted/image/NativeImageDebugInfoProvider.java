@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -43,6 +44,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.UniqueShortNameProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -68,7 +70,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
@@ -108,7 +109,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
-import java.util.HashMap;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
@@ -247,12 +247,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      */
     public long objectOffset(JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
-        if (constant instanceof SubstrateObjectConstant) {
-            Object object = SubstrateObjectConstant.asObject(constant);
-            ObjectInfo objectInfo = heap.getObjectInfo(object);
-            if (objectInfo != null) {
-                return objectInfo.getAddress();
-            }
+        ObjectInfo objectInfo = heap.getConstantInfo(constant);
+        if (objectInfo != null) {
+            return objectInfo.getAddress();
         }
         return -1;
     }
@@ -674,6 +671,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public String loaderName() {
+
+            return UniqueShortNameProvider.singleton().uniqueShortLoaderName(hostedType.getJavaClass().getClassLoader());
+        }
+
+        @Override
         public Stream<DebugFieldInfo> fieldInfoProvider() {
             Stream<DebugFieldInfo> instanceFieldsStream = Arrays.stream(hostedType.getInstanceFields(false)).map(this::createDebugFieldInfo);
             if (hostedType instanceof HostedInstanceClass && hostedType.getStaticFields().length > 0) {
@@ -1078,7 +1081,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method instanceof HostedMethod) {
                 return ((HostedMethod) method).isDeoptTarget();
             }
-            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+            return name().endsWith(HostedMethod.MULTI_METHOD_KEY_SEPARATOR);
         }
 
         @Override

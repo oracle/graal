@@ -709,6 +709,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         applyMIOpAndJcc(AND.getMIOpcode(QWORD, isByte(imm32)), QWORD, dst, imm32, cc, branchTarget, isShortJmp, false, null);
     }
 
+    public final void addlAndJcc(Register dst, Register src, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyRMOpAndJcc(ADD.getRMOpcode(DWORD), DWORD, dst, src, cc, branchTarget, isShortJmp);
+    }
+
     public final void addqAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         applyMIOpAndJcc(ADD.getMIOpcode(QWORD, isByte(imm32)), QWORD, dst, imm32, cc, branchTarget, isShortJmp, false, null);
     }
@@ -727,6 +731,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final void subqAndJcc(Register dst, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         applyMIOpAndJcc(SUB.getMIOpcode(QWORD, isByte(imm32)), QWORD, dst, imm32, cc, branchTarget, isShortJmp, false, null);
+    }
+
+    public final void inclAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        applyMOpAndJcc(INC, DWORD, dst, cc, branchTarget, isShortJmp);
     }
 
     public final void incqAndJcc(Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {

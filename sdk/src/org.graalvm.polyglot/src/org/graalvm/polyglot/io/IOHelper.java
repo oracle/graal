@@ -190,14 +190,14 @@ final class IOHelper {
             Method method = Engine.class.getDeclaredMethod("getImpl");
             method.setAccessible(true);
             AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
-            polyglotImpl.setIO(new IOAccessImpl());
+            polyglotImpl.setIO(new IOAccessorImpl());
             return polyglotImpl;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to initialize execution listener class.", e);
         }
     }
 
-    private static final class IOAccessImpl extends AbstractPolyglotImpl.IOAccess {
+    private static final class IOAccessorImpl extends AbstractPolyglotImpl.IOAccessor {
 
         @Override
         public ProcessHandler.ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
@@ -214,6 +214,21 @@ final class IOHelper {
         @Override
         public OutputStream getOutputStream(ProcessHandler.Redirect redirect) {
             return redirect.getOutputStream();
+        }
+
+        @Override
+        public FileSystem getFileSystem(IOAccess ioAccess) {
+            return ioAccess.getFileSystem();
+        }
+
+        @Override
+        public boolean hasHostFileAccess(IOAccess ioAccess) {
+            return ioAccess.hasHostFileAccess();
+        }
+
+        @Override
+        public boolean hasHostSocketAccess(IOAccess ioaccess) {
+            return ioaccess.hasHostSocketAccess();
         }
     }
 }

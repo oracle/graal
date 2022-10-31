@@ -123,13 +123,11 @@ def _check_jvmci_version(jdk):
                 fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
 
-    jvmci_version_file = join(binDir, 'jvmci_version.' + str(os.getpid()))
-    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.file=' + jvmci_version_file, '-cp', binDir, unqualified_name])
-    if exists(jvmci_version_file):
-        with open(jvmci_version_file) as fp:
-            global _jdk_jvmci_version
-            _jdk_jvmci_version = tuple((int(n) for n in fp.read().split(',')))
-        os.remove(jvmci_version_file)
+    out = mx.OutputCapture()
+    mx.run([jdk.java, '-cp', binDir, unqualified_name], out=out)
+    global _jdk_jvmci_version
+    if out.data:
+        _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
@@ -497,7 +495,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # Run ctw against rt.jar on hosted
     ctw_flags = [
         '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true', '-Dgraal.VerifyPhasePlan=true',
+        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
     ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Dgraal.PrintGraphStateDiff=true']
@@ -559,7 +557,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure we can also run on C2
     with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=True) as t:
-        if t: _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + benchVmArgs)
+        if t:
+            # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
+            c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
+            _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
 
     # run Scala DaCapo benchmarks #
     ###############################
@@ -623,11 +624,11 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D', '-Dgraal.VerifyPhasePlan=true']
+_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
-_verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyPhases=true']
+_verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true']
 _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
@@ -718,7 +719,6 @@ def _unittest_config_participant(config):
                 vmArgs.append('--add-modules=' + jmd.name)
 
     vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
-    vmArgs.append('-Dgraal.VerifyPhasePlan=true')
     vmArgs.append('-esa')
 
     # Always run unit tests without UseJVMCICompiler unless explicitly requested
@@ -1344,7 +1344,6 @@ cmp_ce_components = [
             'compiler:GRAAL_PROCESSOR',
         ],
         jvmci_jars=_jvmci_jars(),
-        graal_compiler='graal',
         stability="supported",
     ),
     mx_sdk_vm.GraalVmComponent(
@@ -1381,6 +1380,12 @@ def print_graaljdk_config(args):
     """print the GraalJDK config"""
     mx_sdk_vm_impl.graalvm_show([], _graaljdk_dist(_parse_graaljdk_edition('Print the GraalJDK config', args)))
 
+def profdiff(args):
+    """compare the optimization log of hot compilation units of two experiments"""
+    cp = mx.classpath('GRAAL_PROFDIFF', jdk=jdk)
+    vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
+    return jdk.run_java(args=vm_args)
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
@@ -1395,6 +1400,7 @@ mx.update_commands(_suite, {
     'graaljdk-home': [print_graaljdk_home, '[options]'],
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
+    'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
 })
 
 def mx_post_parse_cmd_line(opts):

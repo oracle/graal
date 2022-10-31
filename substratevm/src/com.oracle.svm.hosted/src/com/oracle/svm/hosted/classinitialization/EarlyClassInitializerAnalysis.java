@@ -40,6 +40,7 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -177,6 +178,7 @@ final class EarlyClassInitializerAnalysis {
                         .recordInlinedMethods(false)
                         .build();
         graph.getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        graph.getGraphState().setAfterStage(StageFlag.GUARD_LOWERING);
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, graphBuilderConfig, context.getOptimisticOptimizations());
 
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(new AbortOnDisallowedNode())) {

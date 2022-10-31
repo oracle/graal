@@ -57,6 +57,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
@@ -204,7 +205,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
         }
         AArch64Kind memKind = (AArch64Kind) integerAccessKind.getPlatformKind();
-        Variable result = newVariable(integerAccessKind);
+        Variable result = newVariable(toRegisterKind(integerAccessKind));
         AllocatableValue allocatableExpectedValue = asAllocatable(reinterpretedExpectedValue);
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue);
         append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
@@ -218,16 +219,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(Value address, ValueKind<?> kind, Value newValue) {
-        Variable result = newVariable(kind);
-        append(new AtomicReadAndWriteOp((AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
+        Variable result = newVariable(toRegisterKind(accessKind));
+        append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
         return result;
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
-        Variable result = newVariable(kind);
-        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), delta));
+    public Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
+        Variable result = newVariable(toRegisterKind(accessKind));
+        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), delta));
         return result;
     }
 
@@ -567,7 +568,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+    public Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
         return result;
@@ -604,12 +605,17 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitStringLatin1Inflate(Value src, Value dst, Value len) {
+    public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        append(new AArch64BigIntegerMultiplyToLenOp(asAllocatable(x), asAllocatable(xlen), asAllocatable(y), asAllocatable(ylen), asAllocatable(z), asAllocatable(zlen)));
+    }
+
+    @Override
+    public void emitStringLatin1Inflate(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         append(new AArch64StringLatin1InflateOp(this, asAllocatable(src), asAllocatable(dst), asAllocatable(len)));
     }
 
     @Override
-    public Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
+    public Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64StringUTF16CompressOp(this, asAllocatable(src), asAllocatable(dst), asAllocatable(len), result));
         return result;

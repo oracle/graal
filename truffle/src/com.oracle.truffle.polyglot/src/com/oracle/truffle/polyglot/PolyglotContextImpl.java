@@ -102,6 +102,8 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -110,6 +112,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
@@ -117,6 +121,7 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationExcepti
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
+import org.graalvm.polyglot.io.IOAccess;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -775,8 +780,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     Object[] enterThreadChanged(boolean notifyEnter, boolean enterReverted, boolean pollSafepoint, boolean deactivateSafepoints, boolean polyglotThreadFirstEnter) {
         PolyglotThreadInfo enteredThread = null;
         Object[] prev = null;
+        Thread current = Thread.currentThread();
+        if (JDKAccessor.isVirtualThread(current) && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
+            throw PolyglotEngineException.illegalState(
+                            "Using polyglot contexts on Java virtual threads is currently not supported with an optimizing Truffle runtime. " +
+                                            "As a workaround you may add the -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime JVM argument to switch to a non-optimizing runtime when using virtual threads. " +
+                                            "Please note that performance is severly reduced in this mode. Loom support for optimizing runtimes will be added in a future release.");
+        }
         try {
-            Thread current = Thread.currentThread();
             if (current instanceof SystemThread) {
                 throw PolyglotEngineException.illegalState("Context cannot be entered on system threads.");
             }
@@ -796,6 +807,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 if (deactivateSafepoints && threadInfo != PolyglotThreadInfo.NULL) {
                     threadLocalActions.notifyThreadActivation(threadInfo, false);
                 }
+
                 checkClosedOrDisposing();
                 assert threadInfo != null;
 
@@ -3245,9 +3257,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     static PolyglotContextImpl preinitialize(final PolyglotEngineImpl engine, final PreinitConfig preinitConfig, PolyglotSharingLayer sharableLayer, Set<PolyglotLanguage> languagesToPreinitialize,
                     boolean emitWarning) {
-        final FileSystems.PreInitializeContextFileSystem fs = new FileSystems.PreInitializeContextFileSystem();
-        final FileSystems.PreInitializeContextFileSystem internalFs = new FileSystems.PreInitializeContextFileSystem();
-        final PolyglotContextConfig config = new PolyglotContextConfig(engine, fs, internalFs, preinitConfig);
+        final FileSystemConfig fileSystemConfig = new FileSystemConfig(IOAccess.ALL, new PreInitializeContextFileSystem(), new PreInitializeContextFileSystem());
+        final PolyglotContextConfig config = new PolyglotContextConfig(engine, fileSystemConfig, preinitConfig);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {
             engine.addContext(context);
@@ -3307,8 +3318,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             context.singleThreadValue.reset();
             context.sourcesToInvalidate = null;
             context.threadLocalActions.prepareContextStore();
-            fs.onPreInitializeContextEnd();
-            internalFs.onPreInitializeContextEnd();
+            ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd();
+            ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
                 EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());

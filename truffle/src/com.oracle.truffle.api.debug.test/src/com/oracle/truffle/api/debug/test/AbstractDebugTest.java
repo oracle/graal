@@ -57,6 +57,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -141,7 +142,7 @@ public abstract class AbstractDebugTest {
         if (tester != null) {
             sessionStack.push(tester);
         }
-        tester = new DebuggerTester(Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true));
+        tester = new DebuggerTester(Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.ALL));
     }
 
     protected final void popContext() {

@@ -129,7 +129,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             args.addConst("counters", counters);
             args.addConst("verifyOnly", barrier.getVerifyOnly());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, SerialArrayRangeWriteBarrier barrier, LoweringTool tool) {
@@ -138,7 +138,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
         }
     }
 }

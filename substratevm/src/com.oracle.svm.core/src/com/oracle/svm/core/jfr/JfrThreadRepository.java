@@ -24,19 +24,17 @@
  */
 package com.oracle.svm.core.jfr;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.utils.JfrVisited;
+import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.JavaLangThreadGroupSubstitutions;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -51,12 +49,11 @@ import static com.oracle.svm.core.jfr.JfrChunkWriter.CONSTANT_POOL_TYPE_ID;
 import static com.oracle.svm.core.jfr.JfrChunkWriter.getFileSupport;
 import static com.oracle.svm.core.jfr.JfrNativeEventWriter.makePaddedInt;
 
+
 /**
  * Repository that collects all metadata about threads and thread groups.
  */
 public final class JfrThreadRepository implements JfrConstantPool {
-    private static final long INITIAL_BUFFER_SIZE = Options.getThreadBufferSize();
-
     private final VMMutex mutex;
     private final JfrThreadEpochData epochData0;
     private final JfrThreadEpochData epochData1;
@@ -106,7 +103,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrThreadEpochData epochData = getEpochData(false);
         if (epochData.threadBuffer.isNull()) {
             // This will happen only on the first call.
-            epochData.threadBuffer = JfrBufferAccess.allocate(WordFactory.unsigned(INITIAL_BUFFER_SIZE), JfrBufferType.C_HEAP);
+            epochData.threadBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
         }
 
         JfrVisited visitedThread = StackValue.get(JfrVisited.class);
@@ -119,19 +116,23 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer); // *** set up event writer to write to thread buffer
 
+        // needs to be in sync with JfrThreadConstant::serialize
+        boolean isVirtual = JavaThreads.isVirtual(thread);
+        long osThreadId = isVirtual ? 0 : JavaThreads.getThreadId(thread);
+        ThreadGroup threadGroup = thread.getThreadGroup();
+        long threadGroupId = getThreadGroupId(isVirtual, threadGroup);
+
         JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // JFR trace id
         JfrNativeEventWriter.putString(data, thread.getName()); // Java or native thread name
-        JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // OS thread id
+        JfrNativeEventWriter.putLong(data, osThreadId); // OS thread id
         JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
         JfrNativeEventWriter.putLong(data, JavaThreads.getThreadId(thread)); // Java thread id
-
-        ThreadGroup threadGroup = thread.getThreadGroup();
-        if (threadGroup != null) {
-            long threadGroupId = JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
-            JfrNativeEventWriter.putLong(data, threadGroupId);
+        JfrNativeEventWriter.putLong(data, threadGroupId); // Java thread group
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            JfrNativeEventWriter.putBoolean(data, isVirtual); // isVirtual
+        }
+        if (!isVirtual && threadGroup != null) {
             registerThreadGroup(threadGroupId, threadGroup);
-        } else {
-            JfrNativeEventWriter.putLong(data, 0);
         }
         JfrNativeEventWriter.commit(data);
 
@@ -141,6 +142,18 @@ public final class JfrThreadRepository implements JfrConstantPool {
         epochData.isDirty = true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    private static long getThreadGroupId(boolean isVirtual, ThreadGroup threadGroup) {
+        if (isVirtual) {
+            // java thread group - VirtualThread threadgroup reserved id 1
+            return 1;
+        } else if (threadGroup == null) {
+            return 0;
+        } else {
+            return JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
+        }
+    }
+
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     private void registerThreadGroup(long threadGroupId, ThreadGroup threadGroup) {
         VMError.guarantee(mutex.isOwner(), "The current thread is not the owner of the mutex!");
@@ -148,7 +161,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrThreadEpochData epochData = getEpochData(false);
         if (epochData.threadGroupBuffer.isNull()) {
             // This will happen only on the first call.
-            epochData.threadGroupBuffer = JfrBufferAccess.allocate(WordFactory.unsigned(INITIAL_BUFFER_SIZE), JfrBufferType.C_HEAP);
+            epochData.threadGroupBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
         }
 
         JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
@@ -240,44 +253,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
     public void teardown() {
         epochData0.teardown();
         epochData1.teardown();
-    }
-
-    @RawStructure
-    interface JfrVisited extends UninterruptibleEntry {
-        @RawField
-        long getId();
-
-        @RawField
-        void setId(long value);
-    }
-
-    private static class JfrVisitedTable extends AbstractUninterruptibleHashtable {
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected JfrVisited[] createTable(int size) {
-            return new JfrVisited[size];
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public JfrVisited[] getTable() {
-            return (JfrVisited[]) super.getTable();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
-            JfrVisited a = (JfrVisited) v0;
-            JfrVisited b = (JfrVisited) v1;
-            return a.getId() == b.getId();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
-            return copyToHeap(visitedOnStack, SizeOf.unsigned(JfrVisited.class));
-        }
     }
 
     private static class JfrThreadEpochData {

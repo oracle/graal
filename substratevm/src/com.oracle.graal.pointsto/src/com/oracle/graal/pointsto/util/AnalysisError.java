@@ -98,7 +98,7 @@ public class AnalysisError extends Error {
         }
 
         private static String message(AnalysisMethod method) {
-            String msg = String.format("Error encountered while parsing %s %n", method.format("%H.%n(%P)"));
+            String msg = String.format("Error encountered while parsing %s %n", method.asStackTraceElement(0));
             msg += "Parsing context:" + ReportUtils.parsingContext(method);
             return msg;
         }

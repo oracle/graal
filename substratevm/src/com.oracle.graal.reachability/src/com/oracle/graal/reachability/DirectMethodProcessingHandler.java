@@ -24,11 +24,9 @@
  */
 package com.oracle.graal.reachability;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.util.GuardedAnnotationAccess;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.lang.reflect.Modifier;
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.graph.Node;
@@ -49,9 +47,14 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import org.graalvm.nativeimage.AnnotationAccess;
 
-import java.lang.reflect.Modifier;
-import java.util.Optional;
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This handler walks the structured graphs of methods and directly calls back into the
@@ -120,7 +123,7 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 bb.markTypeReachable((ReachabilityAnalysisType) node.type().getType());
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
-                bb.markFieldRead((ReachabilityAnalysisField) node.field());
+                bb.markFieldRead((ReachabilityAnalysisField) node.field(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
                 bb.markFieldWritten((ReachabilityAnalysisField) node.field());
@@ -128,7 +131,7 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
-                if (targetMethod == null || GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
+                if (targetMethod == null || AnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
                     continue;
                 }
                 if (method != null) {

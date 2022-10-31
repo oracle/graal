@@ -41,7 +41,11 @@ public class EconomyCompilerConfigurationFactory extends CompilerConfigurationFa
     public static final int AUTO_SELECTION_PRIORITY = 1;
 
     public EconomyCompilerConfigurationFactory() {
-        super(NAME, AUTO_SELECTION_PRIORITY);
+        this(AUTO_SELECTION_PRIORITY);
+    }
+
+    protected EconomyCompilerConfigurationFactory(int autoSelectionPriority) {
+        super(NAME, autoSelectionPriority);
     }
 
     @Override

@@ -41,7 +41,8 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserError.UserException;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
@@ -62,8 +63,7 @@ public final class VMInspectionOptions {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
         enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_ALL_NAME));
         if (!enabledFeatures.isEmpty()) {
-            throw new InterruptImageBuilding(
-                            "The option " + optionKey.getName() + " contains invalid value(s): " + String.join(", ", enabledFeatures) + ". It can only contain " + MONITORING_ALLOWED_VALUES + ".");
+            throw UserError.abort("The option %s contains invalid value(s): %s. It can only contain %s.", optionKey.getName(), String.join(", ", enabledFeatures), MONITORING_ALLOWED_VALUES);
         }
     }
 
@@ -87,7 +87,7 @@ public final class VMInspectionOptions {
     }
 
     @Fold
-    public static boolean hasJFRSupport() {
+    public static boolean hasJfrSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
@@ -97,10 +97,28 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
+                throw signalAPIRequiredError("SIGUSR2");
+            }
+        }
+    };
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
+                throw signalAPIRequiredError("SIGQUIT/SIGBREAK");
+            }
+        }
+    };
+
+    private static UserException signalAPIRequiredError(String requiredSignals) {
+        return UserError.abort("Cannot install signal handler for %s when Signal API is disabled. Please enable with `-H:+%s`.", requiredSignals, SubstrateOptions.EnableSignalAPI.getName());
+    }
 
     static class DeprecatedOptions {
         @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //

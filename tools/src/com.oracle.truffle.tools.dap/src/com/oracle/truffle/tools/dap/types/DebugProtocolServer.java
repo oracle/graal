@@ -74,7 +74,7 @@ public class DebugProtocolServer {
         throw new UnsupportedOperationException("'restart' command not supported");
     }
 
-    public CompletableFuture<Void> disconnect(@SuppressWarnings("unused") DisconnectArguments args) {
+    public CompletableFuture<Void> disconnect(@SuppressWarnings("unused") DisconnectArguments args, @SuppressWarnings("unused") Consumer<? super Void> responseConsumer) {
         throw new UnsupportedOperationException("'disconnect' command not supported");
     }
 
@@ -461,7 +461,7 @@ public class DebugProtocolServer {
                         });
                         break;
                     case "disconnect":
-                        future = server.disconnect(new DisconnectArguments(args)).thenAccept(body -> {
+                        future = server.disconnect(new DisconnectArguments(args), body -> {
                             sendResponse(DisconnectResponse.create(seq, true, command, sequenceNum.getAndIncrement()).setBody(body));
                         });
                         break;
@@ -714,7 +714,7 @@ public class DebugProtocolServer {
         private void sendEvent(Event event) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending event '%s'\nBody: %s";
-                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), event.getType(), getJSONData(event.getBody())));
+                server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), event.getEvent(), getJSONData(event.getBody())));
             }
             writeMessage(getJSONData(event).toString());
         }

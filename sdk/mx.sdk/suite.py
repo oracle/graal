@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.7.0",
+  "mxversion" : "6.9.9",
   "name" : "sdk",
   "version" : "23.0.0",
   "release" : False,
@@ -76,14 +76,6 @@ suite = {
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "UPL",
-  "imports": {
-    "suites": [
-      {
-        "name": "docs",
-        "subdir": True,
-      },
-    ]
-  },
   "ignore_suite_commit_info": True,
   "libraries" : {
     "WRK_MULTIARCH": {
@@ -314,6 +306,9 @@ suite = {
       "requires" : [
         "java.logging",
       ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.module"],
+      },
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
@@ -434,7 +429,7 @@ suite = {
           "org.graalvm.word",
           "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.graal.graal_enterprise",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
-          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise",
+          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.base,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise",
           "org.graalvm.nativeimage.impl.clinit to org.graalvm.nativeimage.builder",
         ],
         "uses" : [

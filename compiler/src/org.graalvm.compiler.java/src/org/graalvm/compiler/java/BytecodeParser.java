@@ -3306,6 +3306,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
     }
 
+    @SuppressWarnings("try")
     protected void handleBytecodeBlock(BciBlock block) {
         if (block.isLoopHeader()) {
             /*
@@ -3317,7 +3318,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             lastInstr = loopBegin;
 
             // Create phi functions for all local variables and operand stack slots.
-            frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis() || this.graphBuilderConfig.replaceLocalsWithConstants(), stampFromValueForForcedPhis());
+            try (DebugCloseable context = openNodeContext()) {
+                frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis() || this.graphBuilderConfig.replaceLocalsWithConstants(), stampFromValueForForcedPhis());
+            }
             loopBegin.setStateAfter(createFrameState(block.startBci, loopBegin));
 
             /*

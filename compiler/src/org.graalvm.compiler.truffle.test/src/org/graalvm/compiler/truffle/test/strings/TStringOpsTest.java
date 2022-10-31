@@ -34,7 +34,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public abstract class TStringOpsTest<T> extends TStringTest {
+public abstract class TStringOpsTest<T extends Node> extends TStringTest {
 
     protected static final com.oracle.truffle.api.nodes.Node DUMMY_LOCATION = new com.oracle.truffle.api.nodes.Node() {
     };

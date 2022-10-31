@@ -35,7 +35,7 @@ import org.graalvm.word.PointerBase;
  * allocated on the stack.
  */
 @RawStructure
-interface SamplerSampleWriterData extends PointerBase {
+public interface SamplerSampleWriterData extends PointerBase {
     /**
      * Gets the buffer that data will be written to.
      */
@@ -84,4 +84,64 @@ interface SamplerSampleWriterData extends PointerBase {
      */
     @RawField
     void setEndPos(Pointer value);
+
+    /**
+     * Returns the hash code of sample.
+     */
+    @RawField
+    int getHashCode();
+
+    /**
+     * Sets the hash code of sample.
+     */
+    @RawField
+    void setHashCode(int value);
+
+    /**
+     * Returns the number of frames that should be skipped during stack walk.
+     */
+    @RawField
+    int getSkipCount();
+
+    /**
+     * Sets the number of frames that should be skipped during stack walk.
+     */
+    @RawField
+    void setSkipCount(int value);
+
+    /**
+     * Returns the max depth of stack walk.
+     */
+    @RawField
+    int getMaxDepth();
+
+    /**
+     * Sets the max depth of stack walk.
+     */
+    @RawField
+    void setMaxDepth(int value);
+
+    /**
+     * Returns the number of frames.
+     */
+    @RawField
+    int getNumFrames();
+
+    /**
+     * Sets the number of frames.
+     */
+    @RawField
+    void setNumFrames(int value);
+
+    /**
+     * Returns {@code true} if the stack size exceeds {@link #getMaxDepth()}.
+     */
+    @RawField
+    boolean getTruncated();
+
+    /**
+     * Sets the truncation status of stack walking.
+     */
+    @RawField
+    void setTruncated(boolean value);
 }

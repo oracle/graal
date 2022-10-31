@@ -50,7 +50,6 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -62,6 +61,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * The defaults for node limits are very conservative. Only small methods should be inlined. The
@@ -139,14 +139,14 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         if (hostVM.neverInlineTrivial(caller, callee)) {
             return false;
         }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, Fold.class) || GuardedAnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
+        if (AnnotationAccess.isAnnotationPresent(callee, Fold.class) || AnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
             /*
              * We should never see a call to such a method. But if we do, do not inline them
              * otherwise we miss the opportunity later to report it as an error.
              */
             return false;
         }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
+        if (AnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
             /*
              * This is conservative. We do not know the caller's heap restriction state yet because
              * that can only be computed after static analysis (it relies on the call graph produced

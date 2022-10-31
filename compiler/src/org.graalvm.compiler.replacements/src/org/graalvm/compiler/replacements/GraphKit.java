@@ -239,13 +239,22 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         }
     }
 
+    private NodeSourcePosition invokePosition(int invokeBci) {
+        if (graph.trackNodeSourcePosition()) {
+            NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
+            assert currentPosition.getCaller() == null : "The GraphKit currentPosition should be a top level position.";
+            return NodeSourcePosition.substitution(currentPosition.getMethod(), invokeBci);
+        }
+        return null;
+    }
+
     /**
      * Creates and appends an {@link InvokeNode} for a call to a given method with a given set of
      * arguments.
      */
     @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(bci))) {
             assert method.isStatic() == (invokeKind == InvokeKind.Static);
             Signature signature = method.getSignature();
             JavaType returnType = signature.getReturnType(null);
@@ -282,7 +291,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     @SuppressWarnings("try")
     public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(ResolvedJavaMethod method, InvokeKind invokeKind,
                     FrameStateBuilder frameStateBuilder, int invokeBci, ValueNode... args) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(invokeBci))) {
             InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, args);
             exceptionPart();
             ExceptionObjectNode exception = exceptionObject();
@@ -294,7 +303,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
 
     @SuppressWarnings("try")
     public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), callTarget.targetMethod()))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(invokeBci))) {
             InvokeWithExceptionNode result = startInvokeWithException(callTarget, frameStateBuilder, invokeBci);
             exceptionPart();
             ExceptionObjectNode exception = exceptionObject();

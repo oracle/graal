@@ -53,7 +53,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
@@ -153,20 +152,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      */
     public static final HotSpotForeignCallDescriptor CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE,
                     NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "cipherBlockChaining_decrypt_aescrypt", int.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
-
-    /**
-     * @see BigIntegerSnippets#implMultiplyToLen(int[], int, int[], int, int[])
-     */
-    public static final HotSpotForeignCallDescriptor MULTIPLY_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "multiplyToLen",
-                    void.class, Word.class, int.class, Word.class, int.class, Word.class, int.class);
-
-    public static void multiplyToLenStub(Word xAddr, int xlen, Word yAddr, int ylen, Word zAddr, int zLen) {
-        multiplyToLenStub(HotSpotBackend.MULTIPLY_TO_LEN, xAddr, xlen, yAddr, ylen, zAddr, zLen);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xIn, int xLen, Word yIn, int yLen, Word zIn, int zLen);
 
     public static final HotSpotForeignCallDescriptor MUL_ADD = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int), "mulAdd",
                     int.class, Word.class, Word.class, int.class, int.class, int.class);

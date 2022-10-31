@@ -24,11 +24,19 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.util.concurrent.locks.LockSupport;
+
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.ThreadParkEvent;
 import com.oracle.svm.core.util.TimeUtils;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"static-method"})
 final class Target_jdk_internal_misc_Unsafe_JavaThreads {
 
@@ -42,14 +50,24 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      */
     @Substitute
     void park(boolean isAbsolute, long time) {
+        long startTicks = JfrTicks.elapsedTicks();
+        Thread t = Thread.currentThread();
+        Object parkBlocker = LockSupport.getBlocker(t);
+
         /* Decide what kind of park I am doing. */
         if (!isAbsolute && time == 0L) {
             /* Park without deadline. */
             PlatformThreads.parkCurrentPlatformOrCarrierThread();
+            ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, Long.MIN_VALUE);
         } else {
             /* Park with deadline. */
             final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
             PlatformThreads.parkCurrentPlatformOrCarrierThread(delayNanos);
+            if (isAbsolute) {
+                ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, time);
+            } else {
+                ThreadParkEvent.emit(startTicks, parkBlocker, time, Long.MIN_VALUE);
+            }
         }
         /*
          * Unsafe.park does not distinguish between timing out, being unparked, and being

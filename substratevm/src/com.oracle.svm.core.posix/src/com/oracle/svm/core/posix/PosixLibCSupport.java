@@ -43,6 +43,12 @@ public abstract class PosixLibCSupport implements LibCSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n) {
+        return PosixLibC.memcmp(s1, s2, n);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T memmove(T dest, PointerBase src, UnsignedWord n) {
         return PosixLibC.memmove(dest, src, n);
     }

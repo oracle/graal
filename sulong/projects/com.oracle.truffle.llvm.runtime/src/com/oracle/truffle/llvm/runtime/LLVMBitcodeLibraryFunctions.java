@@ -69,12 +69,33 @@ public final class LLVMBitcodeLibraryFunctions {
     public static final class SulongCanCatchWindowsNode extends LibraryFunctionNode {
 
         public SulongCanCatchWindowsNode(LLVMContext context) {
-            super(context, "sulong_eh_canCatch_windows");
+            super(context, "__sulong_eh_canCatch_windows");
         }
 
-        public boolean canCatch(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer catchType, LLVMPointer imageBase) {
-            return (boolean) execute(stack, thrownObject, throwInfo, catchType.copy(), imageBase);
+        public LLVMPointer canCatch(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer catchType, LLVMPointer imageBase) {
+            return LLVMPointer.cast(execute(stack, thrownObject, throwInfo, catchType.copy(), imageBase));
         }
     }
 
+    public static final class SulongEHCopyWindowsNode extends LibraryFunctionNode {
+
+        public SulongEHCopyWindowsNode(LLVMContext context) {
+            super(context, "__sulong_eh_copy_windows");
+        }
+
+        public void copy(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer catchableType, LLVMPointer imageBase, LLVMPointer exceptionSlot, int attributes) {
+            execute(stack, thrownObject, catchableType, imageBase, exceptionSlot, attributes);
+        }
+    }
+
+    public static final class SulongEHUnwindWindowsNode extends LibraryFunctionNode {
+
+        public SulongEHUnwindWindowsNode(LLVMContext context) {
+            super(context, "__sulong_eh_unwind_windows");
+        }
+
+        public void unwind(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer imageBase) {
+            execute(stack, thrownObject, throwInfo, imageBase);
+        }
+    }
 }
