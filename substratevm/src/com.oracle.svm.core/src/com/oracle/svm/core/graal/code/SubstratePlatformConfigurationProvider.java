@@ -27,15 +27,11 @@ package com.oracle.svm.core.graal.code;
 
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 public class SubstratePlatformConfigurationProvider implements PlatformConfigurationProvider {
     private final BarrierSet barrierSet;
 
-    protected SubstratePlatformConfigurationProvider(BarrierSet barrierSet) {
+    public SubstratePlatformConfigurationProvider(BarrierSet barrierSet) {
         this.barrierSet = barrierSet;
     }
 
@@ -49,14 +45,4 @@ public class SubstratePlatformConfigurationProvider implements PlatformConfigura
         return true;
     }
 
-}
-
-@AutomaticallyRegisteredImageSingleton(value = {PlatformConfigurationProviderFactory.class})
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-final class SubstratePlatformConfigurationProviderFactory implements PlatformConfigurationProviderFactory {
-
-    @Override
-    public SubstratePlatformConfigurationProvider getProvider(BarrierSet barrierSet) {
-        return new SubstratePlatformConfigurationProvider(barrierSet);
-    }
 }

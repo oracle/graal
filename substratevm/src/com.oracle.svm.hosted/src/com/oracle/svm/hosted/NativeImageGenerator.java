@@ -195,7 +195,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.graal.EconomyGraalConfiguration;
 import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.code.PlatformConfigurationProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.jdk.SubstrateArraycopySnippets;
@@ -601,8 +600,9 @@ public class NativeImageGenerator {
 
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
+                SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
                 runtime = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(), nativeLibraries, classInitializationSupport,
-                                GraalAccess.getOriginalProviders().getLoopsDataProvider()).build();
+                                GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
                 registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), bb.getMetaAccess(), aUniverse,
                                 hMetaAccess, hUniverse,
                                 nativeLibraries, loader, ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(),
@@ -881,8 +881,9 @@ public class NativeImageGenerator {
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
+                SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 bb = createBigBang(options, target, aUniverse, analysisExecutor, loader.watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
-                                annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders);
+                                annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders, platformConfig);
                 aUniverse.setBigBang(bb);
 
                 /* Create the HeapScanner and install it into the universe. */
@@ -928,6 +929,11 @@ public class NativeImageGenerator {
 
             ProgressReporter.singleton().printInitializeEnd();
         }
+    }
+
+    protected SubstratePlatformConfigurationProvider getPlatformConfig(MetaAccessProvider aMetaAccess) {
+        BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(aMetaAccess);
+        return new SubstratePlatformConfigurationProvider(barrierSet);
     }
 
     private static void setDefaultLibCIfMissing() {
@@ -1077,7 +1083,7 @@ public class NativeImageGenerator {
     public static Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, ForkJoinPool analysisExecutor,
                     Runnable heartbeatCallback, AnalysisMetaAccess aMetaAccess, AnalysisConstantReflectionProvider aConstantReflection, WordTypes aWordTypes,
                     SnippetReflectionProvider aSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls,
-                    ClassInitializationSupport classInitializationSupport, Providers originalProviders) {
+                    ClassInitializationSupport classInitializationSupport, Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig) {
         assert aUniverse != null : "Analysis universe must be initialized.";
         aMetaAccess.lookupJavaType(String.class).registerAsReachable();
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection, classInitializationSupport);
@@ -1086,8 +1092,6 @@ public class NativeImageGenerator {
          * added to the universe.
          */
         aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
-        BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(aMetaAccess);
-        SubstratePlatformConfigurationProvider platformConfig = ImageSingletons.lookup(PlatformConfigurationProviderFactory.class).getProvider(barrierSet);
         MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
