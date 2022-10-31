@@ -135,7 +135,7 @@ public final class StatisticsPrinter {
         int reachable = 0;
         int appReachable = 0;
         for (AnalysisType type : bb.getUniverse().getTypes()) {
-            if (type.isInstantiated()) {
+            if (type.isReachable()) {
                 reachable++;
                 if (!isRuntimeLibraryType(type)) {
                     appReachable++;
