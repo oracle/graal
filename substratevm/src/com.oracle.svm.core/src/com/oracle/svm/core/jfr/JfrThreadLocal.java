@@ -353,12 +353,20 @@ public class JfrThreadLocal implements ThreadListener {
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
 //        com.oracle.svm.core.util.VMError.guarantee(someNodeLocked(), "^^^14");//assert someNodeLocked(); // new
         com.oracle.svm.core.util.VMError.guarantee(threadLocalBuffer.isNonNull(), "^^^15");//assert threadLocalBuffer.isNonNull();
-        while(!JfrBufferAccess.acquire(threadLocalBuffer)); // new
+        com.oracle.svm.core.util.VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint() , "^^^70");//assert !acquire();
+
+        int count =0;
+        while(!JfrBufferAccess.acquire(threadLocalBuffer)); {// new
+            count++;
+            VMError.guarantee(count < 20000, "^^^60");
+        }
+
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {
             JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
             if (!globalMemory.write(threadLocalBuffer, unflushedSize)) {
                 JfrBufferAccess.reinitialize(threadLocalBuffer);
+                VMError.guarantee(false, "^^^71");
                 writeDataLoss(threadLocalBuffer, unflushedSize);
                 JfrBufferAccess.release(threadLocalBuffer);// new
                 return WordFactory.nullPointer();
@@ -372,11 +380,12 @@ public class JfrThreadLocal implements ThreadListener {
         }
         JfrBufferAccess.reinitialize(threadLocalBuffer);
         assert JfrBufferAccess.getUnflushedSize(threadLocalBuffer).equal(0);
-        if (threadLocalBuffer.getSize().aboveOrEqual(uncommitted.add(requested))) {
+        if (threadLocalBuffer.getSize().aboveOrEqual(uncommitted.add(requested))) { // *** do we have enough space now?
             JfrBufferAccess.release(threadLocalBuffer);// new
             return threadLocalBuffer;
         }
         JfrBufferAccess.release(threadLocalBuffer);// new
+        VMError.guarantee(false, "^^^72");
         return WordFactory.nullPointer();
     }
 

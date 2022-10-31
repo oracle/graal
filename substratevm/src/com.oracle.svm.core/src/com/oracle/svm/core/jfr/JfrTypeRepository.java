@@ -57,7 +57,6 @@ public class JfrTypeRepository implements JfrConstantPool {
     public int write(JfrChunkWriter writer, boolean flush) {
         // Visit all used classes, and collect their packages, modules, classloaders and possibly
         // referenced classes.
-
         TypeInfo typeInfo = collectTypeInfo(flush);
 
         // The order of writing matters as following types can be tagged during the write process

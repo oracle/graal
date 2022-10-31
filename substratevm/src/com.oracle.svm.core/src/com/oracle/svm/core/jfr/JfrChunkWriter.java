@@ -192,7 +192,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, false);
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
 //        _constantPoolPosition = constantPoolPosition;
-        _metadataPosition = metadataPosition;
         patchFileHeader(constantPoolPosition, metadataPosition); // write of header doesn't have to be uninterruptible because closefile() already has the lock. It can get interrupted by safepoint but it'll just resume later.
         getFileSupport().close(fd);
 
@@ -211,9 +210,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (threadRepo.isDirty(true)){
             writeThreadCheckpointEvent(threadRepo, true);
         }
+        assert lock.isHeldByCurrentThread();
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true); // WILL get written again when the chunk closes and overwrite what we write here. In that case we shouldn't wipe the repos right? How does hotspot handle it?
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
-
+        assert lock.isHeldByCurrentThread();
 
 //        patchFileHeader(_constantPoolPosition, metadataPosition, true);
         patchFileHeader(constantPoolPosition, metadataPosition, true);
@@ -249,6 +249,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void patchFileHeader(SignedWord constantPoolPosition, SignedWord metadataPosition, boolean flushpoint) {
+        assert lock.isHeldByCurrentThread();
+        System.out.println("*** patchFileHeader");
         SignedWord currentPos = getFileSupport().position(fd);
         long chunkSize = getFileSupport().position(fd).rawValue();
         long durationNanos = JfrTicks.currentTimeNanos() - chunkStartNanos;
@@ -307,6 +309,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return start;
     }
     private SignedWord writeCheckpointEvent(JfrConstantPool[] repositories, boolean flush) {
+        assert lock.isHeldByCurrentThread();
 //        Exception e = new Exception();
 //        e.printStackTrace();
         System.out.println("*** Checkpoint");
@@ -357,6 +360,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private SignedWord writeMetadataEvent(byte[] metadataDescriptor) {
+        assert lock.isHeldByCurrentThread();
         // *** works to prevent duplicate metadata from being written to disk
         if (currentMetadataId != lastMetadataId || newChunk) {
             lastMetadataId = currentMetadataId;
@@ -364,6 +368,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         } else {
             return _metadataPosition;
         }
+        System.out.println("*** Metadata event");
         SignedWord start = beginEvent();
         writeCompressedLong(METADATA_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
@@ -697,7 +702,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         // Try to get BUFFER if not in safepoint
         if (!safepoint && !JfrBufferAccess.acquire(buffer)) { //make one attempt
-            VMError.guarantee(!safepoint, "^^^1"); //if safepoint, no one else should hold the lock on the LL node. TODO: causes error when checked at safepoint (common)
             prev = node;
             node = next;
             continue;
