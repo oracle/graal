@@ -265,24 +265,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             if (impl != null) {
-                if (hostLanguage.getClass() != impl.getHostLanguageSPI().getClass()) {
-                    // Patching engine with different host language is not supported.
-                    // Fall back to new engine.
-                    impl = null;
-                } else {
-                    impl.patch(dispatchOut,
-                                    dispatchErr,
-                                    resolvedIn,
-                                    engineOptions,
-                                    logConfig,
-                                    loggerProvider,
-                                    options,
-                                    useAllowExperimentalOptions,
-                                    boundEngine,
-                                    logHandler,
-                                    polyglotHostService);
+                assert hostLanguage.getClass() == impl.getHostLanguageSPI().getClass() || PreInitContextHostLanguage.isInstance(impl.hostLanguage);
+                impl.patch(dispatchOut,
+                                dispatchErr,
+                                resolvedIn,
+                                engineOptions,
+                                logConfig,
+                                loggerProvider,
+                                options,
+                                useAllowExperimentalOptions,
+                                boundEngine,
+                                logHandler,
+                                (TruffleLanguage<?>) hostLanguage,
+                                polyglotHostService);
 
-                }
             }
             if (impl == null) {
                 impl = new PolyglotEngineImpl(this,
@@ -331,8 +327,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     @SuppressWarnings("unchecked")
-    public void preInitializeEngine(Object hostLanguage) {
-        PolyglotEngineImpl engine = createDefaultEngine((TruffleLanguage<Object>) hostLanguage);
+    public void preInitializeEngine() {
+        PolyglotEngineImpl engine = createDefaultEngine(new PreInitContextHostLanguage());
         getAPIAccess().newEngine(engineDispatch, engine, false);
         try {
             engine.preInitialize();

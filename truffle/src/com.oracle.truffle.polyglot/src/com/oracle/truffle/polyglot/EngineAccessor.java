@@ -672,7 +672,7 @@ final class EngineAccessor extends Accessor {
             } else {
                 throw shouldNotReachHere();
             }
-            return polyglotContext.inContextPreInitialization;
+            return polyglotContext.engine.inContextPreInitialization;
         }
 
         @Override

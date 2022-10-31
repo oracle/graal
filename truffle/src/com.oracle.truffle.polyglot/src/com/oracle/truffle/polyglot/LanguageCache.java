@@ -147,7 +147,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return maxStaticIndex;
     }
 
-    static LanguageCache createHostLanguageCache(TruffleLanguage<Object> languageInstance, String... services) {
+    static LanguageCache createHostLanguageCache(TruffleLanguage<?> languageInstance, String... services) {
         HostLanguageProvider hostLanguageProvider = new HostLanguageProvider(languageInstance, services);
         LanguageCache cache = new LanguageCache(
                         PolyglotEngineImpl.HOST_LANGUAGE_ID,

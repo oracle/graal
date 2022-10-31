@@ -335,6 +335,14 @@ final class PolyglotSharingLayer {
         return hostLanguage;
     }
 
+    PolyglotLanguageInstance patchHostLanguage(PolyglotLanguage language) {
+        this.hostLanguage = language.createInstance(this);
+        if (this.shared != null) {
+            this.shared.instances[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = this.hostLanguage;
+        }
+        return hostLanguage;
+    }
+
     public PolyglotLanguageInstance allocateInstance(PolyglotContextImpl context, PolyglotLanguage language) {
         assert Thread.holdsLock(engine.lock);
         assert isClaimed() : "allocateInstance before claim";

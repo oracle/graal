@@ -456,7 +456,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     @CompilationFinal private volatile FinalIntMap languageIndexMap;
 
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
-    boolean inContextPreInitialization; // effectively final
     List<Source> sourcesToInvalidate;  // Non null only during content pre-initialization
 
     final AtomicLong volatileStatementCounter = new AtomicLong();
@@ -679,8 +678,19 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         PolyglotLanguage hostLanguage = engine.hostLanguage;
         PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, hostLanguage);
         newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
-        hostContext.ensureCreated(hostLanguage);
-        hostContext.ensureInitialized(null);
+        if (PreInitContextHostLanguage.isInstance(hostLanguage)) {
+            // The host language in the image execution time may differ from host language in the
+            // image build time.
+            // We have to postpone the creation and initialization of the context until the
+            // patching.
+            // However, we still need to allocate a host language in the sharing layer to be able to
+            // claim the layer.
+            assert engine.inContextPreInitialization : "PreInitContextHostLanguage can be used only during context pre-initialization";
+            layer.allocateHostLanguage(hostLanguage);
+        } else {
+            hostContext.ensureCreated(hostLanguage);
+            hostContext.ensureInitialized(null);
+        }
         return newContexts;
     }
 
@@ -3174,7 +3184,11 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     boolean patch(PolyglotContextConfig newConfig) {
         CompilerAsserts.neverPartOfCompilation();
-
+        if (PreInitContextHostLanguage.isInstance(contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX].language)) {
+            contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage);
+            contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX].ensureCreated(contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX].language);
+            contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX].ensureInitialized(null);
+        }
         this.config = newConfig;
         threadLocalActions.onContextPatch();
         if (!newConfig.logLevels.isEmpty()) {
@@ -3264,7 +3278,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.addContext(context);
         }
 
-        context.inContextPreInitialization = true;
         context.sourcesToInvalidate = new ArrayList<>();
 
         try {
@@ -3302,8 +3315,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
             return context;
         } finally {
-            context.inContextPreInitialization = false;
-
             for (PolyglotLanguage language : engine.languages) {
                 if (language != null) {
                     language.clearOptionValues();

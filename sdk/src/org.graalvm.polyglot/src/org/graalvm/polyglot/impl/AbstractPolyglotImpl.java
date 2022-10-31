@@ -333,8 +333,8 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract int getPriority();
 
-    public void preInitializeEngine(Object hostLanguage) {
-        getNext().preInitializeEngine(hostLanguage);
+    public void preInitializeEngine() {
+        getNext().preInitializeEngine();
     }
 
     public Object createHostLanguage(AbstractHostAccess access) {
