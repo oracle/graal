@@ -781,6 +781,16 @@ suite = {
         "MX_OS" : "<os>",
         "MX_ARCH" : "<arch>",
       },
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "GRAALVM_PTHREAD_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.pthread>/include",
+            },
+          },
+        },
+        "<others>" : { "<others>" : {} }
+      },
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm" : {
