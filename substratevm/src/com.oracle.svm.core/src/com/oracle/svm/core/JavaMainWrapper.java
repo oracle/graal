@@ -90,7 +90,7 @@ public class JavaMainWrapper {
 
     public static class JavaMainSupport {
 
-        final MethodHandle javaMainHandle;
+        public final MethodHandle javaMainHandle;
         final String javaMainClassName;
 
         public String[] mainArgs;
