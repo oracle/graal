@@ -74,6 +74,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.Resources;
@@ -81,7 +82,6 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
@@ -198,14 +198,13 @@ public class ProgressReporter {
         }
         if (enableColors) {
             colorStrategy = new ColorfulStrategy();
-            /* Add a shutdown hook to reset the ANSI mode. */
-            try {
-                Runtime.getRuntime().addShutdownHook(new Thread(ProgressReporter::resetANSIMode));
-            } catch (IllegalStateException e) {
-                /* If the VM is already shutting down, we do not need to register shutdownHook. */
-            }
+            installShutdownHook(ProgressReporter::resetANSIMode);
         } else {
             colorStrategy = new ColorlessStrategy();
+        }
+
+        if (SubstrateOptions.RingBellWhenDone.getValue(options)) {
+            installShutdownHook(ProgressReporter::ringTerminalBell);
         }
 
         /*
@@ -740,8 +739,24 @@ public class ProgressReporter {
         return TimerCollection.singleton().get(type);
     }
 
+    private static void installShutdownHook(Runnable hook) {
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(hook));
+        } catch (IllegalStateException e) {
+            /* If the VM is already shutting down, we do not need to register shutdownHook. */
+        }
+    }
+
     private static void resetANSIMode() {
-        NativeImageSystemIOWrappers.singleton().getOut().print(ANSI.RESET);
+        var out = NativeImageSystemIOWrappers.singleton().getOut();
+        out.print(ANSI.RESET);
+        out.flush();
+    }
+
+    private static void ringTerminalBell() {
+        var out = NativeImageSystemIOWrappers.singleton().getOut();
+        out.write(0x07);
+        out.flush();
     }
 
     private static class Utils {

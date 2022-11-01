@@ -441,6 +441,9 @@ public class SubstrateOptions {
                     "docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json", type = OptionType.User)//
     public static final HostedOptionKey<String> BuildOutputJSONFile = new HostedOptionKey<>("");
 
+    @Option(help = "Ring the terminal bell when done", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> RingBellWhenDone = new HostedOptionKey<>(false);
+
     /*
      * Object and array allocation options.
      */
