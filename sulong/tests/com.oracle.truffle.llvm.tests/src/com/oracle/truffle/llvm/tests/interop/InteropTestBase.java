@@ -81,6 +81,16 @@ public class InteropTestBase {
         return LLVMLanguage.get(null).getCapability(PlatformCapability.class).getLibrary(library);
     }
 
+    public static OS getOS(Context context) {
+        context.initialize("llvm");
+        PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        return platform.getOS();
+    }
+
+    public static OS getOS() {
+        return getOS(runWithPolyglot.getPolyglotContext());
+    }
+
     protected static String getLibrarySuffixName(Context context, String fileName) {
         context.initialize("llvm");
         PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
