@@ -43,7 +43,7 @@ class ProgressReporterJsonHelper {
     private static final String ANALYSIS_RESULTS_KEY = "analysis_results";
     private static final String GENERAL_INFO_KEY = "general_info";
     private static final String IMAGE_DETAILS_KEY = "image_details";
-    private static final String RESSOURCE_USAGE_KEY = "resource_usage";
+    private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
     private final String jsonOutputFile;
@@ -95,7 +95,7 @@ class ProgressReporterJsonHelper {
 
     @SuppressWarnings("unchecked")
     public void putResourceUsage(ResourceUsageKey key, Object value) {
-        Map<String, Object> resUsageMap = (Map<String, Object>) statsHolder.computeIfAbsent(RESSOURCE_USAGE_KEY, ru -> new HashMap<>());
+        Map<String, Object> resUsageMap = (Map<String, Object>) statsHolder.computeIfAbsent(RESOURCE_USAGE_KEY, ru -> new HashMap<>());
         if (key.bucket != null) {
             Map<String, Object> subMap = (Map<String, Object>) resUsageMap.computeIfAbsent(key.bucket, k -> new HashMap<>());
             subMap.put(key.jsonKey, value);
@@ -192,7 +192,8 @@ class ProgressReporterJsonHelper {
         GC_COUNT("garbage_collection", "count"),
         GC_SECS("garbage_collection", "total_secs"),
         PEAK_RSS("memory", "peak_rss_bytes"),
-        MEMORY_TOTAL("memory", "system_total");
+        MEMORY_TOTAL("memory", "system_total"),
+        TOTAL_SECS(null, "total_secs");
 
         private String bucket;
         private String jsonKey;

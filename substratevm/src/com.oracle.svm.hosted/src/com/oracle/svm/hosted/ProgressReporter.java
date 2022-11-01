@@ -615,6 +615,9 @@ public class ProgressReporter {
         l().printLineSeparator();
         printResourceStatistics();
 
+        double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
+        recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
+
         Map<ArtifactType, List<Path>> artifacts = generator.getBuildArtifacts();
         if (!artifacts.isEmpty()) {
             l().printLineSeparator();
@@ -623,7 +626,6 @@ public class ProgressReporter {
 
         l().printHeadlineSeparator();
 
-        double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         String timeStats;
         if (totalSeconds < 60) {
             timeStats = String.format("%.1fs", totalSeconds);
