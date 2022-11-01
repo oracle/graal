@@ -75,6 +75,7 @@ target_sources(sulong PRIVATE
   src/crt0.c
   src/exit.c
   src/pthreads.c
+  src/string.c
   src/sulong_dispose_context.c
 )
 
@@ -101,7 +102,6 @@ else()
       src/setjmp.c
       src/signals.c
       src/stat.c
-      src/string.c
     )
 endif()
 

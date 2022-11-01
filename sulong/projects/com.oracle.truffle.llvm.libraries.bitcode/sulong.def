@@ -46,3 +46,9 @@ EXPORTS
   pthread_key_delete
   pthread_getspecific
   pthread_setspecific
+  strncpy
+  strcpy
+  strnlen
+  strlen
+  strcmp
+  strndup
