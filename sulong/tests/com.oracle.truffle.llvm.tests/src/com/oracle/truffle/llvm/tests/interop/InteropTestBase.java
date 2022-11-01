@@ -91,7 +91,7 @@ public class InteropTestBase {
         return getOS(runWithPolyglot.getPolyglotContext());
     }
 
-    protected static String getLibrarySuffixName(Context context, String fileName) {
+    static String getLibrarySuffixName(Context context, String fileName) {
         context.initialize("llvm");
         PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
         // TODO: GR-41902 remove this platform dependent code
@@ -101,8 +101,12 @@ public class InteropTestBase {
         return fileName + "." + platform.getLibrarySuffix();
     }
 
-    protected static String getTestLibraryName(Context context) {
+    public static String getTestLibraryName(Context context) {
         return getLibrarySuffixName(context, TEST_FILE_NAME);
+    }
+
+    public static String getTestLibraryName() {
+        return getTestLibraryName(runWithPolyglot.getPolyglotContext());
     }
 
     public static File getTestBitcodeFile(Context context, String name) {
