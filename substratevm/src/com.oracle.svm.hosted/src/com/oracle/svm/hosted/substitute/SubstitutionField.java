@@ -30,6 +30,7 @@ import java.lang.reflect.Field;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -77,6 +78,11 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
             value = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), annotated, receiver);
         }
         return value;
+    }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        throw VMError.shouldNotReachHere("Declaring class must be initialized, so this value should never be queried");
     }
 
     public boolean isUserSubstitution() {

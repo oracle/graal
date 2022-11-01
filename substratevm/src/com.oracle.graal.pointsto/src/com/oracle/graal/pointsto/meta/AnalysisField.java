@@ -50,6 +50,7 @@ import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -551,5 +552,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         void notifyUpdateAccessInfo(AnalysisField field);
 
         TypeState interceptTypeState(AnalysisField field, TypeState typestate);
+    }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return getUniverse().lookup(getWrapped().getConstantValue());
     }
 }

@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -195,9 +194,18 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return ValueSupplier.eagerValue(universe.lookup(originalConstantReflection.readFieldValue(field.wrapped, receiver)));
     }
 
-    public JavaConstant readUninitializedStaticValue(AnalysisField field) {
+    private JavaConstant readUninitializedStaticValue(AnalysisField field) {
         assert classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass());
-        return UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, val -> SubstrateObjectConstant.forObject(val));
+
+        /*
+         * Use the value from the constant pool attribute for the static field. That is the value
+         * before the class initializer is executed.
+         */
+        JavaConstant constantValue = field.getConstantValue();
+        if (constantValue != null) {
+            return constantValue;
+        }
+        return JavaConstant.defaultForKind(field.getStorageKind());
     }
 
     public JavaConstant interceptValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {

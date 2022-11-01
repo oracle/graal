@@ -536,4 +536,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
     }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        throw VMError.shouldNotReachHere("Declaring class must be initialized, so this value should never be queried");
+    }
 }

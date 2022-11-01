@@ -38,7 +38,6 @@ import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.hotspot.HotSpotConstantPool;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -87,18 +86,11 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     private static final Method bsmGetType = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getType");
     private static final Method bsmGetStaticArguments = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getStaticArguments");
 
-    public static void loadReferencedType(ConstantPool cp, int cpi, int opcode, boolean initialize) {
-        ConstantPool root = cp;
-        while (root instanceof WrappedConstantPool) {
-            root = ((WrappedConstantPool) root).wrapped;
-        }
-
+    @Override
+    public void loadReferencedType(int cpi, int opcode, boolean initialize) {
+        GraalError.guarantee(!initialize, "Must not initialize classes");
         try {
-            /*
-             * GR-41975: loadReferencedType without triggering class initialization is available in
-             * HotSpotConstantPool, but not yet in ConstantPool.
-             */
-            ((HotSpotConstantPool) root).loadReferencedType(cpi, opcode, initialize);
+            wrapped.loadReferencedType(cpi, opcode, initialize);
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (cause instanceof BootstrapMethodError && cause.getCause() != null) {
@@ -112,7 +104,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public void loadReferencedType(int cpi, int opcode) {
-        loadReferencedType(wrapped, cpi, opcode, false);
+        loadReferencedType(cpi, opcode, false);
     }
 
     @Override

@@ -29,8 +29,8 @@ package com.oracle.graal.pointsto.standalone.meta;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
+
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -52,7 +52,7 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
         AnalysisField analysisField = (AnalysisField) field;
         JavaConstant ret = universe.lookup(super.readFieldValue(analysisField.wrapped, universe.toHosted(receiver)));
         if (ret == null) {
-            ret = UninitializedStaticFieldValueReader.readUninitializedStaticValue(analysisField, value -> universe.getSnippetReflection().forObject(value));
+            ret = analysisField.getConstantValue();
         }
         return ret;
     }

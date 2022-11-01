@@ -209,4 +209,9 @@ public class HostedField implements OriginalFieldProvider, SharedField, WrappedJ
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(getDeclaringClass().universe.getSnippetReflection(), wrapped);
     }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return universe.lookup(getWrapped().getConstantValue());
+    }
 }

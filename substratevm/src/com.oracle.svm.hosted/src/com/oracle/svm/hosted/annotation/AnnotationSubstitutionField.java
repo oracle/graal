@@ -154,6 +154,11 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
     }
 
     @Override
+    public JavaConstant getConstantValue() {
+        throw VMError.shouldNotReachHere("Not used for static fields, so this value should never be queried");
+    }
+
+    @Override
     public String toString() {
         return "AnnotationField<" + format("%h.%n") + ">";
     }
