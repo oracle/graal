@@ -81,8 +81,8 @@ public class InteropTestBase {
         return LLVMLanguage.get(null).getCapability(PlatformCapability.class).getLibrary(library);
     }
 
-    protected static String getLibrarySuffixName(String fileName) {
-        runWithPolyglot.getPolyglotContext().initialize("llvm");
+    protected static String getLibrarySuffixName(Context context, String fileName) {
+        context.initialize("llvm");
         PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
         // TODO: GR-41902 remove this platform dependent code
         if (platform.getOS() == OS.Darwin) {
@@ -91,12 +91,16 @@ public class InteropTestBase {
         return fileName + "." + platform.getLibrarySuffix();
     }
 
-    protected static String getTestLibraryName() {
-        return getLibrarySuffixName(TEST_FILE_NAME);
+    protected static String getTestLibraryName(Context context) {
+        return getLibrarySuffixName(context, TEST_FILE_NAME);
+    }
+
+    public static File getTestBitcodeFile(Context context, String name) {
+        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, getTestLibraryName(context)).toFile();
     }
 
     protected static File getTestBitcodeFile(String name) {
-        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, getTestLibraryName()).toFile();
+        return getTestBitcodeFile(runWithPolyglot.getPolyglotContext(), name);
     }
 
     protected static Object loadTestBitcodeInternal(String name) {
