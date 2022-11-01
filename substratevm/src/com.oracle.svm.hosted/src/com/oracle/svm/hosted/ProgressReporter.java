@@ -336,12 +336,14 @@ public class ProgressReporter {
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
-        long reachableClasses = universe.getTypes().stream().filter(t -> t.isReachable()).count();
-        long totalClasses = universe.getTypes().size();
-        recordJsonMetric(AnalysisResults.CLASS_TOTAL, totalClasses);
-        recordJsonMetric(AnalysisResults.CLASS_REACHABLE, reachableClasses);
-        l().a(actualVsTotalFormat, reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
-                        .a(" classes ").doclink("reachable", "#glossary-reachability").println();
+        long reachableTypes = universe.getTypes().stream().filter(t -> t.isReachable()).count();
+        long totalTypes = universe.getTypes().size();
+        recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
+        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
+        recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
+        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_REACHABLE, reachableTypes);
+        l().a(actualVsTotalFormat, reachableTypes, reachableTypes / (double) totalTypes * 100, totalTypes)
+                        .a(" types ").doclink("reachable", "#glossary-reachability").println();
         Collection<AnalysisField> fields = universe.getFields();
         long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
         int totalFields = fields.size();
@@ -361,21 +363,23 @@ public class ProgressReporter {
             l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
                             .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
         }
-        String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
+        String typesFieldsMethodFormat = "%,8d types, %,5d fields, and %,5d methods ";
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectClassesCount = rs.getReflectionClassesCount();
         int reflectFieldsCount = rs.getReflectionFieldsCount();
         int reflectMethodsCount = rs.getReflectionMethodsCount();
         recordJsonMetric(AnalysisResults.METHOD_REFLECT, reflectMethodsCount);
-        recordJsonMetric(AnalysisResults.CLASS_REFLECT, reflectClassesCount);
+        recordJsonMetric(AnalysisResults.TYPES_REFLECT, reflectClassesCount);
+        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_REFLECT, reflectClassesCount);
         recordJsonMetric(AnalysisResults.FIELD_REFLECT, reflectFieldsCount);
-        l().a(classesFieldsMethodFormat, reflectClassesCount, reflectFieldsCount, reflectMethodsCount)
+        l().a(typesFieldsMethodFormat, reflectClassesCount, reflectFieldsCount, reflectMethodsCount)
                         .doclink("registered for reflection", "#glossary-reflection-registrations").println();
         recordJsonMetric(AnalysisResults.METHOD_JNI, (numJNIMethods >= 0 ? numJNIMethods : UNAVAILABLE_METRIC));
-        recordJsonMetric(AnalysisResults.CLASS_JNI, (numJNIClasses >= 0 ? numJNIClasses : UNAVAILABLE_METRIC));
+        recordJsonMetric(AnalysisResults.TYPES_JNI, (numJNIClasses >= 0 ? numJNIClasses : UNAVAILABLE_METRIC));
+        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_JNI, (numJNIClasses >= 0 ? numJNIClasses : UNAVAILABLE_METRIC));
         recordJsonMetric(AnalysisResults.FIELD_JNI, (numJNIFields >= 0 ? numJNIFields : UNAVAILABLE_METRIC));
         if (numJNIClasses >= 0) {
-            l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
+            l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
         int numLibraries = libraries.size();

@@ -25,11 +25,11 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  C compiler: gcc (linux, x86_64, 9.3.0)
  Garbage collector: Serial GC
 [2/7] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
-   2,718 (72.93%) of  3,727 classes reachable
+   2,718 (72.93%) of  3,727 types reachable
    3,442 (53.43%) of  6,442 fields reachable
   12,128 (44.82%) of 27,058 methods reachable
-      27 classes,     0 fields, and   271 methods registered for reflection
-      58 classes,    59 fields, and    52 methods registered for JNI access
+      27 types,     0 fields, and   271 methods registered for reflection
+      58 types,    59 fields, and    52 methods registered for JNI access
        4 native libraries: dl, pthread, rt, z
 [3/7] Building universe...                                       (0.5s @ 0.61GB)
 [4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
@@ -103,17 +103,17 @@ In this stage, a [points-to analysis](https://dl.acm.org/doi/10.1145/3360610) is
 The progress indicator visualizes the number of analysis iterations.
 A large number of iterations can indicate problems in the analysis likely caused by misconfiguration or a misbehaving feature.
 
-#### <a name="glossary-reachability"></a>Reachable Classes, Fields, and Methods
-The number of classes, fields, and methods that are reachable versus the total number of classes and methods loaded as part of the build process.
-A significantly larger number of loaded classes that are not reachable can indicate a configuration problem.
-To reduce overhead, please ensure that the classpath only contains entries that are needed for building the application.
+#### <a name="glossary-reachability"></a>Reachable Types, Fields, and Methods
+The number of types (primitives, classes, interfaces, and arrays), fields, and methods that are reachable versus the total number of types, fields, and methods loaded as part of the build process.
+A significantly larger number of loaded elements that are not reachable can indicate a configuration problem.
+To reduce overhead, please ensure that your class path and module path only contain entries that are needed for building the application.
 
 #### <a name="glossary-reflection-registrations"></a>Reflection Registrations
-The number of classes, fields, and methods that are registered for reflection.
+The number of types, fields, and methods that are registered for reflection.
 Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native binary (see [reflection metadata](#glossary-reflection-metadata)).
 
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
-The number of classes, fields, and methods that are registered for [JNI](JNI.md) access.
+The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
@@ -121,7 +121,7 @@ This number is only shown if runtime compilation is built into the executable, f
 Runtime-compiled methods account for [graph encodings](#glossary-graph-encodings) in the heap.
 
 ### <a name="stage-universe"></a>Building Universe
-In this stage, a universe with all classes, fields, and methods is built, which is then used to create the native binary.
+In this stage, a universe with all types, fields, and methods is built, which is then used to create the native binary.
 
 ### <a name="stage-parsing"></a>Parsing Methods
 In this stage, the Graal compiler parses all reachable methods.
@@ -158,7 +158,7 @@ The total size of all `byte[]` objects used for metadata for the [code area](#gl
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of this metadata.
 
 ##### <a name="glossary-reflection-metadata"></a>Reflection Metadata Stored in `byte[]`
-The total size of all `byte[]` objects used for reflection metadata, including class, field, method, and constructor data.
+The total size of all `byte[]` objects used for reflection metadata, including types, field, method, and constructor data.
 To reduce the amount of reflection metadata, reduce the number of [elements registered for reflection](#glossary-reflection-registrations).
 
 ##### <a name="glossary-graph-encodings"></a>Graph Encodings Stored in `byte[]`

@@ -230,10 +230,10 @@ class ProgressReporterJsonHelper {
     }
 
     enum AnalysisResults implements JsonMetric {
-        CLASS_TOTAL("classes", "total"),
-        CLASS_REACHABLE("classes", "reachable"),
-        CLASS_JNI("classes", "jni"),
-        CLASS_REFLECT("classes", "reflection"),
+        TYPES_TOTAL("types", "total"),
+        TYPES_REACHABLE("types", "reachable"),
+        TYPES_JNI("types", "jni"),
+        TYPES_REFLECT("types", "reflection"),
         METHOD_TOTAL("methods", "total"),
         METHOD_REACHABLE("methods", "reachable"),
         METHOD_JNI("methods", "jni"),
@@ -241,7 +241,13 @@ class ProgressReporterJsonHelper {
         FIELD_TOTAL("fields", "total"),
         FIELD_REACHABLE("fields", "reachable"),
         FIELD_JNI("fields", "jni"),
-        FIELD_REFLECT("fields", "reflection");
+        FIELD_REFLECT("fields", "reflection"),
+
+        // TODO GR-42148: remove deprecated entries in a future release
+        DEPRECATED_CLASS_TOTAL("classes", "total"),
+        DEPRECATED_CLASS_REACHABLE("classes", "reachable"),
+        DEPRECATED_CLASS_JNI("classes", "jni"),
+        DEPRECATED_CLASS_REFLECT("classes", "reflection");
 
         private String key;
         private String bucket;
