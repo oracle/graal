@@ -46,7 +46,7 @@ The following table lists supported and experimental features in GraalVM Enterpr
 | JavaScript      | supported     | supported     | supported     | supported     |
 | Node.js         | supported     | supported     | supported     | supported     |
 | Java on Truffle | supported     | experimental  | experimental  | experimental  |
-| Python          | experimental  | not available | experimental  | not available |
+| Python          | experimental  | experimental  | experimental  | not available |
 | Ruby            | experimental  | experimental  | experimental  | not available |
 | R               | experimental  | not available | experimental  | not available |
 | WebAssembly     | experimental  | experimental  | experimental  | experimental  |
