@@ -79,25 +79,29 @@ class ProgressReporterJsonHelper {
     @SuppressWarnings("unchecked")
     public void putImageDetails(ImageDetailKey key, Object value) {
         Map<String, Object> imageDetailsMap = (Map<String, Object>) statsHolder.computeIfAbsent(IMAGE_DETAILS_KEY, id -> new HashMap<>());
-        if (!key.hasBucket() && !key.hasSubBucket()) {
-            imageDetailsMap.put(key.jsonKey(), value);
-        } else if (!key.hasSubBucket()) {
-            assert key.hasBucket();
-            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket(), sb -> new HashMap<>());
-            bucketMap.put(key.jsonKey(), value);
+        if (key.bucket == null && key.subBucket == null) {
+            imageDetailsMap.put(key.jsonKey, value);
+        } else if (key.subBucket == null) {
+            assert key.bucket != null;
+            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket, sb -> new HashMap<>());
+            bucketMap.put(key.jsonKey, value);
         } else {
-            assert key.hasSubBucket();
-            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket(), sb -> new HashMap<>());
-            Map<String, Object> subbucketMap = (Map<String, Object>) bucketMap.computeIfAbsent(key.subBucket(), sb -> new HashMap<>());
-            subbucketMap.put(key.jsonKey(), value);
+            assert key.subBucket != null;
+            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket, sb -> new HashMap<>());
+            Map<String, Object> subbucketMap = (Map<String, Object>) bucketMap.computeIfAbsent(key.subBucket, sb -> new HashMap<>());
+            subbucketMap.put(key.jsonKey, value);
         }
     }
 
     @SuppressWarnings("unchecked")
     public void putResourceUsage(ResourceUsageKey key, Object value) {
         Map<String, Object> resUsageMap = (Map<String, Object>) statsHolder.computeIfAbsent(RESSOURCE_USAGE_KEY, ru -> new HashMap<>());
-        Map<String, Object> subMap = (Map<String, Object>) resUsageMap.computeIfAbsent(key.bucket, k -> new HashMap<>());
-        subMap.put(key.key, value);
+        if (key.bucket != null) {
+            Map<String, Object> subMap = (Map<String, Object>) resUsageMap.computeIfAbsent(key.bucket, k -> new HashMap<>());
+            subMap.put(key.jsonKey, value);
+        } else {
+            resUsageMap.put(key.jsonKey, value);
+        }
     }
 
     public Path printToFile() {
@@ -167,37 +171,13 @@ class ProgressReporterJsonHelper {
         GRAPH_ENCODING_SIZE("runtime_compiled_methods", null, "graph_encoding_bytes");
 
         private String bucket;
-        private String key;
+        private String jsonKey;
         private String subBucket;
 
         ImageDetailKey(String bucket, String subBucket, String key) {
             this.bucket = bucket;
-            this.key = key;
+            this.jsonKey = key;
             this.subBucket = subBucket;
-        }
-
-        /**
-         *
-         * @return true iff the json is represented via a sub object.
-         */
-        public boolean hasBucket() {
-            return bucket != null;
-        }
-
-        public boolean hasSubBucket() {
-            return subBucket != null;
-        }
-
-        public String bucket() {
-            return bucket;
-        }
-
-        public String subBucket() {
-            return subBucket;
-        }
-
-        public String jsonKey() {
-            return key;
         }
 
         @Override
@@ -215,18 +195,17 @@ class ProgressReporterJsonHelper {
         MEMORY_TOTAL("memory", "system_total");
 
         private String bucket;
-        private String key;
+        private String jsonKey;
 
         ResourceUsageKey(String bucket, String key) {
-            this.key = key;
             this.bucket = bucket;
+            this.jsonKey = key;
         }
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
             helper.putResourceUsage(this, value);
         }
-
     }
 
     enum AnalysisResults implements JsonMetric {
