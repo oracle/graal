@@ -561,6 +561,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         self._install_dir = mx.join(self.out_dir, "result")
         # self._ninja_targets = self.getResults()
         _config = self._cmake_config_raw
+        _config.setdefault('CMAKE_BUILD_TYPE', 'Sulong')
         _module_path = mx.Suite._pop_list(_config, 'CMAKE_MODULE_PATH', self)
         _module_path.append('<path:com.oracle.truffle.llvm.tests.cmake>')
         _config['CMAKE_MODULE_PATH'] = ';'.join(_module_path)

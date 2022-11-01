@@ -789,7 +789,7 @@ suite = {
             },
           },
         },
-        "<others>" : { "<others>" : {} }
+        "<others>" : {"<others>" : {}},
       },
       "license" : "BSD-new",
     },
@@ -1096,8 +1096,6 @@ suite = {
       "buildSharedObject" : True,
       "bundledLLVMOnly" : True,
       "cmakeConfig" : {
-        # TODO: replace with toolchain file
-        "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
         "CMAKE_C_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -pthread",
         "CMAKE_C_LINK_FLAGS" : "-pthread",
         "CMAKE_CXX_FLAGS" : "-Wno-unused-function -I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
@@ -1446,6 +1444,7 @@ suite = {
         "default",
       ],
       "cmakeConfig" : {
+        "CMAKE_BUILD_TYPE" : "Sulong",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CC>",
         "GRAALVM_LLVM_INCLUDE_DIR": "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
