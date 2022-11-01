@@ -43,11 +43,8 @@ import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
-<<<<<<< HEAD
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
-=======
 import com.oracle.svm.core.thread.VMThreads;
->>>>>>> ab06bc56240c7574f95ee67bc02e3c44f8b6a6e2
 
 import com.oracle.svm.core.jfr.JfrThreadLocal.JfrBufferNode;
 import com.oracle.svm.core.util.VMError;
@@ -90,6 +87,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private int currentMetadataId = 0;
     private boolean staticConstantsSerialized = false;
     private boolean newChunk = true;
+    private boolean isFinal = false;
 
     public void setCurrentMetadataId(){
         currentMetadataId++;
@@ -136,8 +134,14 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
+    public void markChunkFinal(){
+        assert lock.isHeldByCurrentThread();
+        isFinal = true;
+    }
+
     public boolean openFile(String outputFile) {
         assert lock.isHeldByCurrentThread();
+        isFinal = false;
         generation = 1;
         newChunk = true;
         System.out.println("*** ChunkWriter openfile");
@@ -237,13 +241,17 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeLong(fd, 0L); // chunk size
         getFileSupport().writeLong(fd, 0L); // last checkpoint offset
         getFileSupport().writeLong(fd, 0L); // metadata position
-        getFileSupport().writeLong(fd, 0L); // startNanos
+        getFileSupport().writeLong(fd, chunkStartNanos); // startNanos
         getFileSupport().writeLong(fd, 0L); // durationNanos
         getFileSupport().writeLong(fd, chunkStartTicks); // *** only changed after a chunk rotation is complete (after header is patched)
         getFileSupport().writeLong(fd, JfrTicks.getTicksFrequency());
         getFileSupport().writeByte(fd, nextGeneration()); // in hotspot a 1 byte generation is written
         getFileSupport().writeByte(fd, (byte)  0 ); // in hotspot 1 byte PAD padding
-        getFileSupport().writeShort(fd, compressedInts ? (short) 1 : 0 ); // seems like only 2 bytes of the flags are written after the 1 byte generation
+        short flags = 0;
+        flags +=  compressedInts ?  1 : 0;
+        flags += isFinal ?  1*2 : 0;
+
+        getFileSupport().writeShort(fd, flags); // seems like only 2 bytes of the flags are written after the 1 byte generation
 
 //        getFileSupport().writeInt(fd, compressedInts ? 1 : 0);
 //        getFileSupport().seek(fd, WordFactory.signed(FILE_STATE_OFFSET));
@@ -266,7 +274,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeLong(fd, metadataPosition.rawValue());
         getFileSupport().writeLong(fd, chunkStartNanos);
         getFileSupport().writeLong(fd, durationNanos);
-        // *** i guess they didn't write anything else because nothing else changes
+        // *** I guess they didn't write anything else because nothing else changes
         getFileSupport().seek(fd, WordFactory.signed(FILE_STATE_OFFSET));
         if (flushpoint) {
             //chunk is not finished
@@ -274,6 +282,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         } else {
             getFileSupport().writeByte(fd, COMPLETE);
         }
+        getFileSupport().writeByte(fd, (byte)  0 ); // in hotspot 1 byte PAD padding
+        short flags = 0;
+        flags +=  compressedInts ?  1 : 0;
+        flags += isFinal ?  1*2 : 0;
+
+        getFileSupport().writeShort(fd, flags); // seems like only 2 bytes of the flags are written after the 1 byte generation
+
         //need to move pointer back to correct position for next write
         getFileSupport().seek(fd,currentPos);
     }
@@ -316,8 +331,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
     private SignedWord writeCheckpointEvent(JfrConstantPool[] repositories, boolean flush) {
         assert lock.isHeldByCurrentThread();
-//        Exception e = new Exception();
-//        e.printStackTrace();
         System.out.println("*** Checkpoint");
         SignedWord start = beginEvent();
 
@@ -540,17 +553,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
             // Write unflushed data from the thread local buffers but do *not* reinitialize them
             // The thread local code will handle space reclamation on their own time
-//            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-//                JfrBuffer buffer = JfrThreadLocal.getJavaBuffer(thread);
-//                if (buffer.isNonNull()) {
-//                    write(buffer);
-//                    JfrThreadLocal.notifyEventWriter(thread);
-//                }
-//                buffer = JfrThreadLocal.getNativeBuffer(thread);
-//                if (buffer.isNonNull()) {
-//                    write(buffer);
-//                }
-//            }
 
             JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
             JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
@@ -590,89 +592,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             if(!JfrBufferAccess.acquire(buffer)){ // one attempt
                 continue;
             }
-//            assert !JfrBufferAccess.isAcquired(buffer); // *** need to deal with this too
             write(buffer);
             JfrBufferAccess.reinitialize(buffer);
             JfrBufferAccess.release(buffer);
         }
     }
-//    @Uninterruptible(reason = "Called from uninterruptible code.")
-//    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
-//        // Try to lock list
-//        if (!safepoint) {
-//            for (int retry = 0; retry < 100; retry++) {
-//                if (linkedList.acquire()) {
-//                    break;
-//                }
-//            }
-//            if (!linkedList.isAcquired()) {
-//                VMError.guarantee(!safepoint, "^^^4");//assert !safepoint; // if safepoint, no one else should hold the lock on the LL.
-//                return; // wasn't able to get the lock
-//            }
-//        }
-//
-//        JfrBufferNode node = linkedList.getHead();
-//        JfrBufferNode prev = WordFactory.nullPointer();
-//        int count = 0;
-//
-//        while (node.isNonNull()) {
-//            count++;
-//            VMError.guarantee(count < 1000, "^^^26");
-//
-//            // An optimization
-//            if (linkedList.isAcquired()) { // evaluate this first
-//                if (node != linkedList.getHead()) {
-//                    // only need lock when dealing with head. Because other threads add nodes in direction opposite to traversal.
-//                    VMError.guarantee(prev.isNonNull(), "^^^2");//assert prev.isNonNull();
-//                    linkedList.release();
-//                }
-//            }
-//
-//            JfrBufferNode next = node.getNext();
-//
-//            // Try to get node if not in safepoint
-//            if (!safepoint && !JfrBufferNodeLinkedList.acquire(node)) { //make one attempt
-//                VMError.guarantee(!safepoint, "^^^1"); //if safepoint, no one else should hold the lock on the LL node. TODO: causes error when checked at safepoint (common)
-//                prev = node;
-//                node = next;
-//                continue;
-//            }
-//
-//            // Try to write to disk. (If thread doesn't flush at death, this is always safe to do because we remove nodes afterward)
-//            JfrBuffer buffer = node.getValue();
-//            VMError.guarantee(buffer.isNonNull(), "^^^3");//assert buffer.isNonNull();
-//            if (!safepoint && JfrBufferAccess.acquire(buffer)) {
-//                VMError.guarantee(JfrBufferAccess.isAcquired(buffer), "^^^5"); // TODO: causes error when checked at safepoint
-//                write(buffer);
-//                JfrBufferAccess.release(buffer);
-//            }else {
-//                write(buffer);
-//            }
-//            if (java) {
-//                VMError.guarantee(node.getThread().isNonNull(), "^^^20");
-//                JfrThreadLocal.notifyEventWriter(node.getThread());
-//            }
-//
-//            if (!safepoint) {
-//                JfrBufferNodeLinkedList.release(node);
-//            }
-//
-//            // Try to remove if needed (If thread doesn't flush at death, this must be after flushing to disk block)
-//            if (!node.getAlive()){
-//                linkedList.removeNode(prev, node);
-//                // don't update previous here!
-//                node = next;
-//                continue;
-//            }
-//
-//            prev = node; // prev is always the last node still in the list before the current node. Prev may not be alive.
-//            node = next;
-//        }
-//
-//        if (linkedList.isAcquired()) {
-//            linkedList.release();
-//        }
-//    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.")
     private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
     // Try to lock list
@@ -690,11 +615,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     JfrBufferNode node = linkedList.getHead();
     JfrBufferNode prev = WordFactory.nullPointer();
-    int count = 0;
 
     while (node.isNonNull()) {
-        count++;
-        VMError.guarantee(count < 1000, "^^^26");
+
 
         // An optimization
         if (linkedList.isAcquired()) { // evaluate this first

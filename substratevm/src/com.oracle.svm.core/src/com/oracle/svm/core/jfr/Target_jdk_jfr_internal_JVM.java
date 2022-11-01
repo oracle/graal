@@ -408,7 +408,6 @@ public final class Target_jdk_jfr_internal_JVM {
     public void flush() {
         System.out.println("*** Flush called");
         SubstrateJVM.get().flush();
-        // Temporarily do nothing. This is used for JFR streaming.
     }
 
     @Substitute
@@ -470,7 +469,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void markChunkFinal() {
-        System.out.println("*** markChunkFinal called");
-        // Temporarily do nothing. This is used for JFR streaming.
+        SubstrateJVM.get().markChunkFinal();
     }
 }

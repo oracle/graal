@@ -242,6 +242,7 @@ public class SubstrateJVM {
         threadRepo.teardown();
         stackTraceRepo.teardown();
         methodRepo.teardown();
+        threadLocal.teardown();
 
         initialized = false;
         return true;
@@ -469,6 +470,20 @@ public class SubstrateJVM {
                 if (existingFile) {
                     chunkWriter.flush(metadataDescriptor, repositories, threadRepo);
                     System.out.println("*** Done Flush");
+                }
+            }
+        } finally {
+            chunkWriter.unlock();
+        }
+    }
+
+    public void markChunkFinal() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock(); //does this make it a safepoint? [NO]
+        try {
+            if (recording) {
+                boolean existingFile = chunkWriter.hasOpenFile();
+                if (existingFile) {
+                    chunkWriter.markChunkFinal();
                 }
             }
         } finally {

@@ -224,21 +224,30 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
-        JfrStackTraceEpochData epochData = getEpochData(true);
-        int count = writeStackTraces(writer, epochData);
-        epochData.clear();
+    public int write(JfrChunkWriter writer, boolean flush) {
+        if (flush) {
+            acquireLock();
+        }
+        JfrStackTraceEpochData epochData = getEpochData(!flush);
+        int count = writeStackTraces(writer, epochData, flush);
+        if (!flush) {
+            epochData.clear();
+        } else {
+            releaseLock();
+        }
         return count;
     }
 
-    private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData) {
+    private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData, boolean flush) {
         if (epochData.numberOfSerializedStackTraces == 0) {
+//            System.out.println("no stacktraces to write");
             return EMPTY;
         }
+//        System.out.println(" YES stacktraces to write");
 
         writer.writeCompressedLong(JfrType.StackTrace.getId());
         writer.writeCompressedInt(epochData.numberOfSerializedStackTraces);
-        writer.write(epochData.stackTraceBuffer);
+        writer.write(epochData.stackTraceBuffer, !flush);
 
         return NON_EMPTY;
     }

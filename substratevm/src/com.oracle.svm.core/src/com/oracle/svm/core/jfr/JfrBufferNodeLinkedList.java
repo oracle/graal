@@ -9,7 +9,7 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 
 public class JfrBufferNodeLinkedList {
     private JfrThreadLocal.JfrBufferNode head;
-    JfrThreadLocal.JfrBufferNode lock; // TODO: remember to clean this up
+    JfrThreadLocal.JfrBufferNode lock;
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public boolean isAcquired() {
         return isAcquired(lock);
@@ -46,9 +46,11 @@ public class JfrBufferNodeLinkedList {
     public JfrBufferNodeLinkedList(){
         head = WordFactory.nullPointer();
         lock = org.graalvm.nativeimage.ImageSingletons.lookup(org.graalvm.nativeimage.impl.UnmanagedMemorySupport.class).malloc(getHeaderSize());
-//        lock =  ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(getHeaderSize());
     }
 
+    public void teardown(){
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(lock);
+    }
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void removeNode(JfrThreadLocal.JfrBufferNode prev, JfrThreadLocal.JfrBufferNode node){
 
@@ -72,14 +74,14 @@ public class JfrBufferNodeLinkedList {
         int count =0;
         while(!acquire()) { // *** need infinite tries.
             count++;
-            com.oracle.svm.core.util.VMError.guarantee(count < 1000, "^^^23");
+            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^23");
         }
-            if (head.isNull()){
-                node.setNext(WordFactory.nullPointer());
-                head = node;
-                release();
-                return;
-            }
+        if (head.isNull()){
+            node.setNext(WordFactory.nullPointer());
+            head = node;
+            release();
+            return;
+        }
         node.setNext(head);
         head = node;
         release();

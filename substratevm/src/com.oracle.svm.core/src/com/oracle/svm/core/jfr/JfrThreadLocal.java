@@ -53,6 +53,8 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList;
 
+import static com.oracle.svm.core.thread.PlatformThreads.getIsolateThread;
+
 /**
  * This class holds various JFR-specific thread local values.
  *
@@ -108,6 +110,7 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
     private static final FastThreadLocalLong threadId = FastThreadLocalFactory.createLong("JfrThreadLocal.threadId");
     private static final FastThreadLocalLong parentThreadId = FastThreadLocalFactory.createLong("JfrThreadLocal.parentThreadId");
+    private static final com.oracle.svm.core.threadlocal.FastThreadLocalInt isExcluded = FastThreadLocalFactory.createInt("JfrThreadLocal.enabled");
 
     private long threadLocalBufferSize;
     private static JfrBufferNodeLinkedList javaBufferList;
@@ -155,6 +158,9 @@ public class JfrThreadLocal implements ThreadListener {
         nativeBufferList = new JfrBufferNodeLinkedList();
     }
 
+    public void exclude(Thread javaThread) {
+        getIsolateThread(javaThread);
+    }
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
     public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
@@ -163,6 +169,7 @@ public class JfrThreadLocal implements ThreadListener {
         // Java object.
         Target_java_lang_Thread t = SubstrateUtil.cast(javaThread, Target_java_lang_Thread.class);
         threadId.set(isolateThread, t.getId());
+        isExcluded.set(isolateThread,0);
         parentThreadId.set(isolateThread, JavaThreads.getParentThreadId(javaThread));
 
         SubstrateJVM.getThreadRepo().registerThread(javaThread);
@@ -293,11 +300,9 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
         VMError.guarantee(threadId.get() > 0, "Thread local JFR data must be initialized");
-//        JfrBuffer result = javaBuffer.get();
         JfrBufferNode result = javaBufferNode.get();
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
-//            javaBuffer.set(result);
             result = allocate(buffer);
             result.setThread(CurrentIsolate.getCurrentThread());
             javaBufferNode.set(result);
@@ -309,11 +314,9 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public JfrBuffer getNativeBuffer() {
         VMError.guarantee(threadId.get() > 0, "Thread local JFR data must be initialized");
-//        JfrBuffer result = nativeBuffer.get();
         JfrBufferNode result = nativeBufferNode.get();
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
-//            nativeBuffer.set(result);
             result = allocate(buffer);
             nativeBufferNode.set(result);
             nativeBufferList.addNode(result);
@@ -325,7 +328,6 @@ public class JfrThreadLocal implements ThreadListener {
     public static JfrBuffer getJavaBuffer(IsolateThread thread) {
         assert (VMOperation.isInProgressAtSafepoint());
         JfrBufferNode result = javaBufferNode.get(thread);
-//        return javaBuffer.get(thread);
         return result.getValue();
     }
 
@@ -333,7 +335,6 @@ public class JfrThreadLocal implements ThreadListener {
     public static JfrBuffer getNativeBuffer(IsolateThread thread) {
         assert (VMOperation.isInProgressAtSafepoint());
         JfrBufferNode result = nativeBufferNode.get(thread);
-//        return nativeBuffer.get(thread);
         return result.getValue();
     }
 
@@ -343,34 +344,35 @@ public class JfrThreadLocal implements ThreadListener {
             javaEventWriter.get(thread).notified = true;
         }
     }
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static boolean someNodeLocked() {
-        if (javaBufferNode.get().isNull()) {
-            return nativeBufferNode.get().getAcquired() == 1;
-        } else if (nativeBufferNode.get().isNull()) {
-            return javaBufferNode.get().getAcquired() == 1;
-        } else {
-            return (javaBufferNode.get().getAcquired() + nativeBufferNode.get().getAcquired() > 0); // One of the locks must be held
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    private static boolean acquireBufferWithRetry(JfrBuffer buffer) {
+        for (int retry = 0; retry < 100; retry++) {
+            if (JfrBufferAccess.acquire(buffer)) {
+                return true;
+            }
         }
+        return false;
     }
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
-//        com.oracle.svm.core.util.VMError.guarantee(someNodeLocked(), "^^^14");//assert someNodeLocked(); // new
         com.oracle.svm.core.util.VMError.guarantee(threadLocalBuffer.isNonNull(), "^^^15");//assert threadLocalBuffer.isNonNull();
         com.oracle.svm.core.util.VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint() , "^^^70");//assert !acquire();
 
-        int count =0;
-        while(!JfrBufferAccess.acquire(threadLocalBuffer)); {// new
-            count++;
-            VMError.guarantee(count < 20000, "^^^60");
+        if (!acquireBufferWithRetry(threadLocalBuffer)) {
+            com.oracle.svm.core.util.VMError.guarantee(false , "^^^80 unable to promote. Lost event data");//assert !acquire();
+            return WordFactory.nullPointer();
         }
+//        int count =0;
+//        while(!JfrBufferAccess.acquire(threadLocalBuffer)); {// new
+//            count++;
+//            VMError.guarantee(count < 20000, "^^^60");
+//        }
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {
             JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
             if (!globalMemory.write(threadLocalBuffer, unflushedSize)) {
                 JfrBufferAccess.reinitialize(threadLocalBuffer);
-                VMError.guarantee(false, "^^^71");
                 writeDataLoss(threadLocalBuffer, unflushedSize);
                 JfrBufferAccess.release(threadLocalBuffer);// new
                 return WordFactory.nullPointer();
@@ -389,7 +391,6 @@ public class JfrThreadLocal implements ThreadListener {
             return threadLocalBuffer;
         }
         JfrBufferAccess.release(threadLocalBuffer);// new
-        VMError.guarantee(false, "^^^72");
         return WordFactory.nullPointer();
     }
 
@@ -420,5 +421,16 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void freeBuffer(JfrBuffer buffer) {
         JfrBufferAccess.free(buffer);
+    }
+
+    public void teardown() {
+        JfrBufferNodeLinkedList nativeBuffers = getNativeBufferList();
+        if (nativeBuffers != null) {
+            nativeBuffers.teardown();
+        }
+        JfrBufferNodeLinkedList javaBuffers = getJavaBufferList();
+        if (javaBuffers != null) {
+            javaBuffers.teardown();
+        }
     }
 }

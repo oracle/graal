@@ -75,6 +75,7 @@ public final class SamplerBuffersAccess {
             SamplerBuffer buffer = SubstrateSigprofHandler.singleton().fullBuffers().popBuffer();
             if (buffer.isNull()) {
                 /* No buffers to process. */
+//                com.oracle.svm.core.util.VMError.guarantee(false, "no buffers to process -----");
                 SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
                 return;
             }
@@ -123,9 +124,11 @@ public final class SamplerBuffersAccess {
                     ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
                     /* Sample is already there, skip the rest of sample plus END_MARK symbol. */
                     current = current.add(sampleSize).add(SamplerSampleWriter.END_MARKER_SIZE);
+//                    com.oracle.svm.core.util.VMError.guarantee(false, "if");
                 } else {
                     assert JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SHOULD_SERIALIZE);
                     /* Sample is not there. Start walking a stacktrace. */
+//                    com.oracle.svm.core.util.VMError.guarantee(false, "else");
                     stackTraceRepo.serializeStackTraceHeader(stackTraceId, isTruncated, sampleSize / SamplerSampleWriter.IP_SIZE);
                     while (current.belowThan(end)) {
                         long ip = current.readLong(0);
@@ -139,6 +142,7 @@ public final class SamplerBuffersAccess {
                         }
                     }
                 }
+
             } finally {
                 stackTraceRepo.releaseLock();
             }
