@@ -112,20 +112,6 @@ This also extends to options that are passed indirectly via configuration files 
 Consider the example where there is a JAR file that includes _native-image.properties_ containing `Args = -H:Optimize=0`.
 You can override the setting that is contained in the JAR file by using the `-H:Optimize=2` option after `-cp <jar-file>`.
 
-### Specifying Default Options for Native Image
-
-If you need to pass the same options every time you build a native executable, for example, to always generate an executable in verbose mode (`--verbose`), you can make use of the `NATIVE_IMAGE_CONFIG_FILE` environment variable.
-If the variable is set to the location of a Java properties file, the `native-image` tool will use the default setting defined in there on each invocation.
-
-Write a configuration file and export `NATIVE_IMAGE_CONFIG_FILE=$HOME/.native-image/default.properties` in _~/.bash_profile_.
-Every time `native-image` is run it will implicitly use the arguments specified as `NativeImageArgs`, plus the arguments specified on the command line.
-Here is an example of a configuration file, saved as _~/.native-image/default.properties_:
-
-```
-NativeImageArgs = --configurations-path /home/user/custom-image-configs \
-                  -O1
-```
-
 ## Memory Configuration for Native Image Build
 
 The `native-image` builder runs on a JVM and uses the memory management of the underlying platform.
