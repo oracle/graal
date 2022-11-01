@@ -164,6 +164,7 @@ class ProgressReporterJsonHelper {
         CODE_AREA_SIZE("code_area", null, "bytes"),
         NUM_COMP_UNITS("code_area", null, "compilation_units"),
         IMAGE_HEAP_SIZE("image_heap", null, "bytes"),
+        IMAGE_HEAP_OBJECT_COUNT("image_heap", "objects", "count"),
         DEBUG_INFO_SIZE("debug_info", null, "bytes"),
         IMAGE_HEAP_RESOURCE_COUNT("image_heap", "resources", "count"),
         RESOURCE_SIZE_BYTES("image_heap", "resources", "bytes"),
