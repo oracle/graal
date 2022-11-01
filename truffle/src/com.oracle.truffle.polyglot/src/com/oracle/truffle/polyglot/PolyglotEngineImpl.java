@@ -236,7 +236,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private boolean runtimeInitialized;
 
-    final AbstractPolyglotHostService polyglotHostService;
+    AbstractPolyglotHostService polyglotHostService; // effectively final after engine patching
 
     private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
 
@@ -261,7 +261,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
         this.hostLanguageOnly = hostLanguageOnly;
 
-        this.polyglotHostService = polyglotHostService != null ? polyglotHostService : new DefaultPolyglotHostService(impl);
+        this.polyglotHostService = polyglotHostService;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -627,7 +627,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(newHostLanguage), HOST_LANGUAGE_INDEX, null);
             this.languages[HOST_LANGUAGE_INDEX] = this.hostLanguage;
         }
-        this.polyglotHostService.patch(newPolyglotHostService);
+
+        polyglotHostService = newPolyglotHostService;
 
         /*
          * Store must only go from false to true, and never back. As it is used for
@@ -1160,7 +1161,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
-    void ensureClosed(boolean force, boolean inShutdownHook, boolean initiatedByContext) {
+    void ensureClosed(boolean force, boolean inShutdownHook, boolean initiatedByContext, boolean failedPatch) {
         synchronized (this.lock) {
             Thread currentThread = Thread.currentThread();
             boolean interrupted = false;
@@ -1278,7 +1279,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     logHandler.close();
                 }
 
-                polyglotHostService.notifyEngineClosed(this, force);
+                if (!failedPatch) {
+                    polyglotHostService.notifyEngineClosed(this, force);
+                }
                 if (runtimeData != null) {
                     EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
                 }
@@ -1795,7 +1798,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     if (contextAddedToEngine) {
                         disposeContext(context);
                         if (boundEngine) {
-                            ensureClosed(false, false, false);
+                            ensureClosed(false, false, false, false);
                         }
                     }
                     throw t;
@@ -1899,7 +1902,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     context = null;
                 } else {
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
-                    ensureClosed(true, false, false);
+                    ensureClosed(true, false, false, true);
                     synchronized (engine.lock) {
                         context = new PolyglotContextImpl(engine, config);
                         engine.addContext(context);
@@ -2181,7 +2184,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             log.println();
             createdLocation.printStackTrace();
         }
-        ensureClosed(false, true, false);
+        ensureClosed(false, true, false, false);
     }
 
     void addSystemThread(InstrumentSystemThread thread) {
@@ -2235,7 +2238,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         if (engineToClose != null) {
-            engineToClose.ensureClosed(false, false, false);
+            engineToClose.ensureClosed(false, false, false, false);
         }
     }
 

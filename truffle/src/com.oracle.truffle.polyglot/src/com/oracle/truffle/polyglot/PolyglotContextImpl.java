@@ -1642,7 +1642,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.polyglotHostService.notifyContextClosed(this, force, invalidResourceLimit, invalidMessage);
         }
         if (engine.boundEngine && parent == null) {
-            engine.ensureClosed(force, false, true);
+            engine.ensureClosed(force, false, true, false);
         }
     }
 

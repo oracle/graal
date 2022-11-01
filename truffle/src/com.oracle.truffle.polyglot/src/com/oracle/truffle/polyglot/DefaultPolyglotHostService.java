@@ -55,10 +55,6 @@ class DefaultPolyglotHostService extends AbstractPolyglotHostService {
     }
 
     @Override
-    public void patch(AbstractPolyglotHostService otherService) {
-    }
-
-    @Override
     public void notifyClearExplicitContextStack(Object contextReceiver) {
     }
 

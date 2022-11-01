@@ -754,8 +754,6 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(polyglot);
         }
 
-        public abstract void patch(AbstractPolyglotHostService otherService);
-
         public abstract void notifyClearExplicitContextStack(Object contextReceiver);
 
         public abstract void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message);
