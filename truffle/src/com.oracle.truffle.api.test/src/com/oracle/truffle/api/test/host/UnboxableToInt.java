@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -87,6 +89,11 @@ final class UnboxableToInt implements TruffleObject {
     }
 
     @ExportMessage
+    boolean fitsInBigInteger(@CachedLibrary("this.value") InteropLibrary delegate) {
+        return delegate.fitsInBigInteger(value);
+    }
+
+    @ExportMessage
     boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary delegate) {
         return delegate.fitsInFloat(value);
     }
@@ -114,6 +121,11 @@ final class UnboxableToInt implements TruffleObject {
     @ExportMessage
     long asLong(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
         return delegate.asLong(value);
+    }
+
+    @ExportMessage
+    BigInteger asBigInteger(@CachedLibrary("this.value") InteropLibrary delegate) throws UnsupportedMessageException {
+        return delegate.asBigInteger(value);
     }
 
     @ExportMessage

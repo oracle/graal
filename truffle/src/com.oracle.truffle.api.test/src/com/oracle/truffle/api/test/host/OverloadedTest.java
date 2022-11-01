@@ -179,6 +179,8 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         INTEROP.invokeMember(numobj, "x", asTruffleObject(new AtomicInteger(22)));
         assertEquals("Number", num.parameter);
         INTEROP.invokeMember(numobj, "x", asTruffleObject(BigInteger.TEN));
+        assertEquals("int", num.parameter);
+        INTEROP.invokeMember(numobj, "x", asTruffleObject(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)));
         assertEquals("BigInteger", num.parameter);
     }
 

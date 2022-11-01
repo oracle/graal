@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -53,26 +55,15 @@ import com.oracle.truffle.sl.SLLanguage;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber> {
-
-    private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
-    private static final int INT_MAX_SAFE_FLOAT = 16777215; // 2 ** 24 - 1
-
-    private static boolean inSafeDoubleRange(long l) {
-        return l >= -LONG_MAX_SAFE_DOUBLE && l <= LONG_MAX_SAFE_DOUBLE;
-    }
-
-    private static boolean inSafeFloatRange(int i) {
-        return i >= -INT_MAX_SAFE_FLOAT && i <= INT_MAX_SAFE_FLOAT;
-    }
+public final class SLBigInteger implements TruffleObject, Comparable<SLBigInteger> {
 
     private final BigInteger value;
 
-    public SLBigNumber(BigInteger value) {
+    public SLBigInteger(BigInteger value) {
         this.value = value;
     }
 
-    public SLBigNumber(long value) {
+    public SLBigInteger(long value) {
         this.value = BigInteger.valueOf(value);
     }
 
@@ -81,7 +72,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     }
 
     @TruffleBoundary
-    public int compareTo(SLBigNumber o) {
+    public int compareTo(SLBigInteger o) {
         return value.compareTo(o.getValue());
     }
 
@@ -94,8 +85,8 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     @Override
     @TruffleBoundary
     public boolean equals(Object obj) {
-        if (obj instanceof SLBigNumber) {
-            return value.equals(((SLBigNumber) obj).getValue());
+        if (obj instanceof SLBigInteger) {
+            return value.equals(((SLBigInteger) obj).getValue());
         }
         return false;
     }
@@ -108,7 +99,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isNumber() {
-        return fitsInLong();
+        return true;
     }
 
     @ExportMessage
@@ -126,7 +117,19 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     @ExportMessage
     @TruffleBoundary
     boolean fitsInFloat() {
-        return fitsInInt() && inSafeFloatRange(value.intValue());
+        if (value.bitLength() <= 24) { // 24 = size of float mantissa + 1
+            return true;
+        } else {
+            float floatValue = value.floatValue();
+            if (!Float.isFinite(floatValue)) {
+                return false;
+            }
+            try {
+                return new BigDecimal(floatValue).toBigIntegerExact().equals(value);
+            } catch (ArithmeticException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
     }
 
     @ExportMessage
@@ -144,7 +147,24 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     @ExportMessage
     @TruffleBoundary
     boolean fitsInDouble() {
-        return fitsInLong() && inSafeDoubleRange(value.longValue());
+        if (value.bitLength() <= 53) { // 53 = size of double mantissa + 1
+            return true;
+        } else {
+            double doubleValue = value.doubleValue();
+            if (!Double.isFinite(doubleValue)) {
+                return false;
+            }
+            try {
+                return new BigDecimal(doubleValue).toBigIntegerExact().equals(value);
+            } catch (ArithmeticException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    @ExportMessage
+    public boolean fitsInBigInteger() {
+        return true;
     }
 
     @ExportMessage
@@ -205,6 +225,11 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @ExportMessage
+    BigInteger asBigInteger() {
+        return value;
     }
 
     @ExportMessage

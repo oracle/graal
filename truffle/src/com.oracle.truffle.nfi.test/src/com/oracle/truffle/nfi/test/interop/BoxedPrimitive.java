@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.nfi.test.interop;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -113,6 +115,11 @@ public class BoxedPrimitive implements TruffleObject {
     }
 
     @ExportMessage
+    boolean fitsInBigInteger(@CachedLibrary("this.primitive") InteropLibrary interop) {
+        return interop.fitsInBigInteger(primitive);
+    }
+
+    @ExportMessage
     boolean fitsInFloat(@CachedLibrary("this.primitive") InteropLibrary interop) {
         return interop.fitsInFloat(primitive);
     }
@@ -140,6 +147,11 @@ public class BoxedPrimitive implements TruffleObject {
     @ExportMessage
     long asLong(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
         return interop.asLong(primitive);
+    }
+
+    @ExportMessage
+    BigInteger asBigInteger(@CachedLibrary("this.primitive") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asBigInteger(primitive);
     }
 
     @ExportMessage

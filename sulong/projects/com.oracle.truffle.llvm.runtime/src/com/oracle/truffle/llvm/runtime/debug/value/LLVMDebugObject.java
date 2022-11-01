@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -456,6 +456,17 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
+        boolean fitsInBigInteger() {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return true;
+            } else {
+                return UNCACHED_INTEROP.fitsInBigInteger(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
         boolean fitsInFloat() {
             Object v = getValue();
             if (v instanceof BigInteger) {
@@ -517,6 +528,17 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
                 return ((BigInteger) v).longValue();
             } else {
                 return UNCACHED_INTEROP.asLong(v);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        BigInteger asBigInteger() throws UnsupportedMessageException {
+            Object v = getValue();
+            if (v instanceof BigInteger) {
+                return new BigInteger(((BigInteger) v).toByteArray());
+            } else {
+                return UNCACHED_INTEROP.asBigInteger(v);
             }
         }
 
