@@ -487,9 +487,11 @@ public final class Space {
         }
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
-        if (ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGCImpl.isSupported()) {
             ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk));
-            ParallelGCImpl.mutex.unlock();
+            if (ParallelGCImpl.isInParallelPhase()) {
+                ParallelGCImpl.mutex.unlock();
+            }
         }
 
         if (this.isOldSpace()) {
@@ -511,9 +513,11 @@ public final class Space {
         }
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
-        if (ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGCImpl.isSupported()) {
             ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGCImpl.UNALIGNED_BIT));
-            ParallelGCImpl.mutex.unlock();
+            if (ParallelGCImpl.isInParallelPhase()) {
+                ParallelGCImpl.mutex.unlock();
+            }
         }
 
         if (this.isOldSpace()) {
