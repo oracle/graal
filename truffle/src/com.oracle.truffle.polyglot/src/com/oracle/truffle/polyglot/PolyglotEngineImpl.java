@@ -637,6 +637,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.storeEngine = this.storeEngine || RUNTIME.isStoreEnabled(engineOptions);
         this.engineLoggerSupplier = logSupplier;
         this.engineLogger = null;
+        /*
+         * The engineLoggers must be created before calling PolyglotContextImpl#patch, otherwise the
+         * engineLoggers is not in an array returned by the PolyglotContextImpl#getAllLoggers and
+         * the context log levels are not set.
+         */
+        getOrCreateEngineLoggers();
 
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 

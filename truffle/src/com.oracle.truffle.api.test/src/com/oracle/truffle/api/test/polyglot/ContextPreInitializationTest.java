@@ -2353,6 +2353,46 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @Test
+    public void testInstrumentLogger() throws Exception {
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
+            TruffleLogger logger = e.env.getLogger((String) null);
+            logger.log(Level.INFO, "CREATED");
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        assertEquals(0, firstLangCtx.disposeContextCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
+        try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").option("log.level", "OFF").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(0, firstLangCtx.disposeContextCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
+        }
+        contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(1, firstLangCtx.patchContextCount);
+        assertEquals(1, firstLangCtx.disposeContextCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
+    }
+
     private static IsSameFileResult testIsSameFileImpl(IOAccess ioAccess) throws ReflectiveOperationException {
         String path = Paths.get(".").toAbsolutePath().toString();
         setPatchable(FIRST);
