@@ -270,8 +270,8 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
-        host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
-        host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
+        host.setDaemon(meta.getJavaLangThreadDaemon(guest));
+        host.setPriority(meta.getJavaLangThreadPriority(guest));
         if (isInterrupted(guest, false)) {
             host.interrupt();
         }
@@ -279,7 +279,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         host.setName(guestName);
         // Make the thread known to the context
         getContext().registerThread(host, guest);
-        meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
+        meta.setJavaLangThreadThreadStatus(guest, State.RUNNABLE.value);
         return host;
     }
 

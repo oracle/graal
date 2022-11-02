@@ -262,13 +262,13 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             vm.attachThread(hostThread);
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance(getContext());
             // Allow guest Thread.currentThread() to work.
-            meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
+            meta.setJavaLangThreadPriority(guestThread, Thread.NORM_PRIORITY);
             getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
             // Set runnable status before executing guest code.
-            meta.java_lang_Thread_threadStatus.setInt(guestThread, State.RUNNABLE.value);
+            meta.setJavaLangThreadThreadStatus(guestThread, State.RUNNABLE.value);
 
             if (name == null) {
                 meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, mainThreadGroup, StaticObject.NULL);

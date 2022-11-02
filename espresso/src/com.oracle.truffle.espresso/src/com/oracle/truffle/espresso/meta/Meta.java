@@ -1518,6 +1518,24 @@ public final class Meta extends ContextAccessImpl {
         }
     }
 
+    public int getJavaLangThreadPriority(StaticObject self) {
+        if (!getJavaVersion().java19OrLater()) {
+            return java_lang_Thread_priority.getInt(self);
+        } else {
+            StaticObject holder = java_lang_Thread_holder.getObject(self);
+            return java_lang_Thread_FieldHolder_priority.getInt(holder);
+        }
+    }
+
+    public boolean getJavaLangThreadDaemon(StaticObject self) {
+        if (!getJavaVersion().java19OrLater()) {
+            return java_lang_Thread_daemon.getBoolean(self);
+        } else {
+            StaticObject holder = java_lang_Thread_holder.getObject(self);
+            return java_lang_Thread_FieldHolder_daemon.getBoolean(holder);
+        }
+    }
+
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;
         public final Method UnknownIdentifierException_create_String;
