@@ -3341,7 +3341,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
         }
         for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-            drop(frame, i);
+            dropPrimitive(frame, i);
         }
     }
 
@@ -3353,7 +3353,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
         }
         for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
-            drop(frame, i);
+            dropReference(frame, i);
         }
     }
 
