@@ -441,13 +441,12 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread_FieldHolder_priority = java_lang_Thread_FieldHolder.requireDeclaredField(Name.priority, _int.getType());
 
             java_lang_Thread_daemon = null;
-            java_lang_Thread_FieldHolder_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
+            java_lang_Thread_FieldHolder_daemon = java_lang_Thread_FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
         }
         java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
 
         java_lang_Thread_name = java_lang_Thread.requireDeclaredField(Name.name, java_lang_String.getType());
-        java_lang_Thread_blockerLock = java_lang_Thread.requireDeclaredField(Name.blockerLock, java_lang_Object.getType());
         java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.requireDeclaredField(Name.inheritedAccessControlContext, Type.java_security_AccessControlContext);
         java_lang_Thread_checkAccess = java_lang_Thread.requireDeclaredMethod(Name.checkAccess, Signature._void);
         java_lang_Thread_stop = java_lang_Thread.requireDeclaredMethod(Name.stop, Signature._void);
@@ -1247,7 +1246,6 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
     public final Field java_lang_Thread_FieldHolder_priority;
-    public final Field java_lang_Thread_blockerLock;
     public final Field java_lang_Thread_daemon;
     public final Field java_lang_Thread_FieldHolder_daemon;
     public final Field java_lang_Thread_inheritedAccessControlContext;

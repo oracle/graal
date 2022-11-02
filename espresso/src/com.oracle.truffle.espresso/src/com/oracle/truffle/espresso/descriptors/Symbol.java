@@ -251,7 +251,6 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.Thread
         public static final Symbol<Name> add = StaticSymbols.putName("add");
-        public static final Symbol<Name> blockerLock = StaticSymbols.putName("blockerLock");
         public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
         public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
