@@ -29,15 +29,12 @@ import java.util.Map;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 
 @AutomaticallyRegisteredFeature
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class DeoptSnippetsFeature implements InternalFeature {
 
     @Override
