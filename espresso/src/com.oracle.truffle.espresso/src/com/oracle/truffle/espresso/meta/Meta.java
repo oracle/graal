@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOT
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
@@ -524,8 +525,9 @@ public final class Meta extends ContextAccessImpl {
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
         java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkCallSite = diff() //
-                        .method(VERSION_8_OR_LOWER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
-                        .method(VERSION_9_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_8_OR_LOWER, Name.linkCallSite,   Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_9_OR_HIGHER, Name.linkCallSite,  Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_19_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
                         .method(java_lang_invoke_MethodHandleNatives);
 
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethodHandleConstant,
