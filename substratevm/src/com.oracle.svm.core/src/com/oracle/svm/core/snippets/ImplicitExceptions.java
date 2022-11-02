@@ -27,8 +27,8 @@ package com.oracle.svm.core.snippets;
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.code.FactoryMethodMarker;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -173,10 +173,16 @@ public class ImplicitExceptions {
 
     /** Foreign call: {@link #CREATE_CLASS_CAST_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
-    private static ClassCastException createClassCastException(Object object, Class<?> expectedClass) {
+    private static ClassCastException createClassCastException(Object object, Object expectedClass) {
         assert object != null : "null can be cast to any type, so it cannot show up as a source of a ClassCastException";
         vmErrorIfImplicitExceptionsAreFatal();
-        return new ClassCastException(object.getClass().getTypeName() + " cannot be cast to " + expectedClass.getTypeName());
+        String expectedClassName;
+        if (expectedClass instanceof Class) {
+            expectedClassName = ((Class<?>) expectedClass).getTypeName();
+        } else {
+            expectedClassName = String.valueOf(expectedClass);
+        }
+        return new ClassCastException(object.getClass().getTypeName() + " cannot be cast to " + expectedClassName);
     }
 
     /** Foreign call: {@link #CREATE_ARRAY_STORE_EXCEPTION}. */
@@ -256,10 +262,16 @@ public class ImplicitExceptions {
 
     /** Foreign call: {@link #THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
-    private static void throwNewClassCastExceptionWithArgs(Object object, Class<?> expectedClass) {
+    private static void throwNewClassCastExceptionWithArgs(Object object, Object expectedClass) {
         assert object != null : "null can be cast to any type, so it cannot show up as a source of a ClassCastException";
         vmErrorIfImplicitExceptionsAreFatal();
-        throw new ClassCastException(object.getClass().getTypeName() + " cannot be cast to " + expectedClass.getTypeName());
+        String expectedClassName;
+        if (expectedClass instanceof Class) {
+            expectedClassName = ((Class<?>) expectedClass).getTypeName();
+        } else {
+            expectedClassName = String.valueOf(expectedClass);
+        }
+        throw new ClassCastException(object.getClass().getTypeName() + " cannot be cast to " + expectedClassName);
     }
 
     /** Foreign call: {@link #THROW_NEW_ARRAY_STORE_EXCEPTION}. */
