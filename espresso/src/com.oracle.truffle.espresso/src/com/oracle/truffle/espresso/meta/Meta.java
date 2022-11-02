@@ -730,8 +730,13 @@ public final class Meta extends ContextAccessImpl {
         sun_reflect_Reflection_getCallerClass = sun_reflect_Reflection.requireDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         if (getJavaVersion().java11OrLater()) {
-            java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+            if (!getJavaVersion().java19OrLater()) {
+                java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
                             Signature.Object_Object_int_Object_Object_Object_Object);
+            } else {
+                java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+                            Signature.Object_Object_Object_Object_Object_Object);
+            }
         } else {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }

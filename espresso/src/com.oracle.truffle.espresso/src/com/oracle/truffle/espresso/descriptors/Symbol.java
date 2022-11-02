@@ -1020,6 +1020,13 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object,
                         Type.java_lang_Object,
                         Type.java_lang_Object);
+        public static final Symbol<Signature> Object_Object_Object_Object_Object_Object = StaticSymbols.putSignature(
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
 
         public static final Symbol<Signature> Field_Object_long_Class = StaticSymbols.putSignature(Type.java_lang_reflect_Field, Type.java_lang_Object, Type._long, Type.java_lang_Class);
