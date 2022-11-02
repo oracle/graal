@@ -420,6 +420,8 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
         if (!getJavaVersion().java19OrLater()) {
+            java_lang_Thread_holder = null;
+
             java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
             java_lang_Thread_FieldHolder_threadStatus = null;
 
@@ -432,6 +434,8 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
             java_lang_Thread_FieldHolder_daemon = null;
         } else {
+            java_lang_Thread_holder = java_lang_Thread.requireDeclaredField(Name.holder, java_lang_Thread_FieldHolder.getType());
+
             java_lang_Thread_threadStatus = null;
             java_lang_Thread_FieldHolder_threadStatus = java_lang_Thread_FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
 
@@ -1227,6 +1231,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_ThreadGroup_maxPriority;
     public final ObjectKlass java_lang_Thread;
     public final ObjectKlass java_lang_Thread_FieldHolder;
+    public final Field java_lang_Thread_holder;
     public final Field java_lang_Thread_threadStatus;
     public final Field java_lang_Thread_FieldHolder_threadStatus;
     public final Field java_lang_Thread_tid;

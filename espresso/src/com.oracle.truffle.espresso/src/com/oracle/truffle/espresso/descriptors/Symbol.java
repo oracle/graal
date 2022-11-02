@@ -256,6 +256,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
+        public static final Symbol<Name> holder = StaticSymbols.putName("holder");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");

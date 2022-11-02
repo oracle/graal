@@ -301,7 +301,12 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         Thread hostThread = Thread.currentThread();
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance(getContext());
         // Allow guest Thread.currentThread() to work.
-        meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
+        if (!meta.getJavaVersion().java19OrLater()) {
+            meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(mainThread);
+            meta.java_lang_Thread_FieldHolder_priority.setInt(holder, Thread.NORM_PRIORITY);
+        }
         getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
 
