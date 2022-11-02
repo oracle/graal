@@ -539,6 +539,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public JavaConstant getConstantValue() {
-        throw VMError.shouldNotReachHere("Declaring class must be initialized, so this value should never be queried");
+        return original.getConstantValue();
     }
 }
