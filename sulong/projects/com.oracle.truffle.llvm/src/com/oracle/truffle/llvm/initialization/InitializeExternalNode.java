@@ -77,7 +77,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public final class InitializeExternalNode extends LLVMNode {
     @CompilationFinal(dimensions = 1) private final LLVMFunction[] functions;
     @CompilationFinal(dimensions = 1) private final LLVMGlobal[] globals;
-    @CompilationFinal(dimensions = 1) private final LLVMSymbol[] threadLocals;
+    @CompilationFinal(dimensions = 1) private final LLVMThreadLocalSymbol[] threadLocals;
     @Child private AllocExternalSymbolNode allocExternalSymbol;
 
     public InitializeExternalNode(LLVMParserResult result) {
@@ -122,14 +122,14 @@ public final class InitializeExternalNode extends LLVMNode {
         NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
 
         for (LLVMGlobal global : globals) {
-            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags, global);
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, nativeContextExtension, context, rtldFlags, global);
             if (pointer != null) {
                 context.initializeSymbol(global, pointer);
             }
         }
 
-        for (LLVMSymbol symbol : threadLocals) {
-            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags, symbol);
+        for (LLVMThreadLocalSymbol symbol : threadLocals) {
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, context, rtldFlags, symbol);
             if (pointer != null) {
                 context.initializeSymbol(symbol, pointer);
             }

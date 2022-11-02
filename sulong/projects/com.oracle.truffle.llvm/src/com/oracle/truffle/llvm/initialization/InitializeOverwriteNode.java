@@ -108,7 +108,7 @@ public final class InitializeOverwriteNode extends LLVMNode {
             context.initializeSymbol(function, pointer);
         }
         for (LLVMGlobal global : globals) {
-            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, null, null, context, rtldFlags, global);
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, null, context, rtldFlags, global);
             // skip allocating fallbacks
             if (pointer == null) {
                 continue;
