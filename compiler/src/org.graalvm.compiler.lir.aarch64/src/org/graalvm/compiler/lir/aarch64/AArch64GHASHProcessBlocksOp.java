@@ -92,7 +92,11 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
     @Temp protected Value[] temps;
 
-    public AArch64GHASHProcessBlocksOp(LIRGeneratorTool tool, AllocatableValue stateValue, AllocatableValue htblValue, AllocatableValue originalDataValue, AllocatableValue originalBlocksValue) {
+    public AArch64GHASHProcessBlocksOp(LIRGeneratorTool tool,
+                    AllocatableValue stateValue,
+                    AllocatableValue htblValue,
+                    AllocatableValue originalDataValue,
+                    AllocatableValue originalBlocksValue) {
         super(TYPE);
 
         this.stateValue = stateValue;
@@ -108,10 +112,10 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert stateValue.getPlatformKind().equals(AArch64Kind.QWORD) : stateValue;
-        assert htblValue.getPlatformKind().equals(AArch64Kind.QWORD) : htblValue;
-        assert originalDataValue.getPlatformKind().equals(AArch64Kind.QWORD) : originalDataValue;
-        assert originalBlocksValue.getPlatformKind().equals(AArch64Kind.DWORD) : originalBlocksValue;
+        GraalError.guarantee(stateValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid stateValue kind: %s", stateValue);
+        GraalError.guarantee(htblValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid htblValue kind: %s", htblValue);
+        GraalError.guarantee(originalDataValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid originalDataValue kind: %s", originalDataValue);
+        GraalError.guarantee(originalBlocksValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid originalBlocksValue kind: %s", originalBlocksValue);
 
         Label labelSmall = new Label();
         Label labelDone = new Label();

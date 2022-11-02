@@ -47,6 +47,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -120,12 +121,12 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert xValue.getPlatformKind().equals(AArch64Kind.QWORD) : xValue;
-        assert xlenValue.getPlatformKind().equals(AArch64Kind.DWORD) : xlenValue;
-        assert yValue.getPlatformKind().equals(AArch64Kind.QWORD) : yValue;
-        assert ylenValue.getPlatformKind().equals(AArch64Kind.DWORD) : ylenValue;
-        assert zValue.getPlatformKind().equals(AArch64Kind.QWORD) : zValue;
-        assert zlenValue.getPlatformKind().equals(AArch64Kind.DWORD) : zlenValue;
+        GraalError.guarantee(xValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid xValue kind: %s", xValue);
+        GraalError.guarantee(xlenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid xlenValue kind: %s", xlenValue);
+        GraalError.guarantee(yValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid yValue kind: %s", yValue);
+        GraalError.guarantee(ylenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid ylenValue kind: %s", ylenValue);
+        GraalError.guarantee(zValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid zValue kind: %s", zValue);
+        GraalError.guarantee(zlenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid zlenValue kind: %s", zlenValue);
 
         Register x = asRegister(xValue);
         Register xlen = asRegister(xlenValue);

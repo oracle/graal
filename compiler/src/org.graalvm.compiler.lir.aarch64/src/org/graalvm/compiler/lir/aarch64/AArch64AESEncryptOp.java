@@ -117,9 +117,9 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert fromValue.getPlatformKind().equals(AArch64Kind.QWORD) : fromValue;
-        assert toValue.getPlatformKind().equals(AArch64Kind.QWORD) : toValue;
-        assert keyValue.getPlatformKind().equals(AArch64Kind.QWORD) : keyValue;
+        GraalError.guarantee(fromValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
+        GraalError.guarantee(toValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid toValue kind: %s", toValue);
+        GraalError.guarantee(keyValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
 
         Register from = asRegister(fromValue); // source array address
         Register to = asRegister(toValue);     // destination array address

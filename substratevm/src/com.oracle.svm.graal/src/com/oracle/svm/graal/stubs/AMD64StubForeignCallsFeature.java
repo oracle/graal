@@ -44,7 +44,8 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
-import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
@@ -76,8 +77,10 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(EncodeArrayNode.STUBS, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(HasNegativesNode.STUB, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
                         new StubDescriptor(VectorizedMismatchForeignCalls.STUB, BASELINE, RUNTIME_CHECKED_CPU_FEATURES_AMD64),
-                        new StubDescriptor(CryptoForeignCalls.AES_STUBS, AESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
-                        new StubDescriptor(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),
+                        new StubDescriptor(AESNode.STUBS, AESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
+                        new StubDescriptor(CounterModeAESNode.STUB, CounterModeAESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
+                        new StubDescriptor(CipherBlockChainingAESNode.STUBS, CipherBlockChainingAESNode.minFeaturesAMD64(), AES_CPU_FEATURES_AMD64),
+                        new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),
                         new StubDescriptor(BigIntegerMultiplyToLenNode.STUB, BASELINE, BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64),
         });
     }

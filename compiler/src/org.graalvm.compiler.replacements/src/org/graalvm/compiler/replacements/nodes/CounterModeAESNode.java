@@ -43,6 +43,9 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -53,6 +56,14 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<CounterModeAESNode> TYPE = NodeClass.create(CounterModeAESNode.class);
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
+
+    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("ctrAESCrypt",
+                    int.class,
+                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class, Pointer.class, Pointer.class},
+                    false,
+                    KILLED_LOCATIONS,
+                    false,
+                    false);
 
     @Input protected NodeInputList<ValueNode> inputs;
 
@@ -107,6 +118,15 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
         return AESNode.minFeaturesAARCH64();
     }
 
+    public static boolean isSupported(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return arch.getFeatures().containsAll(minFeaturesAMD64());
+        } else if (arch instanceof AArch64) {
+            return arch.getFeatures().containsAll(minFeaturesAARCH64());
+        }
+        return false;
+    }
+
     @NodeIntrinsic
     @GenerateStub(name = "ctrAESCrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native int apply(Pointer inAddr,
@@ -139,7 +159,7 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return CryptoForeignCalls.STUB_CTR_AES_CRYPT;
+        return STUB;
     }
 
     @Override
