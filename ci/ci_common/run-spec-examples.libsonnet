@@ -137,6 +137,95 @@ local r      = import "run-spec.libsonnet";
       };
       std.assertEqual(_impl.get_platform_spec(_impl.push_down_task_dict(_input).task), _result)
     ,
+    generate_variants::
+      // The feature map is a two-level object. The first level is the name of the feature,
+      // for example "gc". The second level are the different values that feature could take,
+      // for example "serialgc" and "g1gc". Inside the second level comes the build config
+      // associated with the feature. It can be specialized by os/arch/jdk, but usually having
+      // a top-level "<all-os>" entry is sufficient.
+      local _feature_map = {
+        gc: {
+          serialgc: {
+            "<all-os>"+: _impl.exclude + _impl.task_spec({features+:"SerialGC"}),
+          },
+          g1gc: {
+            "<all-os>"+: _impl.exclude + _impl.task_spec({features+:"G1GC"}),
+          },
+        },
+        libc: {
+          musl: {
+            "<all-os>"+: _impl.exclude + _impl.task_spec({features+:"Musl"}),
+          },
+        },
+      };
+      local _input = {
+        "job": _impl.generate_variants({
+          // * is a wildcard for selecting all feature values
+          "gc:*": {
+            // this will be expanded to all values of "gc", "serialgc" and "g1gc"
+            "linux": {
+              "amd64": _impl.include
+            }
+          },
+          // Features can be restricted to certain values using "feature(:value)+".
+          "gc:serialgc": {
+            // Features can be nested, the following will add a job with serialgc and musl for linux amd64.
+            // By default, the features are applied ordered by their feature name (i.e., gc, libc).
+            // This order can be overridden by passing an array of feature names to the
+            // "generate_variants" call via the "order" parameter.
+            "libc:musl": {
+              "linux": {
+                "amd64": _impl.include
+              }
+            }
+          },
+        }, feature_map=_feature_map)
+      };
+      //
+      local _result =
+      {
+        "serialgc": {
+          "<all-os>": {
+            "<build-config>": {
+              "features": "SerialGC"
+            },
+            "<exclude>": true
+          },
+          "linux": {
+            "amd64": {
+              "<exclude>": false
+            }
+          }
+        },
+        "serialgc_musl": {
+          "<all-os>": {
+            "<build-config>": {
+              "features": "SerialGCMusl"
+            },
+            "<exclude>": true
+          },
+          "linux": {
+            "amd64": {
+              "<exclude>": false
+            }
+          }
+        },
+        "g1gc": {
+          "<all-os>": {
+            "<build-config>": {
+              "features": "G1GC"
+            },
+            "<exclude>": true
+          },
+          "linux": {
+            "amd64": {
+              "<exclude>": false
+            }
+          }
+        }
+      };
+      std.assertEqual(_impl.get_platform_spec(_impl.desugar_task_dict(_input).job).variants, _result)
+    ,
     expand_variants::
       local _input = {
         "task": _impl.add_platform_spec({
