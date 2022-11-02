@@ -143,6 +143,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? EconomicMap.emptyMap() : flowsGraph.getInvokes();
     }
 
+    public TypeFlow<?> getParameter(int idx) {
+        return flowsGraph == null ? null : flowsGraph.getParameter(idx);
+    }
+
     public Iterable<TypeFlow<?>> getParameters() {
         return flowsGraph == null ? Collections.emptyList() : Arrays.asList(flowsGraph.getParameters());
     }

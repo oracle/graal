@@ -123,6 +123,9 @@ public abstract class AnalysisPolicy {
     /** Create a constant object abstraction. */
     public abstract AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
 
+    /** Wrap a constant into a type state abstraction. */
+    public abstract TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
+
     /** Create type state for dynamic new instance. */
     public abstract TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodePosition allocationSite, AnalysisContext allocationContext);
 
@@ -135,7 +138,7 @@ public abstract class AnalysisPolicy {
      */
     public abstract void linkClonedObjects(PointsToAnalysis bb, TypeFlow<?> inputFlow, CloneTypeFlow cloneFlow, BytecodePosition source);
 
-    public abstract FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe);
+    public abstract FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe);
 
     public abstract ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe);
 

@@ -105,7 +105,7 @@ public class SingleTypeState extends TypeState {
         return type.equals(t) ? singletonIterator(type.getContextInsensitiveAnalysisObject()) : Collections.emptyIterator();
     }
 
-    private static <T> Iterator<T> singletonIterator(T object) {
+    protected static <T> Iterator<T> singletonIterator(T object) {
         return new Iterator<>() {
             boolean hasNext = true;
 
@@ -170,7 +170,7 @@ public class SingleTypeState extends TypeState {
 
     @Override
     public String toString() {
-        return "SingleType<" + (canBeNull ? "null," : "") + ">";
+        return "SingleType<" + type.getName() + ", " + (canBeNull ? "null," : "") + ">";
     }
 
 }

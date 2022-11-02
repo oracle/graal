@@ -75,6 +75,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final HeapScanningPolicy heapScanningPolicy;
 
     protected final Boolean extendedAsserts;
+    protected final int maxConstantObjectsPerType;
+    protected final boolean profileConstantObjects;
 
     protected final OptionValues options;
     protected final DebugContext debug;
@@ -115,6 +117,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
+        maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
+        profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
 
         this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
@@ -228,6 +232,17 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public boolean extendedAsserts() {
         return extendedAsserts;
+    }
+
+    public int maxConstantObjectsPerType() {
+        return maxConstantObjectsPerType;
+    }
+
+    public void profileConstantObject(AnalysisType type) {
+        if (profileConstantObjects) {
+            PointsToAnalysis.ConstantObjectsProfiler.registerConstant(type);
+            PointsToAnalysis.ConstantObjectsProfiler.maybeDumpConstantHistogram();
+        }
     }
 
     @Override
