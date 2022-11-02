@@ -1490,6 +1490,34 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public ObjectKlass java_beans_Introspector;
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
 
+    // JDK19 helpers
+    public void setJavaLangThreadThreadStatus(StaticObject self, int state) {
+       if (!getJavaVersion().java19OrLater()) {
+           java_lang_Thread_threadStatus.setInt(self, state);
+       } else {
+           StaticObject holder = java_lang_Thread_holder.getObject(self);
+           java_lang_Thread_FieldHolder_threadStatus.setInt(holder, state);
+       }
+    }
+
+    public int getJavaLangThreadThreadStatus(StaticObject self) {
+        if (!getJavaVersion().java19OrLater()) {
+            return java_lang_Thread_threadStatus.getInt(self);
+        } else {
+            StaticObject holder = java_lang_Thread_holder.getObject(self);
+            return java_lang_Thread_FieldHolder_threadStatus.getInt(holder);
+        }
+    }
+
+    public void setJavaLangThreadPriority(StaticObject self, int prio) {
+        if (!getJavaVersion().java19OrLater()) {
+            java_lang_Thread_priority.setInt(self, prio);
+        } else {
+            StaticObject holder = java_lang_Thread_holder.getObject(self);
+            java_lang_Thread_FieldHolder_priority.setInt(holder, prio);
+        }
+    }
+
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;
         public final Method UnknownIdentifierException_create_String;

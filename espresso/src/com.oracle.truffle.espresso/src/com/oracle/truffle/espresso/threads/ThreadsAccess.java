@@ -115,7 +115,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * Returns the {@code Thread#threadStatus} field of the given guest thread.
      */
     public int getState(StaticObject guest) {
-        return meta.java_lang_Thread_threadStatus.getInt(guest);
+        return meta.getJavaLangThreadThreadStatus(guest);
     }
 
     int fromRunnable(StaticObject self, State state) {
@@ -135,7 +135,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
     }
 
     void setState(StaticObject self, int state) {
-        meta.java_lang_Thread_threadStatus.setInt(self, state);
+        meta.setJavaLangThreadThreadStatus(self, state);
     }
 
     @SuppressWarnings("unused")
