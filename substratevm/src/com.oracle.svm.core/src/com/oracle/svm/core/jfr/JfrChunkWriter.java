@@ -48,7 +48,14 @@ import com.oracle.svm.core.thread.VMThreads;
 
 import com.oracle.svm.core.util.VMError;
 
-import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.*;
+import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList;
+import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
+import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.createNode;
+import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.release;
+import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.acquire;
+import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.tryAcquire;
+import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.isAcquired;
+
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -603,11 +610,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private void traverseList(com.oracle.svm.core.jfr.JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
+    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
     // Traverse back to front to minimize conflict with threads adding new nodes. Which could effectively block the traversal
 
     JfrBufferNode node = linkedList.getAndLockTail();
     if (node.isNull()) {
+        // If we couldn't acquire the tail. Give up, and try again next time.
         return;
     }
 
@@ -617,23 +625,25 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
 //         Try to remove
         if (!node.getAlive()){
-            int count = 0;
             if (linkedList.removeNode(node, true)) {
                 // able to remove node
-                while (prev.isNonNull() && !acquire(prev)) {
-                    count++;
-                    com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^110");
+                if (tryAcquire(prev)){
+                    node = prev;
+                    continue;
                 }
+                // Failed to get next node. Give up on flush and try again later
+                return;
             } else {
                 // unable to remove node
-                while (prev.isNonNull() && !acquire(prev)) {
-                    count++;
-                    com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^111");
+                if (tryAcquire(prev)){
+                    release(node);
+                    node = prev;
+                    continue;
                 }
+                // Failed to get next node. Give up on flush and try again later
                 release(node);
+                return;
             }
-            node = prev;
-            continue;
         }
 
 //         flush buffer to disk --------------------------------------
@@ -662,18 +672,17 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             }
         }
 //         done flush buffer to disk --------------------------------------
+        com.oracle.svm.core.util.VMError.guarantee(  prev!=node.getNext() || (linkedList.isHead(node) && linkedList.isTail(node) && prev.isNull()), "^^^120");
+        com.oracle.svm.core.util.VMError.guarantee( prev !=node, "^^^200");
 
-        int count =0;
-        while (prev.isNonNull() && !acquire(prev)) {
-
-            if (!isAcquired(prev)){
-                count++;// increase count if we couldnt acquire, but noone else holds the lock.
-            }
-            com.oracle.svm.core.util.VMError.guarantee(prev !=node && prev!=node.getNext(), "^^^120");
-            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^94");
-        }//acquire the next node. Hand-over-hand traversal.
-        com.oracle.svm.core.util.VMError.guarantee(prev.isNull() || isAcquired(prev) || com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "^^^119");
+        boolean prevAcquired = tryAcquire(prev);
         release(node);
+
+        if (!prevAcquired){
+            return;
+        }
+
+        com.oracle.svm.core.util.VMError.guarantee(prev.isNull() || isAcquired(prev) || com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "^^^119");
         node = prev; // new target is already locked
     }
 }

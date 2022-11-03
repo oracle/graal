@@ -47,16 +47,24 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public JfrBufferNode getAndLockTail() {
-         //TODO: we could limit retries and skip flush if needed
         com.oracle.svm.core.util.VMError.guarantee(tail.isNonNull(), "^^116");
-        int count =0 ;
-        while(!acquire(tail)) {
-            count++;
-//                if (count >1000){return WordFactory.nullPointer();}
-            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^93");
+        if (tryAcquire(tail)) {
+            return tail;
         }
-        return tail;
+        return WordFactory.nullPointer();
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static boolean tryAcquire(JfrBufferNode node) {
+        for (int retry = 0; retry < 10000; retry++){
+            if (node.isNull() || acquire(node)) {
+                return true;
+            }
+        }
+        com.oracle.svm.core.util.VMError.guarantee(false, "^^^111");
+        return false;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean isTail(JfrBufferNode node) {
         return node == tail;
@@ -83,7 +91,7 @@ public class JfrBufferNodeLinkedList {
         node.setThread(thread);
         node.setPrev(WordFactory.nullPointer());
         node.setNext(WordFactory.nullPointer());
-        node.setAcquired(2);
+        node.setAcquired(0);
         return node;
     }
     public JfrBufferNodeLinkedList(){
@@ -170,8 +178,8 @@ public class JfrBufferNodeLinkedList {
         com.oracle.svm.core.util.VMError.guarantee(prev != next, "^^^92");
 
         // Free LL node holding buffer
-        com.oracle.svm.core.util.VMError.guarantee(node.getValue().isNonNull(), "^^^9");//TODO: uncomment
-        JfrBufferAccess.free(node.getValue()); //TODO: uncomment
+        com.oracle.svm.core.util.VMError.guarantee(node.getValue().isNonNull(), "^^^9");
+        JfrBufferAccess.free(node.getValue());
         release(node); //is this necessary?
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
 
@@ -184,7 +192,7 @@ public class JfrBufferNodeLinkedList {
     }
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void addNode(JfrBufferNode node){
-//        com.oracle.svm.core.util.VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "^^^127"); //TODO : uncomment
+        com.oracle.svm.core.util.VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "^^^127");
         int count =0;
         while(!acquire(head)) { // *** need infinite tries.
             count++;
@@ -207,7 +215,7 @@ public class JfrBufferNodeLinkedList {
             com.oracle.svm.core.util.VMError.guarantee(!isAcquired(node), "^^^100");
             return true;
         }
-        return ((org.graalvm.word.Pointer) node).logicCompareAndSwapInt(JfrBufferNode.offsetOfAcquired(), 2, 3, org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION);
+        return ((org.graalvm.word.Pointer) node).logicCompareAndSwapInt(JfrBufferNode.offsetOfAcquired(), 0, 1, org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION);
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
@@ -217,10 +225,10 @@ public class JfrBufferNodeLinkedList {
             return;
         }
         com.oracle.svm.core.util.VMError.guarantee(isAcquired(node), "^^^10");
-        node.setAcquired(2);
+        node.setAcquired(0);
     }
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAcquired(JfrBufferNode node) {
-        return node.getAcquired() == 3;
+        return node.getAcquired() == 1;
     }
 }
