@@ -992,6 +992,12 @@ def _native_image_launcher_extra_jvm_args():
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
 
+driver_build_args = [
+    '-H:-ParseRuntimeOptions',
+    '--features=com.oracle.svm.driver.APIOptionFeature',
+    '--initialize-at-build-time=com.oracle.svm.driver',
+    '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
+]
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1010,7 +1016,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
-            build_args=[],
+            build_args=driver_build_args,
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
         ),
     ],
@@ -1024,7 +1030,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
             ],
-            build_args=[
+            build_args=driver_build_args + [
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
             ],
@@ -1037,7 +1043,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_DIAGNOSTICS_AGENT',
             ],
-            build_args=[
+            build_args=driver_build_args + [
                 '--features=com.oracle.svm.diagnosticsagent.NativeImageDiagnosticsAgent$RegistrationFeature',
             ],
         ),

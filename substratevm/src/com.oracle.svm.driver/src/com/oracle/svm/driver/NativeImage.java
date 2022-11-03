@@ -283,7 +283,7 @@ public class NativeImage {
             workDir = original.workDir;
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
-            args = new ArrayList<>(original.args);
+            args = original.args;
         }
 
         protected BuildConfiguration(List<String> args) {
@@ -298,7 +298,7 @@ public class NativeImage {
                 VMError.shouldNotReachHere(e);
             }
             imageBuilderModeEnforcer = null;
-            this.args = args;
+            this.args = Collections.unmodifiableList(args);
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
                 this.rootDir = rootDir;
@@ -1392,6 +1392,19 @@ public class NativeImage {
 
     public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
         performBuild(new BuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
+    }
+
+    public static List<String> translateAPIOptions(List<String> arguments) {
+        var handler = new APIOptionHandler(new NativeImage(new BuildConfiguration(arguments)));
+        var argumentQueue = new ArgumentQueue(null);
+        handler.nativeImage.config.args.forEach(argumentQueue::add);
+        List<String> translatedOptions = new ArrayList<>();
+        while (!argumentQueue.isEmpty()) {
+            String translatedOption = handler.translateOption(argumentQueue);
+            String originalOption = argumentQueue.poll();
+            translatedOptions.add(translatedOption != null ? translatedOption : originalOption);
+        }
+        return translatedOptions;
     }
 
     private static void performBuild(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
