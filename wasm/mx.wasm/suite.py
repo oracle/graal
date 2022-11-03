@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -165,6 +165,32 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "org.graalvm.wasm.debugcases" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "class" : "PrecompiledWasmProject",
+      "checkstyle" : "org.graalvm.wasm",
+      "workingSets" : "WebAssembly",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "hash": "be934c809a179603013a7ce90b695245a816f120",
+    },
+
+    "org.graalvm.wasm.debugcases.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.wasm.test",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "org.graalvm.wasm",
+      "javaCompliance" : "17+",
+      "workingSets" : "WebAssembly",
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+
     "org.graalvm.wasm.benchcases" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -284,6 +310,23 @@ suite = {
       "dependencies" : [
         "org.graalvm.wasm.testcases",
         "org.graalvm.wasm.testcases.test",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "WASM_TESTS",
+      ],
+      "defaultBuild" : False,
+      "maven" : False,
+      "testDistribution" : True,
+    },
+
+    "WASM_DEBUGCASES" : {
+      "description" : "Precompiled debug test cases.",
+      "dependencies" : [
+        "org.graalvm.wasm.debugcases",
+        "org.graalvm.wasm.debugcases.test"
       ],
       "exclude" : [
         "mx:JUNIT",

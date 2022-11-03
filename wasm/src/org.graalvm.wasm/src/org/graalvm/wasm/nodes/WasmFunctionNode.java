@@ -96,7 +96,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
+public final class WasmFunctionNode extends WasmInstrumentableNode implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
     private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
@@ -125,18 +125,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
-    private final int bytecodeStartOffset;
-    private final int bytecodeEndOffset;
 
     @Children private Node[] callNodes;
-
     @CompilationFinal private Object osrMetadata;
 
+    @CompilationFinal private int bytecodeStartOffset;
+    @CompilationFinal private int bytecodeEndOffset;
+    @CompilationFinal(dimensions = 1) private byte[] sourceCode;
+
     public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
+        super(instance.module().functionSourceCodeStartOffset(codeEntry.functionIndex()));
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
+        this.sourceCode = codeEntry.bytecode();
     }
 
     @SuppressWarnings("hiding")
@@ -148,48 +151,66 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return bytecodeStartOffset;
     }
 
-    public void enterErrorBranch() {
-        codeEntry.errorBranch();
-    }
-
-    public int paramCount() {
-        return instance.symbolTable().function(codeEntry.functionIndex()).paramCount();
-    }
-
-    public int localCount() {
-        return codeEntry.localCount();
-    }
-
-    public byte localType(int localIndex) {
-        return codeEntry.localType(localIndex);
-    }
-
-    public WasmInstance instance() {
+    @Override
+    WasmInstance instance() {
         return instance;
     }
 
-    public String name() {
-        return codeEntry.function().name();
+    @Override
+    WasmCodeEntry codeEntry() {
+        return codeEntry;
     }
 
-    public String qualifiedName() {
-        return codeEntry.function().moduleName() + "." + name();
+    @Override
+    void enterErrorBranch() {
+        codeEntry.errorBranch();
     }
 
-    public int resultCount() {
+    @Override
+    int localCount() {
+        return codeEntry.localCount();
+    }
+
+    @Override
+    int paramCount() {
+        return instance.symbolTable().function(codeEntry.functionIndex()).paramCount();
+    }
+
+    @Override
+    int resultCount() {
         return codeEntry.resultCount();
     }
 
-    public byte resultType(int resultIndex) {
+    @Override
+    byte localType(int index) {
+        return codeEntry.localType(index);
+    }
+
+    @Override
+    byte resultType(int resultIndex) {
         return codeEntry.resultType(resultIndex);
+    }
+
+    @Override
+    String qualifiedName() {
+        return codeEntry.function().moduleName() + "." + name();
+    }
+
+    @Override
+    protected void setSource(byte[] source, int startOffset, int endOffset) {
+        this.sourceCode = source;
+        this.bytecodeStartOffset = startOffset;
+        this.bytecodeEndOffset = endOffset;
     }
 
     // region OSR support
     private static final class WasmOSRInterpreterState {
         final int stackPointer;
+        final int line;
 
-        WasmOSRInterpreterState(int stackPointer) {
+        WasmOSRInterpreterState(int stackPointer, int line) {
             this.stackPointer = stackPointer;
+            this.line = line;
         }
     }
 
@@ -197,7 +218,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
         WasmContext context = WasmContext.get(this);
-        return executeBodyFromOffset(context, osrFrame, target, state.stackPointer);
+        return executeBodyFromOffset(context, osrFrame, target, state.stackPointer, state.line);
     }
 
     @Override
@@ -223,17 +244,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int count;
     }
 
-    public void execute(WasmContext context, VirtualFrame frame) {
-        executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount());
+    @Override
+    public void execute(VirtualFrame frame, WasmContext context) {
+        executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
     }
 
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings("UnusedAssignment")
-    public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer) {
-        final WasmCodeEntry wasmCodeEntry = codeEntry;
-        final int localCount = wasmCodeEntry.localCount();
-        final byte[] bytecode = wasmCodeEntry.bytecode();
+    public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
+        final int localCount = codeEntry.localCount();
+        final byte[] bytecode = this.sourceCode;
 
         // The back edge count is stored in an object, since else the MERGE_EXPLODE policy would
         // interpret this as a constant value in every loop iteration. This would prevent the
@@ -243,6 +264,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         int offset = startOffset;
         int stackPointer = startStackPointer;
+        int line = startLine;
 
         final WasmMemory memory = instance.memory();
 
@@ -265,6 +287,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += opcode;
                     break;
                 case Bytecode.RETURN: {
+                    // Reset the current line position to support recursion of single line
+                    // functions.
+                    line = -1;
+
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution to resume after the instruction that invoked
                     // the current frame.
@@ -347,7 +373,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         backEdgeCounter.count = 0;
                     }
                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer), null, frame);
+                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, line), null, frame);
                         if (result != null) {
                             if (backEdgeCounter.count > 0) {
                                 LoopNode.reportLoopCount(this, backEdgeCounter.count);
@@ -1752,6 +1778,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
+                    break;
+                }
+                case Bytecode.NOTIFY: {
+                    final int nextLine = rawPeekI32(bytecode, offset);
+                    final int sourceLocation = rawPeekI32(bytecode, offset + 4);
+                    offset += 8;
+                    notifyLine(frame, line, nextLine, sourceLocation);
+                    line = nextLine;
                     break;
                 }
                 default:

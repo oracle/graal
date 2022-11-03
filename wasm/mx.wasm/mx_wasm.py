@@ -42,8 +42,10 @@ import os
 import shutil
 import stat
 import tempfile
+import hashlib
 from argparse import ArgumentParser
 from collections import defaultdict
+from pathlib import Path
 
 import mx
 import mx_benchmark
@@ -109,7 +111,7 @@ def graal_wasm_gate_runner(args, tasks):
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(["--suite", "wasm", "CSuite", "WatSuite", "DebuggingSuite"], test_report_tags={'task': t.title})
     with Task("ConstantsPolicyExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicyextratest], report=True) as t:
         if t:
             unittest(["--suite", "wasm", "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
@@ -301,7 +303,6 @@ class EmscriptenProject(GraalWasmProject):
                     yield (root, filename)
                 if filename.endswith(".wasm"):
                     yield (root, filename)
-
     def getSources(self):
         for root, filename in self.getProgramSources():
             yield (root, filename)
@@ -484,10 +485,85 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
         else:
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
 
-
 #
 # Launchers and other components.
 #
+
+
+class PrecompiledWasmProject(GraalWasmProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
+        GraalWasmProject.__init__(self, suite, name, deps, workingSets, subDir, theLicense, **args)
+        if "hash" in args:
+            self.file_hash = args["hash"]
+        else:
+            self.file_hash = None
+
+    def get_hash(self):
+        return self.file_hash
+
+    def get_files(self):
+        source_dir = self.getSourceDir()
+        for root, _, files in os.walk(source_dir):
+            sub_dir = os.path.relpath(root, source_dir)
+            if sub_dir.startswith("wasm"):
+                for filename in files:
+                    file_path = os.path.join(root, filename)
+                    if os.path.isfile(file_path):
+                        yield root, sub_dir, filename
+
+    def getSources(self):
+        for root, _, filename in self.get_files():
+            yield root, filename
+
+    def getResults(self):
+        output_dir = self.getOutputDir()
+        for _, sub_dir, filename in self.get_files():
+            yield os.path.join(output_dir, sub_dir, filename)
+
+    def getBuildTask(self, args):
+        output_base = self.get_output_base()
+        return PrecompiledWasmBuildTask(self, args, output_base)
+
+
+class PrecompiledWasmBuildTask(GraalWasmBuildTask):
+    def __init__(self, project, args, output_base):
+        GraalWasmBuildTask.__init__(self, project, args, output_base)
+
+    def __str__(self):
+        return 'Copying precompiled files from {}'.format(self.subject.name)
+
+    def build(self):
+        if not self.subject.get_hash():
+            mx.abort("No sha1 hash was provided for precompiled files in {}.".format(self.subject.name))
+        output_dir = self.subject.getOutputDir()
+
+        project_hash = hashlib.sha1()
+        for root, _, filename in sorted(self.subject.get_files()):
+            file_path = os.path.join(root, filename)
+            project_hash.update(Path(file_path).read_bytes())
+
+        if self.subject.get_hash() != project_hash.hexdigest():
+            mx.abort("Precompiled files in {} were changed. If this was on purpose, please updated the sha1 hash. "
+                     "\nNew hash: {}".format(self.subject.name, project_hash.hexdigest()))
+
+        for root, sub_dir, filename in self.subject.get_files():
+            mx.ensure_dir_exists(os.path.join(output_dir, sub_dir))
+            file_path = os.path.join(root, filename)
+            output_path = os.path.join(output_dir, sub_dir, filename)
+            shutil.copyfile(file_path, output_path)
+
+    def clean(self, forBuild=False):
+        output_dir = self.subject.getOutputDir()
+        if forBuild:
+            for root, sub_dir, filename in self.subject.get_files():
+                file_path = os.path.join(root, filename)
+                output_path = os.path.join(output_dir, sub_dir, filename)
+                output_file = mx.TimeStampFile(output_path)
+                if mx.TimeStampFile(file_path).isNewerThan(output_file):
+                    mx.logv(str(output_file) + " is older than " + file_path + ", removing.")
+                    os.remove(output_file.path)
+        else:
+            mx.rmtree(self.subject.output_dir(), ignore_errors=True)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
