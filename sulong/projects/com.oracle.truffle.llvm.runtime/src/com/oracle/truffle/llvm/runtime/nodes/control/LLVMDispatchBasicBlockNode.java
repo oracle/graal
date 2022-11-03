@@ -243,11 +243,19 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
                 nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
                 continue outer;
             } else if (controlFlowNode instanceof LLVMCatchReturnNode) {
-                LLVMCatchReturnNode unconditionalNode = (LLVMCatchReturnNode) controlFlowNode;
-                unconditionalNode.execute(frame); // required for instrumentation
+                LLVMCatchReturnNode returnNode = (LLVMCatchReturnNode) controlFlowNode;
+                returnNode.execute(frame);
                 nullDeadSlots(frame, bb.nullableAfter);
-                executePhis(frame, unconditionalNode, 0);
-                basicBlockIndex = unconditionalNode.getSuccessor();
+                executePhis(frame, returnNode, 0);
+                basicBlockIndex = returnNode.getSuccessor();
+                nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
+                continue outer;
+            } else if (controlFlowNode instanceof LLVMCleanupReturnNode) {
+                LLVMCleanupReturnNode returnNode = (LLVMCleanupReturnNode) controlFlowNode;
+                returnNode.execute(frame);
+                nullDeadSlots(frame, bb.nullableAfter);
+                executePhis(frame, returnNode, 0);
+                basicBlockIndex = returnNode.getSuccessor();
                 nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
                 continue outer;
             } else if (controlFlowNode instanceof LLVMInvokeNode) {
