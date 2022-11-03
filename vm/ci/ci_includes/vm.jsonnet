@@ -118,19 +118,13 @@ local jdks = common_json.jdks;
     }
   },
 
-  local svm_guard = {
-    guard+: {
-      includes+: ["<graal>/substratevm/**"]
-    }
-  },
-
   local truffle_guard = {
     guard+: {
       includes+: ["<graal>/truffle/**"]
     }
   },
 
-  local gu_guard = installer_guard + svm_guard + truffle_guard,
+  local gu_guard = installer_guard + truffle_guard,
 
   local builds = [
     self.vm_java_11 + vm_common.gate_vm_linux_amd64 + gu_guard +{
