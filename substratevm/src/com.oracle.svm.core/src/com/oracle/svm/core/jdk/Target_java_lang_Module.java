@@ -45,7 +45,11 @@ final class Target_java_lang_Module {
     @SuppressWarnings("static-method")
     @Substitute
     private InputStream getResourceAsStream(String resourceName) {
-        ResourceStorageEntry res = Resources.get(name, resourceName);
+        String resName = resourceName;
+        if (resName.startsWith("/")) {
+            resName = resName.substring(1);
+        }
+        ResourceStorageEntry res = Resources.get(name, resName);
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
 

@@ -188,7 +188,7 @@ public final class Resources {
         }
         if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
             /*
-             * It this an actual resource file (not a directory) we do not tolerate a trailing
+             * If this is an actual resource file (not a directory) we do not tolerate a trailing
              * slash.
              */
             return null;
