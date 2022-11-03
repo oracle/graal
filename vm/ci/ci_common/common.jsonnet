@@ -662,15 +662,6 @@ local devkits = common_json.devkits;
      ],
      name: 'gate-vm-style-jdk17-linux-amd64',
     },
-    /*
-    self.gate_vm_linux_amd64 + self.libgraal_compiler + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-17-linux-amd64' },
-
-    self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
-
-    self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-quickbuild-17-linux-amd64' },
-    self.gate_vm_linux_amd64 + self.libgraal_truffle_quickbuild + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-quickbuild-17-linux-amd64' },
-
-    self.gate_vm_linux_amd64 + self.libgraal_compiler_quickbuild + vm.vm_java_19 + { name: 'gate-vm-libgraal-compiler-quickbuild-19-linux-amd64' }, */
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
      run: [
