@@ -46,8 +46,9 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.thread.VMThreads;
 
-import com.oracle.svm.core.jfr.JfrThreadLocal.JfrBufferNode;
 import com.oracle.svm.core.util.VMError;
+
+import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.*;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -558,7 +559,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
 
             traverseList(javaBuffers, true, true);
-
             traverseList(nativeBuffers, false, true);
 
             JfrBuffers buffers = globalMemory.getBuffers();
@@ -579,9 +579,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage() {
-        JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
-        JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
-//        int count = javaBuffers.getSize(); // in case other threads are adding nodes
+        com.oracle.svm.core.jfr.JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
+        com.oracle.svm.core.jfr.JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
+
+//        javaBuffers.addNode(javaBuffers.createNode());
+//        javaBuffers.addNode(javaBuffers.createNode());
+//        nativeBuffers.addNode(nativeBuffers.createNode());
+//        nativeBuffers.addNode(nativeBuffers.createNode());
 
         traverseList(javaBuffers, true, false);
         traverseList(nativeBuffers, false, false);
@@ -599,73 +603,78 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
-    // Try to lock list
-    if (!safepoint) {
-        for (int retry = 0; retry < 100; retry++) {
-            if (linkedList.acquire()) {
-                break;
-            }
-        }
-        if (!linkedList.isAcquired()) {
-            VMError.guarantee(!safepoint, "^^^4");//assert !safepoint; // if safepoint, no one else should hold the lock on the LL.
-            return; // wasn't able to get the lock
-        }
-    }
+    private void traverseList(com.oracle.svm.core.jfr.JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
+    // Traverse back to front to minimize conflict with threads adding new nodes. Which could effectively block the traversal
 
-    JfrBufferNode node = linkedList.getHead();
-    JfrBufferNode prev = WordFactory.nullPointer();
+    JfrBufferNode node = linkedList.getAndLockTail();
+    if (node.isNull()) {
+        return;
+    }
 
     while (node.isNonNull()) {
+        com.oracle.svm.core.util.VMError.guarantee(isAcquired(node) || com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "^^^98");
+        JfrBufferNode prev = node.getPrev();
 
+//         Try to remove
+        if (!node.getAlive()){
+            int count = 0;
+            if (linkedList.removeNode(node, true)) {
+                // able to remove node
+                while (prev.isNonNull() && !acquire(prev)) {
+                    count++;
+                    com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^110");
+                }
+            } else {
+                // unable to remove node
+                while (prev.isNonNull() && !acquire(prev)) {
+                    count++;
+                    com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^111");
+                }
+                release(node);
+            }
+            node = prev;
+            continue;
+        }
 
-        // An optimization
-        if (linkedList.isAcquired()) { // evaluate this first
-            if (node != linkedList.getHead()) {
-                // only need lock when dealing with head. Because other threads add nodes in direction opposite to traversal.
-                VMError.guarantee(prev.isNonNull(), "^^^2");//assert prev.isNonNull();
-                linkedList.release();
+//         flush buffer to disk --------------------------------------
+        if (!linkedList.isTail(node)) {
+            JfrBuffer buffer = node.getValue();
+            VMError.guarantee(buffer.isNonNull(), "^^^3"); // assert buffer.isNonNull();
+
+            // Try to get BUFFER if not in safepoint
+            if (!safepoint && !JfrBufferAccess.acquire(buffer)) { //make one attempt
+                release(node);
+                node = prev;
+                continue;
+            }
+            VMError.guarantee(JfrBufferAccess.isAcquired(buffer) || safepoint, "^^^5");
+            if (safepoint) {
+                VMError.guarantee(!JfrBufferAccess.isAcquired(buffer), "^^^102");
+            }
+            write(buffer);
+
+            if (!safepoint) {
+                JfrBufferAccess.release(buffer);
+            }
+            if (java) {
+                VMError.guarantee(node.getThread().isNonNull(), "^^^20");
+                JfrThreadLocal.notifyEventWriter(node.getThread());
             }
         }
+//         done flush buffer to disk --------------------------------------
 
-        JfrBufferNode next = node.getNext();
-        JfrBuffer buffer = node.getValue();
-        VMError.guarantee(buffer.isNonNull(), "^^^3");//assert buffer.isNonNull();
+        int count =0;
+        while (prev.isNonNull() && !acquire(prev)) {
 
-        // Try to get BUFFER if not in safepoint
-        if (!safepoint && !JfrBufferAccess.acquire(buffer)) { //make one attempt
-            prev = node;
-            node = next;
-            continue;
-        }
-        VMError.guarantee(JfrBufferAccess.isAcquired(buffer) || safepoint, "^^^5");
-        write(buffer);
-
-        // Try to write to disk. (If thread doesn't flush at death, this is always safe to do because we remove nodes afterward)
-        if (!safepoint) {
-            JfrBufferAccess.release(buffer);
-        }
-
-        if (java) {
-            VMError.guarantee(node.getThread().isNonNull(), "^^^20");
-            JfrThreadLocal.notifyEventWriter(node.getThread());
-        }
-
-
-        // Try to remove if needed (If thread doesn't flush at death, this must be after flushing to disk block)
-        if (!node.getAlive()){
-            linkedList.removeNode(prev, node);
-            // don't update previous here!
-            node = next;
-            continue;
-        }
-
-        prev = node; // prev is always the last node still in the list before the current node. Prev may not be alive.
-        node = next;
-    }
-
-    if (linkedList.isAcquired()) {
-        linkedList.release();
+            if (!isAcquired(prev)){
+                count++;// increase count if we couldnt acquire, but noone else holds the lock.
+            }
+            com.oracle.svm.core.util.VMError.guarantee(prev !=node && prev!=node.getNext(), "^^^120");
+            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^94");
+        }//acquire the next node. Hand-over-hand traversal.
+        com.oracle.svm.core.util.VMError.guarantee(prev.isNull() || isAcquired(prev) || com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "^^^119");
+        release(node);
+        node = prev; // new target is already locked
     }
 }
     public long getChunkStartNanos() {

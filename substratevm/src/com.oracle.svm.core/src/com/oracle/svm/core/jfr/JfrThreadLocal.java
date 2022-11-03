@@ -49,9 +49,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList;
+
+import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 
 import static com.oracle.svm.core.thread.PlatformThreads.getIsolateThread;
 
@@ -72,34 +71,6 @@ import static com.oracle.svm.core.thread.PlatformThreads.getIsolateThread;
  * modify the buffers of other threads).
  */
 public class JfrThreadLocal implements ThreadListener {
-    @RawStructure
-    public interface JfrBufferNode extends com.oracle.svm.core.jdk.UninterruptibleEntry {
-        @RawField
-        JfrBuffer getValue();
-        @RawField
-        void setValue(JfrBuffer value);
-
-        @RawField
-        IsolateThread getThread();
-        @RawField
-        void setThread(IsolateThread thread);
-
-        @RawField
-        boolean getAlive();
-        @RawField
-        void setAlive(boolean alive);
-        @RawField
-        int getAcquired();
-
-        @RawField
-        void setAcquired(int value);
-
-        @org.graalvm.nativeimage.c.struct.RawFieldOffset
-        static int offsetOfAcquired() {
-            throw VMError.unimplemented(); // replaced
-        }
-    }
-
     private static final FastThreadLocalObject<Target_jdk_jfr_internal_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_EventWriter.class,
                     "JfrThreadLocal.javaEventWriter");
     // *** holds a pointer to the buffer that's on the heap
@@ -123,30 +94,30 @@ public class JfrThreadLocal implements ThreadListener {
     public static JfrBufferNodeLinkedList getJavaBufferList(){
         return javaBufferList;
     }
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void lockNative(){
-        int count = 0;
-        while(!JfrBufferNodeLinkedList.acquire(nativeBufferNode.get())){
-            count++;
-            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^24");
-        }
-    }
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void unlockNative(){
-        JfrBufferNodeLinkedList.release(nativeBufferNode.get());
-    }
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void lockJava(){
-        int count =0;
-        while(!JfrBufferNodeLinkedList.acquire(javaBufferNode.get())){
-            count++;
-            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^25");
-        }
-    }
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void unlockJava(){
-        JfrBufferNodeLinkedList.release(javaBufferNode.get());
-    }
+//    @Uninterruptible(reason = "Called from uninterruptible code.")
+//    public static void lockNative(){
+//        int count = 0;
+//        while(!JfrBufferNodeLinkedList.acquire(nativeBufferNode.get())){
+//            count++;
+//            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^24");
+//        }
+//    }
+//    @Uninterruptible(reason = "Called from uninterruptible code.")
+//    public static void unlockNative(){
+//        JfrBufferNodeLinkedList.release(nativeBufferNode.get());
+//    }
+//    @Uninterruptible(reason = "Called from uninterruptible code.")
+//    public static void lockJava(){
+//        int count =0;
+//        while(!JfrBufferNodeLinkedList.acquire(javaBufferNode.get())){
+//            count++;
+//            com.oracle.svm.core.util.VMError.guarantee(count < 100000, "^^^25");
+//        }
+//    }
+//    @Uninterruptible(reason = "Called from uninterruptible code.")
+//    public static void unlockJava(){
+//        JfrBufferNodeLinkedList.release(javaBufferNode.get());
+//    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrThreadLocal() {
@@ -184,49 +155,46 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
-        /**
-         *  *** Why do we need locks here? Avoid simultaneously flushing to disk TLB and promoting it (here).
-         *  // *** no blocking on java buffer bc it is null! When guarantee nonNull, it blocks!   doesn't seem like adding the isolateThread param makes a diff
-         * Still not sure why the JFR buffer spinlock was blocking
-         */
-
         // Emit ThreadEnd event after thread.run() finishes.
         ThreadEndEvent.emit(isolateThread);
         JfrBufferNode jbn = javaBufferNode.get(isolateThread);
         JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
         if (jbn.isNonNull()) {
-            JfrBuffer jb = jbn.getValue();
-            assert jb.isNonNull() && jbn.getAlive();
-//            while(!JfrBufferNodeLinkedList.acquire(jbn));
+            if (getJavaBufferList().lockSection(jbn)) {
+                JfrBuffer jb = jbn.getValue();
+                assert jb.isNonNull() && jbn.getAlive();
 
-//            if (SubstrateJVM.isRecording()) {
-//                if (jb.isNonNull()) {
-//                    flush(jb, WordFactory.unsigned(0), 0);
-//                }
-//            }
-            jbn.setAlive(false); // TODO: should this be atomic?
-//            JfrBufferAccess.free(jb);
-//            JfrBufferNodeLinkedList.release(jbn);
+                if (SubstrateJVM.isRecording()) {
+                    if (jb.isNonNull()) {
+                        flush(jb, WordFactory.unsigned(0), 0);
+                    }
+                }
+//                getJavaBufferList().unlockSection(jbn);
+                boolean ret = getJavaBufferList().removeNode(jbn, false); //also releases locks
+                com.oracle.svm.core.util.VMError.guarantee( ret, "^^^112");//assert !acquire();
+            } else {
+                jbn.setAlive(false);
+            }
+
         }
-
 
         if (nbn.isNonNull()) {
-            JfrBuffer nb = nbn.getValue();
-            assert nb.isNonNull()  && nbn.getAlive();
-//            while(!JfrBufferNodeLinkedList.acquire(nbn));
-
-            // Flush all buffers if necessary.
-//            if (SubstrateJVM.isRecording()) {
-//                if (nb.isNonNull()) {
-//                    flush(nb, WordFactory.unsigned(0), 0);
-//                }
-//            }
-            nbn.setAlive(false);
-//            JfrBufferAccess.free(nb);
-//            JfrBufferNodeLinkedList.release(nbn);
+            if (getNativeBufferList().lockSection(nbn)) {
+                JfrBuffer nb = nbn.getValue();
+                assert nb.isNonNull() && nbn.getAlive();
+                if (SubstrateJVM.isRecording()) {
+                    if (nb.isNonNull()) {
+                        flush(nb, WordFactory.unsigned(0), 0);
+                    }
+                }
+//                getNativeBufferList().unlockSection(nbn);
+                boolean ret = getNativeBufferList().removeNode(nbn, false);
+                com.oracle.svm.core.util.VMError.guarantee( ret, "^^^113");//assert !acquire();
+            } else {
+                nbn.setAlive(false);
+            }
         }
-
 
         // Free and reset all data.
         threadId.set(isolateThread, 0);
@@ -303,8 +271,7 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode result = javaBufferNode.get();
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
-            result = allocate(buffer);
-            result.setThread(CurrentIsolate.getCurrentThread());
+            result = JfrBufferNodeLinkedList.createNode(buffer, CurrentIsolate.getCurrentThread());
             javaBufferNode.set(result);
             javaBufferList.addNode(result);
         }
@@ -317,7 +284,7 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode result = nativeBufferNode.get();
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
-            result = allocate(buffer);
+            result = JfrBufferNodeLinkedList.createNode(buffer, CurrentIsolate.getCurrentThread());
             nativeBufferNode.set(result);
             nativeBufferList.addNode(result);
         }
