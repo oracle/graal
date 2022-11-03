@@ -283,7 +283,7 @@ public class NativeImage {
             workDir = original.workDir;
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
-            args = new ArrayList<>(original.args);
+            args = original.args;
         }
 
         protected BuildConfiguration(List<String> args) {
@@ -298,7 +298,7 @@ public class NativeImage {
                 VMError.shouldNotReachHere(e);
             }
             imageBuilderModeEnforcer = null;
-            this.args = args;
+            this.args = Collections.unmodifiableList(args);
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
                 this.rootDir = rootDir;
