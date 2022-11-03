@@ -235,7 +235,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static long getNextThreadIdOffset() {
-        // value shoudl never be used, because we substitute ThreadIdentifiers::next
+        // value should never be used, because we substitute ThreadIdentifiers::next
         return 0x13371337;
     }
 
