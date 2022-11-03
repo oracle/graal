@@ -33,6 +33,8 @@ import com.oracle.svm.core.util.VMError;
 public final class VM {
 
     public final String version;
+    public final String vendor;
+    public final String vendorUrl;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VM(String config) {
@@ -42,5 +44,7 @@ public final class VM {
         versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
         versionStr += " " + config;
         version = versionStr;
+        vendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
     }
 }
