@@ -139,10 +139,10 @@ local r      = import "run-spec.libsonnet";
     ,
     generate_variants::
       // The feature map is a two-level object. The first level is the name of the feature,
-      // for example "gc". The second level are the different values that feature could take,
-      // for example "serialgc" and "g1gc". Inside the second level comes the build config
-      // associated with the feature. It can be specialized by os/arch/jdk, but usually having
-      // a top-level "<all-os>" entry is sufficient.
+      // for example "gc". The second level defines the feature values as well as the build config
+      // for each feature value.`For example "serialgc" and "g1gc". Inside the second level comes
+      // the build config associated with the feature. It can be specialized by os/arch/jdk, but
+      // usually having a top-level "<all-os>" entry is sufficient.
       local _feature_map = {
         gc: {
           serialgc: {
