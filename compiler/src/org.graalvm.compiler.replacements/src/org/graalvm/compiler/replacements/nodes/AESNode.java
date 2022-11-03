@@ -135,9 +135,9 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
 
     public static boolean isSupported(Architecture arch) {
         if (arch instanceof AMD64) {
-            return arch.getFeatures().containsAll(minFeaturesAMD64());
+            return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
         } else if (arch instanceof AArch64) {
-            return arch.getFeatures().containsAll(minFeaturesAARCH64());
+            return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
         }
         return false;
     }

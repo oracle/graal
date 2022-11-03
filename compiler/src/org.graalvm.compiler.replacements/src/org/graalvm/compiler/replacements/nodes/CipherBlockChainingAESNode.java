@@ -26,9 +26,6 @@ package org.graalvm.compiler.replacements.nodes;
 
 import java.util.EnumSet;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.GenerateStub;
@@ -44,6 +41,9 @@ import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -135,9 +135,9 @@ public class CipherBlockChainingAESNode extends MemoryKillStubIntrinsicNode {
 
     public static boolean isSupported(Architecture arch) {
         if (arch instanceof AMD64) {
-            return arch.getFeatures().containsAll(minFeaturesAMD64());
+            return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
         } else if (arch instanceof AArch64) {
-            return arch.getFeatures().containsAll(minFeaturesAARCH64());
+            return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
         }
         return false;
     }
