@@ -77,4 +77,8 @@ typedef struct {
   char fFSRM;
   char fGFNI;
   char fAVX512_BITALG;
+  char fPKU;
+  char fOSPKE;
+  char fCET_IBT;
+  char fCET_SS;
 } CPUFeatures;

@@ -533,6 +533,22 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
     }
   }
 
+  // Protection key features.
+  if (_cpuid_info->sef_cpuid7_ecx.bits.pku != 0) {
+    features->fPKU = 1;
+  }
+  if (_cpuid_info->sef_cpuid7_ecx.bits.ospke != 0) {
+    features->fOSPKE = 1;
+  }
+
+  // Control flow enforcement (CET) features.
+  if (_cpuid_info->sef_cpuid7_ecx.bits.cet_ss != 0) {
+    features->fCET_SS = 1;
+  }
+  if (_cpuid_info->sef_cpuid7_edx.bits.cet_ibt != 0) {
+    features->fCET_IBT = 1;
+  }
+
   // Composite features.
   if (features->fTSCINV_BIT &&
       ((is_amd_family(_cpuid_info) && !is_amd_Barcelona(_cpuid_info)) ||
