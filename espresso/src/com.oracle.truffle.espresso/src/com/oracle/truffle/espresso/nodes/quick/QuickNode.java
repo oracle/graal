@@ -60,10 +60,6 @@ public abstract class QuickNode extends BaseQuickNode {
         return callerBCI;
     }
 
-    public int getTop() {
-        return top;
-    }
-
     @Override
     public SourceSection getSourceSection() {
         return getBytecodeNode().getSourceSectionAtBCI(callerBCI);

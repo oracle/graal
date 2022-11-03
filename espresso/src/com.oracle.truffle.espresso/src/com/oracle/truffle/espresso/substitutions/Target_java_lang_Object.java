@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.quick.invoke.GuardedInlinedMethodNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -49,7 +49,7 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    public static final GuardedInlinedMethodNode.InlinedMethodGuard InitGuard = //
+    public static final InlinedMethodPredicate InitGuard = //
                     (context, version, frame, node) -> {
                         StaticObject receiver = node.peekReceiver(frame);
                         return StaticObject.isNull(receiver) || !Init.hasFinalizer(receiver);

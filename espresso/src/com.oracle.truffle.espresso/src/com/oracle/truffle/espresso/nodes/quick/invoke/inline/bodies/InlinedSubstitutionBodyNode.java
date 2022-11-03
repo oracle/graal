@@ -21,33 +21,34 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.GuardedInlinedMethodNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
-public final class InlinedSubstitutionNode extends InlinedMethodNode {
+public final class InlinedSubstitutionBodyNode extends InlinedMethodNode.BodyNode {
     @Child JavaSubstitution substitution;
 
-    InlinedSubstitutionNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution substitution) {
-        super(inlinedMethod, top, opcode, callerBCI, statementIndex);
+    InlinedSubstitutionBodyNode(JavaSubstitution substitution) {
         this.substitution = insert(substitution);
     }
 
     public static InlinedMethodNode create(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution.Factory factory) {
-        InlinedMethodNode node = new InlinedSubstitutionNode(inlinedMethod, top, opcode, callerBCI, statementIndex, factory.create());
+        InlinedSubstitutionBodyNode bodyNode = new InlinedSubstitutionBodyNode(factory.create());
         if (factory.guard() != null) {
-            node = new GuardedInlinedMethodNode(node, (GuardedInlinedMethodNode.InlinedMethodGuard) factory.guard());
+            return new GuardedInlinedMethodNode(inlinedMethod, top, opcode, callerBCI, statementIndex, bodyNode, (InlinedMethodPredicate) factory.guard());
+        } else {
+            return new InlinedMethodNode(inlinedMethod, top, opcode, callerBCI, statementIndex, bodyNode);
         }
-        return node;
     }
 
     @Override
-    public void invoke(VirtualFrame frame) {
-        if (!method.isStatic()) {
-            nullCheck(peekReceiver(frame));
-        }
-        pushResult(frame, substitution.invokeInlined(frame, top));
+    public void execute(VirtualFrame frame, InlinedFrameAccess frameAccess) {
+        frameAccess.pushResult(frame, substitution.invokeInlined(frame, frameAccess.top()));
     }
 }

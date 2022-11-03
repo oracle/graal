@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile.constantpool;
 
-import java.nio.ByteBuffer;
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-public interface Resolvable extends PoolConstant {
+public interface InlinedMethodPredicate {
 
-    ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass);
+    boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node);
 
-    interface ResolvedConstant extends PoolConstant {
-        Object value();
-
+    InlinedMethodPredicate ALWAYS_VALID = new InlinedMethodPredicate() {
         @Override
-        default void dump(ByteBuffer buf) {
-            throw EspressoError.shouldNotReachHere();
-        }
-
-        default boolean isSuccess() {
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
             return true;
         }
+    };
 
-    }
+    InlinedMethodPredicate LEAF_ASSUMPTION_CHECK = new InlinedMethodPredicate() {
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            return context.getClassHierarchyOracle().isLeafMethod(version).isValid();
+        }
+    };
 }

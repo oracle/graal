@@ -21,52 +21,24 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class GuardedInlinedMethodNode extends InlinedMethodNode {
-    @Child private InlinedMethodNode inlinedMethodNode;
+    private final InlinedMethodPredicate guard;
 
-    private final InlinedMethodGuard guard;
-
-    @Override
-    protected void invoke(VirtualFrame frame) {
-        throw EspressoError.shouldNotReachHere("invoke method of guarding node should never be directly called.");
-    }
-
-    public interface InlinedMethodGuard {
-        InlinedMethodGuard ALWAYS_VALID = new InlinedMethodGuard() {
-            @Override
-            public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, GuardedInlinedMethodNode node) {
-                return true;
-            }
-        };
-
-        InlinedMethodGuard LEAF_ASSUMPTION_CHECK = new InlinedMethodGuard() {
-            @Override
-            public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, GuardedInlinedMethodNode node) {
-                return context.getClassHierarchyOracle().isLeafMethod(version).isValid();
-            }
-        };
-
-        boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, GuardedInlinedMethodNode node);
-    }
-
-    public GuardedInlinedMethodNode(InlinedMethodNode guardedNode, InlinedMethodGuard guard) {
-        super(guardedNode.method.getMethod(), guardedNode.getTop(), guardedNode.opcode, guardedNode.getCallerBCI(), guardedNode.statementIndex);
-        this.inlinedMethodNode = insert(guardedNode);
+    public GuardedInlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
+        super(inlinedMethod, top, opcode, callerBCI, statementIndex, body);
         this.guard = guard;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
         if (guard.isValid(getContext(), method, frame, this)) {
-            return inlinedMethodNode.execute(frame);
+            return super.execute(frame);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());

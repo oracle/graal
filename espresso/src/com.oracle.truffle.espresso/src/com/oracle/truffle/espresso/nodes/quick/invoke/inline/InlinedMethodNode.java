@@ -21,8 +21,9 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -31,62 +32,106 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies.InlinedFieldAccessNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies.InlinedSubstitutionBodyNode;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
-public abstract class InlinedMethodNode extends InvokeQuickNode {
+public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAccess {
+
+    public static abstract class BodyNode extends EspressoNode {
+        public abstract void execute(VirtualFrame frame, InlinedFrameAccess frameAccess);
+    }
+
     // Data needed to revert to the generic case.
     protected final int opcode;
     protected final int statementIndex;
 
-    @Child DummyInstrumentation dummy;
+    protected @Child DummyInstrumentation dummy;
 
-    @Override
-    public int execute(VirtualFrame frame) {
-        if (!method.isStatic()) {
-            nullCheck(peekReceiver(frame));
-        }
-        dummy.execute(frame);
-        return stackEffect;
-    }
-
-    protected abstract void invoke(VirtualFrame frame);
-
-    protected InlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex) {
-        super(inlinedMethod, top, callerBCI);
-        this.opcode = opcode;
-        this.statementIndex = statementIndex;
-        this.dummy = insert(new DummyInstrumentation());
-    }
+    @Child BodyNode body;
 
     public static InlinedMethodNode createFor(Method resolutionSeed, int top, int opcode, int curBCI, int statementIndex) {
         if (!isInlineCandidate(resolutionSeed, opcode)) {
             return null;
         }
         if (resolutionSeed.isInlinableGetter()) {
-            return InlinedGetterNode.create(resolutionSeed, top, opcode, curBCI, statementIndex);
+            return InlinedFieldAccessNode.createGetter(resolutionSeed, top, opcode, curBCI, statementIndex);
         }
         if (resolutionSeed.isInlinableSetter()) {
-            return InlinedSetterNode.create(resolutionSeed, top, opcode, curBCI, statementIndex);
+            return InlinedFieldAccessNode.createSetter(resolutionSeed, top, opcode, curBCI, statementIndex);
         }
         if (isUnconditionalInlineCandidate(resolutionSeed, opcode)) {
             // Try to inline trivial substitutions.
             JavaSubstitution.Factory factory = Substitutions.lookupSubstitution(resolutionSeed);
             if (factory != null && factory.isTrivial()) {
-                return InlinedSubstitutionNode.create(resolutionSeed, top, opcode, curBCI, statementIndex, factory);
+                return InlinedSubstitutionBodyNode.create(resolutionSeed, top, opcode, curBCI, statementIndex, factory);
             }
         }
         return null;
+    }
+
+    public InlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body) {
+        super(inlinedMethod, top, callerBCI);
+        this.opcode = opcode;
+        this.statementIndex = statementIndex;
+        this.body = insert(body);
+        this.dummy = insert(new DummyInstrumentation());
+    }
+
+    @Override
+    public int execute(VirtualFrame frame) {
+        if (method.isStatic()) {
+            initCheck();
+        } else {
+            nullCheck(peekReceiver(frame));
+        }
+        dummy.execute(frame);
+        return stackEffect;
+    }
+
+    @Override
+    public int top() {
+        return top;
+    }
+
+    @Override
+    public int resultAt() {
+        return resultAt;
+    }
+
+    @Override
+    public int statementIndex() {
+        return statementIndex;
+    }
+
+    @Override
+    public Method.MethodVersion inlinedMethod() {
+        return method;
+    }
+
+    private void initCheck() {
+        /*
+         * Everything is constant here, so it should fold away nicely.
+         */
+        ObjectKlass k = method.getDeclaringKlass();
+        if (!k.isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            k.safeInitialize();
+        }
     }
 
     public final BaseQuickNode revertToGeneric(BytecodeNode parent) {
         return parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex, method.getMethod());
     }
 
-    protected static boolean isInlineCandidate(Method resolutionSeed, int opcode) {
+    public static boolean isInlineCandidate(Method resolutionSeed, int opcode) {
         if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
             return true;
         }
@@ -101,7 +146,7 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
         return false;
     }
 
-    protected static boolean isUnconditionalInlineCandidate(Method resolutionSeed, int opcode) {
+    public static boolean isUnconditionalInlineCandidate(Method resolutionSeed, int opcode) {
         if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
             return true;
         }
@@ -124,7 +169,7 @@ public abstract class InlinedMethodNode extends InvokeQuickNode {
         }
 
         public Object execute(VirtualFrame frame) {
-            invoke(frame);
+            body.execute(frame, InlinedMethodNode.this);
             return null;
         }
 

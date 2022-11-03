@@ -358,7 +358,6 @@ import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadQuickNo
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreQuickNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
@@ -366,6 +365,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;

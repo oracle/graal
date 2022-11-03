@@ -66,7 +66,7 @@ public abstract class InvokeQuickNode extends QuickNode {
         return EspressoFrame.popArguments(frame, top, !method.isStatic(), method.getMethod().getParsedSignature());
     }
 
-    protected final int pushResult(VirtualFrame frame, Object result) {
+    public final int pushResult(VirtualFrame frame, Object result) {
         if (!returnsPrimitive) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }

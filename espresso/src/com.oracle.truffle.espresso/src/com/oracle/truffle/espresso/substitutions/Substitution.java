@@ -27,6 +27,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
+
 /**
  * <p>
  * Marks methods and classes (Truffle's {@link com.oracle.truffle.api.nodes.Node nodes} to be used
@@ -95,8 +97,7 @@ import java.lang.annotation.Target;
 
     /**
      * If the bytecode-level inlining of the substitution should be guarded by a
-     * {@link com.oracle.truffle.espresso.nodes.quick.invoke.GuardedInlinedMethodNode.InlinedMethodGuard
-     * method guard}.
+     * {@link InlinedMethodPredicate method guard}.
      * <p>
      * The guard should be a {@code public static final} field in the substitution class, named
      * {@code [SubstitutionName]Guard}.

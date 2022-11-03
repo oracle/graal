@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile.constantpool;
 
-import java.nio.ByteBuffer;
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public interface Resolvable extends PoolConstant {
+public interface InlinedFrameAccess {
+    int top();
 
-    ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass);
+    int resultAt();
 
-    interface ResolvedConstant extends PoolConstant {
-        Object value();
+    int statementIndex();
 
-        @Override
-        default void dump(ByteBuffer buf) {
-            throw EspressoError.shouldNotReachHere();
-        }
+    BytecodeNode getBytecodeNode();
 
-        default boolean isSuccess() {
-            return true;
-        }
+    Method.MethodVersion inlinedMethod();
 
-    }
+    int pushResult(VirtualFrame frame, Object result);
 }
