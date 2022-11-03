@@ -41,7 +41,7 @@ public final class VM {
         String versionStr = System.getProperty("org.graalvm.version");
         VMError.guarantee(versionStr != null);
         versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
+        versionStr += " Java " + JavaVersionUtil.JAVA_VERSION;
         versionStr += " " + config;
         version = versionStr;
         vendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
