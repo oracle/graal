@@ -42,6 +42,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -60,7 +61,9 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
@@ -187,6 +190,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
     protected abstract void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile);
 
+    protected abstract String getTypeName(AnalysisType type);
+
     class StrengthenSimplifier implements CustomSimplification {
 
         private final StructuredGraph graph;
@@ -305,6 +310,35 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                     LogicNode replacement = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) oldStamp.improveWith(newStamp), node.getValue(), node.profile(), node.getAnchor()));
                     node.replaceAndDelete(replacement);
                     tool.addToWorkList(replacement);
+                }
+
+            } else if (n instanceof ClassIsAssignableFromNode) {
+                ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) n;
+                ValueNode thisClass = node.getThisClass();
+                if (thisClass.isConstant()) {
+                    AnalysisType thisType = (AnalysisType) tool.getConstantReflection().asJavaType(thisClass.asConstant());
+                    if (!thisType.isReachable()) {
+                        node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+                    }
+                }
+
+            } else if (n instanceof BytecodeExceptionNode) {
+                /*
+                 * We do not want a type to be reachable only to be used for the error message of a
+                 * ClassCastException. Therefore, in that case we replace the java.lang.Class with a
+                 * java.lang.String that is then used directly in the error message.
+                 */
+                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
+                if (node.getExceptionKind() == BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST) {
+                    ValueNode expectedClass = node.getArguments().get(1);
+                    if (expectedClass.isConstant()) {
+                        AnalysisType expectedType = (AnalysisType) tool.getConstantReflection().asJavaType(expectedClass.asConstant());
+                        if (expectedType != null && !expectedType.isReachable()) {
+                            String expectedName = getTypeName(expectedType);
+                            ConstantNode expectedConstant = ConstantNode.forConstant(tool.getConstantReflection().forString(expectedName), tool.getMetaAccess(), graph);
+                            node.getArguments().set(1, expectedConstant);
+                        }
+                    }
                 }
 
             } else if (n instanceof PiNode) {
@@ -628,6 +662,16 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             AnalysisType originalType = (AnalysisType) stamp.type();
             if (originalType == null) {
                 return null;
+            }
+
+            if (!originalType.isReachable()) {
+                /* We must be in dead code. */
+                if (stamp.nonNull()) {
+                    /* We must be in dead code. */
+                    return StampFactory.empty(JavaKind.Object);
+                } else {
+                    return StampFactory.alwaysNull();
+                }
             }
 
             AnalysisType singleImplementorType = getSingleImplementorType(originalType);

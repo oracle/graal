@@ -47,8 +47,9 @@ public class CharsetEncodeDecodeBenchmark extends BenchmarkBase {
     private CharsetEncoder encoder;
     private CharsetDecoder decoder;
 
-    // "BIG5" is not supported on Java 11.
-    @Param({"UTF-8", "ISO-8859-15", "ISO-8859-1", "ASCII", "UTF-16"}) private String type;
+    // "BIG5" is not supported on Java 11. ISO-8859-15 is not supported on the Native Image as it's
+    // not among standard charsets (java.nio.charset.StandardCharsets).
+    @Param({"UTF-8", "ISO-8859-1", "ASCII", "UTF-16"}) private String type;
 
     @Param("16384") private int size;
 

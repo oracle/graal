@@ -71,6 +71,7 @@ import java.util.jar.Manifest;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -119,7 +120,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only io rights
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         TruffleFile file = languageEnv.getPublicTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
@@ -129,7 +130,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only host access rights
-        setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
         file = languageEnv.getPublicTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
@@ -139,7 +140,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         // test with only class path add rights
-        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).allowHostClassLoading(true).build());
         file = languageEnv.getPublicTruffleFile(tempDir.toString());
         try {
             // we should fail early
@@ -156,7 +157,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             assertNonInternalException(e);
         }
 
-        setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).allowHostClassLoading(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
         file = languageEnv.getPublicTruffleFile(tempDir.toString());
         // we should fail early
         languageEnv.addToHostClassPath(file);
@@ -236,7 +237,8 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     @Test
     public void testMemoryFileSystemJarHostClassLoading() throws IOException {
-        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).fileSystem(new MemoryFileSystem()).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).allowIO(ioAccess).build());
         Class<?> hostClass = HostClassLoadingTestClass1.class;
         TruffleFile root = createClassFolderOnPolyglotFileSystem(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME);
         assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, root);
@@ -244,7 +246,8 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     @Test
     public void testMemoryFileSystemDirectoryHostClassLoading() throws IOException {
-        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).fileSystem(new MemoryFileSystem()).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).allowIO(ioAccess).build());
         Class<?> hostClass = HostClassLoadingTestClass1.class;
         TruffleFile root = createJarOnPolyglotFileSystem(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME);
         assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, root);

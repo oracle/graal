@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -104,6 +107,11 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     }
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
+
+    @Override
     protected final void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         loops.detectCountedLoops();
@@ -134,6 +142,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         // let the shape of the loop decide whether a guest safepoint is needed
                         onSafepointDisabledLoopBegin(loop);
                     }
+                    graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
                 }
             }
         }
@@ -150,6 +159,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         boolean disabledInSubclass = onCallInLoop(loopEnd, node);
                         if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();
+                            graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
 
                             // we can only stop if subclasses also say we can stop iterating blocks
                             if (disabledInSubclass) {

@@ -112,6 +112,15 @@ class StaticObjectModelTest {
             return !arrayBased;
         }
 
+        public boolean supportsReflectiveAccesses() {
+            return isFieldBased() && !TruffleOptions.AOT;
+        }
+
+        /* GR-41426 */
+        public boolean supportsSafetyChecks() {
+            return !(isFieldBased() && TruffleOptions.AOT);
+        }
+
         @Override
         public void close() {
             context.close();
@@ -136,7 +145,7 @@ class StaticObjectModelTest {
     static TestConfiguration[] getTestConfigurations() {
         ArrayList<TestConfiguration> tests = new ArrayList<>();
         // AOT mode does not yet support field-based storage
-        boolean[] arrayBased = TruffleOptions.AOT ? new boolean[]{true} : new boolean[]{true, false};
+        boolean[] arrayBased = new boolean[]{true, false};
         boolean[] relaxChecks = new boolean[]{true, false};
         for (boolean ab : arrayBased) {
             for (boolean rc : relaxChecks) {

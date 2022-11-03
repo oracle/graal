@@ -542,8 +542,6 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl addProperty(Property property) {
-        assert isValid();
-
         return getLayoutStrategy().addProperty(this, property);
     }
 

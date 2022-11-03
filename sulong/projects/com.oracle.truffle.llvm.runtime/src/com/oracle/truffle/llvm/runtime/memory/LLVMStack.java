@@ -89,6 +89,14 @@ public final class LLVMStack {
         return context;
     }
 
+    public long getStackPointer() {
+        return stackPointer;
+    }
+
+    public void setStackPointer(long newStackPointer) {
+        stackPointer = newStackPointer;
+    }
+
     private boolean isAllocated() {
         return stackPointer != 0;
     }

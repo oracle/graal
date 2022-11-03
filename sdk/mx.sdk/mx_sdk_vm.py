@@ -46,6 +46,7 @@ import mx
 import mx_javamodules
 import mx_subst
 import os
+import re
 import shutil
 import tempfile
 import textwrap
@@ -200,12 +201,14 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, add_to_module=None, home_finder=False, **kwargs):
         """
         :param bool jvm_library
+        :param str add_to_module: the simple name of a module that should be modified to include this native library. It must not be a path or end with `.jmod`
         """
         super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
+        self.add_to_module = add_to_module
 
 
 class LanguageLibraryConfig(LibraryConfig):
@@ -421,15 +424,12 @@ class GraalVmJreComponent(GraalVmComponent):
 
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
-    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars,
-                 graal_compiler=None, **kwargs):
+    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, **kwargs):
         """
         :type jvmci_jars: list[str]
-        :type graal_compiler: str
         """
         super(GraalVmJvmciComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                     **kwargs)
-        self.graal_compiler = graal_compiler
         self.jvmci_jars = jvmci_jars or []
 
         assert isinstance(self.jvmci_jars, list)
@@ -546,13 +546,20 @@ def _probe_jvmci_info(jdk, attribute_name):
         mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
         enableJVMCI = False
         enableJVMCIProduct = False
+        jvmciThreadsPerNativeLibraryRuntime = None
         for line in out.lines:
             if 'EnableJVMCI' in line and 'true' in line:
                 enableJVMCI = True
             if 'EnableJVMCIProduct' in line:
                 enableJVMCIProduct = True
+            if 'JVMCIThreadsPerNativeLibraryRuntime' in line:
+                m = re.search(r'JVMCIThreadsPerNativeLibraryRuntime *= *(\d+)', line)
+                if not m:
+                    mx.abort(f'Could not extract value of JVMCIThreadsPerNativeLibraryRuntime from "{line}"')
+                jvmciThreadsPerNativeLibraryRuntime = int(m.group(1))
         setattr(jdk, '.enables_jvmci_by_default', enableJVMCI)
         setattr(jdk, '.supports_enablejvmciproduct', enableJVMCIProduct)
+        setattr(jdk, '.jvmciThreadsPerNativeLibraryRuntime', jvmciThreadsPerNativeLibraryRuntime)
     return getattr(jdk, attribute_name)
 
 def jdk_enables_jvmci_by_default(jdk):
@@ -568,17 +575,40 @@ def jdk_supports_enablejvmciproduct(jdk):
     """
     return _probe_jvmci_info(jdk, '.supports_enablejvmciproduct')
 
-def jdk_has_new_jlink_options(jdk):
+def get_JVMCIThreadsPerNativeLibraryRuntime(jdk):
     """
-    Determines if the jlink executable in `jdk` supports the options added by
-    https://bugs.openjdk.java.net/browse/JDK-8232080.
+    Gets the value of the flag -XX:JVMCIThreadsPerNativeLibraryRuntime.
+
+    Returns None if this flag is not supported in `jdk` otherwise returns the default value as an int
     """
-    if not hasattr(jdk, '.supports_new_jlink_options'):
+    return _probe_jvmci_info(jdk, '.jvmciThreadsPerNativeLibraryRuntime')
+
+def _probe_jlink_info(jdk, attribute_name):
+    """
+    Determines if the jlink executable in `jdk` supports various options such
+    as those added by JDK-8232080 and JDK-8237467.
+    """
+    if not hasattr(jdk, '.supports_JDK_8232080'):
         output = mx.OutputCapture()
         jlink_exe = jdk.javac.replace('javac', 'jlink')
         mx.run([jlink_exe, '--list-plugins'], out=output)
-        setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data or '--add-options ' in output.data)
-    return getattr(jdk, '.supports_new_jlink_options')
+        setattr(jdk, '.supports_JDK_8232080', '--add-options=' in output.data or '--add-options ' in output.data)
+        setattr(jdk, '.supports_save_jlink_argfiles', '--save-jlink-argfiles=' in output.data or '--save-jlink-argfiles ' in output.data)
+        setattr(jdk, '.supports_copy_files', '--copy-files=' in output.data or '--copy-files ' in output.data)
+    return getattr(jdk, attribute_name)
+
+def jlink_supports_8232080(jdk):
+    """
+    Determines if the jlink executable in `jdk` supports ``--add-options`` and
+    ``--vendor-[bug-url|vm-bug-url|version]`` added by JDK-8232080.
+    """
+    return _probe_jlink_info(jdk, '.supports_JDK_8232080')
+
+def jlink_has_save_jlink_argfiles(jdk):
+    """
+    Determines if the jlink executable in `jdk` supports ``--save-jlink-argfiles``.
+    """
+    return _probe_jlink_info(jdk, '.supports_save_jlink_argfiles')
 
 def _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
     """
@@ -738,7 +768,7 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
-    if jdk_has_new_jlink_options(jdk):
+    if jlink_supports_8232080(jdk):
         if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
             vm_options.append('-XX:ThreadPriorityPolicy=1')
         else:
@@ -747,7 +777,11 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
             if 'jdk.internal.vm.compiler' in non_synthetic_modules:
-                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UnlockExperimentalVMOptions'])
+                threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
+                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
+                if threads is not None and threads != 1:
+                    vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+                vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
@@ -922,12 +956,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
         # Now build the new JDK image with jlink
         jlink = [jdk.javac.replace('javac', 'jlink')]
+        jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
             # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
             jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
 
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))
+        jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
         module_path = patched_java_base + os.pathsep + jmods_dir
         if modules and not use_upgrade_module_path:
@@ -942,15 +978,23 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         vm_options_path = join(upgrade_dir, 'vm_options')
         vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules)
         if vm_options:
-            jlink.append('--add-options=' + ' '.join(vm_options))
+            jlink.append(f'--add-options={" ".join(vm_options)}')
+            jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
 
-        if jdk_has_new_jlink_options(jdk) and vendor_info is not None:
+        if jlink_supports_8232080(jdk) and vendor_info is not None:
             for name, value in vendor_info.items():
-                jlink.append('--' + name + '=' + value)
+                jlink.append(f'--{name}={value}')
+                jlink_persist.append(f'--{name}="{value}"')
 
         release_file = join(jdk.home, 'release')
         if isfile(release_file):
-            jlink.append('--release-info=' + release_file)
+            jlink.append(f'--release-info={release_file}')
+
+        if jlink_has_save_jlink_argfiles(jdk):
+            jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
+            with open(jlink_persist_argfile, 'w') as fp:
+                fp.write('\n'.join(jlink_persist))
+            jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
 
         if exists(dst_jdk_dir):
             if use_upgrade_module_path and _vm_options_match(vm_options, vm_options_path):
@@ -963,7 +1007,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         #       This is apparently not so important if a CDS archive is available.
         # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
         #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
-        mx.logv('[Creating JDK image in {}]'.format(dst_jdk_dir))
+        mx.logv(f'[Creating JDK image in {dst_jdk_dir}]')
         mx.run(jlink)
 
         if use_upgrade_module_path:

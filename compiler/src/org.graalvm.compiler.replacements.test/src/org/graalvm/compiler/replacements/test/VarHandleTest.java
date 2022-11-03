@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Objects;
 
-import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StartNode;
@@ -38,13 +40,25 @@ import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class VarHandleTest extends GraalCompilerTest {
+/**
+ * Tests that {@link VarHandle} accesses are compiled as expected.
+ *
+ * As of JDK-8282143, {@link Objects#requireNonNull(Object)} is force inlined. This method is used
+ * in VarHandle internals and if the NPE throwing path is compiled, the assumptions in
+ * {@link #testAccess} are invalidated. As such, the throwing path must have 0 probability and the
+ * compiler must use that probability to omit parsing the path. To guarantee the 0 probability, this
+ * test uses a subprocess to isolate the profile of {@link Objects#requireNonNull(Object)} from all
+ * other code.
+ */
+public class VarHandleTest extends SubprocessTest {
 
     static class Holder {
         /* Field is declared volatile, but accessed with non-volatile semantics in the tests. */
@@ -64,6 +78,11 @@ public class VarHandleTest extends GraalCompilerTest {
                 throw GraalError.shouldNotReachHere(ex);
             }
         }
+    }
+
+    @Test
+    public void test() throws IOException, InterruptedException {
+        launchSubprocess(this::testBody);
     }
 
     public static int testRead1Snippet(Holder h) {
@@ -122,43 +141,25 @@ public class VarHandleTest extends GraalCompilerTest {
         Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
     }
 
-    @Test
-    public void testRead1() {
+    @Override
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        ResolvedJavaMethod requireNonNull = getResolvedJavaMethod(Objects.class, "requireNonNull", Object.class);
+        ProfilingInfo info = requireNonNull.getProfilingInfo();
+        Assert.assertNotNull(info);
+        double taken = info.getBranchTakenProbability(1);
+        Assert.assertTrue("test assumes that Objects.requireNonNull(Object) has never thrown an NPE", taken == 1.0D);
+
+        return OptimisticOptimizations.ALL;
+    }
+
+    void testBody() {
         testAccess("testRead1Snippet", 1, 0, 0, 0);
-    }
-
-    @Test
-    public void testRead2() {
         testAccess("testRead2Snippet", 1, 0, 0, 1);
-    }
-
-    @Test
-    public void testRead3() {
         testAccess("testRead3Snippet", 1, 0, 0, 0);
-    }
-
-    @Test
-    public void testRead4() {
         testAccess("testRead4Snippet", 1, 0, 0, 1);
-    }
-
-    @Test
-    public void testWrite1() {
         testAccess("testWrite1Snippet", 0, 1, 0, 0);
-    }
-
-    @Test
-    public void testWrite2() {
         testAccess("testWrite2Snippet", 0, 1, 0, 1);
-    }
-
-    @Test
-    public void testWrite3() {
         testAccess("testWrite3Snippet", 0, 1, 0, 0);
-    }
-
-    @Test
-    public void testWrite4() {
         testAccess("testWrite4Snippet", 0, 1, 0, 1);
     }
 

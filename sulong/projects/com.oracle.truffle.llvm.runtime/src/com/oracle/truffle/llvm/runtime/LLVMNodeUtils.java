@@ -117,7 +117,7 @@ public final class LLVMNodeUtils {
         for (Class<?> c = node.getClass(); c != Object.class; c = c.getSuperclass()) {
             Field[] fields = c.getDeclaredFields();
             for (Field field : fields) {
-                if (Modifier.isStatic(field.getModifiers())) {
+                if (Modifier.isStatic(field.getModifiers()) || "parent".equals(field.getName())) {
                     continue;
                 }
                 if (NodeInterface.class.isAssignableFrom(field.getType())) {

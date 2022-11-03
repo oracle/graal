@@ -59,9 +59,10 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
-import com.oracle.svm.util.ModuleSupport;
 
-class ClassLoaderSupportImpl extends ClassLoaderSupport {
+import jdk.internal.module.Modules;
+
+public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
@@ -70,7 +71,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
+    public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
 
         imageClassLoader = classLoaderSupport.getClassLoader();
@@ -121,7 +122,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         try (ModuleReader moduleReader = moduleReference.open()) {
             String moduleName = resolvedModule.name();
             List<String> foundResources = moduleReader.list()
-                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName))
+                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName, moduleReference.location().orElse(null)))
                             .collect(Collectors.toList());
 
             for (String resName : foundResources) {
@@ -157,7 +158,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
             }
 
             if (Files.isDirectory(entry)) {
-                if (collector.isIncluded(null, relativeFilePath)) {
+                if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
@@ -168,7 +169,7 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     filtered.forEach(queue::push);
                 }
             } else {
-                if (collector.isIncluded(null, relativeFilePath)) {
+                if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     try (InputStream is = Files.newInputStream(entry)) {
                         collector.addResource(null, relativeFilePath, is, false);
                     }
@@ -198,12 +199,12 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 JarEntry entry = entries.nextElement();
                 if (entry.isDirectory()) {
                     String dirName = entry.getName().substring(0, entry.getName().length() - 1);
-                    if (collector.isIncluded(null, dirName)) {
+                    if (collector.isIncluded(null, dirName, jarPath.toUri())) {
                         // Register the directory with empty content to preserve Java behavior
                         collector.addDirectoryResource(null, dirName, "", true);
                     }
                 } else {
-                    if (collector.isIncluded(null, entry.getName())) {
+                    if (collector.isIncluded(null, entry.getName(), jarPath.toUri())) {
                         try (InputStream is = jf.getInputStream(entry)) {
                             collector.addResource(null, entry.getName(), is, true);
                         }
@@ -227,7 +228,9 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
         String packageName = packageName(bundleName);
         Set<Module> modules;
-        if (moduleName != null) {
+        if (ResourcesFeature.MODULE_NAME_ALL_UNNAMED.equals(moduleName)) {
+            modules = Collections.emptySet();
+        } else if (moduleName != null) {
             modules = classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet());
         } else {
             modules = packageToModules.getOrDefault(packageName, Collections.emptySet());
@@ -237,8 +240,13 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
             return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
+        Module builderModule = ClassLoaderSupportImpl.class.getModule();
         for (Module module : modules) {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ClassLoaderSupportImpl.class, false, module.getName(), packageName);
+            if (builderModule.isNamed()) {
+                Modules.addOpens(module, packageName, builderModule);
+            } else {
+                Modules.addOpensToAllUnnamed(module, packageName);
+            }
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
         return resourceBundles;

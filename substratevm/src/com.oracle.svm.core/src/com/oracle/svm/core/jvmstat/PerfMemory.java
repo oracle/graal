@@ -24,18 +24,25 @@
  */
 package com.oracle.svm.core.jvmstat;
 
+import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
@@ -48,6 +55,9 @@ import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
  * same memory location).
  */
 public class PerfMemory {
+    private static final CGlobalData<Pointer> PERF_DATA_ISOLATE = CGlobalDataFactory.createWord();
+
+    private PerfMemoryProvider memoryProvider;
     private ByteBuffer buffer;
     private int capacity;
     private Word rawMemory;
@@ -61,17 +71,48 @@ public class PerfMemory {
     }
 
     public boolean initialize() {
-        ByteBuffer b = ImageSingletons.lookup(PerfMemoryProvider.class).create();
-        if (b.capacity() <= PerfMemoryPrologue.getPrologueSize()) {
+        if (!createBuffer()) {
             return false;
         }
 
+        PerfMemoryPrologue.initialize(rawMemory, ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN));
+
+        used = PerfMemoryPrologue.getPrologueSize();
+        initialTime = System.nanoTime();
+        return true;
+    }
+
+    private boolean createBuffer() {
+        PerfMemoryProvider m = null;
+        ByteBuffer b = null;
+        if (PerfDataMemoryMappedFile.getValue() && tryAcquirePerfDataFile()) {
+            m = ImageSingletons.lookup(PerfMemoryProvider.class);
+            b = m.create();
+            if (b == null) {
+                releasePerfDataFile();
+            }
+        }
+
+        if (b == null) {
+            /*
+             * Memory mapped file support is disabled, another isolate already owns the perf data
+             * file, or the file or buffer could not be created. Either way, this isolate needs to
+             * use C heap memory instead.
+             */
+            m = new CHeapPerfMemoryProvider();
+            b = m.create();
+        }
+
+        if (b == null || b.capacity() < PerfMemoryPrologue.getPrologueSize()) {
+            return false;
+        }
+
+        memoryProvider = m;
         buffer = b;
         capacity = b.capacity();
         rawMemory = WordFactory.pointer(SubstrateUtil.cast(b, Target_java_nio_Buffer.class).address);
-        used = PerfMemoryPrologue.getPrologueSize();
-        initialTime = PerfMemoryPrologue.initialize(rawMemory, ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN));
         assert verifyRawMemoryAccess();
+
         return true;
     }
 
@@ -159,6 +200,19 @@ public class PerfMemory {
             overflowMemory = null;
         }
 
-        ImageSingletons.lookup(PerfMemoryProvider.class).teardown();
+        memoryProvider.teardown();
+        releasePerfDataFile();
+    }
+
+    private static boolean tryAcquirePerfDataFile() {
+        Pointer perfDataIsolatePtr = PERF_DATA_ISOLATE.get();
+        return perfDataIsolatePtr.logicCompareAndSwapWord(0, WordFactory.nullPointer(), CurrentIsolate.getIsolate(), LocationIdentity.ANY_LOCATION);
+    }
+
+    private static void releasePerfDataFile() {
+        Pointer perfDataIsolatePtr = PERF_DATA_ISOLATE.get();
+        if (perfDataIsolatePtr.readWord(0) == CurrentIsolate.getIsolate()) {
+            perfDataIsolatePtr.writeWord(0, WordFactory.nullPointer());
+        }
     }
 }

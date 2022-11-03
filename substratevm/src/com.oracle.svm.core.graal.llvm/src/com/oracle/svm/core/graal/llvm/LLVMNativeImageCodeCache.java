@@ -34,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -96,7 +97,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private final LLVMObjectFileReader objectFileReader;
     private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
     private final StackMapDumper stackMapDumper;
-    private final NavigableMap<Integer, CompilationResult> compilationsByStart = new TreeMap<>();
+    private final NavigableMap<HostedMethod, CompilationResult> compilationsByStart = new TreeMap<>(Comparator.comparingInt(HostedMethod::getCodeAddressOffset));
 
     LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
@@ -232,7 +233,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             method.setCodeAddressOffset(offset);
         });
 
-        getOrderedCompilations().forEach((pair) -> compilationsByStart.put(pair.getLeft().getCodeAddressOffset(), pair.getRight()));
+        getOrderedCompilations().forEach((pair) -> compilationsByStart.put(pair.getLeft(), pair.getRight()));
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
 
@@ -474,6 +475,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile) {
         return globalSymbols;
+    }
+
+    @Override
+    public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
+        return Pair.create(compilationsByStart.firstKey(), compilationsByStart.firstEntry().getValue());
     }
 
     private static final class BatchExecutor {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot.tck;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.ServiceLoader;
 
 import org.graalvm.polyglot.Context;
@@ -68,6 +69,20 @@ public interface LanguageProvider {
      * @since 0.30
      */
     String getId();
+
+    /**
+     * Allows language providers to provide language options during the creation of the test
+     * context. {@link LanguageProvider LanguageProviders} are only allowed to set options of the
+     * language they represent (Options starting with {@link #getId()}). Attempts to set options
+     * other than their own language will throw {@link IllegalArgumentException} on test context
+     * creation.
+     *
+     * @return The {@code (key, value)} pairs of language option to add to the context.
+     * @since 22.3
+     */
+    default Map<String, String> additionalOptions() {
+        return Collections.emptyMap();
+    }
 
     /**
      * Creates an identity function. The identity function just returns its argument.

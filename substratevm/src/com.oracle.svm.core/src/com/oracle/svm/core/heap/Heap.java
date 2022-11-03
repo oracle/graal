@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -38,15 +37,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public abstract class Heap {
     @Fold
@@ -145,11 +142,6 @@ public abstract class Heap {
 
     /** Reset the heap to the normal execution state. */
     public abstract void endSafepoint();
-
-    /**
-     * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
-     */
-    public abstract BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
 
     /**
      * Returns a multiple to which the heap address space should be aligned to at runtime.

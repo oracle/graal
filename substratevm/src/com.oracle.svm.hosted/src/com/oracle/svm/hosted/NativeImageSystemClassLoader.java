@@ -45,7 +45,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * class to a {@link NativeImageSystemClassLoader#nativeImageClassLoader} {@link ClassLoader}. If
  * such delegate is null, then NativeImageSystemClassLoader forwards the class loading operation to
  * the default system class loader.
- * 
+ *
  * This ClassLoader is necessary to enable the loading of classes/resources during image build-time.
  * This class must be used as a replacement for {@link ClassLoader#getSystemClassLoader()} and its
  * parent must be the default system class loader. The delegate is set to an instance of
@@ -221,7 +221,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
         List<ClassLoader> activeClassLoaders = getActiveClassLoaders();
-        assert !activeClassLoaders.isEmpty() & activeClassLoaders.size() <= 2;
+        assert !activeClassLoaders.isEmpty() && activeClassLoaders.size() <= 2;
         ClassLoader activeClassLoader = activeClassLoaders.get(0);
         ClassLoader activeClassLoaderParent = activeClassLoaders.size() > 1 ? activeClassLoaders.get(1) : null;
         if (activeClassLoaderParent != null) {
@@ -282,7 +282,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      * This method is necessary for all custom system class loaders. It allows for the load of the
      * agent during startup. See
      * {@link java.lang.instrument.Instrumentation#appendToSystemClassLoaderSearch(JarFile)} }
-     * 
+     *
      * @param classPathEntry the classpath entry that will be added to the class path
      */
     @SuppressWarnings("unused")

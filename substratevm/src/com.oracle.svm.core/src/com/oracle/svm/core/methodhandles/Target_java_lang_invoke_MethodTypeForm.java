@@ -29,8 +29,8 @@ import java.lang.ref.SoftReference;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.NewEmptyArrayTransformer;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 
 @TargetClass(className = "java.lang.invoke.MethodTypeForm")
 final class Target_java_lang_invoke_MethodTypeForm {
@@ -40,8 +40,8 @@ final class Target_java_lang_invoke_MethodTypeForm {
      * consistent state, to avoid problems when the lazily initialization happens during image heap
      * writing.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
     private SoftReference<?>[] methodHandles;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
     private SoftReference<?>[] lambdaForms;
 }

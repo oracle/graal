@@ -35,11 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
-import com.oracle.graal.reachability.MethodSummaryProvider;
-import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -166,10 +162,6 @@ public class HostedConfiguration {
 
     public MetaAccessExtensionProvider createCompilationMetaAccessExtensionProvider(@SuppressWarnings("unused") MetaAccessProvider metaAccess) {
         return new SubstrateMetaAccessExtensionProvider();
-    }
-
-    public MethodSummaryProvider createMethodSummaryProvider(AnalysisUniverse universe, AnalysisMetaAccess aMetaAccess) {
-        return new SimpleInMemoryMethodSummaryProvider(universe, aMetaAccess);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,

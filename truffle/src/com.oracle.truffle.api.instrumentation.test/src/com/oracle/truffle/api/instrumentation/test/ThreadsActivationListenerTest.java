@@ -86,7 +86,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         TruffleContext tc0 = this.languageEnv.getContext();
 
         c0.enter();
-        TruffleContext ic0 = this.languageEnv.newContextBuilder().build();
+        TruffleContext ic0 = this.languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         TruffleContext ic0CreatorHandle = ic0;
         Object prev = ic0.enter(null);
         // look language handle on the context it is not the same as

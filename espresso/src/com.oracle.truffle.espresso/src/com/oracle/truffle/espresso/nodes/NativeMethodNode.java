@@ -48,7 +48,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 /**
  * Represents a native Java method.
  */
-public final class NativeMethodNode extends EspressoMethodNode {
+final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
     private final TruffleObject boundNative;
     @Child InteropLibrary executeNative;
@@ -56,7 +56,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
-    public NativeMethodNode(TruffleObject boundNative, MethodVersion method) {
+    NativeMethodNode(TruffleObject boundNative, MethodVersion method) {
         super(method);
         this.boundNative = boundNative;
         this.executeNative = InteropLibrary.getFactory().create(boundNative);
@@ -70,20 +70,20 @@ public final class NativeMethodNode extends EspressoMethodNode {
 
     @ExplodeLoop
     private Object[] preprocessArgs(JniEnv env, Object[] args) {
-        Symbol<Type>[] parsedSignature = getMethod().getParsedSignature();
+        Symbol<Type>[] parsedSignature = getMethodVersion().getMethod().getParsedSignature();
         int paramCount = Signatures.parameterCount(parsedSignature);
         Object[] nativeArgs = new Object[2 /* JNIEnv* + class or receiver */ + paramCount];
 
         assert !InteropLibrary.getUncached().isNull(env.getNativePointer());
         nativeArgs[0] = env.getNativePointer(); // JNIEnv*
 
-        if (getMethod().isStatic()) {
-            nativeArgs[1] = toObjectHandle(env, getDeclaringKlass().mirror()); // class
+        if (getMethodVersion().isStatic()) {
+            nativeArgs[1] = toObjectHandle(env, getMethodVersion().getDeclaringKlass().mirror()); // class
         } else {
             nativeArgs[1] = toObjectHandle(env, args[0]); // receiver
         }
 
-        int skipReceiver = getMethod().isStatic() ? 0 : 1;
+        int skipReceiver = getMethodVersion().isStatic() ? 0 : 1;
         for (int i = 0; i < paramCount; ++i) {
             Symbol<Type> paramType = Signatures.parameterType(parsedSignature, i);
             if (Types.isReference(paramType)) {
@@ -96,12 +96,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
     }
 
     @Override
-    void initializeBody(VirtualFrame frame) {
-        // nop
-    }
-
-    @Override
-    public Object executeBody(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         final JniEnv env = getContext().getJNI();
         int nativeFrame = env.getHandles().pushFrame();
         NATIVE_METHOD_CALLS.inc();
@@ -133,10 +128,10 @@ public final class NativeMethodNode extends EspressoMethodNode {
         }
     }
 
-    protected Object processResult(JniEnv env, Object result) {
+    private Object processResult(JniEnv env, Object result) {
         // JNI exception handling.
         maybeThrowAndClearPendingException(env);
-        Symbol<Type> returnType = Signatures.returnType(getMethod().getParsedSignature());
+        Symbol<Type> returnType = Signatures.returnType(getMethodVersion().getMethod().getParsedSignature());
         if (Types.isReference(returnType)) {
             long addr;
             if (result instanceof Long) {

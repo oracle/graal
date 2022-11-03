@@ -29,6 +29,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.BitSet;
 import java.util.TreeMap;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
@@ -42,7 +44,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -198,16 +200,32 @@ public class CodeInfoEncoder {
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
+        EconomicSet<Integer> infopointOffsets = EconomicSet.create(Equivalence.DEFAULT);
+        EconomicSet<Long> deoptEntryBcis = EconomicSet.create(Equivalence.DEFAULT);
         /* Make entries for all calls and deoptimization entry points of the method. */
         for (Infopoint infopoint : compilation.getInfopoints()) {
             final DebugInfo debugInfo = infopoint.debugInfo;
             if (debugInfo != null) {
                 final int offset = getEntryOffset(infopoint);
                 if (offset >= 0) {
+                    boolean added = infopointOffsets.add(offset);
+                    if (!added) {
+                        throw VMError.shouldNotReachHere("Encoding two infopoints at same offset. Conflicting infopoint: " + infopoint);
+                    }
                     IPData entry = makeEntry(offset + compilationOffset);
                     assert entry.referenceMap == null && entry.frameData == null;
                     entry.referenceMap = (ReferenceMapEncoder.Input) debugInfo.getReferenceMap();
-                    entry.frameData = frameInfoEncoder.addDebugInfo(method, infopoint, totalFrameSize);
+                    entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
+                    if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
+                        BytecodeFrame frame = debugInfo.frame();
+                        long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+                        added = deoptEntryBcis.add(encodedBci);
+                        if (!added) {
+                            String errorMessage = String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)\nmethod: %s", encodedBci, FrameInfoDecoder.readableBci(encodedBci),
+                                            method);
+                            throw VMError.shouldNotReachHere(errorMessage);
+                        }
+                    }
                 }
             }
         }

@@ -25,16 +25,14 @@
  */
 package com.oracle.svm.core.jfr.logging;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_LogTag {
@@ -45,14 +43,9 @@ final class Target_jdk_jfr_internal_LogTag {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ComputeTagSetLevel implements RecomputeFieldValue.CustomFieldValueComputer {
+class ComputeTagSetLevel implements FieldValueTransformer {
     @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         // Reset the value as it gets set during the image build.
         return JfrLogConfiguration.JfrLogLevel.OFF.level;
     }

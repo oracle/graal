@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.loop.phases;
 
 import java.util.EnumSet;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -32,6 +33,7 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -40,6 +42,8 @@ import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -50,7 +54,6 @@ import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -69,6 +72,7 @@ import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -115,7 +119,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * speculation log entry is associated with the hoisted guard such that when it fails, the same
  * guard hoisting will not be performed in a subsequent compilation.
  */
-public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> {
+public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase {
 
     public SpeculativeGuardMovementPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
@@ -134,31 +138,38 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     private static final int MAX_ITERATIONS = 3;
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.GUARD_MOVEMENT, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed"));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
-        try {
-            if (!graph.getGuardsStage().allowsFloatingGuards()) {
-                return;
-            }
-            EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
-            for (int i = 0; i < MAX_ITERATIONS; i++) {
-                boolean iterate = false;
-                try (NodeEventScope news = graph.trackNodeEvents(change)) {
-                    if (graph.getDebug().isCountEnabled()) {
-                        DebugContext.counter("SpeculativeGuardMovement_Iteration" + i).increment(graph.getDebug());
-                    }
-                    LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-                    loops.detectCountedLoops();
-                    iterate = performSpeculativeGuardMovement(context, graph, loops);
+        EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
+        for (int i = 0; i < MAX_ITERATIONS; i++) {
+            boolean iterate = false;
+            try (NodeEventScope news = graph.trackNodeEvents(change)) {
+                if (graph.getDebug().isCountEnabled()) {
+                    DebugContext.counter("SpeculativeGuardMovement_Iteration" + i).increment(graph.getDebug());
                 }
-                if (change.getNodes().isEmpty() || !iterate) {
-                    break;
-                }
-                change.getNodes().clear();
+                LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
+                loops.detectCountedLoops();
+                iterate = performSpeculativeGuardMovement(context, graph, loops);
             }
-        } finally {
-            graph.setAfterStage(StageFlag.GUARD_MOVEMENT);
+            if (change.getNodes().isEmpty() || !iterate) {
+                break;
+            }
+            change.getNodes().clear();
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.GUARD_MOVEMENT);
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
@@ -174,7 +185,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess, boolean ignoreFrequency) {
-        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess, ignoreFrequency);
+        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess,
+                        ignoreFrequency);
         spec.run();
         return spec.iterate;
     }
@@ -340,63 +352,64 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return false;
         }
 
+        @SuppressWarnings("try")
         private void optimizeCompare(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardNode guard) {
-            bound.getDebug().log("optimizeCompare(%s, %s, %s, %b) in %s", compare, iv, bound, mirrored, graph.method());
             CountedLoopInfo countedLoop = iv.getLoop().counted();
             GuardingNode overflowGuard = countedLoop.getOverFlowGuard();
-            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
-            LogicNode newCompare;
-            ValueNode extremum = iv.extremumNode(true, StampFactory.forKind(JavaKind.Long));
-            GuardedValueNode guardedExtremum = graph.unique(new GuardedValueNode(extremum, overflowGuard));
-            // guardedExtremum |<| longBound && iv.initNode() |<| bound
-            ValueNode y1 = longBound;
-            ValueNode y2 = bound;
-            ValueNode x1 = guardedExtremum;
-            ValueNode x2 = iv.initNode();
-            if (mirrored) {
-                // longBound |<| guardedExtremum && bound |<| iv.initNode()
-                x1 = longBound;
-                y1 = guardedExtremum;
-                x2 = bound;
-                y2 = iv.initNode();
-            }
-            LogicNode test1;
-            LogicNode test2;
-            if (compare instanceof IntegerBelowNode) {
-                test1 = graph.unique(new IntegerBelowNode(x1, y1));
-                test2 = graph.unique(new IntegerBelowNode(x2, y2));
-            } else {
-                assert compare instanceof IntegerLessThanNode;
-                test1 = graph.unique(new IntegerLessThanNode(x1, y1));
-                test2 = graph.unique(new IntegerLessThanNode(x2, y2));
-            }
-            newCompare = ShortCircuitOrNode.and(test1, guard.isNegated(), test2, guard.isNegated(), BranchProbabilityData.unknown());
+            try (DebugCloseable position = compare.withNodeSourcePosition()) {
+                ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
+                LogicNode newCompare;
+                ValueNode extremum = iv.extremumNode(true, StampFactory.forKind(JavaKind.Long));
+                GuardedValueNode guardedExtremum = graph.unique(new GuardedValueNode(extremum, overflowGuard));
+                // guardedExtremum |<| longBound && iv.initNode() |<| bound
+                ValueNode y1 = longBound;
+                ValueNode y2 = bound;
+                ValueNode x1 = guardedExtremum;
+                ValueNode x2 = iv.initNode();
+                if (mirrored) {
+                    // longBound |<| guardedExtremum && bound |<| iv.initNode()
+                    x1 = longBound;
+                    y1 = guardedExtremum;
+                    x2 = bound;
+                    y2 = iv.initNode();
+                }
+                LogicNode test1;
+                LogicNode test2;
+                if (compare instanceof IntegerBelowNode) {
+                    test1 = graph.unique(new IntegerBelowNode(x1, y1));
+                    test2 = graph.unique(new IntegerBelowNode(x2, y2));
+                } else {
+                    assert compare instanceof IntegerLessThanNode;
+                    test1 = graph.unique(new IntegerLessThanNode(x1, y1));
+                    test2 = graph.unique(new IntegerLessThanNode(x2, y2));
+                }
+                newCompare = ShortCircuitOrNode.and(test1, guard.isNegated(), test2, guard.isNegated(), BranchProbabilityData.unknown());
 
-            /*
-             * the fact that the guard was negated was integrated in the ShortCircuitOr so it needs
-             * to be reset here
-             */
-            if (guard.isNegated()) {
-                guard.negate();
-            }
+                /*
+                 * the fact that the guard was negated was integrated in the ShortCircuitOr so it
+                 * needs to be reset here
+                 */
+                if (guard.isNegated()) {
+                    guard.negate();
+                }
 
-            boolean createLoopEnteredCheck = true;
-            if (isInverted(iv.getLoop())) {
-                createLoopEnteredCheck = false;
-            }
-            if (createLoopEnteredCheck) {
-                newCompare = createLoopEnterCheck(countedLoop, newCompare);
-            }
+                boolean createLoopEnteredCheck = true;
+                if (isInverted(iv.getLoop())) {
+                    createLoopEnteredCheck = false;
+                }
+                if (createLoopEnteredCheck) {
+                    newCompare = createLoopEnterCheck(countedLoop, newCompare);
+                }
 
-            guard.replaceFirstInput(compare, newCompare);
-            GuardingNode loopBodyGuard = MultiGuardNode.combine(guard, countedLoop.getBody());
-            for (ValueNode usage : guard.usages().filter(ValueNode.class).snapshot()) {
-                if (usage != loopBodyGuard) {
-                    usage.replaceFirstInput(guard, loopBodyGuard.asNode());
+                guard.replaceFirstInput(compare, newCompare);
+                GuardingNode loopBodyGuard = MultiGuardNode.combine(guard, countedLoop.getBody());
+                for (ValueNode usage : guard.usages().filter(ValueNode.class).snapshot()) {
+                    if (usage != loopBodyGuard) {
+                        usage.replaceFirstInput(guard, loopBodyGuard.asNode());
+                    }
                 }
             }
-
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After optimizing compare at %s", guard);
+            graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "CompareOptimization", compare);
         }
 
         private LogicNode createLoopEnterCheck(CountedLoopInfo countedLoop, LogicNode newCompare) {
@@ -569,6 +582,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             Loop<Block> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
             if (hoistAbove != null) {
                 compare.setProfile(compare.profile(), hoistAbove.getHeader().getDominator().getBeginNode());
+                graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "InstanceOfOptimization", compare);
                 return hoistAbove;
             }
             return null;

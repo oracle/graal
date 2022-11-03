@@ -150,7 +150,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     @Test
     public void propertyId() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty property = new DefaultStaticProperty("property");
             builder.property(property, int.class, false);
@@ -191,7 +191,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             p1.setInt(staticObject, 1);
             p2.setInt(staticObject, 2);
 
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
             Class<?> staticObjectClass = staticObject.getClass();
             Assert.assertEquals(1, staticObjectClass.getField("field0").get(staticObject));
             Assert.assertEquals(2, staticObjectClass.getField("field1").get(staticObject));
@@ -201,7 +201,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     @Test
     public void propertyFinal() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
 
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty p1 = new DefaultStaticProperty("p1");
@@ -221,7 +221,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     @SuppressWarnings("rawtypes")
     public void propertyKind() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             Class[] types = new Class[]{
                             boolean.class,
@@ -261,7 +261,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
 
     private static void testPrivatePropertyType(TestConfiguration config, Class<?> privateType) throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
             // We run unit tests with Graal on a GraalJDK with disabled Locator and the Truffle API
             // jar in the boot class path. As a consequence, generated classes do not have
             // visibility of classes loaded by the application class loader.
@@ -297,7 +297,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     @Test
     public void propertyOfArrayType() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             DefaultStaticProperty arrayProperty = new DefaultStaticProperty("intArray");
             builder.property(arrayProperty, int[].class, false);

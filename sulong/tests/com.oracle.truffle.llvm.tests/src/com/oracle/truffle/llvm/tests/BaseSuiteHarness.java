@@ -34,6 +34,8 @@ import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
+import com.oracle.truffle.llvm.tests.util.ProcessUtil.TestEngineMode;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
@@ -67,6 +69,8 @@ import java.util.stream.Stream;
  */
 public abstract class BaseSuiteHarness {
 
+    static TestEngineMode testEngineMode;
+
     /**
      * The absolute path to the test case. The test case is always a directory containing
      * {@link #getIsExecutableFilter() a reference executable} and {@link #getIsSulongFilter()
@@ -98,7 +102,6 @@ public abstract class BaseSuiteHarness {
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
     private static final Map<String, String> ignoredTests = new HashMap<>();
-    private static Engine engine;
 
     /**
      * Maximum retries on timeout of the reference executable.
@@ -107,7 +110,7 @@ public abstract class BaseSuiteHarness {
      */
     private static final int MAX_RETRIES = 3;
 
-    protected Function<Context.Builder, CaptureOutput> getCaptureOutput() {
+    protected static Function<Context.Builder, CaptureOutput> getCaptureOutput() {
         return TestEngineConfig.getInstance().getCaptureOutput();
     }
 
@@ -165,13 +168,20 @@ public abstract class BaseSuiteHarness {
     }
 
     @BeforeClass
-    public static void createEngine() {
-        engine = Engine.newBuilder().allowExperimentalOptions(true).options(TestEngineConfig.getInstance().getEngineOptions()).build();
+    public static void createEngine() throws IOException {
+        if (TestOptions.TEST_AOT_IMAGE != null) {
+            testEngineMode = new ProcessUtil.AOTEngineMode();
+        } else if (Platform.isWindows()) {
+            testEngineMode = new ProcessUtil.SeparateProcessEngineMode();
+        } else {
+            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).options(TestEngineConfig.getInstance().getEngineOptions()).build();
+            testEngineMode = new ProcessUtil.CachedEngineMode(engine, getCaptureOutput());
+        }
     }
 
     @AfterClass
     public static void disposeEngine() {
-        engine.close();
+        testEngineMode.close();
     }
 
     private void runCandidate(Path referenceBinary, ProcessResult referenceResult, Path candidateBinary) {
@@ -185,16 +195,14 @@ public abstract class BaseSuiteHarness {
         String[] inputArgs = getInputArgs(candidateBinary);
         ProcessResult result;
         try {
-            assert engine != null;
-            result = ProcessUtil.executeSulongTestMainSameEngine(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(candidateBinary.toAbsolutePath().toString()),
-                            getCaptureOutput(), engine, evaluateSourceOnly());
+            result = testEngineMode.run(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(candidateBinary.toAbsolutePath().toString()), evaluateSourceOnly());
         } catch (Exception e) {
             throw fail(getTestName(), new Exception("Candidate binary that failed: " + candidateBinary, e));
         }
 
         int sulongRet = result.getReturnValue();
         if (sulongRet != (sulongRet & 0xFF)) {
-            throw fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value: " + sulongRet));
+            throw fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value: " + sulongRet + "\n" + result.toString()));
         }
 
         if (referenceBinary != null) {
@@ -226,6 +234,7 @@ public abstract class BaseSuiteHarness {
     @Test
     public void test() throws IOException {
         assumeNotExcluded();
+
         Path referenceBinary = null;
         ProcessResult referenceResult = null;
         if (TestEngineConfig.getInstance().runReference()) {

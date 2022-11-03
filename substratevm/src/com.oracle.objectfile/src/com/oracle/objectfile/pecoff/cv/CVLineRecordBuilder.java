@@ -27,7 +27,7 @@
 package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
 
 import java.util.Iterator;
@@ -41,7 +41,7 @@ public class CVLineRecordBuilder {
 
     private final CVDebugInfo cvDebugInfo;
     private CVLineRecord lineRecord;
-    private PrimaryEntry primaryEntry;
+    private CompiledMethodEntry compiledEntry;
 
     CVLineRecordBuilder(CVDebugInfo cvDebugInfo) {
         this.cvDebugInfo = cvDebugInfo;
@@ -57,16 +57,16 @@ public class CVLineRecordBuilder {
      * @param entry function to build line number table for
      * @return CVLineRecord containing any entries generated, or null if no entries generated
      */
-    CVLineRecord build(PrimaryEntry entry) {
-        this.primaryEntry = entry;
-        Range primaryRange = primaryEntry.getPrimary();
+    CVLineRecord build(CompiledMethodEntry entry) {
+        this.compiledEntry = entry;
+        Range primaryRange = compiledEntry.getPrimary();
 
         debug("DEBUG_S_LINES linerecord for 0x%05x file: %s:%d", primaryRange.getLo(), primaryRange.getFileName(), primaryRange.getLine());
         this.lineRecord = new CVLineRecord(cvDebugInfo, primaryRange.getSymbolName());
         debug("CVLineRecord.computeContents: processing primary range %s", primaryRange);
 
         processRange(primaryRange);
-        Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
         while (iterator.hasNext()) {
             Range subRange = iterator.next();
             debug("CVLineRecord.computeContents: processing range %s", subRange);
@@ -101,9 +101,9 @@ public class CVLineRecordBuilder {
         }
 
         /* Add line record. */
-        int lineLoAddr = range.getLo() - primaryEntry.getPrimary().getLo();
+        int lineLoAddr = range.getLo() - compiledEntry.getPrimary().getLo();
         int line = Math.max(range.getLine(), 1);
-        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - primaryEntry.getPrimary().getLo(), line);
+        debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.getPrimary().getLo(), line);
         lineRecord.addNewLine(lineLoAddr, line);
     }
 }

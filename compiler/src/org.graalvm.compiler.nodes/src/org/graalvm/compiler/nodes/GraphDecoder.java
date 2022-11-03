@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder.MethodScope;
 import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
@@ -125,6 +127,7 @@ public class GraphDecoder {
          */
         public MergeNode loopExplosionHead;
 
+        @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.callerLoopScope = callerLoopScope;
             this.methodStartMark = graph.getMark();
@@ -135,7 +138,8 @@ public class GraphDecoder {
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
                 maxFixedNodeOrderId = reader.getUVInt();
-                graph.setGuardsStage((StructuredGraph.GuardsStage) readObject(this));
+                graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
+                graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
                 int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
                     int[] nodeStartOffsets = new int[nodeCount];

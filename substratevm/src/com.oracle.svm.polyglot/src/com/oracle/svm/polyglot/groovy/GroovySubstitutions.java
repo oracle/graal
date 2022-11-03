@@ -29,12 +29,10 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
 final class GroovyIndyInterfaceFeature implements Feature {
 
     static final class IsEnabled implements BooleanSupplier {

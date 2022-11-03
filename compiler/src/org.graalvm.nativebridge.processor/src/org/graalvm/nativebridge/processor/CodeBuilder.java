@@ -225,6 +225,10 @@ final class CodeBuilder {
         return write(memberName);
     }
 
+    CodeBuilder memberSelect(TypeMirror clazz, CharSequence memberName, boolean brackets) {
+        return memberSelect(new CodeBuilder(this).write(clazz).build(), memberName, brackets);
+    }
+
     CodeBuilder parameterizedType(DeclaredType parameterizedType, TypeMirror... actualTypeParameters) {
         write(types.erasure(parameterizedType));
         write("<");
@@ -282,6 +286,41 @@ final class CodeBuilder {
             write(")");
         }
         return this;
+    }
+
+    CodeBuilder forLoop(List<? extends CharSequence> init, CharSequence termination, List<? extends CharSequence> increment) {
+        write("for(");
+        boolean firstStm = true;
+        for (CharSequence initStm : init) {
+            if (firstStm) {
+                firstStm = false;
+            } else {
+                write(",");
+                space();
+            }
+            write(initStm);
+        }
+        write(";");
+        if (termination != null) {
+            space();
+            write(termination);
+        }
+        write(";");
+        firstStm = true;
+        for (CharSequence incrementStm : increment) {
+            if (firstStm) {
+                firstStm = false;
+            } else {
+                write(",");
+            }
+            space();
+            write(incrementStm);
+        }
+        return write(")");
+    }
+
+    CodeBuilder arrayElement(CharSequence array, CharSequence index) {
+        return write(array).write("[").write(index).write("]");
     }
 
     CodeBuilder writeAnnotationAttributeValue(Object value) {

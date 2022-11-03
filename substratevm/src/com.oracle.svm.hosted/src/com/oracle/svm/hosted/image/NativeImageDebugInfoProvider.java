@@ -29,10 +29,12 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeCh
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 import java.lang.reflect.Modifier;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +44,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.UniqueShortNameProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -67,7 +70,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
@@ -107,7 +109,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
-import java.util.HashMap;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
@@ -246,12 +247,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      */
     public long objectOffset(JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
-        if (constant instanceof SubstrateObjectConstant) {
-            Object object = SubstrateObjectConstant.asObject(constant);
-            ObjectInfo objectInfo = heap.getObjectInfo(object);
-            if (objectInfo != null) {
-                return objectInfo.getAddress();
-            }
+        ObjectInfo objectInfo = heap.getConstantInfo(constant);
+        if (objectInfo != null) {
+            return objectInfo.getAddress();
         }
         return -1;
     }
@@ -351,7 +349,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                if (filePath == null && hostedType instanceof HostedInstanceClass) {
+                    // conjure up an appropriate, unique file name to keep tools happy
+                    // even though we cannot find a corresponding source
+                    filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
+                }
+                fullFilePath = filePath;
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
@@ -419,6 +423,23 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public Path cachePath() {
             return cachePath;
         }
+    }
+
+    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+        String[] elements = hostedInstanceClass.toJavaName().split("\\.");
+        int count = elements.length;
+        String name = elements[count - 1];
+        while (name.startsWith("$")) {
+            name = name.substring(1);
+        }
+        if (name.contains("$")) {
+            name = name.substring(0, name.indexOf('$'));
+        }
+        if (name.equals("")) {
+            name = "_nofile_";
+        }
+        elements[count - 1] = name + ".java";
+        return FileSystems.getDefault().getPath("", elements);
     }
 
     private abstract class NativeImageDebugTypeInfo extends NativeImageDebugFileInfo implements DebugTypeInfo {
@@ -647,6 +668,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int headerSize() {
             return getObjectLayout().getFirstFieldOffset();
+        }
+
+        @Override
+        public String loaderName() {
+
+            return UniqueShortNameProvider.singleton().uniqueShortLoaderName(hostedType.getJavaClass().getClassLoader());
         }
 
         @Override
@@ -889,6 +916,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     protected abstract class NativeImageDebugBaseMethodInfo extends NativeImageDebugFileInfo implements DebugMethodInfo {
         protected final ResolvedJavaMethod method;
+        protected int line;
         protected final List<DebugLocalInfo> paramInfo;
         protected final DebugLocalInfo thisParamInfo;
 
@@ -902,7 +930,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // method references in node source positions. So, we do the translation
             // here just to make sure we use a HostedMethod wherever possible.
             method = promoteAnalysisToHosted(m);
-            this.paramInfo = createParamInfo(method);
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : 0);
+            this.paramInfo = createParamInfo(method, line);
             // We use the target modifiers to decide where to install any first param
             // even though we may have added it according to whether method is static.
             // That's because in a few special cases method is static but the original
@@ -1051,7 +1081,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method instanceof HostedMethod) {
                 return ((HostedMethod) method).isDeoptTarget();
             }
-            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+            return name().endsWith(HostedMethod.MULTI_METHOD_KEY_SEPARATOR);
         }
 
         @Override
@@ -1084,13 +1114,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private List<DebugLocalInfo> createParamInfo(ResolvedJavaMethod method) {
+    private List<DebugLocalInfo> createParamInfo(ResolvedJavaMethod method, int line) {
         Signature signature = method.getSignature();
         int parameterCount = signature.getParameterCount(false);
         List<DebugLocalInfo> paramInfos = new ArrayList<>(parameterCount);
         LocalVariableTable table = method.getLocalVariableTable();
-        LineNumberTable lineNumberTable = method.getLineNumberTable();
-        int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
         int slot = 0;
         ResolvedJavaType ownerType = method.getDeclaringClass();
         if (!method.isStatic()) {
@@ -1136,6 +1164,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         NativeImageDebugHostedMethodInfo(HostedMethod method) {
             super(method);
             this.hostedMethod = method;
+        }
+
+        @Override
+        public int line() {
+            return line;
         }
 
         @Override
@@ -1193,15 +1226,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int addressHi() {
             return hostedMethod.getCodeAddressOffset() + compilation.getTargetCodeSize();
-        }
-
-        @Override
-        public int line() {
-            LineNumberTable lineNumberTable = hostedMethod.getLineNumberTable();
-            if (lineNumberTable != null) {
-                return lineNumberTable.getLineNumber(0);
-            }
-            return -1;
         }
 
         @Override
@@ -1747,12 +1771,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     JavaKind storageKind = (slot < frame.numLocals ? frame.getLocalValueKind(slot) : JavaKind.Illegal);
                     debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
                     int bciStart = l.getStartBCI();
-                    int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(bciStart) : -1);
+                    int firstLine = (lineNumberTable != null ? lineNumberTable.getLineNumber(bciStart) : -1);
                     // only add the local if the kinds match
                     if ((storageKind == kind) ||
                                     isIntegralKindPromotion(storageKind, kind) ||
                                     (isPseudoObjectType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
-                        localInfos.add(new NativeImageDebugLocalValueInfo(name, value, framesize, storageKind, type, slot, line));
+                        localInfos.add(new NativeImageDebugLocalValueInfo(name, value, framesize, storageKind, type, slot, firstLine));
                     } else if (storageKind != JavaKind.Illegal) {
                         debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind());
                     }
@@ -1767,7 +1791,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             ArrayList<DebugLocalValueInfo> localInfos = new ArrayList<>();
             LocalVariableTable table = method.getLocalVariableTable();
             LineNumberTable lineNumberTable = method.getLineNumberTable();
-            int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
+            int firstLine = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
             int slot = 0;
             int localIdx = 0;
             ResolvedJavaType ownerType = method.getDeclaringClass();
@@ -1779,7 +1803,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
-                localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, ownerType, slot, line));
+                localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, ownerType, slot, firstLine));
                 slot += storageKind.getSlotCount();
                 localIdx++;
             }
@@ -1792,7 +1816,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
-                localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, paramType, slot, line));
+                localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, paramType, slot, firstLine));
                 slot += storageKind.getSlotCount();
                 localIdx++;
             }

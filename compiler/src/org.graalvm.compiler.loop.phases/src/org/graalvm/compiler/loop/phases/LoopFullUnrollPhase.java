@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,15 @@ package org.graalvm.compiler.loop.phases;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
@@ -109,7 +111,6 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
         return budget;
     }
 
-    private static final CounterKey FULLY_UNROLLED_LOOPS = DebugContext.counter("FullUnrolls");
     public static final Comparator<LoopEx> LOOP_COMPARATOR;
     static {
         ToDoubleFunction<LoopEx> loopFreq = e -> e.loop().getHeader().getFirstPredecessor().getRelativeFrequency();
@@ -119,6 +120,14 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
 
     public LoopFullUnrollPhase(CanonicalizerPhase canonicalizer, LoopPolicies policies) {
         super(policies, canonicalizer);
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState));
     }
 
     @Override
@@ -143,10 +152,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                                 double budgetForSize = getBudget(graphSizeBefore, graph.getOptions());
                                 maxGraphSize = (int) (graphSizeBefore * budgetForSize);
                             }
-                            debug.log("FullUnroll %s", loop);
                             LoopTransformations.fullUnroll(loop, context, canonicalizer);
-                            FULLY_UNROLLED_LOOPS.increment(debug);
-                            debug.dump(DebugContext.DETAILED_LEVEL, graph, "FullUnroll %s", loop);
                             peeled = true;
                             break;
                         }

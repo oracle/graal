@@ -59,13 +59,13 @@ public class InheritanceTest extends StaticObjectModelTest {
 
     @Parameterized.Parameter public TestConfiguration config;
 
-    public static class CustomStaticObject {
+    public static class CustomStaticObject1 {
         public byte field1;
         public boolean field2;
     }
 
-    public interface CustomStaticObjectFactory {
-        CustomStaticObject create();
+    public interface CustomStaticObjectFactory1 {
+        CustomStaticObject1 create();
     }
 
     @Test
@@ -74,8 +74,8 @@ public class InheritanceTest extends StaticObjectModelTest {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty property = new DefaultStaticProperty("field1");
             builder.property(property, int.class, false);
-            StaticShape<CustomStaticObjectFactory> shape = builder.build(CustomStaticObject.class, CustomStaticObjectFactory.class);
-            CustomStaticObject object = shape.getFactory().create();
+            StaticShape<CustomStaticObjectFactory1> shape = builder.build(CustomStaticObject1.class, CustomStaticObjectFactory1.class);
+            CustomStaticObject1 object = shape.getFactory().create();
 
             // Set to the field declared in the super class
             object.field1 = 42;
@@ -86,10 +86,10 @@ public class InheritanceTest extends StaticObjectModelTest {
             // Get the value of the field declared in the generated class
             Assert.assertEquals(24, property.getInt(object));
 
-            Assume.assumeTrue(te.isFieldBased());
-            // `CustomStaticObject.field1` is shadowed
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
+            // `CustomStaticObject1.field1` is shadowed
             Assert.assertEquals(int.class, object.getClass().getField("field1").getType());
-            // `CustomStaticObject.field2` is visible
+            // `CustomStaticObject1.field2` is visible
             Assert.assertEquals(boolean.class, object.getClass().getField("field2").getType());
         }
     }
@@ -125,8 +125,108 @@ public class InheritanceTest extends StaticObjectModelTest {
             Assert.assertEquals(1, s1p1.getInt(object));
             Assert.assertEquals(3, s2p1.getInt(object));
 
-            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeTrue(te.supportsReflectiveAccesses());
             Assert.assertEquals(3, object.getClass().getField("field1").getInt(object));
+        }
+    }
+
+    public static class CustomStaticObject2 {
+        private final long longField;
+        private final Object objField;
+
+        protected CustomStaticObject2(long longField, Object objField) {
+            this.longField = longField;
+            this.objField = objField;
+        }
+
+        long getLongField() {
+            return longField;
+        }
+
+        Object getObjField() {
+            return objField;
+        }
+    }
+
+    public interface CustomStaticObjectFactory2 {
+        CustomStaticObject2 create(long longField, Object objField);
+    }
+
+    @Test
+    @SuppressWarnings("unused")
+    public void accessObjField() {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            for (int i = 0; i < 50_000; i++) {
+                long longArg = 12345L;
+                Object objArg = new Object();
+
+                // 1. Create a parent shape that can allocate static objects that extend
+                // `CustomStaticObject2`
+                StaticShape.Builder parentBuilder = StaticShape.newBuilder(te.testLanguage);
+                StaticShape<CustomStaticObjectFactory2> parentShape = parentBuilder.build(CustomStaticObject2.class, CustomStaticObjectFactory2.class);
+
+                // 2. Allocate a static object of the parent shape.
+                // Arguments are passed to the static object factory, which passes them to the
+                // constructor of the static object, which passes them to the constructor of its
+                // super class (`CustomStaticObject2`).
+                CustomStaticObject2 parentObject = parentShape.getFactory().create(longArg, objArg);
+
+                // 3. Create a child static shape that extends the parent shape.
+                // To reproduce GR-41414 it is necessary that the child shape is created after we
+                // allocated the static object of the parent shape. It is not necessary to allocate
+                // a static object of the child shape.
+                StaticShape.Builder childBuilder = StaticShape.newBuilder(te.testLanguage);
+                StaticShape<CustomStaticObjectFactory2> childShape = childBuilder.build(parentShape);
+
+                // 4. Check that `getObjField()` returns the same instance that we passed to the
+                // factory.
+                Object obj = parentObject.getObjField();
+                if (obj != objArg) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Error at iteration ").append(i).append(": Fields do not match\n");
+                    sb.append("Expected class: ").append(objArg.getClass());
+                    sb.append("\tGot: ").append(obj == null ? "null" : obj.getClass()).append("\n");
+                    sb.append("Expected hashCode: ").append(System.identityHashCode(objArg));
+                    sb.append("\tGot: ").append(System.identityHashCode(obj));
+                    Assert.fail(sb.toString());
+                }
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unused")
+    public void accessLongField() {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            for (int i = 0; i < 50_000; i++) {
+                long longArg = 12345L;
+                Object objArg = new Object();
+
+                // 1. Create a parent shape that can allocate static objects that extend
+                // `CustomStaticObject2`
+                StaticShape.Builder parentBuilder = StaticShape.newBuilder(te.testLanguage);
+                StaticShape<CustomStaticObjectFactory2> parentShape = parentBuilder.build(CustomStaticObject2.class, CustomStaticObjectFactory2.class);
+
+                // 2. Allocate a static object of the parent shape.
+                // `objArg` is passed to the static object factory, which passes it to the
+                // constructor of the static object, which passes it to the constructor of its
+                // super class (`CustomStaticObject2`).
+                CustomStaticObject2 parentObject = parentShape.getFactory().create(longArg, objArg);
+
+                // 3. Create a child static shape that extends the parent shape.
+                StaticShape.Builder childBuilder = StaticShape.newBuilder(te.testLanguage);
+                StaticShape<CustomStaticObjectFactory2> childShape = childBuilder.build(parentShape);
+
+                // 4. Check that `getLongField()` returns the same instance that we passed to the
+                // factory.
+                long l = parentObject.getLongField();
+                if (l != longArg) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Error at iteration ").append(i).append(": Fields do not match\n");
+                    sb.append("Expected value: ").append(longArg).append("\tGot: ").append(l);
+                    Assert.fail(sb.toString());
+                }
+            }
         }
     }
 }

@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
@@ -40,5 +43,16 @@ public class HighTierLoweringPhase extends LoweringPhase {
 
     public HighTierLoweringPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, StageFlag.HIGH_TIER_LOWERING);
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        // GR-38655: {@link BranchProbabilityNode}s require a canonicalization
+                        // before being lowered.
+                        NotApplicable.when(graphState.requiresFutureStage(StageFlag.CANONICALIZATION),
+                                        "This phase must run after a %s", StageFlag.CANONICALIZATION));
     }
 }

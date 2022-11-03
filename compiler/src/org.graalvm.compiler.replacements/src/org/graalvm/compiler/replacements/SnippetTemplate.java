@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -95,6 +94,8 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -110,12 +111,11 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ProfileData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -146,7 +146,6 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
-import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -576,6 +575,10 @@ public class SnippetTemplate {
         protected SnippetParameterInfo info() {
             return snippetParameterInfo;
         }
+
+        public EagerSnippetInfo copyWith(ResolvedJavaMethod newMethod) {
+            return new EagerSnippetInfo(newMethod, original, privateLocations, receiver, snippetParameterInfo);
+        }
     }
 
     /**
@@ -849,35 +852,21 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
         protected final OptionValues options;
-        protected final Replacements replacements;
-        protected final Providers providers;
-        protected final MetaAccessProvider metaAccess;
+        private final SnippetReflectionProvider snippetReflection;
         private final Map<CacheKey, SnippetTemplate> templates;
+
+        private final boolean shouldTrackNodeSourcePosition;
 
         protected AbstractTemplates(OptionValues options, Providers providers) {
             this.options = options;
-            this.providers = providers;
-            this.metaAccess = providers.getMetaAccess();
-            this.replacements = providers.getReplacements();
+            this.snippetReflection = providers.getSnippetReflection();
+            this.shouldTrackNodeSourcePosition = providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints();
             if (Options.UseSnippetTemplateCache.getValue(options)) {
                 int size = Options.MaxTemplatesPerSnippet.getValue(options);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
             } else {
                 this.templates = null;
             }
-        }
-
-        public MetaAccessProvider getMetaAccess() {
-            return metaAccess;
-        }
-
-        public static Method findMethod(Class<?> declaringClass, String methodName, Method except) {
-            for (Method m : declaringClass.getDeclaredMethods()) {
-                if (m.getName().equals(methodName) && !m.equals(except)) {
-                    return m;
-                }
-            }
-            return null;
         }
 
         public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
@@ -899,19 +888,37 @@ public class SnippetTemplate {
             return result;
         }
 
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
-            return snippet(declaringClass, methodName, null, null, initialPrivateLocations);
-        }
-
         /**
          * Finds the unique method in {@code declaringClass} named {@code methodName} annotated by
          * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
          * exactly one snippet method in {@code declaringClass} with a given name.
+         *
+         * The snippet found must have {@link ProfileSource#isTrusted(ProfileSource)} known profiles
+         * for all {@link IfNode} in the {@link StructuredGraph}.
          */
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver,
+        protected SnippetInfo snippet(Providers providers,
+                        Class<? extends Snippets> declaringClass,
+                        String methodName,
+                        LocationIdentity... initialPrivateLocations) {
+            return snippet(providers,
+                            declaringClass,
+                            methodName,
+                            null,
+                            null,
+                            initialPrivateLocations);
+        }
+
+        /**
+         * See {@link #snippet(Providers, Class, String, LocationIdentity...)} for details.
+         */
+        protected SnippetInfo snippet(Providers providers,
+                        Class<? extends Snippets> declaringClass,
+                        String methodName,
+                        ResolvedJavaMethod original,
+                        Object receiver,
                         LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
-            ResolvedJavaMethod javaMethod = findMethod(getMetaAccess(), declaringClass, methodName);
+            ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
             assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
@@ -923,27 +930,30 @@ public class SnippetTemplate {
             }
         }
 
-        private DebugContext openSnippetDebugContext(DebugContext outer, Arguments args) {
-            return replacements.openSnippetDebugContext("SnippetTemplate_", args.cacheKey.method, outer, options);
-        }
-
         /**
          * Gets a template for a given key, creating it first if necessary.
          */
         @SuppressWarnings("try")
-        public SnippetTemplate template(ValueNode replacee, final Arguments args) {
+        public SnippetTemplate template(CoreProviders context, ValueNode replacee, final Arguments args) {
             StructuredGraph graph = replacee.graph();
             DebugContext outer = graph.getDebug();
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null || (graph.trackNodeSourcePosition() && !template.snippet.trackNodeSourcePosition())) {
-                try (DebugContext debug = openSnippetDebugContext(outer, args)) {
+                try (DebugContext debug = context.getReplacements().openSnippetDebugContext("SnippetTemplate_", args.cacheKey.method, outer, options)) {
                     try (DebugCloseable a = SnippetTemplateCreationTime.start(outer);
                                     DebugCloseable a2 = args.info.creationTimer.start(outer);
                                     DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
                         SnippetTemplates.increment(outer);
                         args.info.creationCounter.increment(outer);
                         OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
-                        template = new SnippetTemplate(snippetOptions, debug, providers, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
+                        template = new SnippetTemplate(snippetOptions,
+                                        debug,
+                                        context,
+                                        snippetReflection,
+                                        args,
+                                        graph.trackNodeSourcePosition() || shouldTrackNodeSourcePosition,
+                                        replacee,
+                                        createMidTierPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
                         }
@@ -963,7 +973,7 @@ public class SnippetTemplate {
          * {@link #template} creation. These phases are only run for snippets lowered in the
          * low-tier lowering.
          */
-        protected PhaseSuite<Providers> createMidTierPhases() {
+        protected PhaseSuite<CoreProviders> createMidTierPhases() {
             return null;
         }
     }
@@ -993,16 +1003,26 @@ public class SnippetTemplate {
      * Creates a snippet template.
      */
     @SuppressWarnings("try")
-    protected SnippetTemplate(OptionValues options, DebugContext debug, final Providers providers, Arguments args, boolean trackNodeSourcePosition,
-                    Node replacee, PhaseSuite<Providers> midTierPhases) {
-        this.snippetReflection = providers.getSnippetReflection();
+    protected SnippetTemplate(OptionValues options,
+                    DebugContext debug,
+                    CoreProviders providers,
+                    SnippetReflectionProvider snippetReflection,
+                    Arguments args,
+                    boolean trackNodeSourcePosition,
+                    Node replacee,
+                    PhaseSuite<CoreProviders> midTierPhases) {
+        this.snippetReflection = snippetReflection;
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
         BitSet nonNullParameters = getNonNullParameters(args);
-        boolean shouldTrackNodeSourcePosition1 = trackNodeSourcePosition || (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints());
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, nonNullParameters, shouldTrackNodeSourcePosition1,
-                        replacee.getNodeSourcePosition(), options);
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method,
+                        args.info.original,
+                        constantArgs,
+                        nonNullParameters,
+                        trackNodeSourcePosition,
+                        replacee.getNodeSourcePosition(),
+                        options);
         assert snippetGraph.getAssumptions() == null : snippetGraph;
 
         ResolvedJavaMethod method = snippetGraph.method();
@@ -1011,7 +1031,8 @@ public class SnippetTemplate {
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
-        snippetCopy.setGuardsStage(snippetGraph.getGuardsStage());
+        snippetCopy.getGraphState().setGuardsStage(snippetGraph.getGuardsStage());
+        snippetCopy.getGraphState().getStageFlags().addAll(snippetGraph.getGraphState().getStageFlags());
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
@@ -1194,14 +1215,17 @@ public class SnippetTemplate {
                 // (3)
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
-                new FloatingReadPhase(true, true, canonicalizer).apply(snippetCopy, providers);
-                new GuardLoweringPhase().apply(snippetCopy, providers);
+                new FloatingReadPhase(true, canonicalizer).apply(snippetCopy, providers);
+                if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
+                    new GuardLoweringPhase().apply(snippetCopy, providers);
+                }
+                assert snippetCopy.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING);
                 new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
-                    snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
-                    snippetCopy.disableFrameStateVerification();
+                    snippetCopy.getGraphState().setAfterFSA();
+                    snippetCopy.getGraphState().forceDisableFrameStateVerification();
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
@@ -1314,6 +1338,7 @@ public class SnippetTemplate {
                     this.memoryAnchor = null;
                 }
             }
+
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
             if (returnNodes.isEmpty()) {
@@ -2550,7 +2575,7 @@ public class SnippetTemplate {
              * replacee's graph itself is a substitution.
              */
             StructuredGraph graph = replacee.graph();
-            boolean condition = graph.isStateAfterClearedForTesting() || graph.isSubstitution();
+            boolean condition = graph.getGraphState().isFrameStateVerificationDisabled() || graph.isSubstitution();
             GraalError.guarantee(condition, "No state available to transfer");
             return;
         }

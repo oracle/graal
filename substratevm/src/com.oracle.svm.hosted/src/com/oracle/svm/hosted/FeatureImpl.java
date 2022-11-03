@@ -50,10 +50,11 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
@@ -85,7 +86,6 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.ReflectionUtil;
@@ -260,8 +260,8 @@ public class FeatureImpl {
             getUniverse().getHeapScanner().rescanField(receiver, field);
         }
 
-        public Object rescanRoot(Field field) {
-            return getUniverse().getHeapScanner().rescanRoot(field);
+        public void rescanRoot(Field field) {
+            getUniverse().getHeapScanner().rescanRoot(field);
         }
 
         public Field findField(String declaringClassName, String fieldName) {
@@ -367,13 +367,13 @@ public class FeatureImpl {
             bb.markFieldAccessed(aField);
         }
 
-        public void registerAsRead(Field field) {
+        public void registerAsRead(Field field, Object reason) {
             getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
-            registerAsRead(getMetaAccess().lookupJavaField(field));
+            registerAsRead(getMetaAccess().lookupJavaField(field), reason);
         }
 
-        public void registerAsRead(AnalysisField aField) {
-            bb.markFieldRead(aField);
+        public void registerAsRead(AnalysisField aField, Object reason) {
+            bb.markFieldRead(aField, reason);
         }
 
         @Override
@@ -391,7 +391,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
-            assert !GuardedAnnotationAccess.isAnnotationPresent(aField, Delete.class);
+            assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
             return bb.registerAsUnsafeAccessed(aField, partitionKind);
         }
 
@@ -448,6 +448,11 @@ public class FeatureImpl {
         public boolean concurrentReachabilityHandlers() {
             return concurrentReachabilityHandlers;
         }
+
+        @Override
+        public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
+            bb.getAnnotationSubstitutionProcessor().registerFieldValueTransformer(field, transformer);
+        }
     }
 
     public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess {
@@ -481,10 +486,13 @@ public class FeatureImpl {
 
         @Override
         public void requireAnalysisIteration() {
-            String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
-                            "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
-                            " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
-            throw VMError.shouldNotReachHere(msg);
+            if (bb.executorIsStarted()) {
+                String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
+                                "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
+                                " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
+                throw VMError.shouldNotReachHere(msg);
+            }
+            super.requireAnalysisIteration();
         }
 
     }
@@ -572,7 +580,7 @@ public class FeatureImpl {
                     }
                 } else {
                     JavaConstant constant = SubstrateObjectConstant.forObject(cur);
-                    for (HostedField field : ((HostedType) getMetaAccess().lookupJavaType(constant)).getInstanceFields(true)) {
+                    for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
                             Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);

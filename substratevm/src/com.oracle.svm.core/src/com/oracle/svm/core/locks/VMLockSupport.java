@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 
 public abstract class VMLockSupport {
@@ -44,6 +44,12 @@ public abstract class VMLockSupport {
      * or null if that information is not available.
      */
     public abstract VMCondition[] getConditions();
+
+    /**
+     * Returns an array that contains all {@link VMSemaphore} objects that are present in the image
+     * or null if that information is not available.
+     */
+    public abstract VMSemaphore[] getSemaphores();
 
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override

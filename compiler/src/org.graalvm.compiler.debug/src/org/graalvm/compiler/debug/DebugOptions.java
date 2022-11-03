@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -68,6 +69,25 @@ public class DebugOptions {
          * Do not dump graphs.
          */
         Disable;
+    }
+
+    /**
+     * Values for the {@link DebugOptions#OptimizationLog} option denoting where the structured
+     * optimization is printed.
+     */
+    public enum OptimizationLogTarget {
+        /**
+         * Print logs to JSON files in a directory.
+         */
+        Directory,
+        /**
+         * Print logs as JSON to the standard output.
+         */
+        Stdout,
+        /**
+         * Dump the optimization tree as an IGV graph.
+         */
+        Dump
     }
 
     // @formatter:off
@@ -144,6 +164,9 @@ public class DebugOptions {
     @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
 
+    @Option(help ="Enables dumping of basic blocks relative PC and frequencies in the dump directory.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintBBInfo = new OptionKey<>(false);
+
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
@@ -196,6 +219,11 @@ public class DebugOptions {
     @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
     public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
 
+    @Option(help = "file:doc-files/OptimizationLogHelp.txt", type = OptionType.Debug)
+    public static final EnumMultiOptionKey<OptimizationLogTarget> OptimizationLog = new EnumMultiOptionKey<>(OptimizationLogTarget.class, null);
+    @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
+            "Directories are created if they do no exist.", type = OptionType.Debug)
+    public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
     // @formatter:on
 
     /**

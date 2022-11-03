@@ -84,6 +84,6 @@ public class ReachabilityAnalysisType extends AnalysisType {
 
     @Override
     public ReachabilityAnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
-        return ReachabilityAnalysisEngine.assertReachabilityAnalysisMethod(super.resolveConcreteMethod(method, callerType));
+        return (ReachabilityAnalysisMethod) super.resolveConcreteMethod(method, callerType);
     }
 }

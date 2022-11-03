@@ -159,17 +159,17 @@ public class ExtraDataUtil {
      * The resulting entry looks as follows:
      *
      * <code>
-     *     | returnLength (8-bit) | stackSize (8-bit) | 0 (16-bit) |
+     *     | resultCount (8-bit) | stackSize (8-bit) | 0 (16-bit) |
      * </code>
      * 
      * @param extraData The extra data array
      * @param stackChangeOffset The offset in the array
-     * @param returnLength The return length
+     * @param resultCount The result count
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int returnLength, int stackSize) {
-        extraData[stackChangeOffset] = createCompactUpperBytes(returnLength, stackSize);
+    public static int addCompactStackChange(int[] extraData, int stackChangeOffset, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = createCompactUpperBytes(resultCount, stackSize);
         return COMPACT_STACK_CHANGE_SIZE;
     }
 
@@ -180,17 +180,17 @@ public class ExtraDataUtil {
      * The resulting entry looks as follows:
      *
      * <code>
-     *     | returnLength (32-bit) | stackSize (32-bit) |
+     *     | resultCount (32-bit) | stackSize (32-bit) |
      * </code>
      * 
      * @param extraData The extra data array
      * @param stackChangeOffset The offset in the array
-     * @param returnLength The return length
+     * @param resultCount The result count
      * @param stackSize The stack size
      * @return The number of added array entries
      */
-    public static int addExtendedStackChange(int[] extraData, int stackChangeOffset, int returnLength, int stackSize) {
-        extraData[stackChangeOffset] = returnLength;
+    public static int addExtendedStackChange(int[] extraData, int stackChangeOffset, int resultCount, int stackSize) {
+        extraData[stackChangeOffset] = resultCount;
         extraData[stackChangeOffset + 1] = stackSize;
         return EXTENDED_STACK_CHANGE_SIZE;
     }

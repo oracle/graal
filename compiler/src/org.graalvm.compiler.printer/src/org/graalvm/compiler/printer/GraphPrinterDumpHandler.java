@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,7 +198,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                     } catch (Throwable t) {
                         properties.put("node-cost-exception", t.getMessage());
                     }
-                    properties.put("StageFlags", ((StructuredGraph) graph).getStageFlags());
+                    properties.put("StageFlags", ((StructuredGraph) graph).getGraphState().getStageFlags());
                 }
                 if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getEdgeModificationCount()) {
                     printer.print(debug, graph, properties, nextDumpId(), format, arguments);

@@ -468,4 +468,14 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
         emitZeroMemory(address, length, isAligned, useDcZva, zvaLength);
     }
+
+    @Override
+    public int getArrayLengthOffset() {
+        return config.arrayOopDescLengthOffset();
+    }
+
+    @Override
+    public Register getHeapBaseRegister() {
+        return getProviders().getRegisters().getHeapBaseRegister();
+    }
 }

@@ -282,13 +282,23 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         const char *launcherOptionVars[] = LAUNCHER_OPTION_VARS;
     #endif
 
-    /* set system properties only needed for jvm mode */
+    /* set system properties */
     if (jvmMode) {
+        /* this is only needed for jvm mode */
         vmArgs.push_back("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
-        std::stringstream executablename;
-        executablename << "-Dorg.graalvm.launcher.executablename=";
+    }
+    std::stringstream executablename;
+    executablename << "-Dorg.graalvm.launcher.executablename=";
+    char *executablenameEnv = getenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME");
+    if (executablenameEnv) {
+        executablename << executablenameEnv;
+        setenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME", "");
+    } else {
         executablename << argv[0];
-        vmArgs.push_back(executablename.str());
+    }
+    vmArgs.push_back(executablename.str());
+    if (debug) {
+        std::cout<< "org.graalvm.launcher.executablename set to '" << executablename.str() << '\'' << std::endl;
     }
 
     /* construct classpath - only needed for jvm mode */
@@ -443,12 +453,25 @@ int main(int argc, char *argv[]) {
 
     struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
 
+    /* Inherit stacksize of main thread. Otherwise pthread_create() defaults to
+     * 512K on darwin, while the main thread has 8192K.
+     */
+    pthread_attr_t attr;
+    if (pthread_attr_init(&attr) != 0) {
+        std::cerr << "Could not initialize pthread attribute structure: " << strerror(errno) << std::endl;
+        return -1;
+    }
+    if (pthread_attr_setstacksize(&attr, pthread_get_stacksize_np(pthread_self())) != 0) {
+        std::cerr << "Could not set stacksize in pthread attribute structure." << std::endl;
+        return -1;
+    }
+
     /* Create dedicated "main" thread for the JVM. The actual main thread
      * must run the UI event loop on macOS. Inspired by this OpenJDK code:
      * https://github.com/openjdk/jdk/blob/011958d30b275f0f6a2de097938ceeb34beb314d/src/java.base/macosx/native/libjli/java_md_macosx.m#L328-L358
      */
     pthread_t main_thr;
-    if (pthread_create(&main_thr, NULL, &apple_main, &args) != 0) {
+    if (pthread_create(&main_thr, &attr, &apple_main, &args) != 0) {
         std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
         return -1;
     }
@@ -562,7 +585,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvm
     }
 
     /* invoke launcher entry point */
-    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native, relaunch);
+    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (jlong)(uintptr_t)(void*)argv_native, relaunch);
     jthrowable t = env->ExceptionOccurred();
     if (t) {
         if (env->IsInstanceOf(t, relaunchExceptionClass)) {

@@ -24,19 +24,20 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * This class is just a delegate. The real LocalizationFeature is now in
  * com.oracle.svm.hosted.jdk.localization. It was created in order to ensure backwards compatibility
  * for code depending on the location of the feature.
  */
-@AutomaticFeature
-public class LocalizationFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class LocalizationFeature implements InternalFeature {
 
     /**
      * @deprecated Use {@link ResourcesRegistry#addResourceBundles(ConfigurationCondition, String)}

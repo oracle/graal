@@ -628,4 +628,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
         return getArithmetic().emitOr(shiftedHi, lo);
     }
+
+    @Override
+    public int getArrayLengthOffset() {
+        return config.arrayOopDescLengthOffset();
+    }
+
+    @Override
+    public Register getHeapBaseRegister() {
+        return getProviders().getRegisters().getHeapBaseRegister();
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeObje
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeArrayNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeNullableNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializePointerNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeSerializableNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeStringNodeGen;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
@@ -93,6 +94,8 @@ final class LibFFIType {
             case FLOAT:
             case DOUBLE:
                 return new SimpleType(simpleType, size, alignment);
+            case FP80:
+                return new FP80Type(size, alignment);
             case POINTER:
                 return new PointerType(size, alignment);
             case STRING:
@@ -234,15 +237,12 @@ final class LibFFIType {
                 case VOID:
                     return null;
                 case UINT8:
-                    return buffer.getInt8() & (short) 0xFF;
                 case SINT8:
                     return buffer.getInt8();
                 case UINT16:
-                    return buffer.getInt16() & 0xFFFF;
                 case SINT16:
                     return buffer.getInt16();
                 case UINT32:
-                    return buffer.getInt32() & 0xFFFF_FFFFL;
                 case SINT32:
                     return buffer.getInt32();
                 case UINT64:
@@ -252,6 +252,8 @@ final class LibFFIType {
                     return buffer.getFloat();
                 case DOUBLE:
                     return buffer.getDouble();
+                case FP80:
+                    return buffer.get(size);
                 case POINTER:
                     return NativePointer.create(buffer.getPointer(size));
                 case STRING:
@@ -300,15 +302,12 @@ final class LibFFIType {
                 case VOID:
                     return NativePointer.NULL;
                 case UINT8:
-                    return primitive & (short) 0xFF;
                 case SINT8:
                     return (byte) primitive;
                 case UINT16:
-                    return primitive & 0xFFFF;
                 case SINT16:
                     return (short) primitive;
                 case UINT32:
-                    return primitive & 0xFFFF_FFFFL;
                 case SINT32:
                     return (int) primitive;
                 case UINT64:
@@ -381,6 +380,23 @@ final class LibFFIType {
                 default:
                     throw CompilerDirectives.shouldNotReachHere(simpleType.name());
             }
+        }
+
+        @Override
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+            return BufferClosureArgumentNodeGen.create(this, arg);
+        }
+    }
+
+    static final class FP80Type extends BasicType {
+
+        private FP80Type(int size, int alignment) {
+            super(NativeSimpleType.FP80, size, alignment, 0);
+        }
+
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return SerializeSerializableNodeGen.create(this);
         }
 
         @Override

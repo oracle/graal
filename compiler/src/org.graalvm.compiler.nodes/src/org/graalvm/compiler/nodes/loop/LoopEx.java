@@ -34,7 +34,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -72,6 +71,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
+import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -248,11 +248,8 @@ public class LoopEx {
                         }
                     }
                 }
-                DebugContext debug = graph.getDebug();
-                if (debug.isLogEnabled()) {
-                    debug.log("%s : Re-associated %s into %s", graph.method().format("%H::%n"), binary, result);
-                }
                 binary.replaceAtUsages(result);
+                graph.getOptimizationLog().report(LoopEx.class, "InvariantReassociation", binary);
                 GraphUtil.killWithUnusedFloatingInputs(binary);
                 count++;
             }
@@ -569,6 +566,10 @@ public class LoopEx {
         return true;
     }
 
+    public static boolean canWriteSinkLoopNode(Node node) {
+        return !(node instanceof NeverWriteSinkNode);
+    }
+
     /**
      * @return true if all nodes in the loop can be duplicated.
      */
@@ -584,6 +585,15 @@ public class LoopEx {
     public boolean canStripMine() {
         for (Node node : inside().nodes()) {
             if (!canStripMineLoopNode(node)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean canWriteSink() {
+        for (Node node : inside().nodes()) {
+            if (!canWriteSinkLoopNode(node)) {
                 return false;
             }
         }

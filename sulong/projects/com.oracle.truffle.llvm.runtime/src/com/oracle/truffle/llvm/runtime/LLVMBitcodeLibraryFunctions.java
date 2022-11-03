@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,6 +63,39 @@ public final class LLVMBitcodeLibraryFunctions {
 
         public int canCatch(LLVMStack stack, Object unwindHeader, LLVMPointer catchType) {
             return (int) execute(stack, unwindHeader, catchType.copy());
+        }
+    }
+
+    public static final class SulongCanCatchWindowsNode extends LibraryFunctionNode {
+
+        public SulongCanCatchWindowsNode(LLVMContext context) {
+            super(context, "__sulong_eh_canCatch_windows");
+        }
+
+        public LLVMPointer canCatch(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer catchType, LLVMPointer imageBase) {
+            return LLVMPointer.cast(execute(stack, thrownObject, throwInfo, catchType.copy(), imageBase));
+        }
+    }
+
+    public static final class SulongEHCopyWindowsNode extends LibraryFunctionNode {
+
+        public SulongEHCopyWindowsNode(LLVMContext context) {
+            super(context, "__sulong_eh_copy_windows");
+        }
+
+        public void copy(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer catchableType, LLVMPointer imageBase, LLVMPointer exceptionSlot, int attributes) {
+            execute(stack, thrownObject, catchableType, imageBase, exceptionSlot, attributes);
+        }
+    }
+
+    public static final class SulongEHUnwindWindowsNode extends LibraryFunctionNode {
+
+        public SulongEHUnwindWindowsNode(LLVMContext context) {
+            super(context, "__sulong_eh_unwind_windows");
+        }
+
+        public void unwind(LLVMStack stack, LLVMPointer thrownObject, LLVMPointer throwInfo, LLVMPointer imageBase) {
+            execute(stack, thrownObject, throwInfo, imageBase);
         }
     }
 }

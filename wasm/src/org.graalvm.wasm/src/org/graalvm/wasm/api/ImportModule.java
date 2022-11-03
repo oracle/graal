@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,9 +78,9 @@ public class ImportModule extends BuiltinModule {
             final WasmFunction function = info.getLeft();
             final SymbolTable.FunctionType type = function.type();
             if (info.getRight() instanceof WasmFunctionInstance) {
-                defineExportedFunction(instance, functionName, type.paramTypes(), type.returnTypes(), (WasmFunctionInstance) info.getRight());
+                defineExportedFunction(instance, functionName, type.paramTypes(), type.resultTypes(), (WasmFunctionInstance) info.getRight());
             } else {
-                defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+                defineFunction(instance, functionName, type.paramTypes(), type.resultTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
             }
         }
         for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {

@@ -28,11 +28,11 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ImageHeapMap;
 
+@AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
 
     static ClassForNameSupport singleton() {
@@ -44,6 +44,7 @@ public final class ClassForNameSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
+        assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
@@ -51,19 +52,14 @@ public final class ClassForNameSupport {
     }
 
     public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
+        if (className == null) {
+            return null;
+        }
         Class<?> result = singleton().knownClasses.get(className);
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         return result;
-    }
-}
-
-@AutomaticFeature
-final class ClassForNameFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ClassForNameSupport.class, new ClassForNameSupport());
     }
 }

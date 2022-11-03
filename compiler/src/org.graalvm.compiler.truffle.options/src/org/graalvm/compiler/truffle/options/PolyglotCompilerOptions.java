@@ -452,6 +452,14 @@ public final class PolyglotCompilerOptions {
     // Note: default value is a multiple of the bytecode OSR polling interval.
     public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100352);
 
+    @Option(help = "Number of compilation re-attempts before bailing out of OSR compilation for a given method (default 30). This number is an approximation of the acceptable number of deopts.", //
+                    usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> OSRMaxCompilationReAttempts = new OptionKey<>(30);
+
+    @Option(help = "Whether an AssertionError is thrown when the maximum number of OSR compilation attempts is reached for a given method (default 'false'). This should only be set to 'true' in testing environments.", //
+                    usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> ThrowOnMaxOSRCompilationReAttemptsReached = new OptionKey<>(false);
+
     @Option(help = "Enable partial compilation for BlockNode (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> PartialBlockCompilation = new OptionKey<>(true);
 
@@ -515,6 +523,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> EncodedGraphCache = new OptionKey<>(true);
 
+    @Option(help = "Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> ParsePEGraphsWithAssumptions = new OptionKey<>(false);
+
     @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
                     usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
@@ -541,6 +552,12 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
+
+    @Option(help = "Enables hotness propagation to lexical parent to lexically parent single callers.", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> PropagateLoopCountToLexicalSingleCaller = new OptionKey<>(true);
+
+    @Option(help = "How high to propagate call and loop count (hotness proxy) up a single caller chain to lexical scope parent.", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> PropagateLoopCountToLexicalSingleCallerMaxDepth = new OptionKey<>(10);
 
     @Option(help = "The minimal scale the compilation thresholds can be reduced to (default: 0.1).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.instrumentation;
 
 import static com.oracle.truffle.api.instrumentation.InstrumentAccessor.ENGINE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,7 +58,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -752,13 +756,11 @@ public abstract class TruffleInstrument {
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, String)}.
          */
+        @Deprecated
         public TruffleFile getTruffleFile(String path) {
-            try {
-                return InstrumentAccessor.engineAccess().getTruffleFile(path);
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
+            return getTruffleFile(null, path);
         }
 
         /**
@@ -768,10 +770,42 @@ public abstract class TruffleInstrument {
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, URI)}.
          */
+        @Deprecated
         public TruffleFile getTruffleFile(URI uri) {
+            return getTruffleFile(null, uri);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given path and {@link TruffleContext context}.
+         *
+         * @param context the {@link TruffleContext}, or <code>null</code> to use a current entered
+         *            context.
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 23.0
+         */
+        public TruffleFile getTruffleFile(TruffleContext context, String path) {
             try {
-                return InstrumentAccessor.engineAccess().getTruffleFile(uri);
+                return InstrumentAccessor.engineAccess().getTruffleFile(context, path);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI} and {@link TruffleContext context}.
+         *
+         * @param context the {@link TruffleContext}, or <code>null</code> to use a current entered
+         *            context.
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 23.0
+         */
+        public TruffleFile getTruffleFile(TruffleContext context, URI uri) {
+            try {
+                return InstrumentAccessor.engineAccess().getTruffleFile(context, uri);
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
@@ -1164,6 +1198,56 @@ public abstract class TruffleInstrument {
                 throw engineToInstrumentException(t);
             }
         }
+
+        /**
+         * Creates a new thread designed to process instrument tasks in the background. See
+         * {@link #createSystemThread(Runnable, ThreadGroup)} for a detailed description of the
+         * parameters.
+         *
+         * @see #createSystemThread(Runnable, ThreadGroup)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable) {
+            return createSystemThread(runnable, null);
+        }
+
+        /**
+         * Creates a new thread designed to process instrument tasks in the background. The created
+         * thread cannot enter the context, if it tries an {@link IllegalStateException} is thrown.
+         * Creating or terminating a system thread does not notify languages or
+         * {@link ThreadsListener}s. Creating a system thread does not cause a transition to
+         * multi-threaded access.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if the engine is closed before the thread is started.
+         * <p>
+         * The instrument that created and started the thread is responsible to stop and join it
+         * during the {@link TruffleInstrument#onDispose(Env) onDispose}, otherwise an
+         * {@link IllegalStateException} is thrown. It's not safe to use the
+         * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
+         * Thread termination as the system thread may be cancelled before executing the executor
+         * worker.<br/>
+         * A typical implementation looks like:
+         * {@link TruffleInstrumentSnippets.SystemThreadInstrument}
+         *
+         * @param runnable the runnable to run on this thread.
+         * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
+         * @throws IllegalStateException if the engine is already closed.
+         * @see #createSystemThread(Runnable)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public Thread createSystemThread(Runnable runnable, ThreadGroup threadGroup) {
+            Objects.requireNonNull(runnable, "Runnable must be non null.");
+            try {
+                return ENGINE.createInstrumentSystemThread(polyglotInstrument, runnable, threadGroup);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
     }
 
     /**
@@ -1274,4 +1358,56 @@ public abstract class TruffleInstrument {
         }
     }
 
+}
+
+class TruffleInstrumentSnippets {
+    abstract
+    // BEGIN: TruffleInstrumentSnippets.SystemThreadInstrument
+    class SystemThreadInstrument extends TruffleInstrument {
+
+        private volatile Thread systemThread;
+        private volatile boolean cancelled;
+        private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
+
+        @Override
+        protected void onCreate(Env env) {
+            // Create and start a Thread for the asynchronous task.
+            // Remember the Thread reference to stop and join it in
+            // the finalizeContext
+            systemThread = env.createSystemThread(() -> {
+                while (!cancelled) {
+                    try {
+                        Runnable task = tasks.poll(Integer.MAX_VALUE, SECONDS);
+                        if (task != null) {
+                            task.run();
+                        }
+                    } catch (InterruptedException ie) {
+                        // pass to cancelled check
+                    }
+                }
+            });
+            systemThread.start();
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+            // Stop and join system thread.
+            cancelled = true;
+            systemThread.interrupt();
+            boolean interrupted = false;
+            boolean terminated = false;
+            while (!terminated) {
+                try {
+                    systemThread.join();
+                    terminated = true;
+                } catch (InterruptedException ie) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    // END: TruffleInstrumentSnippets.SystemThreadInstrument
 }

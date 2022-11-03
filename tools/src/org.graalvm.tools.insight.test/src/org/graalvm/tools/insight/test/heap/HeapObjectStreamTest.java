@@ -27,10 +27,10 @@ package org.graalvm.tools.insight.test.heap;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Proxy;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import org.graalvm.tools.insight.test.InsightObjectFactory;
@@ -41,6 +41,7 @@ import org.graalvm.tools.insight.test.heap.HeapApi.StackElement;
 import org.graalvm.tools.insight.test.heap.HeapApi.StackEvent;
 import static org.graalvm.tools.insight.test.heap.HeapApi.invokeDump;
 import static org.graalvm.tools.insight.test.heap.HeapApi.invokeFlush;
+import static org.graalvm.tools.insight.test.heap.HeapObjectTest.createDumpObject;
 import org.graalvm.tools.insight.test.heap.HeapResourceRule.HeapParams;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -64,6 +65,7 @@ public class HeapObjectStreamTest {
             if (cacheReplacement != null) {
                 b.option("heap.cacheReplacement", cacheReplacement);
             }
+            b.allowHostAccess(HostAccess.EXPLICIT);
             Context ctx = InsightObjectFactory.newContext(b);
 
             // BEGIN: org.graalvm.tools.insight.test.heap.HeapObjectStreamTest
@@ -101,19 +103,19 @@ public class HeapObjectStreamTest {
     public void dumpToStream() throws Exception {
         Source nullSource = new Source("no.src", null, null, null, null);
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), createDumpObject())})
         });
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
 
         String header = new String(heapOutput.toByteArray(), 0, 18);
         assertEquals("JAVA PROFILE 1.0.1", header);
 
         final int heapSize = heapOutput.size();
-        if (heapSize != 4427) {
+        if (heapSize != 3964) {
             fail("Heap dump should be generated to the stream: " + heapOutput.size());
         }
 
@@ -124,7 +126,7 @@ public class HeapObjectStreamTest {
 
         osSetup.accept(anotherStream);
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
 
         assertEquals("Size of first stream remains unchaged", heapSize, heapOutput.size());
@@ -138,12 +140,12 @@ public class HeapObjectStreamTest {
     public void dumpToStreamCached() throws Exception {
         Source nullSource = new Source("no.src", null, null, null, null);
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), createDumpObject())})
         });
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
 
         if (heapOutput.size() > 0) {
@@ -166,10 +168,10 @@ public class HeapObjectStreamTest {
     public void dumpToStreamCachedDumps() throws Exception {
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 1, 0, 2), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 1, 0, 2), createDumpObject())})
         });
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 2, 2, 2), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 2, 2, 2), createDumpObject())})
         });
 
         if (heapOutput.size() > 0) {
@@ -177,7 +179,7 @@ public class HeapObjectStreamTest {
         }
 
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 3, 4, 2), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 3, 4, 2), createDumpObject())})
         });
 
         final int heapSize = heapOutput.size();
@@ -196,10 +198,10 @@ public class HeapObjectStreamTest {
     public void dumpToStreamCachedLRU() throws Exception {
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 1, 0, 2), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 1, 0, 2), createDumpObject())})
         });
         invokeDump(heap, 1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 2, 2, 2), new HashMap<>())})
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, 2, 2, 2), createDumpObject())})
         });
 
         if (heapOutput.size() > 0) {
@@ -221,7 +223,7 @@ public class HeapObjectStreamTest {
         osSetup.accept(anotherStream);
         for (int i = 0; i < 4; i++) {
             invokeDump(heap, 1, new Event[]{
-                            new StackEvent(new StackElement[]{new StackElement(new At("a", source, i, 2 * i, 2), new HashMap<>())})
+                            new StackEvent(new StackElement[]{new StackElement(new At("a", source, i, 2 * i, 2), createDumpObject())})
             });
         }
         invokeFlush(heap);
@@ -242,4 +244,5 @@ public class HeapObjectStreamTest {
         }
         return true;
     }
+
 }

@@ -482,7 +482,7 @@ public class LoggingTest {
         AbstractLoggingLanguage.action = new BiPredicate<>() {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                TruffleContext tc = context.getEnv().newContextBuilder().build();
+                TruffleContext tc = context.getEnv().newInnerContextBuilder().initializeCreatorContext(true).build();
                 final Object prev = tc.enter(null);
                 try {
                     for (TruffleLogger logger : loggers) {

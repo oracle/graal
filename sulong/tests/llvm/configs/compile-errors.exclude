@@ -1883,6 +1883,5 @@ test-suite-3.2.src/SingleSource/UnitTests/Vector/Altivec/alti.sdot.c
 test-suite-3.2.src/SingleSource/UnitTests/Vector/Altivec/alti.stepfft.c
 test-suite-3.2.src/SingleSource/UnitTests/Vector/Altivec/casts.c
 test-suite-3.2.src/SingleSource/UnitTests/Vector/Altivec/test1.c
-test-suite-3.2.src/SingleSource/UnitTests/Vector/NEON/simple.c
 test-suite-3.2.src/SingleSource/UnitTests/Vector/SSE/sse.expandfft.c
 test-suite-3.2.src/SingleSource/UnitTests/Vector/SSE/sse.stepfft.c

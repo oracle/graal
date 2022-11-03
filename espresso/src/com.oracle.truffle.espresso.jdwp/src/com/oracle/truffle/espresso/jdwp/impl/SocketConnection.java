@@ -25,26 +25,23 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Semaphore;
 
 public final class SocketConnection implements Runnable {
     private final Socket socket;
-    private final ServerSocket serverSocket;
-    private boolean closed = false;
     private final OutputStream socketOutput;
     private final InputStream socketInput;
     private final Object receiveLock = new Object();
     private final Object sendLock = new Object();
-    private final Object closeLock = new Object();
+    private final Semaphore isOpen = new Semaphore(1);
 
     private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(4096);
 
-    SocketConnection(Socket socket, ServerSocket serverSocket) throws IOException {
+    SocketConnection(Socket socket) throws IOException {
         this.socket = socket;
-        this.serverSocket = serverSocket;
         socket.setTcpNoDelay(true);
         socketInput = socket.getInputStream();
         socketOutput = socket.getOutputStream();
@@ -63,28 +60,18 @@ public final class SocketConnection implements Runnable {
             }
         }
         socketOutput.flush();
-
-        synchronized (closeLock) {
-            if (closed) {
-                return;
-            }
-            JDWP.LOGGER.fine("closing socket now");
-
-            if (serverSocket != null) {
-                serverSocket.close();
-            }
-            socketOutput.close();
-            socketInput.close();
-            socket.close();
-            queue.clear();
-            closed = true;
+        if (!isOpen.tryAcquire()) {
+            return;
         }
+        JDWP.LOGGER.fine("closing socket now");
+        socketOutput.close();
+        socketInput.close();
+        socket.close();
+        queue.clear();
     }
 
     public boolean isOpen() {
-        synchronized (closeLock) {
-            return !closed;
-        }
+        return isOpen.availablePermits() > 0;
     }
 
     @Override

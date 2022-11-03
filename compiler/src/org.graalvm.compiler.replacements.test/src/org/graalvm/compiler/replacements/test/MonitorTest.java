@@ -25,7 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
-
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.BoxingSnippets;
@@ -231,5 +231,21 @@ public class MonitorTest extends GraalCompilerTest {
         test("lockBoxedLong", 5L);
         test("lockBoxedLong", Long.MAX_VALUE - 1);
         test("lockBoxedLong", Long.MIN_VALUE + 1);
+    }
+
+    static void loopPhi(boolean f) {
+        Object j = new Object();
+        int n = f ? 10 : 11;
+        for (int i = 0; GraalDirectives.injectIterationCount(11.5, i < n); i++) {
+            synchronized (j) {
+                j = f ? new Object() : j;
+            }
+        }
+    }
+
+    @Test
+    public void testLoopPhi() {
+        test("loopPhi", true);
+        test("loopPhi", false);
     }
 }

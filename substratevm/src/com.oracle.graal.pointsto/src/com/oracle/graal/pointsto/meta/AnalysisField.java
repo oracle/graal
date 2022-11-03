@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -48,6 +49,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,8 +63,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private static final AtomicIntegerFieldUpdater<AnalysisField> isAccessedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisField.class, "isAccessed");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisField> isReadUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisField.class, "isRead");
+    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isReadUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisField.class, Object.class, "isRead");
 
     private static final AtomicIntegerFieldUpdater<AnalysisField> isWrittenUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisField.class, "isWritten");
@@ -93,7 +95,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private ContextInsensitiveFieldTypeFlow instanceFieldFlow;
 
     @SuppressWarnings("unused") private volatile int isAccessed;
-    @SuppressWarnings("unused") private volatile int isRead;
+    /** Contains the {@link BytecodePosition} of the read or a reason object. */
+    @SuppressWarnings("unused") private volatile Object isRead;
     @SuppressWarnings("unused") private volatile int isWritten;
     @SuppressWarnings("unused") private volatile int isFolded;
 
@@ -109,7 +112,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      */
     private boolean canBeNull;
 
-    private ConcurrentMap<AnalysisMethod, Boolean> readBy;
+    private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<AnalysisMethod, Boolean> writtenBy;
 
     protected TypeState instanceFieldTypeState;
@@ -188,7 +191,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         this.canBeNull = this.canBeNull && other.canBeNull;
         isWrittenUpdater.set(this, this.isWritten & other.isWritten);
         isFoldedUpdater.set(this, this.isFolded & other.isFolded);
-        isReadUpdater.set(this, this.isRead & other.isRead);
+        isReadUpdater.set(this, this.isRead != null & other.isRead != null ? this.isRead : null);
         notifyUpdateAccessInfo();
     }
 
@@ -197,7 +200,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         this.canBeNull = true;
         isWrittenUpdater.set(this, 0);
         isFoldedUpdater.set(this, 0);
-        isReadUpdater.set(this, 0);
+        isReadUpdater.set(this, null);
         notifyUpdateAccessInfo();
     }
 
@@ -270,11 +273,16 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return firstAttempt;
     }
 
-    public boolean registerAsRead(AnalysisMethod method) {
-        boolean firstAttempt = AtomicUtils.atomicMark(this, isReadUpdater);
+    /**
+     * @param reason the {@link BytecodePosition} where a load from this field is seen, or a
+     *            {@link String} describing why this field was manually marked as read
+     */
+    public boolean registerAsRead(Object reason) {
+        assert reason != null && (!(reason instanceof String) || !reason.equals("")) : "Registering a field as read needs to provide a non-empty reason.";
+        boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
         notifyUpdateAccessInfo();
-        if (readBy != null && method != null) {
-            readBy.put(method, Boolean.TRUE);
+        if (readBy != null) {
+            readBy.put(reason, Boolean.TRUE);
         }
         if (firstAttempt) {
             onReachable();
@@ -372,8 +380,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, unsafeFrozenTypeStateUpdater);
     }
 
-    public Set<AnalysisMethod> getReadBy() {
-        return readBy.keySet();
+    public Object getReadBy() {
+        return isReadUpdater.get(this);
     }
 
     /**
@@ -404,6 +412,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                         (AtomicUtils.isSet(this, isWrittenUpdater) && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
     }
 
+    private boolean isReadSet() {
+        return AtomicUtils.isSet(this, isReadUpdater);
+    }
+
     public boolean isRead() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
@@ -424,7 +436,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public void onReachable() {
-        notifyReachabilityCallbacks(declaringClass.getUniverse());
+        notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 
     public void setCanBeNull(boolean canBeNull) {
@@ -497,7 +509,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + " folded: " + isFolded + ">";
+        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isReadSet() + " written: " + isWritten + " folded: " + isFolded + ">";
     }
 
     public void markAsUsedInComparison() {

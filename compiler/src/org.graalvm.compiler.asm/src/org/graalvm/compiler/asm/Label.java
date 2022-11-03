@@ -72,7 +72,7 @@ public final class Label {
      * Binds the label to {@code pos} and patches all instructions added by
      * {@link #addPatchAt(int, Assembler)}.
      */
-    protected void bind(int pos, Assembler asm) {
+    protected void bind(int pos, Assembler<?> asm) {
         if (pos < 0) {
             throw new GraalError("Cannot bind label to negative position %d", pos);
         }
@@ -89,7 +89,7 @@ public final class Label {
         return position >= 0;
     }
 
-    public void addPatchAt(int branchLocation, Assembler asm) {
+    public void addPatchAt(int branchLocation, Assembler<?> asm) {
         assert !isBound() : "Label is already bound " + this + " " + branchLocation + " at position " + position;
         if (patchPositions == null) {
             patchPositions = new ArrayList<>(2);

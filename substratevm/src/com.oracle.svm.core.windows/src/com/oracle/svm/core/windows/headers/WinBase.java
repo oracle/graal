@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
@@ -125,4 +126,8 @@ public class WinBase {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetUserProfileDirectoryW(HANDLE hToken, WCharPointer lpProfileDir, CIntPointer lpcchSize);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native WinBase.HANDLE CreateSemaphoreA(VoidPointer lpSemaphoreAttributes, int lInitialCount, int lMaximumCount, VoidPointer lpName);
+
 }

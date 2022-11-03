@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.reflect;
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.FIRST_ERROR_INDEX;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.HIDING_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.NULL_OBJECT;
@@ -61,9 +62,11 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
@@ -72,6 +75,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.code.CodeInfoEncoder;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -92,7 +96,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.Reflection;
@@ -106,22 +109,24 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * {@link ReflectionMetadataEncoding}), with the index into this array saved in the corresponding
  * {@link DynamicHub}. The metadata for reflection objects already present in the image heap is
  * encoded directly as byte arrays into the corresponding object through field recomputations.
- * 
+ *
  * Method, field and constructor metadata can be complete, meaning it can be used to recreate a
  * working object of the corresponding type, or not, meaning it only holds the element's signature.
  * The incomplete form is used to implement hiding methods, which are methods that are not
  * registered for reflection but override a registered method, and as such should be seen by the JDK
  * code determining which superclass methods to include in a certain class (see
  * {@link Class#getMethods()}).
- * 
+ *
  * Emitting the metadata happens in two phases. In the first phase, the string and class encoders
  * are filled with the necessary values (in the {@code #add*Metadata} functions). In a second phase,
  * the values are encoded into their intended byte arrays (see {@link #encodeAllAndInstall()}).
- * 
+ *
  * The metadata encoding format is detailed in {@link ReflectionMetadataDecoderImpl}.
  */
 public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder {
 
+    @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
         public ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {
@@ -241,20 +246,17 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     @Override
     public void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] innerClasses) {
         Class<?> javaClass = type.getHub().getHostedJavaClass();
-        Object[] enclosingMethodInfo = getEnclosingMethodInfo(javaClass);
-        if (enclosingMethodInfo != null) {
-            enclosingMethodInfo[0] = ((HostedMetaAccess) metaAccess).lookupJavaType((Class<?>) enclosingMethodInfo[0]);
-        }
+        Object enclosingMethodInfo = getEnclosingMethodInfo(javaClass);
         RecordComponentMetadata[] recordComponents = getRecordComponents(metaAccess, type, javaClass);
         Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
         int classAccessFlags = Reflection.getClassAccessFlags(javaClass);
 
         /* Register string and class values in annotations */
         encoders.sourceClasses.addObject(javaClass);
-        if (enclosingMethodInfo != null) {
-            encoders.sourceClasses.addObject(((HostedType) enclosingMethodInfo[0]).getJavaClass());
-            encoders.sourceMethodNames.addObject((String) enclosingMethodInfo[1]);
-            encoders.sourceMethodNames.addObject((String) enclosingMethodInfo[2]);
+        if (enclosingMethodInfo instanceof Throwable) {
+            registerError((Throwable) enclosingMethodInfo);
+        } else {
+            registerEnclosingMethodInfo((Object[]) enclosingMethodInfo);
         }
         HostedType[] innerTypes = registerClassValues(metaAccess, innerClasses);
         HostedType[] permittedSubtypes = (permittedSubclasses != null) ? registerClassValues(metaAccess, permittedSubclasses) : null;
@@ -265,14 +267,32 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, classAccessFlags, annotations, typeAnnotations));
     }
 
-    private static final Method getEnclosingMethodInfo = ReflectionUtil.lookupMethod(Class.class, "getEnclosingMethod0");
+    private void registerError(Throwable error) {
+        encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(error));
+    }
 
-    private static Object[] getEnclosingMethodInfo(Class<?> clazz) {
+    private static final Method getEnclosingMethod0 = ReflectionUtil.lookupMethod(Class.class, "getEnclosingMethod0");
+
+    private static Object getEnclosingMethodInfo(Class<?> clazz) {
         try {
-            return (Object[]) getEnclosingMethodInfo.invoke(clazz);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            return getEnclosingMethod0.invoke(clazz);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof LinkageError) {
+                return e.getCause(); /* It's rethrown at run time. */
+            }
+            throw VMError.shouldNotReachHere(e);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    private void registerEnclosingMethodInfo(Object[] enclosingMethodInfo) {
+        if (enclosingMethodInfo == null) {
+            return;
+        }
+        encoders.sourceClasses.addObject((Class<?>) enclosingMethodInfo[0]);
+        encoders.sourceMethodNames.addObject((String) enclosingMethodInfo[1]);
+        encoders.sourceMethodNames.addObject((String) enclosingMethodInfo[2]);
     }
 
     private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
@@ -299,7 +319,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             }
             return reachablePermittedSubclasses.toArray(new Class<?>[0]);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -313,7 +333,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         boolean trustedFinal = isTrustedFinal(reflectField);
         String signature = getSignature(reflectField);
         int offset = hostedField.wrapped.isUnsafeAccessed() ? hostedField.getOffset() : SharedField.LOC_UNINITIALIZED;
-        Delete deleteAnnotation = GuardedAnnotationAccess.getAnnotation(hostedField, Delete.class);
+        Delete deleteAnnotation = AnnotationAccess.getAnnotation(hostedField, Delete.class);
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
 
         /* Fill encoders with the necessary values. */
@@ -384,7 +404,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (boolean) isFieldTrustedFinal.invoke(field);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -400,7 +420,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
         AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
         ReflectParameterMetadata[] reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
-        AccessibleObject holder = getHolder(object);
+        AccessibleObject holder = ReflectionMetadataEncoder.getHolder(object);
         JavaConstant heapObjectConstant = SubstrateObjectConstant.forObject(holder);
         encoders.objectConstants.addObject(heapObjectConstant);
 
@@ -416,17 +436,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             registerField((HostedType) metaAccess.lookupJavaType(((Field) object).getDeclaringClass()), holder, (FieldMetadata) metadata);
         }
         heapData.add(metadata);
-    }
-
-    private static final Method getRoot = ReflectionUtil.lookupMethod(AccessibleObject.class, "getRoot");
-
-    private static AccessibleObject getHolder(AccessibleObject accessibleObject) {
-        try {
-            AccessibleObject root = (AccessibleObject) getRoot.invoke(accessibleObject);
-            return root == null ? accessibleObject : root;
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
     }
 
     private HostedType[] registerClassValues(MetaAccessProvider metaAccess, Class<?>[] classes) {
@@ -637,7 +646,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (String) getRecordComponentName.invoke(recordComponent);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -645,7 +654,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (Class<?>) getRecordComponentType.invoke(recordComponent);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -653,7 +662,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (String) getRecordComponentSignature.invoke(recordComponent);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -661,7 +670,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (Method) getRecordComponentAccessor.invoke(recordComponent);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -677,7 +686,9 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             DynamicHub hub = declaringType.getHub();
             ClassMetadata classMetadata = classData.get(declaringType);
 
-            int enclosingMethodInfoIndex = addElement(buf, encodeEnclosingMethod(classMetadata.enclosingMethodInfo));
+            int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
+                            ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
+                            : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
             int annotationsIndex = addEncodedElement(buf, encodeAnnotations(classMetadata.annotations));
             int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
             int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, this::encodeType, false);
@@ -712,6 +723,13 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         install(buf);
         /* Enable field recomputers in reflection objects to see the computed values */
         ImageSingletons.add(EncodedReflectionMetadataSupplier.class, this);
+    }
+
+    private int encodeErrorIndex(Throwable error) {
+        int index = encoders.objectConstants.getIndex(SubstrateObjectConstant.forObject(error));
+        int encodedIndex = FIRST_ERROR_INDEX - index;
+        VMError.guarantee(ReflectionMetadataDecoderImpl.isErrorIndex(encodedIndex));
+        return encodedIndex;
     }
 
     private static <T> int encodeAndAddCollection(UnsafeArrayTypeWriter buf, T[] data, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, boolean canBeNull) {
@@ -824,7 +842,11 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private void encodeType(UnsafeArrayTypeWriter buf, HostedType type) {
-        buf.putSV(encoders.sourceClasses.getIndex(type.getJavaClass()));
+        encodeType(buf, type.getJavaClass());
+    }
+
+    private void encodeType(UnsafeArrayTypeWriter buf, Class<?> type) {
+        buf.putSV(encoders.sourceClasses.getIndex(type));
     }
 
     private void encodeName(UnsafeArrayTypeWriter buf, String name) {
@@ -870,7 +892,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (String) getFieldSignature.invoke(field);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -878,7 +900,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (String) (executable instanceof Method ? getMethodSignature.invoke(executable) : getConstructorSignature.invoke(executable));
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -886,7 +908,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         try {
             return (Parameter[]) getExecutableParameters.invoke(executable);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -969,13 +991,13 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         encodeByteArray(buf, encodeTypeAnnotations(recordComponent.typeAnnotations));
     }
 
-    private byte[] encodeEnclosingMethod(Object[] enclosingMethodInfo) {
+    private byte[] encodeEnclosingMethodInfo(Object[] enclosingMethodInfo) {
         if (enclosingMethodInfo == null) {
             return null;
         }
         assert enclosingMethodInfo.length == 3;
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        encodeType(buf, (HostedType) enclosingMethodInfo[0]);
+        encodeType(buf, (Class<?>) enclosingMethodInfo[0]);
         encodeName(buf, (String) enclosingMethodInfo[1]);
         encodeName(buf, (String) enclosingMethodInfo[2]);
         return buf.toArray();

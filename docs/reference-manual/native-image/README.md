@@ -176,12 +176,6 @@ native-image [options] -jar jarfile [imagename]
         }
         ```
         This is a small Java application that reverses a String using recursion.
-    - Then create a text file in the root directory named `META-INF/MANIFEST.MF` which contains the following:
-
-        ```
-        Manifest-Version: 1.0
-        Main-Class: com.example.App
-        ```
 
 2. Compile the application:
 
@@ -190,15 +184,15 @@ native-image [options] -jar jarfile [imagename]
     ```
     This produces the file _App.class_ in the _build/com/example_ directory.
 
-3. Create a runnable JAR file by including the manifest file:
+3. Create a runnable JAR file:
 
     ```shell
-    jar cfvm App.jar META-INF/MANIFEST.MF -C build . 
+    jar --create --file App.jar --main-class com.example.App -C build .
     ```
     It will generate a runnable JAR file, named `App.jar`, in the root directory: 
     To view its contents, type `jar tf App.jar`.
 
-4. Create a native executable from that JAR file:
+4. Create a native executable:
 
     ```
     native-image -jar App.jar
@@ -277,4 +271,4 @@ Consider running interactive workshops to get some practical experience: go to [
 
 If you have stumbled across a potential bug, please [submit an issue in GitHub](https://github.com/oracle/graal/issues/new/choose).
 
-If you would like to contribute to Native Image, follow our standard [contributing workflow](Contributing.md).
+If you would like to contribute to Native Image, follow our standard [contributing workflow](contribute/Contributing.md).

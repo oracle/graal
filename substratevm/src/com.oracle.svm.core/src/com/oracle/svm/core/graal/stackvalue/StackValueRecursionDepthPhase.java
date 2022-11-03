@@ -32,13 +32,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This phase computes the inlined recursion depth based on frame states (the documentation on
- * {@link StackValueNode} explains why that is necessary). As this phase uses the frame state, it
- * needs to run before frame state assignment (FSA).
+ * {@link LoweredStackValueNode} explains why that is necessary). As this phase uses the frame
+ * state, it needs to run before frame state assignment (FSA).
  */
 public class StackValueRecursionDepthPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
-        for (StackValueNode node : graph.getNodes(StackValueNode.TYPE)) {
+        for (LoweredStackValueNode node : graph.getNodes(LoweredStackValueNode.TYPE)) {
             if (!node.slotIdentity.shared) {
                 int recursionDepth = computeRecursionDepth(node);
                 node.setRecursionDepth(recursionDepth);

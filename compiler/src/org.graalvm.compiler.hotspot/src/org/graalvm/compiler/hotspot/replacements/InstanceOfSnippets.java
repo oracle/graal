@@ -35,10 +35,12 @@ import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.T
 import static org.graalvm.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkSecondarySubType;
 import static org.graalvm.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkUnknownSubType;
 import static org.graalvm.compiler.hotspot.replacements.TypeCheckSnippetUtils.createHints;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -60,7 +62,6 @@ import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.TypeCheckHints;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
@@ -116,7 +117,7 @@ public class InstanceOfSnippets implements Snippets {
             boolean positive = hintIsPositive[i];
             if (probability(LIKELY_PROBABILITY, hintHub.equal(objectHub))) {
                 counters.hintsHit.inc();
-                return positive ? trueValue : falseValue;
+                return unknownProbability(positive) ? trueValue : falseValue;
             }
             counters.hintsMiss.inc();
         }
@@ -164,7 +165,7 @@ public class InstanceOfSnippets implements Snippets {
     /**
      * A test against a restricted secondary type type.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object instanceofSecondary(KlassPointer hub, Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
                     @ConstantParameter Counters counters) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
@@ -193,7 +194,7 @@ public class InstanceOfSnippets implements Snippets {
     /**
      * Type test used when the type being tested against is not known at compile time.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean allowNull, @ConstantParameter boolean exact,
                     @ConstantParameter Counters counters) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
@@ -215,7 +216,7 @@ public class InstanceOfSnippets implements Snippets {
             return trueValue;
         }
         // The hub of a primitive type can be null => always return false in this case.
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !hub.isNull())) {
+        if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             if (checkUnknownSubType(hub, nonNullObjectHub, counters)) {
                 return trueValue;
             }
@@ -223,17 +224,17 @@ public class InstanceOfSnippets implements Snippets {
         return falseValue;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object isAssignableFrom(@NonNullParameter Class<?> thisClassNonNull, @NonNullParameter Class<?> otherClassNonNull, Object trueValue, Object falseValue,
                     @ConstantParameter Counters counters) {
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, thisClassNonNull == otherClassNonNull)) {
+        if (probability(NOT_LIKELY_PROBABILITY, thisClassNonNull == otherClassNonNull)) {
             return trueValue;
         }
 
         KlassPointer thisHub = ClassGetHubNode.readClass(thisClassNonNull);
         KlassPointer otherHub = ClassGetHubNode.readClass(otherClassNonNull);
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !thisHub.isNull())) {
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !otherHub.isNull())) {
+        if (probability(FAST_PATH_PROBABILITY, !thisHub.isNull())) {
+            if (probability(FAST_PATH_PROBABILITY, !otherHub.isNull())) {
                 GuardingNode guardNonNull = SnippetAnchorNode.anchor();
                 KlassPointer nonNullOtherHub = ClassGetHubNode.piCastNonNull(otherHub, guardNonNull);
                 if (TypeCheckSnippetUtils.checkUnknownSubType(thisHub, nonNullOtherHub, counters)) {
@@ -249,17 +250,25 @@ public class InstanceOfSnippets implements Snippets {
 
     public static class Templates extends InstanceOfSnippetsTemplates {
 
-        private final SnippetInfo instanceofWithProfile = snippet(InstanceOfSnippets.class, "instanceofWithProfile");
-        private final SnippetInfo instanceofExact = snippet(InstanceOfSnippets.class, "instanceofExact");
-        private final SnippetInfo instanceofPrimary = snippet(InstanceOfSnippets.class, "instanceofPrimary");
-        private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
-        private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
-        private final SnippetInfo isAssignableFrom = snippet(InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
+        private final SnippetInfo instanceofWithProfile;
+        private final SnippetInfo instanceofExact;
+        private final SnippetInfo instanceofPrimary;
+        private final SnippetInfo instanceofSecondary;
+        private final SnippetInfo instanceofDynamic;
+        private final SnippetInfo isAssignableFrom;
 
         private final Counters counters;
 
         public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers) {
             super(options, providers);
+
+            this.instanceofWithProfile = snippet(providers, InstanceOfSnippets.class, "instanceofWithProfile");
+            this.instanceofExact = snippet(providers, InstanceOfSnippets.class, "instanceofExact");
+            this.instanceofPrimary = snippet(providers, InstanceOfSnippets.class, "instanceofPrimary");
+            this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
+            this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
+            this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
+
             this.counters = new Counters(factory);
         }
 
@@ -275,13 +284,13 @@ public class InstanceOfSnippets implements Snippets {
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), profile, assumptions, TypeCheckMinProfileHitProbability.getValue(localOptions),
                                 TypeCheckMaxHints.getValue(localOptions));
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type().getType();
-                ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), instanceOf.graph());
+                ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), instanceOf.graph());
 
                 Arguments args;
 
                 StructuredGraph graph = instanceOf.graph();
                 if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
-                    Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
+                    Hints hints = createHints(hintInfo, tool.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
@@ -289,14 +298,14 @@ public class InstanceOfSnippets implements Snippets {
                 } else if (hintInfo.exact != null) {
                     args = new Arguments(instanceofExact, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
-                    args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hintInfo.exact).klass(), providers.getMetaAccess(), graph));
+                    args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hintInfo.exact).klass(), tool.getMetaAccess(), graph));
                 } else if (type.isPrimaryType()) {
                     args = new Arguments(instanceofPrimary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
-                    Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
+                    Hints hints = createHints(hintInfo, tool.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofSecondary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);

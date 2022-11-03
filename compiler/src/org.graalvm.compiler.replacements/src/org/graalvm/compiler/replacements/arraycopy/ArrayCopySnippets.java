@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.arraycopy;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -42,6 +43,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -49,7 +51,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -306,7 +307,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         long destOffset = arrayBaseOffset + (long) destPos * scale;
 
         GuardingNode anchor = SnippetAnchorNode.anchor();
-        if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
+        if (probability(FREQUENT_PROBABILITY, src == dest) && probability(NOT_FREQUENT_PROBABILITY, srcPos < destPos)) {
             // bad aliased case so we need to copy the array from back to front
             for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
@@ -534,14 +535,14 @@ public abstract class ArrayCopySnippets implements Snippets {
             this.counters = new Counters(factory);
 
             useOriginalArraycopy = receiver.useOriginalArraycopy();
-            delayedGenericArraycopySnippet = snippet(receiver, "delayedGenericArraycopySnippet");
-            delayedExactArraycopyWithExpandedLoopSnippet = snippet(receiver, "delayedExactArraycopyWithExpandedLoopSnippet");
-            arraycopyExactStubCallSnippet = snippet(receiver, "arraycopyExactStubCallSnippet");
-            delayedCheckcastArraycopySnippet = snippet(receiver, "delayedCheckcastArraycopySnippet");
-            arraycopyNativeExceptionSnippet = snippet(null, "arraycopyNativeExceptionSnippet");
-            checkcastArraycopySnippet = snippet(receiver, "checkcastArraycopySnippet");
-            genericArraycopySnippet = snippet(receiver, "genericArraycopySnippet");
-            exactArraycopyWithExpandedLoopSnippet = snippet(receiver, "exactArraycopyWithExpandedLoopSnippet");
+            delayedGenericArraycopySnippet = snippet(providers, receiver, "delayedGenericArraycopySnippet");
+            delayedExactArraycopyWithExpandedLoopSnippet = snippet(providers, receiver, "delayedExactArraycopyWithExpandedLoopSnippet");
+            arraycopyExactStubCallSnippet = snippet(providers, receiver, "arraycopyExactStubCallSnippet");
+            delayedCheckcastArraycopySnippet = snippet(providers, receiver, "delayedCheckcastArraycopySnippet");
+            arraycopyNativeExceptionSnippet = snippet(providers, null, "arraycopyNativeExceptionSnippet");
+            checkcastArraycopySnippet = snippet(providers, receiver, "checkcastArraycopySnippet");
+            genericArraycopySnippet = snippet(providers, receiver, "genericArraycopySnippet");
+            exactArraycopyWithExpandedLoopSnippet = snippet(providers, receiver, "exactArraycopyWithExpandedLoopSnippet");
         }
 
         private SnippetInfo getSnippet(WorkSnippetID workSnippetID) {
@@ -556,8 +557,13 @@ public abstract class ArrayCopySnippets implements Snippets {
             throw GraalError.shouldNotReachHere(workSnippetID.toString());
         }
 
-        protected SnippetInfo snippet(ArrayCopySnippets receiver, String methodName) {
-            SnippetInfo info = snippet(ArrayCopySnippets.class, methodName, originalArraycopy(), receiver, LocationIdentity.any());
+        protected SnippetInfo snippet(Providers providers, ArrayCopySnippets receiver, String methodName) {
+            SnippetInfo info = snippet(providers,
+                            ArrayCopySnippets.class,
+                            methodName,
+                            originalArraycopy(providers.getMetaAccess()),
+                            receiver,
+                            LocationIdentity.any());
             return info;
         }
 
@@ -660,7 +666,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 args.addConst("elementKind", JavaKind.Illegal);
             }
 
-            instantiate(args, arraycopy);
+            instantiate(tool, args, arraycopy);
         }
 
         public void lower(ArrayCopyWithDelayedLoweringNode arraycopy, LoweringTool tool) {
@@ -681,7 +687,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             Object locationIdentity = (elementKind == null) ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arraycopy.getElementKind());
             args.addConst("arrayLocation", locationIdentity);
             args.addConst("counters", counters);
-            instantiate(args, arraycopy);
+            instantiate(tool, args, arraycopy);
         }
 
         private static boolean canBeArray(ResolvedJavaType type) {
@@ -691,14 +697,11 @@ public abstract class ArrayCopySnippets implements Snippets {
         /**
          * Instantiate the snippet template and fix up the FrameState of any Invokes of
          * System.arraycopy and propagate the captured bci in the ArrayCopySlowPathNode.
-         *
-         * @param args
-         * @param arraycopy
          */
-        private void instantiate(Arguments args, BasicArrayCopyNode arraycopy) {
+        private void instantiate(LoweringTool tool, Arguments args, BasicArrayCopyNode arraycopy) {
             StructuredGraph graph = arraycopy.graph();
-            SnippetTemplate template = template(arraycopy, args);
-            UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
+            SnippetTemplate template = template(tool, arraycopy, args);
+            UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
             for (Node originalNode : duplicates.getKeys()) {
                 if (originalNode instanceof InvokeNode) {
                     InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
@@ -731,13 +734,13 @@ public abstract class ArrayCopySnippets implements Snippets {
             return true;
         }
 
-        private ResolvedJavaMethod originalArraycopy() throws GraalError {
+        private ResolvedJavaMethod originalArraycopy(MetaAccessProvider metaAccess) throws GraalError {
             if (!useOriginalArraycopy) {
                 return null;
             }
             if (originalArraycopy == null) {
                 try {
-                    originalArraycopy = findMethod(providers.getMetaAccess(), System.class, "arraycopy");
+                    originalArraycopy = findMethod(metaAccess, System.class, "arraycopy");
                 } catch (SecurityException e) {
                     throw new GraalError(e);
                 }

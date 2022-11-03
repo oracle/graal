@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.asm;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +41,7 @@ import jdk.vm.ci.code.TargetDescription;
 /**
  * The platform-independent base class for the assembler.
  */
-public abstract class Assembler {
+public abstract class Assembler<T extends Enum<T>> {
 
     public abstract static class CodeAnnotation {
     }
@@ -59,9 +61,59 @@ public abstract class Assembler {
 
     protected Consumer<CodeAnnotation> codePatchingAnnotationConsumer;
 
-    public Assembler(TargetDescription target) {
+    /**
+     * CPU features that are statically available.
+     */
+    private final EnumSet<T> features;
+    /**
+     * Stack of features that are temporarily available in a certain region of the code. Each
+     * element only contains the features which were added.
+     *
+     * @see #addFeatures
+     * @see #removeFeatures
+     */
+    private final ArrayDeque<EnumSet<T>> featuresStack;
+
+    public Assembler(TargetDescription target, EnumSet<T> features) {
         this.target = target;
         this.codeBuffer = new Buffer(target.arch.getByteOrder());
+        this.features = features;
+        featuresStack = new ArrayDeque<>(1);
+    }
+
+    public final EnumSet<T> getFeatures() {
+        return features;
+    }
+
+    /**
+     * Add a new item at the top of the feature stack. The new item will contain all those
+     * {@code newFeatures} that aren't already contained in {@link #getFeatures()}. A feature stack
+     * item will always be added, even if none of the features are actually new.
+     */
+    public void addFeatures(EnumSet<T> newFeatures) {
+        EnumSet<T> added = EnumSet.copyOf(newFeatures);
+        added.removeIf(feature -> !getFeatures().add(feature));
+        featuresStack.push(added);
+    }
+
+    /**
+     * Removes the topmost item from the feature stack and removes all of this item's features from
+     * {@link #getFeatures()}.
+     */
+    public void removeFeatures() {
+        GraalError.guarantee(!featuresStack.isEmpty(), "cannot remove features since no features have been added");
+        getFeatures().removeAll(featuresStack.pop());
+    }
+
+    /**
+     * Returns {@code true} if the feature is included in the current topmost item of the feature
+     * stack.
+     */
+    public boolean isCurrentRegionFeature(T feature) {
+        if (featuresStack.isEmpty()) {
+            return false;
+        }
+        return featuresStack.peek().contains(feature);
     }
 
     public void setCodePatchingAnnotationConsumer(Consumer<CodeAnnotation> codeAnnotationConsumer) {

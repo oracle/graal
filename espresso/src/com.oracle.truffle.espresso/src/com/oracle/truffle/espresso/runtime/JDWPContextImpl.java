@@ -66,7 +66,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BciProvider;
-import com.oracle.truffle.espresso.nodes.EspressoBaseMethodNode;
+import com.oracle.truffle.espresso.nodes.EspressoInstrumentableRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
@@ -102,13 +102,13 @@ public final class JDWPContextImpl implements JDWPContext {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
         vmEventListener.activate(mainThread, control, this);
-        setup.setup(debugger, control, context.JDWPOptions, this, mainThread, vmEventListener);
+        setup.setup(debugger, control, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
         classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
-        if (context.JDWPOptions != null) {
+        if (context.getEspressoEnv().JDWPOptions != null) {
             setup.finalizeSession();
         }
     }
@@ -705,7 +705,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Node getInstrumentableNode(RootNode rootNode) {
         if (rootNode instanceof EspressoRootNode) {
-            EspressoBaseMethodNode baseMethodNode = ((EspressoRootNode) rootNode).getMethodNode();
+            EspressoInstrumentableRootNode baseMethodNode = ((EspressoRootNode) rootNode).getMethodNode();
             if (baseMethodNode instanceof InstrumentableNode.WrapperNode) {
                 return ((InstrumentableNode.WrapperNode) baseMethodNode).getDelegateNode();
             } else {

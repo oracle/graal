@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.option;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.nativeimage.hosted.Feature;
 
-@AutomaticFeature
-public class ValidateImageBuildOptionsFeature implements Feature {
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+
+@AutomaticallyRegisteredFeature
+public class ValidateImageBuildOptionsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         UnmodifiableMapCursor<OptionKey<?>, Object> cursor = RuntimeOptionValues.singleton().getMap().getEntries();

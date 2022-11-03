@@ -65,6 +65,8 @@ public final class Module implements ParserListener {
 
     private final Types types;
 
+    private final OperandBundleTags operandBundleTags = new OperandBundleTags();
+
     private final IRScope scope;
 
     private final ArrayDeque<FunctionDefinition> functionQueue;
@@ -82,6 +84,11 @@ public final class Module implements ParserListener {
         this.paramAttributes = new ParameterAttributes(types);
         functionQueue = new ArrayDeque<>();
         index = new AtomicInteger(0);
+    }
+
+    @Override
+    public void exit() {
+        module.setTotalSize(index.get());
     }
 
     // private static final int STRTAB_RECORD_OFFSET = 2;
@@ -143,7 +150,7 @@ public final class Module implements ParserListener {
             scope.addSymbol(function, function.getType());
             assignNameFromStrTab(name, function);
         } else {
-            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr, index.getAndIncrement());
+            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr, index.getAndIncrement(), operandBundleTags);
             module.addFunctionDefinition(function);
             scope.addSymbol(function, function.getType());
             assignNameFromStrTab(name, function);
@@ -240,6 +247,9 @@ public final class Module implements ParserListener {
 
             case CONSTANTS:
                 return new Constants(types, scope);
+
+            case OPERAND_BUNDLE_TAGS:
+                return new OperandBundleTagsListener(operandBundleTags);
 
             case FUNCTION: {
                 throw new LLVMParserException("Function is not parsed lazily!");

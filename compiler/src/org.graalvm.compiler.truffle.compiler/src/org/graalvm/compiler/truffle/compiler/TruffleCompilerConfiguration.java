@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
@@ -42,6 +43,7 @@ public final class TruffleCompilerConfiguration {
     private final TruffleTierConfiguration firstTier;
     private final TruffleTierConfiguration lastTier;
     private final KnownTruffleTypes knownTruffleTypes;
+    private final Suites hostSuite;
 
     public TruffleCompilerConfiguration(
                     TruffleCompilerRuntime runtime,
@@ -49,13 +51,15 @@ public final class TruffleCompilerConfiguration {
                     SnippetReflectionProvider provider,
                     TruffleTierConfiguration firstTier,
                     TruffleTierConfiguration lastTier,
-                    KnownTruffleTypes knownTruffleTypes) {
+                    KnownTruffleTypes knownTruffleTypes,
+                    Suites hostSuite) {
         this.runtime = runtime;
         this.plugins = plugins;
         this.provider = provider;
         this.firstTier = firstTier;
         this.lastTier = lastTier;
         this.knownTruffleTypes = knownTruffleTypes;
+        this.hostSuite = hostSuite;
     }
 
     public TruffleCompilerRuntime runtime() {
@@ -82,8 +86,12 @@ public final class TruffleCompilerConfiguration {
         return knownTruffleTypes;
     }
 
+    public Suites hostSuite() {
+        return hostSuite;
+    }
+
     public TruffleCompilerConfiguration withFirstTier(TruffleTierConfiguration tier) {
-        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, knownTruffleTypes);
+        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, knownTruffleTypes, hostSuite);
     }
 
     public List<Backend> backends() {

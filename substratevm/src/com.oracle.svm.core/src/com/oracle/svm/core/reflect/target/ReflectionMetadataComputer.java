@@ -24,23 +24,12 @@
  */
 package com.oracle.svm.core.reflect.target;
 
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
-public abstract class ReflectionMetadataComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+public abstract class ReflectionMetadataComputer implements FieldValueTransformerWithAvailability {
 
     @Override
-    public final RecomputeFieldValue.ValueAvailability valueAvailability() {
-        return RecomputeFieldValue.ValueAvailability.AfterCompilation;
-    }
-
-    @Override
-    public abstract Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver);
-
-    @Override
-    public final Class<?>[] types() {
-        return new Class<?>[]{byte[].class, null};
+    public final ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterCompilation;
     }
 }

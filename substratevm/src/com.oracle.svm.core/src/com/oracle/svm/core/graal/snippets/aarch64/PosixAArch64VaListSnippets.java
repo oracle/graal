@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,11 +99,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     private static final int GP_TOP_LOCATION = 8;
     private static final int FP_TOP_LOCATION = 16;
 
-    private PosixAArch64VaListSnippets(OptionValues options, Providers providers) {
-        super(options, providers);
-    }
-
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static double vaArgDoubleSnippet(Pointer vaList) {
         int fpOffset = vaList.readInt(FP_OFFSET_LOCATION);
         if (fpOffset < MAX_FP_OFFSET) {
@@ -125,7 +121,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
         return (float) vaArgDoubleSnippet(vaList);
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static long vaArgLongSnippet(Pointer vaList) {
         int gpOffset = vaList.readInt(GP_OFFSET_LOCATION);
         if (gpOffset < MAX_GP_OFFSET) {
@@ -151,18 +147,22 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
         new PosixAArch64VaListSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo vaArgDouble;
+    private final SnippetInfo vaArgFloat;
+    private final SnippetInfo vaArgLong;
+    private final SnippetInfo vaArgInt;
+
     private PosixAArch64VaListSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
         lowerings.put(VaListNextArgNode.class, new VaListSnippetsLowering());
+
+        this.vaArgDouble = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
+        this.vaArgFloat = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
+        this.vaArgLong = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
+        this.vaArgInt = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
     }
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
-
-        private final SnippetInfo vaArgDouble = snippet(PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
-
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {
             SnippetInfo snippet;
@@ -186,7 +186,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("vaList", node.getVaList());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

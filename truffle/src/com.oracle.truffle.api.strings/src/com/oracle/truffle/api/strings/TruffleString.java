@@ -76,7 +76,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -141,7 +140,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     private final int codePointLength;
     private final byte codeRange;
-    private TruffleString next;
+    TruffleString next;
 
     private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
         super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0);
@@ -304,6 +303,20 @@ public final class TruffleString extends AbstractTruffleString {
             }
             entry.next = cacheHeadNext == null ? cacheHead : cacheHeadNext;
         } while (!setNextAtomic(cacheHead, cacheHeadNext, entry));
+    }
+
+    /*
+     * Simpler and faster insertion for the case `this` and `entry` were just allocated together and
+     * before they are published. The CAS is not needed in that case since we know nobody could
+     * write to `next` fields before us.
+     */
+    void cacheInsertFirstBeforePublished(TruffleString entry) {
+        assert !entry.isCacheHead();
+        assert isCacheHead();
+        assert next == null;
+        TruffleString cacheHead = this;
+        entry.next = cacheHead;
+        cacheHead.next = entry;
     }
 
     private static boolean hasDuplicateEncoding(TruffleString cacheHead, TruffleString start, TruffleString insertEntry) {
@@ -1500,7 +1513,7 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Error handling instructions for operations that return integer values, such as indices or
      * code points.
-     * 
+     *
      * @since 22.3
      */
     public enum ErrorHandling {
@@ -1743,7 +1756,7 @@ public final class TruffleString extends AbstractTruffleString {
          * Creates a 10's complement string from the given long value, using ASCII digits (0x30 -
          * 0x39). This operation does not support encodings that are incompatible with the ASCII
          * character set.
-         * 
+         *
          * @param lazy if true, the string representation of the number is computed lazily the first
          *            time it is needed. This parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation
@@ -2025,7 +2038,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.1
          */
         public final TruffleString execute(String value, Encoding encoding) {
-            return execute(value, 0, value.length(), encoding, true);
+            return execute(value, 0, value.length(), encoding, false);
         }
 
         /**
@@ -3170,7 +3183,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Decode and return the codepoint at codepoint index {@code i}, with
          * {@link ErrorHandling#BEST_EFFORT best-effort} error handling.
-         * 
+         *
          * @since 22.1
          */
         public final int execute(AbstractTruffleString a, int i, Encoding expectedEncoding) {
@@ -3179,7 +3192,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Decode and return the codepoint at codepoint index {@code i}.
-         * 
+         *
          * @param errorHandling if set to {@link ErrorHandling#BEST_EFFORT}, the return value on
          *            invalid codepoints depends on {@code expectedEncoding}:
          *            <ul>
@@ -3262,7 +3275,7 @@ public final class TruffleString extends AbstractTruffleString {
          * Decode and return the codepoint at byte index {@code i}.
          *
          * @param errorHandling analogous to {@link CodePointAtIndexNode}.
-         * 
+         *
          * @since 22.3
          */
         public abstract int execute(AbstractTruffleString a, int i, Encoding expectedEncoding, ErrorHandling errorHandling);
@@ -4456,7 +4469,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Create a new string by concatenating {@code a} and {@code b}.
-         * 
+         *
          * @param lazy if {@code true}, the creation of the new string's internal array may be
          *            delayed until it is required by another operation. This parameter is expected
          *            to be {@link CompilerAsserts#partialEvaluationConstant(boolean) partial
@@ -4761,7 +4774,11 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public abstract TruffleString execute(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy);
 
-        @Specialization(guards = "byteLength == 0")
+        static boolean isSame(int v0, int v1) {
+            return v0 == v1;
+        }
+
+        @Specialization(guards = "isSame(byteLength, 0)")
         static TruffleString substringEmpty(AbstractTruffleString a, int fromByteIndex, @SuppressWarnings("unused") int byteLength, Encoding expectedEncoding,
                         @SuppressWarnings("unused") boolean lazy) {
             a.checkEncoding(expectedEncoding);
@@ -4841,12 +4858,15 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
+                        @Cached ConditionProfile lengthAndCodeRangeCheckProfile,
+                        @Cached BranchProfile compareHashProfile,
+                        @Cached ConditionProfile checkFirstByteProfile) {
             final int codeRangeA = getCodeRangeANode.execute(a);
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(expectedEncoding, codeRangeA);
             b.looseCheckEncoding(expectedEncoding, codeRangeB);
-            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, this);
+            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, lengthAndCodeRangeCheckProfile, compareHashProfile, checkFirstByteProfile, this);
         }
 
         static boolean checkContentEquals(
@@ -4854,17 +4874,39 @@ public final class TruffleString extends AbstractTruffleString {
                         AbstractTruffleString b, int codeRangeB,
                         ToIndexableNode toIndexableNodeA,
                         ToIndexableNode toIndexableNodeB,
+                        ConditionProfile lengthAndCodeRangeCheckProfile,
+                        BranchProfile compareHashProfile,
+                        ConditionProfile checkFirstByteProfile,
                         EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
-            if (a.length() != b.length() || codeRangeA != codeRangeB ||
-                            !CompilerDirectives.isCompilationConstant(a) && !CompilerDirectives.isCompilationConstant(b) &&
-                                            a.isHashCodeCalculated() && b.isHashCodeCalculated() &&
-                                            a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+            int lengthCMP = a.length();
+            if (lengthAndCodeRangeCheckProfile.profile(lengthCMP != b.length() || codeRangeA != codeRangeB)) {
                 return false;
             }
+            if (a.isHashCodeCalculated() && b.isHashCodeCalculated()) {
+                compareHashProfile.enter();
+                if (a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+                    return false;
+                }
+            }
+            if (lengthCMP == 0) {
+                return true;
+            }
+            Object arrayA = toIndexableNodeA.execute(a, a.data());
+            Object arrayB = toIndexableNodeB.execute(b, b.data());
+            int strideA = a.stride();
+            int strideB = b.stride();
+            if (checkFirstByteProfile.profile(arrayA instanceof byte[] && arrayB instanceof byte[] && (strideA | strideB) == 0)) {
+                // fast path: check first byte
+                if (((byte[]) arrayA)[a.offset()] != ((byte[]) arrayB)[b.offset()]) {
+                    return false;
+                } else if (lengthCMP == 1) {
+                    return true;
+                }
+            }
             return TStringOps.regionEqualsWithOrMaskWithStride(equalNode,
-                            a, toIndexableNodeA.execute(a, a.data()), a.stride(), 0,
-                            b, toIndexableNodeB.execute(b, b.data()), b.stride(), 0, null, a.length());
+                            a, arrayA, strideA, 0,
+                            b, arrayB, strideB, 0, null, lengthCMP);
         }
 
         /**

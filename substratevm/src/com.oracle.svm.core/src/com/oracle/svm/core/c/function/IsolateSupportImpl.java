@@ -26,38 +26,33 @@ package com.oracle.svm.core.c.function;
 
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
 
+@AutomaticallyRegisteredImageSingleton(IsolateSupport.class)
 public final class IsolateSupportImpl implements IsolateSupport {
     private static final String ISOLATES_DISABLED_MESSAGE = "Spawning of multiple isolates is disabled, use " +
                     SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+") + " option.";
     private static final String PROTECTION_DOMAIN_UNSUPPORTED_MESSAGE = "Protection domains are unavailable";
 
-    static void initialize() {
-        ImageSingletons.add(IsolateSupport.class, new IsolateSupportImpl());
-    }
-
-    private IsolateSupportImpl() {
+    IsolateSupportImpl() {
     }
 
     @Override
@@ -67,18 +62,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
         }
 
         try (CTypeConversion.CCharPointerHolder auxImagePath = CTypeConversion.toCString(parameters.getAuxiliaryImagePath())) {
-            CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
-            params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
-            params.setAuxiliaryImagePath(auxImagePath.get());
-            params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setVersion(4);
-            params.setIgnoreUnrecognizedArguments(false);
-            params.setExitWhenArgumentParsingFails(false);
-
+            int pkey = 0;
             if (MemoryProtectionProvider.isAvailable()) {
                 try {
-                    int pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
-                    params.setProtectionKey(pkey);
+                    pkey = MemoryProtectionProvider.singleton().asProtectionKey(parameters.getProtectionDomain());
                 } catch (UnsupportedDomainException e) {
                     throw new IsolateException(e.getMessage());
                 }
@@ -107,12 +94,22 @@ public final class IsolateSupportImpl implements IsolateSupport {
                     argv.write(i + 1, ph.get());
                 }
             }
+
+            CEntryPointCreateIsolateParameters params = UnsafeStackValue.get(CEntryPointCreateIsolateParameters.class);
+            params.setProtectionKey(pkey);
+            params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
+            params.setAuxiliaryImagePath(auxImagePath.get());
+            params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
+            params.setVersion(4);
+            params.setIgnoreUnrecognizedArguments(false);
+            params.setExitWhenArgumentParsingFails(false);
             params.setArgc(argc);
             params.setArgv(argv);
 
             // Try to create the isolate.
-            IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);
+            IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);
             int result = CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr);
+            IsolateThread isolateThread = isolateThreadPtr.read();
 
             // Cleanup all native memory related to argv.
             if (params.getArgv().isNonNull()) {
@@ -123,13 +120,13 @@ public final class IsolateSupportImpl implements IsolateSupport {
             }
 
             throwOnError(result);
-            return isolateThreadPtr.read();
+            return isolateThread;
         }
     }
 
     @Override
     public IsolateThread attachCurrentThread(Isolate isolate) throws IsolateException {
-        IsolateThreadPointer isolateThread = StackValue.get(IsolateThreadPointer.class);
+        IsolateThreadPointer isolateThread = UnsafeStackValue.get(IsolateThreadPointer.class);
         throwOnError(CEntryPointNativeFunctions.attachThread(isolate, isolateThread));
         return isolateThread.read();
     }
@@ -163,13 +160,5 @@ public final class IsolateSupportImpl implements IsolateSupport {
             String message = CEntryPointErrors.getDescription(code);
             throw new IsolateException(message);
         }
-    }
-}
-
-@AutomaticFeature
-class IsolateSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        IsolateSupportImpl.initialize();
     }
 }

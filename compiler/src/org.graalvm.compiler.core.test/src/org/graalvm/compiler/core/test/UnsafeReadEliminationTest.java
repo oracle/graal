@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -142,7 +142,6 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
         // after lowering the same applies for reads and writes
         new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
         Assert.assertEquals(reads, graph.getNodes().filter(ReadNode.class).count());
         Assert.assertEquals(writes, graph.getNodes().filter(WriteNode.class).count());
     }

@@ -33,18 +33,18 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
-public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
+final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
     @Child private JavaSubstitution substitution;
 
     // Truffle does not want to report split on first call. Delay until the second.
     private final DebugCounter nbSplits;
 
-    public IntrinsicSubstitutorNode(JavaSubstitution.Factory factory, Method method) {
-        super(method.getMethodVersion());
+    IntrinsicSubstitutorNode(Method.MethodVersion methodVersion, JavaSubstitution.Factory factory) {
+        super(methodVersion);
         this.substitution = factory.create();
 
-        EspressoError.guarantee(!substitution.isTrivial() || !method.isSynchronized(),
-                        "Substitution for synchronized method cannot be marked as trivial", method);
+        EspressoError.guarantee(!substitution.isTrivial() || !methodVersion.isSynchronized(),
+                        "Substitution for synchronized method cannot be marked as trivial", methodVersion);
 
         if (substitution.canSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));
@@ -61,12 +61,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    void initializeBody(VirtualFrame frame) {
-        // nop
-    }
-
-    @Override
-    public Object executeBody(VirtualFrame frame) {
+    Object execute(VirtualFrame frame) {
         return substitution.invoke(frame.getArguments());
     }
 
@@ -92,7 +87,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    protected boolean isTrivial() {
+    boolean isTrivial() {
         return substitution.isTrivial();
     }
 }

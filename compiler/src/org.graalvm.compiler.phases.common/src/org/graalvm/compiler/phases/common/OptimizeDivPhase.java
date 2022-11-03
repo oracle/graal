@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,18 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -61,10 +65,15 @@ import jdk.vm.ci.code.CodeUtil;
  * express it in faster, equivalent, arithmetic.
  */
 public class OptimizeDivPhase extends BasePhase<CoreProviders> {
-    protected final CanonicalizerPhase canon;
+    protected final CanonicalizerPhase canonicalizer;
 
-    public OptimizeDivPhase(CanonicalizerPhase canon) {
-        this.canon = canon;
+    public OptimizeDivPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return this.canonicalizer.notApplicableTo(graphState);
     }
 
     @Override
@@ -74,27 +83,35 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         try (NodeEventScope nes = graph.trackNodeEvents(ec)) {
             for (IntegerDivRemNode rem : graph.getNodes(IntegerDivRemNode.TYPE)) {
                 if (rem instanceof SignedRemNode && isDivByNonZeroConstant(rem)) {
-                    optimizeRem(rem);
+                    try (DebugCloseable position = rem.withNodeSourcePosition()) {
+                        optimizeRem(rem);
+                    }
                 }
             }
             for (SignedFloatingIntegerRemNode nonTrappingRem : graph.getNodes(SignedFloatingIntegerRemNode.TYPE)) {
                 if (isDivByNonZeroConstant(nonTrappingRem)) {
-                    optimizeRem(nonTrappingRem);
+                    try (DebugCloseable position = nonTrappingRem.withNodeSourcePosition()) {
+                        optimizeRem(nonTrappingRem);
+                    }
                 }
             }
             for (IntegerDivRemNode div : graph.getNodes(IntegerDivRemNode.TYPE)) {
                 if (div instanceof SignedDivNode && isDivByNonZeroConstant(div)) {
-                    optimizeSignedDiv(div);
+                    try (DebugCloseable position = div.withNodeSourcePosition()) {
+                        optimizeSignedDiv(div);
+                    }
                 }
             }
             for (SignedFloatingIntegerDivNode div : graph.getNodes(SignedFloatingIntegerDivNode.TYPE)) {
                 if (isDivByNonZeroConstant(div)) {
-                    optimizeSignedDiv(div);
+                    try (DebugCloseable position = div.withNodeSourcePosition()) {
+                        optimizeSignedDiv(div);
+                    }
                 }
             }
         }
         if (!ec.getNodes().isEmpty()) {
-            canon.applyIncremental(graph, context, ec.getNodes());
+            canonicalizer.applyIncremental(graph, context, ec.getNodes());
         }
 
     }
@@ -230,6 +247,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         } else {
             originalNode.replaceAndDelete(replacementWrapped);
         }
+        graph.getOptimizationLog().report(OptimizeDivPhase.class, "DivOptimization", originalNode);
     }
 
     /**

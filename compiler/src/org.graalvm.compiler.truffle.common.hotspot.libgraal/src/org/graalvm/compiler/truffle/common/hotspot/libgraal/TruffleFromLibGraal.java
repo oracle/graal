@@ -64,7 +64,7 @@ public @interface TruffleFromLibGraal {
         CallNodeHashCode(int.class, Object.class),
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
-        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
+        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class, long.class),
         CountInlinedCalls(int.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),

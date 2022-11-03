@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -260,7 +261,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word thread = getThread();
         byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
         // If the concurrent marker is not enabled or the vector length is zero, return.
-        if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0 || length == 0)) {
+        if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0) || probability(NOT_FREQUENT_PROBABILITY, length == 0)) {
             return;
         }
 
@@ -270,7 +271,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int scale = objectArrayIndexScale();
         Word start = getPointerToFirstArrayElement(address, length, elementStride);
 
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(i * scale);
             Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
@@ -326,7 +327,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 }
             }
             cur = cur.add(1);
-        } while (cur.belowOrEqual(end));
+        } while (GraalDirectives.injectIterationCount(10, cur.belowOrEqual(end)));
     }
 
     protected abstract Word getThread();
@@ -374,7 +375,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract long referentOffset();
 
-    private boolean isTracingActive(int traceStartCycle) {
+    protected boolean isTracingActive(int traceStartCycle) {
         return traceStartCycle > 0 && ((Pointer) WordFactory.pointer(gcTotalCollectionsAddress())).readInt(0) > traceStartCycle;
     }
 
@@ -456,7 +457,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ReferentFieldReadBarrier barrier, LoweringTool tool) {
@@ -475,7 +476,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1PostWriteBarrier barrier, LoweringTool tool) {
@@ -490,7 +491,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             if (address instanceof OffsetAddressNode) {
                 args.add("object", ((OffsetAddressNode) address).getBase());
             } else {
-                assert barrier.usePrecise() : "found imprecise barrier that's not an object access " + barrier;
+                assert barrier.usePrecise() : "found imprecise barrier that's not an object access " + barrier + " at address " + address;
                 args.add("object", null);
             }
 
@@ -504,7 +505,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePreWriteBarrier barrier, LoweringTool tool) {
@@ -513,7 +514,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePostWriteBarrier barrier, LoweringTool tool) {
@@ -522,7 +523,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         private static int traceStartCycle(StructuredGraph graph) {

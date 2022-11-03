@@ -26,8 +26,8 @@ package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
 
-import org.graalvm.compiler.debug.CounterKey;
-import org.graalvm.compiler.debug.DebugContext;
+import java.util.Optional;
+
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.CompressionNode;
@@ -35,6 +35,8 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -63,11 +65,20 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
     }
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        // This phase creates {@link OffsetAddressNode}s that needs to be lowered.
+                        NotApplicable.unlessRunBefore(this, StageFlag.ADDRESS_LOWERING, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().areFrameStatesAtDeopts(), "This should happen after FSA"));
+    }
+
+    @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
-        if (!Options.UseTrappingNullChecks.getValue(graph.getOptions()) || context.getTarget().implicitNullCheckLimit <= 0) {
+        assert context.getTarget().implicitNullCheckLimit > 0 : "The implicitNullCheckLimit should be greater than 0.";
+        if (!Options.UseTrappingNullChecks.getValue(graph.getOptions())) {
             return;
         }
-        assert graph.getGuardsStage().areFrameStatesAtDeopts();
         MetaAccessProvider metaAccessProvider = context.getMetaAccess();
         for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
             tryUseTrappingVersion(deopt, deopt.predecessor(), deopt.getReason(), deopt.getSpeculation(), deopt.getActionAndReason(metaAccessProvider).asJavaConstant(),
@@ -121,8 +132,7 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
                         fixedAccessNode.setUsedAsNullCheck(true);
                         fixedAccessNode.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
                         graph.removeSplit(ifNode, nonTrappingContinuation);
-                        counterTrappingNullCheckExistingRead.increment(graph.getDebug());
-                        graph.getDebug().log("Added implicit null check to %s", fixedAccessNode);
+                        graph.getOptimizationLog().report(UseTrappingNullChecksPhase.class, "ImplicitNullCheck", isNullNode);
                         return fixedAccessNode;
                     }
                 }
@@ -130,8 +140,6 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
         }
         return null;
     }
-
-    private static final CounterKey counterTrappingNullCheckExistingRead = DebugContext.counter("TrappingNullCheckExistingRead");
 
     @Override
     public DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {

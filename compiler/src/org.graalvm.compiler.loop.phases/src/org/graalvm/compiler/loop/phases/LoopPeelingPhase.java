@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.loop.phases;
 
-import org.graalvm.compiler.debug.CounterKey;
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
@@ -44,8 +47,6 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
         // @formatter:on
     }
 
-    public static final CounterKey PEELED = DebugContext.counter("Peeled");
-
     public LoopPeelingPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
         super(policies, canonicalizer);
     }
@@ -54,7 +55,21 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
      * Determine if the given loop can be peeled.
      */
     public static boolean canPeel(LoopEx loop) {
-        return loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
+        return stateAllowsPeeling(loop.loopBegin().graph().getGraphState()) && loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        // keep in sync with stateAllowsPeeling()
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
+    }
+
+    private static boolean stateAllowsPeeling(GraphState graphState) {
+        // keep in sync with notApplicableTo()
+        return graphState.isBeforeStage(StageFlag.FSA) && graphState.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL);
     }
 
     @Override
@@ -68,12 +83,9 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                     if (canPeel(loop)) {
                         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
                             if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) {
-                                debug.log("Peeling %s, iteration %s", loop, iteration);
-                                PEELED.increment(debug);
                                 LoopTransformations.peel(loop);
                                 loop.invalidateFragmentsAndIVs();
                                 data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
-                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s, iteration %s", loop, iteration);
                             }
                         }
                     }

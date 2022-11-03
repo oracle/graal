@@ -24,19 +24,16 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 
+@AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)
 class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -60,14 +57,5 @@ class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void free(PointerBase ptr) {
         LibC.free(ptr);
-    }
-}
-
-@AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
-class UnmanagedMemoryFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(UnmanagedMemorySupport.class, new WindowsUnmanagedMemorySupportImpl());
     }
 }

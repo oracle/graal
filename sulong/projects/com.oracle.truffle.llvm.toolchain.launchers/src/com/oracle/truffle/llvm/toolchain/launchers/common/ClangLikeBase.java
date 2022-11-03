@@ -192,23 +192,26 @@ public abstract class ClangLikeBase extends Driver {
         return sulongArgs;
     }
 
-    protected void getCompilerArgs(List<String> sulongArgs) {
+    protected void getDebugCompilerArgs(List<String> sulongArgs) {
         // use -gdwarf-5 instead of -g to enable source file checksums
-        sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
+        sulongArgs.add("-gdwarf-5");
+    }
+
+    protected void getCompilerArgs(List<String> sulongArgs) {
+        sulongArgs.addAll(Arrays.asList("-flto=full", "-O1"));
         sulongArgs.addAll(getVectorInstructionSetFlags());
+        getDebugCompilerArgs(sulongArgs);
+
+        if (os == OS.WINDOWS) {
+            sulongArgs.add("-stdlib++-isystem");
+            sulongArgs.add(getSulongHome().resolve("include").resolve("c++").resolve("v1").toString());
+        }
     }
 
     private List<String> getVectorInstructionSetFlags() {
         switch (arch) {
             case X86_64:
                 return Arrays.asList("-mno-sse3", "-mno-avx");
-            case AARCH_64:
-                /*
-                 * Avoid NEON intrinsics to be used. There are no perf gains from a Sulong
-                 * perspective and they aren't implemented by Sulong. Usages in C should be guarded
-                 * by `__ARM_NEON` and provide a fallback.
-                 */
-                return Arrays.asList("-Xclang", "-target-feature", "-Xclang", "-neon");
             default:
                 return Collections.emptyList();
         }

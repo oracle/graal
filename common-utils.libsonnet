@@ -73,5 +73,25 @@
 
   # generate a string of hyphen-separated items from the given list, skipping null values
   hyphenize(a_list)::
-    std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), a_list))
+    std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), a_list)),
+
+  # Adds a CI build predicate to `build` if it is a gate such that it is only
+  # run if a non-documentation file in any of `suites` has been updated.
+  add_gate_predicate(build, suites, extra_includes=[], extra_excludes=[])::
+    if std.member(build.targets, "gate") then
+    build + {
+      guard+: {
+        includes+: [ suite + "/**"      for suite in suites ] + extra_includes,
+        excludes+: [ suite + "/docs/**" for suite in suites ] + [ "**.md" ] + extra_excludes
+      }
+    }
+  else
+    build,
+
+  # std.get is not available in all versions
+  std_get(o, f, default=null, inc_hidden=true)::
+    local objectHas = if inc_hidden then std.objectHasAll else std.objectHas;
+    if objectHas(o, f) then o[f] else default
+  ,
+
 }

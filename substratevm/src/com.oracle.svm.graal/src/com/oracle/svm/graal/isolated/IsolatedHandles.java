@@ -26,7 +26,7 @@ package com.oracle.svm.graal.isolated;
 
 import org.graalvm.nativeimage.ObjectHandle;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 
 public final class IsolatedHandles {

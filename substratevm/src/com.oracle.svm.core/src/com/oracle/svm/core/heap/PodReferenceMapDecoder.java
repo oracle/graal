@@ -32,15 +32,17 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.JavaMemoryUtil;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class PodReferenceMapDecoder {
+    @DuplicatedInNativeCode
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     public static boolean walkOffsetsFromPointer(Pointer baseAddress, int layoutEncoding, ObjectReferenceVisitor visitor, Object obj) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();

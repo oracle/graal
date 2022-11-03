@@ -159,8 +159,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         debuggerSession = tdbg.startSession(suspendedCallback, SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSourcePath(context.getSourcePath());
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
-        scriptsHandler = context.acquireScriptsHandler();
-        scriptsHandler.setDebuggerSession(debuggerSession);
+        scriptsHandler = context.acquireScriptsHandler(debuggerSession);
         breakpointsHandler = new BreakpointsHandler(debuggerSession, scriptsHandler, () -> eventHandler);
     }
 

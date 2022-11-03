@@ -36,7 +36,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -165,9 +165,9 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "tear_down_isolate", documentation = {
-                    "Tears down the passed isolate, waiting for any attached threads to detach from",
-                    "it, then discards the isolate's objects, threads, and any other state or context",
-                    "that is associated with it.",
+                    "Tears down the isolate of the passed (and still attached) isolate thread,",
+                    "waiting for any attached threads to detach from it, then discards its objects,",
+                    "threads, and any other state or context that is associated with it.",
                     "Returns 0 on success, or a non-zero value on failure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static int tearDownIsolate(IsolateThread isolateThread) {

@@ -28,11 +28,11 @@ import java.security.SecureRandom;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.PosixSunSecuritySubstitutions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
@@ -44,9 +44,9 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
  * As of Java 11, there is only a dummy implementation of {@code NativePRNG} on Windows which does
  * not open file descriptors that would need to be closed.
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public class NativeSecureRandomFilesCloser implements Feature {
+public class NativeSecureRandomFilesCloser implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(this::registerShutdownHook, sun.security.provider.NativePRNG.class);

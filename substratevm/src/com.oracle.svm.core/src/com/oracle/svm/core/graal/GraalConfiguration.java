@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,12 +110,12 @@ public class GraalConfiguration {
                         ConfigurationValues.getTarget());
     }
 
-    public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {
-        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(options);
+    public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted, Architecture arch) {
+        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(options, arch);
     }
 
-    public Suites createFirstTierSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {
-        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(options);
+    public Suites createFirstTierSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted, Architecture arch) {
+        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(options, arch);
     }
 
     public LIRSuites createLIRSuites(OptionValues options) {

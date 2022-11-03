@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static org.graalvm.compiler.options.OptionType.Expert;
 
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -42,12 +43,12 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -69,11 +70,14 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
+import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -95,6 +99,9 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
@@ -104,9 +111,11 @@ import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.word.WordCastNode;
-import com.oracle.svm.util.GuardedAnnotationAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
@@ -128,9 +137,10 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
-import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -138,6 +148,11 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.VMConstant;
 
 public class MethodTypeFlowBuilder {
+
+    public static class Options {
+        @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
+        public static final OptionKey<Boolean> PEABeforeAnalysis = new OptionKey<>(true);
+    }
 
     protected final PointsToAnalysis bb;
     protected final MethodFlowsGraph flowsGraph;
@@ -194,6 +209,11 @@ public class MethodTypeFlowBuilder {
                  * access, array accesses; many of those dominate each other.
                  */
                 new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
+
+                if (Options.PEABeforeAnalysis.getValue(bb.getOptions())) {
+                    new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+                    new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                }
             }
 
             // Do it again after canonicalization changed type checks and field accesses.
@@ -210,7 +230,9 @@ public class MethodTypeFlowBuilder {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
                 AnalysisType type = (AnalysisType) node.type().getType();
-                type.registerAsReachable();
+                if (!ignoreInstanceOfType(type)) {
+                    type.registerAsReachable();
+                }
 
             } else if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
@@ -261,7 +283,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
                 AnalysisField field = (AnalysisField) node.field();
-                field.registerAsRead(method);
+                field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
@@ -274,7 +296,7 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
                     type.registerAsInHeap();
-                    if (registerEmbeddedRoots) {
+                    if (registerEmbeddedRoots && !ignoreConstant(cn)) {
                         registerEmbeddedRoot(cn);
                     }
                 }
@@ -305,10 +327,63 @@ public class MethodTypeFlowBuilder {
         }
     }
 
+    /**
+     * This method filters constants, i.e., these constants are not seen as reachable on its own.
+     * This avoids making things reachable just because of that constant usage. For all cases where
+     * this method returns true, {@link StrengthenGraphs} must have a corresponding re-write of the
+     * constant in case nothing else in the application made that constant reachable.
+     *
+     * {@link Class#isAssignableFrom} is often used with a constant receiver class. In that case, we
+     * do not want to make the receiver class reachable, because as long as the receiver class is
+     * not reachable for any other "real" reason we know that isAssignableFrom will always return
+     * false. So in {@link StrengthenGraphs} we can then constant-fold the
+     * {@link ClassIsAssignableFromNode} to false.
+     *
+     * Similarly, a class should not be marked as reachable only so that we can add the class name
+     * to the error message of a {@link ClassCastException}. In {@link StrengthenGraphs} we can
+     * re-write the Class constant to a String constant, i.e., only embed the class name and not the
+     * full java.lang.Class object in the image.
+     */
+    protected boolean ignoreConstant(ConstantNode cn) {
+        if (!ignoreInstanceOfType((AnalysisType) bb.getProviders().getConstantReflection().asJavaType(cn.asConstant()))) {
+            return false;
+        }
+        for (var usage : cn.usages()) {
+            if (usage instanceof ClassIsAssignableFromNode) {
+                if (((ClassIsAssignableFromNode) usage).getThisClass() != cn) {
+                    return false;
+                }
+            } else if (usage instanceof BytecodeExceptionNode) {
+                if (((BytecodeExceptionNode) usage).getExceptionKind() != BytecodeExceptionKind.CLASS_CAST) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        /* Success, the ConstantNode do not need to be seen as reachable. */
+        return true;
+    }
+
+    protected boolean ignoreInstanceOfType(AnalysisType type) {
+        if (type == null || !bb.strengthenGraalGraphs()) {
+            return false;
+        }
+        if (type.isArray()) {
+            /*
+             * There is no real overhead when making array types reachable (which automatically also
+             * makes them instantiated), and it avoids manual reflection configuration because
+             * casting to an array type then automatically marks the array type as instantiated.
+             */
+            return false;
+        }
+        return true;
+    }
+
     private void registerEmbeddedRoot(ConstantNode cn) {
         JavaConstant root = cn.asJavaConstant();
         if (bb.scanningPolicy().trackConstant(bb, root)) {
-            bb.getUniverse().registerEmbeddedRoot(root, sourcePosition(cn));
+            bb.getUniverse().registerEmbeddedRoot(root, AbstractAnalysisEngine.sourcePosition(cn));
         }
     }
 
@@ -319,7 +394,7 @@ public class MethodTypeFlowBuilder {
 
     protected void apply() {
         // assert method.getAnnotation(Fold.class) == null : method;
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
+        if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
             AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
             if (returnType.getJavaKind() == JavaKind.Object) {
@@ -359,11 +434,11 @@ public class MethodTypeFlowBuilder {
                         FormalParamTypeFlow parameter;
                         if (!isStatic && index == 0) {
                             AnalysisType paramType = method.getDeclaringClass();
-                            parameter = new FormalReceiverTypeFlow(sourcePosition(node), paramType);
+                            parameter = new FormalReceiverTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType);
                         } else {
                             int offset = isStatic ? 0 : 1;
                             AnalysisType paramType = (AnalysisType) method.getSignature().getParameterType(index - offset, method.getDeclaringClass());
-                            parameter = new FormalParamTypeFlow(sourcePosition(node), paramType, index);
+                            parameter = new FormalParamTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType, index);
                         }
                         flowsGraph.setParameter(index, parameter);
                         return parameter;
@@ -379,7 +454,7 @@ public class MethodTypeFlowBuilder {
                 AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
 
                 TypeFlowBuilder<?> boxBuilder = TypeFlowBuilder.create(bb, node, BoxTypeFlow.class, () -> {
-                    BoxTypeFlow boxFlow = new BoxTypeFlow(sourcePosition(node), type);
+                    BoxTypeFlow boxFlow = new BoxTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type);
                     flowsGraph.addMiscEntryFlow(boxFlow);
                     return boxFlow;
                 });
@@ -398,8 +473,8 @@ public class MethodTypeFlowBuilder {
                     if (node.asJavaConstant() == null && constant instanceof VMConstant) {
                         // do nothing
                     } else if (node.asJavaConstant().isNull()) {
-                        TypeFlowBuilder<SourceTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                            SourceTypeFlow constantSource = new SourceTypeFlow(sourcePosition(node), TypeState.forNull());
+                        TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(AbstractAnalysisEngine.sourcePosition(node), null, TypeState.forNull());
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });
@@ -413,8 +488,9 @@ public class MethodTypeFlowBuilder {
                         assert StampTool.isExactType(node);
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
                         assert type.isInstantiated();
-                        TypeFlowBuilder<SourceTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                            SourceTypeFlow constantSource = new SourceTypeFlow(sourcePosition(node), TypeState.forConstant(this.bb, node.asJavaConstant(), type));
+                        TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
+                            JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(node.asJavaConstant());
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, TypeState.forConstant(this.bb, heapConstant, type));
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });
@@ -503,13 +579,15 @@ public class MethodTypeFlowBuilder {
                  */
                 ObjectStamp stamp = (ObjectStamp) n.stamp(NodeView.DEFAULT);
                 if (stamp.isEmpty()) {
-                    result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> new SourceTypeFlow(sourcePosition(node), TypeState.forEmpty()));
-                } else if (stamp.isExactType()) {
+                    throw AnalysisError.shouldNotReachHere("Stamp for node " + n + " is empty.");
+                }
+                if (stamp.isExactType()) {
                     /*
                      * We are lucky: the stamp tells us which type the node has.
                      */
                     result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                        SourceTypeFlow src = new SourceTypeFlow(sourcePosition(node), TypeState.forExactType(bb, (AnalysisType) stamp.type(), !stamp.nonNull()));
+                        AnalysisType type = (AnalysisType) stamp.type();
+                        SourceTypeFlow src = new SourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, !stamp.nonNull());
                         flowsGraph.addMiscEntryFlow(src);
                         return src;
                     });
@@ -520,22 +598,13 @@ public class MethodTypeFlowBuilder {
                      * to the node's type). Is is a conservative assumption.
                      */
                     AnalysisType type = (AnalysisType) (stamp.type() == null ? bb.getObjectType() : stamp.type());
-
-                    if (type.isJavaLangObject()) {
-                        /* Return a proxy to the all-instantiated type flow. */
-                        result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                            TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), bb.getAllInstantiatedTypeFlow());
-                            flowsGraph.addMiscEntryFlow(proxy);
-                            return proxy;
-                        });
-                    } else {
-                        result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                            TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), type.getTypeFlow(bb, true));
-                            flowsGraph.addMiscEntryFlow(proxy);
-                            return proxy;
-                        });
-                    }
+                    result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
+                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), type.getTypeFlow(bb, true));
+                        flowsGraph.addMiscEntryFlow(proxy);
+                        return proxy;
+                    });
                 }
+
                 flows.put(node, result);
             }
             return result;
@@ -575,7 +644,7 @@ public class MethodTypeFlowBuilder {
                     } else if (mergeFlow != newFlow) {
                         if (newFlow == oldFlow) {
                             newFlow = TypeFlowBuilder.create(bb, merge, MergeTypeFlow.class, () -> {
-                                MergeTypeFlow newMergeFlow = new MergeTypeFlow(sourcePosition(merge));
+                                MergeTypeFlow newMergeFlow = new MergeTypeFlow(AbstractAnalysisEngine.sourcePosition(merge));
                                 flowsGraph.addMiscEntryFlow(newMergeFlow);
                                 return newMergeFlow;
                             });
@@ -621,7 +690,7 @@ public class MethodTypeFlowBuilder {
                 AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
                 if (returnType.getJavaKind() == JavaKind.Object) {
                     returnBuilder = TypeFlowBuilder.create(bb, node, FormalReturnTypeFlow.class, () -> {
-                        FormalReturnTypeFlow resultFlow = new FormalReturnTypeFlow(sourcePosition(node), returnType);
+                        FormalReturnTypeFlow resultFlow = new FormalReturnTypeFlow(AbstractAnalysisEngine.sourcePosition(node), returnType);
                         flowsGraph.setReturnFlow(resultFlow);
                         return resultFlow;
                     });
@@ -643,7 +712,7 @@ public class MethodTypeFlowBuilder {
             Object key = StaticAnalysisResultsBuilder.uniqueKey(node);
             return instanceOfFlows.computeIfAbsent(key, (bciKey) -> {
                 TypeFlowBuilder<?> instanceOfBuilder = TypeFlowBuilder.create(bb, node, InstanceOfTypeFlow.class, () -> {
-                    InstanceOfTypeFlow instanceOf = new InstanceOfTypeFlow(sourcePosition(node), declaredType);
+                    InstanceOfTypeFlow instanceOf = new InstanceOfTypeFlow(AbstractAnalysisEngine.sourcePosition(node), declaredType);
                     flowsGraph.addInstanceOf(key, instanceOf);
                     return instanceOf;
                 });
@@ -659,7 +728,7 @@ public class MethodTypeFlowBuilder {
                 ValueNode object = nullCheck.getValue();
                 TypeFlowBuilder<?> inputBuilder = state.lookup(object);
                 TypeFlowBuilder<?> nullCheckBuilder = TypeFlowBuilder.create(bb, source, NullCheckTypeFlow.class, () -> {
-                    NullCheckTypeFlow nullCheckFlow = new NullCheckTypeFlow(sourcePosition(source), inputBuilder.get().getDeclaredType(), !isTrue);
+                    NullCheckTypeFlow nullCheckFlow = new NullCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(source), inputBuilder.get().getDeclaredType(), !isTrue);
                     flowsGraph.addNodeFlow(bb, source, nullCheckFlow);
                     return nullCheckFlow;
                 });
@@ -682,8 +751,8 @@ public class MethodTypeFlowBuilder {
                  * is unique.
                  */
                 TypeFlowBuilder<?> objectBuilder = state.lookup(object);
-                BytecodePosition instanceOfPosition = sourcePosition(instanceOf);
-                if (!bb.strengthenGraalGraphs() && instanceOfPosition != null && instanceOfPosition.getBCI() >= 0) {
+                BytecodePosition instanceOfPosition = AbstractAnalysisEngine.sourcePosition(instanceOf);
+                if (!bb.strengthenGraalGraphs() && instanceOfPosition.getBCI() >= 0) {
                     /*
                      * An InstanceOf with negative BCI is not useful. This can happen for example
                      * for instanceof bytecodes for exception unwind. However, the filtering below
@@ -705,7 +774,7 @@ public class MethodTypeFlowBuilder {
                  * of objectFlow (which is context sensitive for exactly our condition).
                  */
                 TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, source, FilterTypeFlow.class, () -> {
-                    FilterTypeFlow filterFlow = new FilterTypeFlow(sourcePosition(source), type, typeReference.isExact(), isTrue, !isTrue ^ instanceOf.allowsNull());
+                    FilterTypeFlow filterFlow = new FilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), type, typeReference.isExact(), isTrue, !isTrue ^ instanceOf.allowsNull());
                     flowsGraph.addNodeFlow(bb, source, filterFlow);
                     return filterFlow;
                 });
@@ -740,7 +809,7 @@ public class MethodTypeFlowBuilder {
                 for (PhiNode phi : merge.phis()) {
                     if (phi.getStackKind() == JavaKind.Object) {
                         TypeFlowBuilder<MergeTypeFlow> newFlowBuilder = TypeFlowBuilder.create(bb, merge, MergeTypeFlow.class, () -> {
-                            MergeTypeFlow newFlow = new MergeTypeFlow(sourcePosition(merge));
+                            MergeTypeFlow newFlow = new MergeTypeFlow(AbstractAnalysisEngine.sourcePosition(merge));
                             flowsGraph.addMiscEntryFlow(newFlow);
                             return newFlow;
                         });
@@ -768,7 +837,7 @@ public class MethodTypeFlowBuilder {
                 ExceptionObjectNode node = (ExceptionObjectNode) n;
                 TypeFlowBuilder<?> exceptionObjectBuilder = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
                     TypeFlow<?> input = ((AnalysisType) StampTool.typeOrNull(node)).getTypeFlow(bb, false);
-                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(sourcePosition(node), input);
+                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), input);
                     flowsGraph.addMiscEntryFlow(exceptionObjectFlow);
                     return exceptionObjectFlow;
                 });
@@ -826,7 +895,7 @@ public class MethodTypeFlowBuilder {
                 }
                 AnalysisType nonNullInstanceType = Optional.ofNullable(instanceType).orElseGet(bb::getObjectType);
                 TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewInstanceBuilder = TypeFlowBuilder.create(bb, node, DynamicNewInstanceTypeFlow.class, () -> {
-                    DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(sourcePosition(node), instanceTypeBuilder.get(), nonNullInstanceType);
+                    DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), nonNullInstanceType);
                     flowsGraph.addMiscEntryFlow(newInstanceTypeFlow);
                     return newInstanceTypeFlow;
                 });
@@ -852,7 +921,7 @@ public class MethodTypeFlowBuilder {
                 AnalysisType arrayType = bb.getObjectType();
 
                 TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewArrayBuilder = TypeFlowBuilder.create(bb, node, DynamicNewInstanceTypeFlow.class, () -> {
-                    DynamicNewInstanceTypeFlow newArrayTypeFlow = new DynamicNewInstanceTypeFlow(sourcePosition(node), arrayType.getTypeFlow(bb, false), arrayType);
+                    DynamicNewInstanceTypeFlow newArrayTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType.getTypeFlow(bb, false), arrayType);
                     flowsGraph.addMiscEntryFlow(newArrayTypeFlow);
                     return newArrayTypeFlow;
                 });
@@ -864,7 +933,7 @@ public class MethodTypeFlowBuilder {
                 assert type.isInstantiated();
 
                 TypeFlowBuilder<NewInstanceTypeFlow> newArrayBuilder = TypeFlowBuilder.create(bb, node, NewInstanceTypeFlow.class, () -> {
-                    NewInstanceTypeFlow newArray = new NewInstanceTypeFlow(sourcePosition(node), type);
+                    NewInstanceTypeFlow newArray = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type);
                     flowsGraph.addMiscEntryFlow(newArray);
                     return newArray;
                 });
@@ -877,7 +946,7 @@ public class MethodTypeFlowBuilder {
                 assert field.isAccessed();
                 if (node.getStackKind() == JavaKind.Object) {
                     TypeFlowBuilder<? extends LoadFieldTypeFlow> loadFieldBuilder;
-                    BytecodePosition loadLocation = sourcePosition(node);
+                    BytecodePosition loadLocation = AbstractAnalysisEngine.sourcePosition(node);
                     if (node.isStatic()) {
                         loadFieldBuilder = TypeFlowBuilder.create(bb, node, LoadStaticFieldTypeFlow.class, () -> {
                             FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
@@ -911,7 +980,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType nonNullArrayType = Optional.ofNullable(arrayType).orElseGet(bb::getObjectArrayType);
 
                     TypeFlowBuilder<?> loadIndexedBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
-                        LoadIndexedTypeFlow loadIndexedFlow = new LoadIndexedTypeFlow(sourcePosition(node), nonNullArrayType, arrayBuilder.get());
+                        LoadIndexedTypeFlow loadIndexedFlow = new LoadIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), nonNullArrayType, arrayBuilder.get());
                         flowsGraph.addNodeFlow(bb, node, loadIndexedFlow);
                         return loadIndexedFlow;
                     });
@@ -942,7 +1011,7 @@ public class MethodTypeFlowBuilder {
 
                 TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                 TypeFlowBuilder<?> unsafeLoadBuilder = TypeFlowBuilder.create(bb, node, UnsafePartitionLoadTypeFlow.class, () -> {
-                    UnsafePartitionLoadTypeFlow loadTypeFlow = new UnsafePartitionLoadTypeFlow(sourcePosition(node), objectType, componentType, objectBuilder.get(),
+                    UnsafePartitionLoadTypeFlow loadTypeFlow = new UnsafePartitionLoadTypeFlow(AbstractAnalysisEngine.sourcePosition(node), objectType, componentType, objectBuilder.get(),
                                     node.unsafePartitionKind(), partitionType);
                     flowsGraph.addMiscEntryFlow(loadTypeFlow);
                     return loadTypeFlow;
@@ -973,7 +1042,8 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
 
                 TypeFlowBuilder<?> unsafeStoreBuilder = TypeFlowBuilder.create(bb, node, UnsafePartitionStoreTypeFlow.class, () -> {
-                    UnsafePartitionStoreTypeFlow storeTypeFlow = new UnsafePartitionStoreTypeFlow(sourcePosition(node), objectType, componentType, objectBuilder.get(), valueBuilder.get(),
+                    UnsafePartitionStoreTypeFlow storeTypeFlow = new UnsafePartitionStoreTypeFlow(AbstractAnalysisEngine.sourcePosition(node), objectType, componentType, objectBuilder.get(),
+                                    valueBuilder.get(),
                                     node.partitionKind(), partitionType);
                     flowsGraph.addMiscEntryFlow(storeTypeFlow);
                     return storeTypeFlow;
@@ -993,7 +1063,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> loadBuilder;
-                    BytecodePosition loadLocation = sourcePosition(node);
+                    BytecodePosition loadLocation = AbstractAnalysisEngine.sourcePosition(node);
                     if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe load from an array object is essentially an array load since we
@@ -1031,7 +1101,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
                     TypeFlowBuilder<?> storeBuilder;
-                    BytecodePosition storeLocation = sourcePosition(node);
+                    BytecodePosition storeLocation = AbstractAnalysisEngine.sourcePosition(node);
                     if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe store to an array object is essentially an array store since we
@@ -1071,7 +1141,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                     TypeFlowBuilder<?> newValueBuilder = state.lookup(newValue);
                     TypeFlowBuilder<?> storeBuilder;
-                    BytecodePosition storeLocation = sourcePosition(node);
+                    BytecodePosition storeLocation = AbstractAnalysisEngine.sourcePosition(node);
                     if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe compare and swap is essentially unsafe store and unsafe store to
@@ -1124,7 +1194,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(node.asNode());
 
                     TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
-                        ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(sourcePosition(node.asNode()), type, srcBuilder.get(), dstBuilder.get());
+                        ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(AbstractAnalysisEngine.sourcePosition(node.asNode()), type, srcBuilder.get(), dstBuilder.get());
                         flowsGraph.addMiscEntryFlow(arrayCopyFlow);
                         return arrayCopyFlow;
                     });
@@ -1150,7 +1220,7 @@ public class MethodTypeFlowBuilder {
                     /* Word-to-object: Any object can flow out from a low level memory read. */
                     TypeFlowBuilder<?> wordToObjectBuilder = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
                         /* Use the all-instantiated type flow. */
-                        TypeFlow<?> objectFlow = bb.analysisPolicy().proxy(sourcePosition(node), bb.getAllInstantiatedTypeFlow());
+                        TypeFlow<?> objectFlow = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), bb.getAllInstantiatedTypeFlow());
                         flowsGraph.addMiscEntryFlow(objectFlow);
                         return objectFlow;
                     });
@@ -1166,7 +1236,7 @@ public class MethodTypeFlowBuilder {
                                     invoke.stateAfter(), invoke.stateAfter().outerFrameState());
                     MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
-                    processMethodInvocation(state, invoke.asFixedNode(), target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
+                    processMethodInvocation(state, invoke, target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
                 }
 
             } else if (n instanceof ObjectClone) {
@@ -1175,7 +1245,7 @@ public class MethodTypeFlowBuilder {
                 AnalysisType inputType = Optional.ofNullable((AnalysisType) StampTool.typeOrNull(node.getObject())).orElseGet(bb::getObjectType);
 
                 TypeFlowBuilder<?> cloneBuilder = TypeFlowBuilder.create(bb, node, CloneTypeFlow.class, () -> {
-                    CloneTypeFlow cloneFlow = new CloneTypeFlow(sourcePosition(node.asNode()), inputType, inputBuilder.get());
+                    CloneTypeFlow cloneFlow = new CloneTypeFlow(AbstractAnalysisEngine.sourcePosition(node.asNode()), inputType, inputBuilder.get());
                     flowsGraph.addMiscEntryFlow(cloneFlow);
                     return cloneFlow;
                 });
@@ -1186,7 +1256,7 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
 
                 TypeFlowBuilder<?> monitorEntryBuilder = TypeFlowBuilder.create(bb, node, MonitorEnterTypeFlow.class, () -> {
-                    MonitorEnterTypeFlow monitorEntryFlow = new MonitorEnterTypeFlow(sourcePosition(node), bb);
+                    MonitorEnterTypeFlow monitorEntryFlow = new MonitorEnterTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb);
                     flowsGraph.addMiscEntryFlow(monitorEntryFlow);
                     return monitorEntryFlow;
                 });
@@ -1236,7 +1306,7 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> storeBuilder;
                 TypeFlowBuilder<?> loadBuilder;
 
-                BytecodePosition location = sourcePosition(node);
+                BytecodePosition location = AbstractAnalysisEngine.sourcePosition(node);
                 if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                     /*
                      * Atomic read and write is essentially unsafe store and unsafe store to an
@@ -1294,17 +1364,67 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processMacroInvokable(TypeFlowsOfNodes state, MacroInvokable macro, boolean installResult) {
-        processMethodInvocation(state, macro.asNode(), macro.getInvokeKind(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult);
+        ValueNode macroNode = macro.asNode();
+        BytecodePosition invokePosition = getInvokePosition(macro, macroNode);
+        processMethodInvocation(state, macroNode, macro.getInvokeKind(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult, invokePosition);
     }
 
-    protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
-        processMethodInvocation(state, invoke, invokeKind, targetMethod, arguments, true);
+    /* Reconstruct the macro node invoke position, avoiding cycles in the parsing backtrace. */
+    private BytecodePosition getInvokePosition(MacroInvokable macro, ValueNode macroNode) {
+        BytecodePosition invokePosition = null;
+        NodeSourcePosition position = macroNode.getNodeSourcePosition();
+        if (position != null) {
+            /*
+             * BytecodeParser.applyInvocationPlugin() gives the macro nodes a position in the target
+             * method. We pop it here because the invoke flow needs a position in the caller, i.e.,
+             * the currently parsed method.
+             */
+            assert position.getMethod().equals(macro.getTargetMethod()) : "Unexpected macro node source position: " + macro + " at " + position;
+            invokePosition = position.getCaller();
+        }
+        if (invokePosition == null) {
+            invokePosition = AbstractAnalysisEngine.syntheticSourcePosition(macroNode, method);
+        }
+        return invokePosition;
+    }
+
+    protected void processMethodInvocation(TypeFlowsOfNodes state, Invoke invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
+        FixedNode invokeNode = invoke.asFixedNode();
+        BytecodePosition invokePosition = getInvokePosition(invokeNode);
+        processMethodInvocation(state, invokeNode, invokeKind, targetMethod, arguments, true, invokePosition);
+    }
+
+    /* Get a reasonable position for inlined invokes, avoiding cycles in the parsing backtrace. */
+    private BytecodePosition getInvokePosition(FixedNode invokeNode) {
+        BytecodePosition invokePosition = invokeNode.getNodeSourcePosition();
+        /* Get the outermost caller position for inlined invokes. */
+        while (invokePosition != null && invokePosition.getCaller() != null) {
+            /*
+             * Invokes coming from recursive inlined methods can lead to cycles when reporting the
+             * parsing backtrace if we use the reported position directly. For inlined nodes Graal
+             * reports the original position (in the original method before inlining) and sets its
+             * caller to the inline location. So by using the outermost caller we simply use a
+             * version of the graph preprocessed by inline-before-analysis, whose shape may differ
+             * from the original source code. In some cases this will lead to stack traces with
+             * missing frames, but it is always correct.
+             */
+            invokePosition = invokePosition.getCaller();
+        }
+
+        if (invokePosition == null) {
+            /*
+             * The invokePosition is used for all sorts of call stack printing (for error messages
+             * and diagnostics), so we must have a non-null BytecodePosition.
+             */
+            invokePosition = AbstractAnalysisEngine.syntheticSourcePosition(invokeNode, method);
+        }
+        return invokePosition;
     }
 
     protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments,
-                    boolean installResult) {
+                    boolean installResult, BytecodePosition invokeLocation) {
         // check if the call is allowed
-        bb.isCallAllowed(bb, method, targetMethod, sourcePosition(invoke));
+        bb.isCallAllowed(bb, method, targetMethod, invokeLocation);
 
         /*
          * Collect the parameters builders into an array so that we don't capture the `state`
@@ -1356,11 +1476,6 @@ public class MethodTypeFlowBuilder {
                 }
             }
 
-            /*
-             * The invokeLocation is used for all sorts of call stack printing (for error messages
-             * and diagnostics), so we must have a non-null BytecodePosition.
-             */
-            BytecodePosition invokeLocation = sourcePosition(invoke);
             InvokeTypeFlow invokeFlow;
             switch (invokeKind) {
                 case Static:
@@ -1415,7 +1530,7 @@ public class MethodTypeFlowBuilder {
                  * filter to avoid loosing precision.
                  */
                 TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
-                    FilterTypeFlow filterFlow = new FilterTypeFlow(sourcePosition(invoke), (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                    FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
                     flowsGraph.addMiscEntryFlow(filterFlow);
                     return filterFlow;
                 });
@@ -1490,7 +1605,7 @@ public class MethodTypeFlowBuilder {
         assert type.isInstantiated();
 
         TypeFlowBuilder<?> newInstanceBuilder = TypeFlowBuilder.create(bb, node, NewInstanceTypeFlow.class, () -> {
-            NewInstanceTypeFlow newInstance = new NewInstanceTypeFlow(sourcePosition(node), type);
+            NewInstanceTypeFlow newInstance = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type);
             flowsGraph.addMiscEntryFlow(newInstance);
             return newInstance;
         });
@@ -1507,7 +1622,7 @@ public class MethodTypeFlowBuilder {
             TypeFlowBuilder<?> valueBuilder = state.lookup(value);
 
             TypeFlowBuilder<StoreFieldTypeFlow> storeFieldBuilder;
-            BytecodePosition storeLocation = sourcePosition(node);
+            BytecodePosition storeLocation = AbstractAnalysisEngine.sourcePosition(node);
             if (field.isStatic()) {
                 storeFieldBuilder = TypeFlowBuilder.create(bb, node, StoreFieldTypeFlow.class, () -> {
                     FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
@@ -1542,7 +1657,7 @@ public class MethodTypeFlowBuilder {
             TypeFlowBuilder<?> arrayBuilder = state.lookup(array);
             TypeFlowBuilder<?> valueBuilder = state.lookup(value);
             TypeFlowBuilder<?> storeIndexedBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
-                StoreIndexedTypeFlow storeIndexedFlow = new StoreIndexedTypeFlow(sourcePosition(node), nonNullArrayType, arrayBuilder.get(), valueBuilder.get());
+                StoreIndexedTypeFlow storeIndexedFlow = new StoreIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), nonNullArrayType, arrayBuilder.get(), valueBuilder.get());
                 flowsGraph.addMiscEntryFlow(storeIndexedFlow);
                 return storeIndexedFlow;
             });
@@ -1556,26 +1671,6 @@ public class MethodTypeFlowBuilder {
 
     /** Hook for unsafe offset value checks. */
     protected void checkUnsafeOffset(@SuppressWarnings("unused") ValueNode base, @SuppressWarnings("unused") ValueNode offset) {
-    }
-
-    /**
-     * Provide a non-null position. Some flows like newInstance and invoke require a non-null
-     * position, for others is just better. The constructed position is best-effort, i.e., it
-     * contains at least the method, and a BCI only if the node provides it.
-     * 
-     * This is necessary because {@link Node#getNodeSourcePosition()} doesn't always provide a
-     * position, like for example for generated factory methods in FactoryThrowMethodHolder.
-     */
-    protected BytecodePosition sourcePosition(ValueNode node) {
-        BytecodePosition position = node.getNodeSourcePosition();
-        if (position == null) {
-            int bci = BytecodeFrame.UNKNOWN_BCI;
-            if (node instanceof DeoptBciSupplier) {
-                bci = ((DeoptBciSupplier) node).bci();
-            }
-            position = new BytecodePosition(null, method, bci);
-        }
-        return position;
     }
 
 }

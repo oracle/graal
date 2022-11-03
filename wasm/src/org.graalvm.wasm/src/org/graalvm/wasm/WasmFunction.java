@@ -66,20 +66,20 @@ public final class WasmFunction {
         return symbolTable.module().name();
     }
 
-    public int numArguments() {
-        return symbolTable.functionTypeArgumentCount(typeIndex);
+    public int paramCount() {
+        return symbolTable.functionTypeParamCount(typeIndex);
     }
 
-    public byte argumentTypeAt(int argumentIndex) {
-        return symbolTable.functionTypeArgumentTypeAt(typeIndex, argumentIndex);
+    public byte paramTypeAt(int argumentIndex) {
+        return symbolTable.functionTypeParamTypeAt(typeIndex, argumentIndex);
     }
 
-    public byte returnType() {
-        return symbolTable.functionTypeReturnType(typeIndex);
+    public int resultCount() {
+        return symbolTable.functionTypeResultCount(typeIndex);
     }
 
-    int returnTypeLength() {
-        return symbolTable.functionTypeReturnTypeLength(typeIndex);
+    public byte resultTypeAt(int returnIndex) {
+        return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
     }
 
     void setTypeEquivalenceClass(int typeEquivalenceClass) {

@@ -37,9 +37,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -106,8 +106,8 @@ public class JNIRegistrationUtil {
 
     protected static void registerForThrowNew(FeatureAccess access, String... exceptionClassNames) {
         for (String exceptionClassName : exceptionClassNames) {
-            JNIRuntimeAccess.register(clazz(access, exceptionClassName));
-            JNIRuntimeAccess.register(constructor(access, exceptionClassName, String.class));
+            RuntimeJNIAccess.register(clazz(access, exceptionClassName));
+            RuntimeJNIAccess.register(constructor(access, exceptionClassName, String.class));
         }
     }
 

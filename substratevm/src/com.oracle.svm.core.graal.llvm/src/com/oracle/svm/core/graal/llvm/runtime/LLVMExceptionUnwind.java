@@ -31,7 +31,6 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -44,8 +43,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.llvm.util.LLVMDirectives;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
@@ -142,7 +142,7 @@ public class LLVMExceptionUnwind {
         return new ExceptionUnwind() {
             @Override
             protected void customUnwindException(Pointer callerSP) {
-                _Unwind_Exception exceptionStructure = StackValue.get(_Unwind_Exception.class);
+                _Unwind_Exception exceptionStructure = UnsafeStackValue.get(_Unwind_Exception.class);
                 exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
                 exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
                 raiseException(exceptionStructure);
@@ -152,24 +152,15 @@ public class LLVMExceptionUnwind {
 
     // Allow methods with non-standard names: Checkstyle: stop
 
+    // The following declarations are from <unwind.h>.
+    //
+    // See:
+    // - https://clang.llvm.org/doxygen/unwind_8h_source.html
+    // - https://gcc.gnu.org/git/?p=gcc.git;a=blob;f=libgcc/unwind-generic.h
+
     /* _Unwind_Reason_Code */
     @CConstant
-    private static native int _URC_NO_REASON();
-
-    @CConstant
-    private static native int _URC_FOREIGN_EXCEPTION_CAUGHT();
-
-    @CConstant
-    private static native int _URC_FATAL_PHASE2_ERROR();
-
-    @CConstant
     private static native int _URC_FATAL_PHASE1_ERROR();
-
-    @CConstant
-    private static native int _URC_NORMAL_STOP();
-
-    @CConstant
-    private static native int _URC_END_OF_STACK();
 
     @CConstant
     private static native int _URC_HANDLER_FOUND();
@@ -186,15 +177,6 @@ public class LLVMExceptionUnwind {
 
     @CConstant
     private static native int _UA_CLEANUP_PHASE();
-
-    @CConstant
-    private static native int _UA_HANDLER_FRAME();
-
-    @CConstant
-    private static native int _UA_FORCE_UNWIND();
-
-    @CConstant
-    private static native int _UA_END_OF_STACK();
 
     @CStruct(addStructKeyword = true)
     private interface _Unwind_Exception extends PointerBase {
@@ -224,17 +206,11 @@ public class LLVMExceptionUnwind {
     @CFunction(value = "_Unwind_SetIP")
     public static native Pointer setIP(_Unwind_Context context, Pointer ip);
 
-    @CFunction(value = "_Unwind_SetGR")
-    public static native Pointer setGR(_Unwind_Context context, int reg, long value);
-
     @CFunction(value = "_Unwind_GetRegionStart")
     public static native Pointer getRegionStart(_Unwind_Context context);
 
     @CFunction(value = "_Unwind_GetLanguageSpecificData")
     public static native Pointer getLanguageSpecificData(_Unwind_Context context);
-
-    @CFunction(value = "__builtin_eh_return_data_regno")
-    public static native int builtinEHReturnDataRegno(int id);
 }
 
 // Checkstyle: resume

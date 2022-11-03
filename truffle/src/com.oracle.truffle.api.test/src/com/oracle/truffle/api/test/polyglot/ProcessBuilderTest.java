@@ -62,7 +62,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -74,6 +73,7 @@ import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -87,7 +87,7 @@ public class ProcessBuilderTest {
     public void testProcessCreationDenied() {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
-        try (Context context = Context.newBuilder().allowIO(true).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
             AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationDeniedLanguage.class, "").execute(javaExecutable.toString());
         }
     }
@@ -95,7 +95,7 @@ public class ProcessBuilderTest {
     @Test
     public void testCustomHandlerProcessCreationDenied() {
         MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).processHandler(testHandler).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).processHandler(testHandler).build()) {
             AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationDeniedLanguage.class, "").execute("process");
         }
     }
@@ -120,7 +120,7 @@ public class ProcessBuilderTest {
     public void testProcessCreationAllowed() {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
-        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).build()) {
             AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationAllowedLanguage.class, "").execute(javaExecutable.toString());
         }
     }
@@ -137,7 +137,7 @@ public class ProcessBuilderTest {
     @Test
     public void testCustomHandlerProcessCreationAllowed() {
         MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).build()) {
             AbstractExecutableTestLanguage.parseTestLanguage(context, TestProcessCreationAllowedLanguage.class, "").execute("process");
         }
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
@@ -214,8 +214,8 @@ public class ProcessBuilderTest {
             try {
                 interop.execute(closeContextCallBack);
                 Assert.fail("Expected host exception.");
-            } catch (AbstractTruffleException hostException) {
-                Assert.assertTrue(interop.asString(interop.getExceptionMessage(hostException)).startsWith("The context has an alive sub-process"));
+            } catch (IllegalStateException illegalState) {
+                Assert.assertTrue(illegalState.getMessage().startsWith("The context has an alive sub-process"));
             } finally {
                 p.destroyForcibly();
             }
@@ -226,7 +226,7 @@ public class ProcessBuilderTest {
     @Test
     public void testCommands() {
         MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(context, TestCommandsLanguage.class, "", (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
         }
     }
@@ -257,7 +257,7 @@ public class ProcessBuilderTest {
     @Test
     public void testCurrentWorkingDirectory() {
         MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(context, TestCurrentWorkingDirectoryLanguage.class, "",
                             (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
         }
@@ -327,7 +327,7 @@ public class ProcessBuilderTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder builder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder builder = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -356,7 +356,7 @@ public class ProcessBuilderTest {
         }
         MockProcessHandler testHandler = new MockProcessHandler();
 
-        Context.Builder builder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder builder = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -386,7 +386,7 @@ public class ProcessBuilderTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder builder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder builder = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -424,7 +424,7 @@ public class ProcessBuilderTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder builder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder builder = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -452,7 +452,7 @@ public class ProcessBuilderTest {
     @Test
     public void testRedirects() {
         MockProcessHandler testHandler = new MockProcessHandler();
-        try (Context context = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).allowCreateProcess(true).processHandler(testHandler).allowHostAccess(HostAccess.ALL).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(context, TestRedirectsLanguage.class, "", (Supplier<ProcessHandler.ProcessCommand>) testHandler::getAndCleanLastCommand);
         }
     }

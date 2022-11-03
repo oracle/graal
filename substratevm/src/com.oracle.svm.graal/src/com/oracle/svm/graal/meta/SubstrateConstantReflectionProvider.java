@@ -171,6 +171,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         if (constant instanceof SubstrateObjectConstant) {
             return getImageHeapOffsetInternal((SubstrateObjectConstant) constant);
         }
+
         /* Primitive values, null values. */
         return 0;
     }

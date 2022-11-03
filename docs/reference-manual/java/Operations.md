@@ -29,7 +29,7 @@ You can confirm this by adding `-Dgraal.ShowConfiguration=info` to the command l
 It will produce a line of output similar to the one below when the compiler is initialized:
 
 ```shell
-Using Graal compiler configuration 'community' provided by org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory loaded from jar:file:/Users/dsimon/graal/graal/compiler/mxbuild/dists/graal.jar!/org/graalvm/compiler/hotspot/CommunityCompilerConfigurationFactory.class
+Using "Graal Community compiler" loaded from class files
 ```
 
 > Note: The Graal compiler is only initialized on the first top-tier JIT compilation request so if your application is short-lived, you may not see this output.

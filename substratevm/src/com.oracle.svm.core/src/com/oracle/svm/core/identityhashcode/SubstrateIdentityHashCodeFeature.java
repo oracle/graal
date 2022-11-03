@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class SubstrateIdentityHashCodeFeature implements InternalFeature {
 
     @Override

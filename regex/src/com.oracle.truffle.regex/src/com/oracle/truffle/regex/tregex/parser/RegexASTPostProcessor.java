@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -64,9 +66,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-
-import java.util.ArrayList;
-import java.util.Optional;
 
 public class RegexASTPostProcessor {
 
@@ -366,32 +365,51 @@ public class RegexASTPostProcessor {
             while (i < sequence.size()) {
                 Term term = sequence.get(i);
                 if (term.isLookAroundAssertion()) {
-                    Optional<Term> replacement = optimizeLookAround((LookAroundAssertion) term);
-                    if (replacement != null) {
-                        if (replacement.isPresent()) {
-                            sequence.replace(i, replacement.get());
-                        } else {
+                    LookAroundOptimization opt = optimizeLookAround((LookAroundAssertion) term);
+                    switch (opt.action) {
+                        case NONE:
+                            break;
+                        case NO_OP:
                             removeTerm(sequence, i);
                             i--;
-                        }
+                            break;
+                        case REPLACE:
+                            sequence.replace(i, opt.replacement);
+                            break;
                     }
                 }
                 i++;
             }
         }
 
+        private static final class LookAroundOptimization {
+
+            private enum Action {
+                NONE,
+                NO_OP,
+                REPLACE;
+            }
+
+            private static final LookAroundOptimization NONE = new LookAroundOptimization(Action.NONE, null);
+            private static final LookAroundOptimization NO_OP = new LookAroundOptimization(Action.NO_OP, null);
+
+            private final Action action;
+            private final Term replacement;
+
+            private LookAroundOptimization(Action action, Term replacement) {
+                this.action = action;
+                this.replacement = replacement;
+            }
+
+            private static LookAroundOptimization replace(Term replacement) {
+                return new LookAroundOptimization(Action.REPLACE, replacement);
+            }
+        }
+
         /**
          * Tries to find an optimized representation of a look-around assertion.
-         * 
-         * @return either:
-         *         <ul>
-         *         <li>a present {@link Term} which is supposed to replace the look-around
-         *         assertion</li>
-         *         <li>{@link Optional#empty()} if the look-around assertion is to be dropped</li>
-         *         <li>{@code null} if no replacement was found</li>
-         *         </ul>
          */
-        private Optional<Term> optimizeLookAround(LookAroundAssertion lookaround) {
+        private LookAroundOptimization optimizeLookAround(LookAroundAssertion lookaround) {
             Group group = lookaround.getGroup();
 
             // Drop empty lookarounds:
@@ -403,11 +421,11 @@ public class RegexASTPostProcessor {
                 if (lookaround.isNegated()) {
                     // empty negative lookarounds never match
                     ast.getNodeCount().dec(countVisitor.count(lookaround));
-                    return Optional.of(ast.createCharacterClass(CodePointSet.getEmpty()));
+                    return LookAroundOptimization.replace(ast.createCharacterClass(CodePointSet.getEmpty()));
                 } else {
                     // empty positive lookarounds are no-ops
                     ast.getNodeCount().dec(countVisitor.count(lookaround));
-                    return Optional.empty();
+                    return LookAroundOptimization.NO_OP;
                 }
             }
 
@@ -419,7 +437,7 @@ public class RegexASTPostProcessor {
                     ast.getNodeCount().dec(countVisitor.count(lookaround));
                     PositionAssertion positionAssertion = (PositionAssertion) group.getFirstAlternative().getFirstTerm();
                     ast.register(positionAssertion);
-                    return Optional.of(positionAssertion);
+                    return LookAroundOptimization.replace(positionAssertion);
                 } else {
                     int innerPositionAssertion = -1;
                     for (int i = 0; i < group.size(); i++) {
@@ -440,7 +458,7 @@ public class RegexASTPostProcessor {
                         wrapGroup.add(removed);
                         Sequence wrapSeq = wrapGroup.addSequence(ast);
                         wrapSeq.add(lookaround);
-                        return Optional.of(wrapGroup);
+                        return LookAroundOptimization.replace(wrapGroup);
                     }
                 }
             }
@@ -462,11 +480,11 @@ public class RegexASTPostProcessor {
                 wrapSeq.add(lookaround);
                 lookaround.setNegated(false);
                 cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
-                return Optional.of(wrapGroup);
+                return LookAroundOptimization.replace(wrapGroup);
             }
 
             // No optimization found.
-            return null;
+            return LookAroundOptimization.NONE;
         }
     }
 

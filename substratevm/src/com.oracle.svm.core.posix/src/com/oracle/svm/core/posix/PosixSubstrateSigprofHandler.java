@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,29 +33,21 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.VoidPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 
-@AutomaticFeature
-@SuppressWarnings("unused")
-class PosixSubstrateSigprofHandlerFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateSigprofHandler.class, new PosixSubstrateSigprofHandler());
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton(SubstrateSigprofHandler.class)
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     public static final long INTERVAL_S = 0;
@@ -83,7 +74,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     private static void registerSigprofSignal() {
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
-        Signal.sigaction structSigAction = StackValue.get(structSigActionSize);
+        Signal.sigaction structSigAction = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
 
         /* Register sa_sigaction signal handler */
@@ -94,8 +85,8 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     private static int callSetitimer() {
         /* Call setitimer to start profiling. */
-        Time.itimerval newValue = StackValue.get(Time.itimerval.class);
-        Time.itimerval oldValue = StackValue.get(Time.itimerval.class);
+        Time.itimerval newValue = UnsafeStackValue.get(Time.itimerval.class);
+        Time.itimerval oldValue = UnsafeStackValue.get(Time.itimerval.class);
 
         newValue.it_value().set_tv_sec(INTERVAL_S);
         newValue.it_value().set_tv_usec(INTERVAL_uS);

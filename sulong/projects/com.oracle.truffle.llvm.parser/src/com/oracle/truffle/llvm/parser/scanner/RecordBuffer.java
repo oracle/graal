@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -101,6 +101,10 @@ public final class RecordBuffer {
 
     public void skip() {
         index++;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
     }
 
     public int readInt() {

@@ -67,10 +67,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsifiedNativeMethodNode;
-import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
@@ -1157,42 +1154,42 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public @JavaType(boolean[].class) StaticObject NewBooleanArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Boolean.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(byte[].class) StaticObject NewByteArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Byte.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Byte.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(char[].class) StaticObject NewCharArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Char.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Char.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(short[].class) StaticObject NewShortArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Short.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Short.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(int[].class) StaticObject NewIntArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Int.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Int.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(long[].class) StaticObject NewLongArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Long.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Long.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(float[].class) StaticObject NewFloatArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Float.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Float.getBasicType(), len);
     }
 
     @JniImpl
     public @JavaType(double[].class) StaticObject NewDoubleArray(int len) {
-        return getAllocator().createNewPrimitiveArray((byte) JavaKind.Double.getBasicType(), len);
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Double.getBasicType(), len);
     }
 
     @JniImpl
@@ -1690,7 +1687,7 @@ public final class JniEnv extends NativeEnv {
     @TruffleBoundary
     public void FatalError(@Pointer TruffleObject msgPtr, @Inject SubstitutionProfiler profiler) {
         String msg = NativeUtils.interopPointerToString(msgPtr);
-        PrintWriter writer = new PrintWriter(getContext().getEnv().err(), true);
+        PrintWriter writer = new PrintWriter(getContext().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
         getContext().truffleExit(profiler, 1);
@@ -2078,7 +2075,7 @@ public final class JniEnv extends NativeEnv {
         if (factory == null) {
             NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
             final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
-            factory = createJniRootNodeFactory(() -> new NativeMethodNode(boundNative, targetMethod.getMethodVersion()), targetMethod);
+            factory = createJniRootNodeFactory(() -> EspressoRootNode.createNative(targetMethod.getMethodVersion(), boundNative), targetMethod);
         }
 
         Symbol<Type> classType = clazz.getMirrorKlass(getMeta()).getType();
@@ -2091,7 +2088,7 @@ public final class JniEnv extends NativeEnv {
             long jvmMethodAddress = InteropLibrary.getUncached().asPointer(closure);
             CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(jvmMethodAddress);
             if (knownVmMethod != null) {
-                if (!IntrinsifiedNativeMethodNode.validParameterCount(knownVmMethod, targetMethod)) {
+                if (!CallableFromNative.validParameterCount(knownVmMethod, targetMethod.getMethodVersion())) {
                     getLogger().warning("Implicit intrinsification of VM method does not have matching parameter counts:");
                     getLogger().warning("VM method " + knownVmMethod.methodName() + " has " + knownVmMethod.parameterCount() + " parameters,");
                     getLogger().warning(
@@ -2099,7 +2096,7 @@ public final class JniEnv extends NativeEnv {
                                                     " parameters");
                     return null;
                 }
-                return createJniRootNodeFactory(() -> new IntrinsifiedNativeMethodNode(knownVmMethod, targetMethod, getVM()), targetMethod);
+                return createJniRootNodeFactory(() -> EspressoRootNode.createIntrinsifiedNative(targetMethod.getMethodVersion(), knownVmMethod, getVM()), targetMethod);
             }
         } catch (UnsupportedMessageException e) {
             // ignore
@@ -2107,13 +2104,13 @@ public final class JniEnv extends NativeEnv {
         return null;
     }
 
-    private static Substitutions.EspressoRootNodeFactory createJniRootNodeFactory(Supplier<EspressoMethodNode> methodNodeSupplier, Method targetMethod) {
+    private static Substitutions.EspressoRootNodeFactory createJniRootNodeFactory(Supplier<EspressoRootNode> methodRootNodeSupplier, Method targetMethod) {
         return new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
                 if (forceValid || methodToSubstitute == targetMethod) {
                     // Runtime substitutions apply only to the given method.
-                    return EspressoRootNode.create(null, methodNodeSupplier.get());
+                    return methodRootNodeSupplier.get();
                 }
 
                 Substitutions.getLogger().warning(new Supplier<String>() {

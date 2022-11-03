@@ -209,6 +209,9 @@ def _unittest_config_participant(config):
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
+    if mx.get_jdk().javaCompliance >= '1.9':
+        vmArgs = ["--enable-preview"] + vmArgs # for virtual thread tests
+
     # The arguments below are only actually needed if Truffle is deployed as a
     # module. However, that's determined by the compiler suite which may not
     # be present. In that case, adding these options results in annoying

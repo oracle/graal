@@ -50,12 +50,14 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeStaticMethod {
     private final boolean isStatic;
     private final Class<?>[] argTypes;
     private final JavaKind returnKind;
+    private final boolean callerSensitiveAdapter;
 
-    public ReflectionExpandSignatureMethod(String name, ResolvedJavaMethod prototype, boolean isStatic, Class<?>[] argTypes, JavaKind returnKind) {
+    public ReflectionExpandSignatureMethod(String name, ResolvedJavaMethod prototype, boolean isStatic, Class<?>[] argTypes, JavaKind returnKind, boolean callerSensitiveAdapter) {
         super(name, prototype.getDeclaringClass(), prototype.getSignature(), prototype.getConstantPool());
         this.isStatic = isStatic;
         this.argTypes = argTypes;
         this.returnKind = returnKind;
+        this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
     /**
@@ -80,13 +82,16 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeStaticMethod {
         ValueNode argumentArray = graphKit.loadLocal(1, JavaKind.Object);
         /* The invokedMethod is a Word type, so not yet a primitive in the signature. */
         ValueNode invokedMethod = graphKit.loadLocal(2, JavaKind.Object);
+        /* Caller-sensitive-adapter methods have an additional Class parameter. */
+        ValueNode callerClass = callerSensitiveAdapter ? graphKit.loadLocal(3, JavaKind.Object) : null;
 
         /* Clear all locals, so that they are not alive and spilled at method calls. */
         graphKit.getFrameState().clearLocals();
 
         int receiverOffset = isStatic ? 0 : 1;
-        ValueNode[] args = new ValueNode[argTypes.length + receiverOffset];
-        ResolvedJavaType[] signature = new ResolvedJavaType[argTypes.length + receiverOffset];
+        int argsCount = argTypes.length + receiverOffset + (callerSensitiveAdapter ? 1 : 0);
+        ValueNode[] args = new ValueNode[argsCount];
+        ResolvedJavaType[] signature = new ResolvedJavaType[argsCount];
         if (!isStatic) {
             /*
              * The receiver is already null-checked and type-checked at the call site in
@@ -94,6 +99,10 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeStaticMethod {
              */
             signature[0] = providers.getMetaAccess().lookupJavaType(Object.class);
             args[0] = receiver;
+        }
+        if (callerSensitiveAdapter) {
+            signature[argsCount - 1] = providers.getMetaAccess().lookupJavaType(Class.class);
+            args[argsCount - 1] = callerClass;
         }
 
         graphKit.fillArgsArray(argumentArray, receiverOffset, args, argTypes);

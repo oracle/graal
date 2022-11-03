@@ -32,22 +32,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.ValueAvailability;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 interface MethodAccessorJDK19 {
     Object invoke(Object obj, Object[] args, Class<?> caller);
@@ -64,14 +56,21 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
      * method, or null for static methods.
      */
     private final Class<?> receiverType;
-    /** The actual value is computed after static analysis by {@link ComputeVTableOffset}. */
-    int vtableOffset;
+    /** The actual value is computed after static analysis using a field value transformer. */
+    private int vtableOffset;
+    private final boolean callerSensitiveAdapter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke) {
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke,
+                    boolean callerSensitiveAdapter) {
         super(member, expandSignature, directTarget, initializeBeforeInvoke);
         this.receiverType = receiverType;
         this.vtableOffset = vtableOffset;
+        this.callerSensitiveAdapter = callerSensitiveAdapter;
+    }
+
+    public int getVTableOffset() {
+        return vtableOffset;
     }
 
     private void preInvoke(Object obj) {
@@ -91,10 +90,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
         }
     }
 
-    @Override
-    public Object invoke(Object obj, Object[] args) {
-        preInvoke(obj);
-
+    private CFunctionPointer invokeTarget(Object obj) {
         /*
          * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
@@ -107,16 +103,33 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
         } else {
             target = directTarget;
         }
-        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
+        return target;
+    }
+
+    @Override
+    public Object invoke(Object obj, Object[] args) {
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+        }
+        preInvoke(obj);
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, invokeTarget(obj));
     }
 
     @Override
     public Object invoke(Object obj, Object[] args, Class<?> caller) {
-        // Handle caller sensitive invokes (GR-39586)
-        return invoke(obj, args);
+        if (callerSensitiveAdapter) {
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) expandSignature).invoke(obj, args, invokeTarget(obj), caller);
+        } else {
+            /* Not a @CallerSensitiveAdapter method, so we can ignore the caller argument. */
+            return invoke(obj, args);
+        }
     }
 
     public Object invokeSpecial(Object obj, Object[] args) {
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+        }
         preInvoke(obj);
 
         CFunctionPointer target = directTarget;
@@ -124,40 +137,5 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
             throw new IllegalArgumentException("Cannot do invokespecial for an abstract method");
         }
         return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
-    }
-}
-
-/**
- * The actual vtable offset is not available at the time the accessor is created, but only after
- * static analysis when the layout of objects is known. Registering a field recomputation using an
- * alias field is currently the only way to register a custom field value computer.
- */
-@TargetClass(SubstrateMethodAccessor.class)
-final class Target_com_oracle_svm_core_reflect_SubstrateMethodAccessor {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeVTableOffset.class) //
-    private int vtableOffset;
-}
-
-final class ComputeVTableOffset implements CustomFieldValueComputer {
-    @Override
-    public ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterAnalysis;
-    }
-
-    @Override
-    public Class<?>[] types() {
-        return new Class<?>[]{int.class};
-    }
-
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
-        if (accessor.vtableOffset == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
-            SharedMethod member = (SharedMethod) metaAccess.lookupJavaMethod(accessor.member);
-            return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex());
-        } else {
-            VMError.guarantee(accessor.vtableOffset == SubstrateMethodAccessor.STATICALLY_BOUND);
-            return accessor.vtableOffset;
-        }
     }
 }

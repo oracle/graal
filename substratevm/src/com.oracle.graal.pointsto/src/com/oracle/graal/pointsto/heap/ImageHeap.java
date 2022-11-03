@@ -41,12 +41,12 @@ public class ImageHeap {
 
     /**
      * Map the original object *and* the replaced object to the same snapshot. The value is either a
-     * not-yet-executed {@link AnalysisFuture} of {@link ImageHeapObject} or its results, an
-     * {@link ImageHeapObject}.
+     * not-yet-executed {@link AnalysisFuture} of {@link ImageHeapConstant} or its results, an
+     * {@link ImageHeapConstant}.
      */
     private final ConcurrentHashMap<JavaConstant, /* ImageHeapObject */ Object> heapObjects;
     /** Store a mapping from types to object snapshots. */
-    private final Map<AnalysisType, Set<ImageHeapObject>> typesToObjects;
+    private final Map<AnalysisType, Set<ImageHeapConstant>> typesToObjects;
 
     /*
      * Note on the idea of merging the heapObjects and typesToObjects maps:
@@ -80,21 +80,21 @@ public class ImageHeap {
     }
 
     /** Record the future computing the snapshot in the heap. */
-    public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapObject> task) {
+    public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapConstant> task) {
         return heapObjects.putIfAbsent(constant, task);
     }
 
     /** Record the snapshot in the heap. */
-    public void setValue(JavaConstant constant, ImageHeapObject value) {
+    public void setValue(JavaConstant constant, ImageHeapConstant value) {
         heapObjects.put(constant, value);
     }
 
-    public Set<ImageHeapObject> getObjects(AnalysisType type) {
+    public Set<ImageHeapConstant> getObjects(AnalysisType type) {
         return typesToObjects.getOrDefault(type, Collections.emptySet());
     }
 
-    public boolean add(AnalysisType type, ImageHeapObject heapObj) {
-        Set<ImageHeapObject> objectSet = typesToObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());
+    public boolean add(AnalysisType type, ImageHeapConstant heapObj) {
+        Set<ImageHeapConstant> objectSet = typesToObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());
         return objectSet.add(heapObj);
     }
 }

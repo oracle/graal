@@ -136,11 +136,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void extr(int size, Register dst, Register src1, Register src2, int lsb) {
-        super.extr(size, dst, src1, src2, lsb);
-    }
-
-    @Override
     protected void add(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int imm) {
         super.add(size, dst, src1, src2, shiftType, imm);
     }

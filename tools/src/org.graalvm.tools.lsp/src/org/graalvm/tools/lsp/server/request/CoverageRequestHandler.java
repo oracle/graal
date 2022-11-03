@@ -43,6 +43,7 @@ import org.graalvm.tools.lsp.server.utils.SourcePredicateBuilder;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
+import org.graalvm.tools.lsp.server.utils.ThreadId;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -91,7 +92,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
                             eventFilter,
                             new ExecutionEventNodeFactory() {
-                                private final long creatorThreadId = Thread.currentThread().getId();
+                                private final long creatorThreadId = ThreadId.getCurrent();
 
                                 @Override
                                 public ExecutionEventNode create(final EventContext eventContext) {

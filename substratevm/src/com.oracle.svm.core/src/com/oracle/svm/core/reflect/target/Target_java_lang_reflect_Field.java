@@ -35,23 +35,18 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.GuardedAnnotationAccess;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(value = Field.class)
 public final class Target_java_lang_reflect_Field {
@@ -158,23 +153,21 @@ public final class Target_java_lang_reflect_Field {
         return SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations;
     }
 
-    public static final class FieldDeletionReasonComputer implements CustomFieldValueComputer {
+    public static final class FieldDeletionReasonComputer implements FieldValueTransformerWithAvailability {
         @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterAnalysis;
         }
 
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            ResolvedJavaField field = metaAccess.lookupJavaField((Field) receiver);
-            Delete annotation = GuardedAnnotationAccess.getAnnotation(field, Delete.class);
-            return (annotation != null) ? annotation.value() : null;
+        public Object transform(Object receiver, Object originalValue) {
+            return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getDeletionReason((Field) receiver);
         }
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }

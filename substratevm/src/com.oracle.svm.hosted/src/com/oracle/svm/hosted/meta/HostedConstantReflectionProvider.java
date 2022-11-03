@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.util.function.ObjIntConsumer;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -43,11 +47,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final SVMHost hostVM;
     private final HostedUniverse universe;
+    private final UniverseMetaAccess metaAccess;
     private final HostedMemoryAccessProvider memoryAccess;
 
-    public HostedConstantReflectionProvider(SVMHost hostVM, HostedUniverse universe, HostedMemoryAccessProvider memoryAccess) {
+    public HostedConstantReflectionProvider(SVMHost hostVM, HostedUniverse universe, UniverseMetaAccess metaAccess, HostedMemoryAccessProvider memoryAccess) {
         this.hostVM = hostVM;
         this.universe = universe;
+        this.metaAccess = metaAccess;
         this.memoryAccess = memoryAccess;
     }
 
@@ -66,12 +72,35 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }
         }
+        if (constant instanceof ImageHeapConstant) {
+            if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
+                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
+            }
+        }
         return null;
     }
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         return SubstrateObjectConstant.forObject(hostVM.dynamicHub(((HostedType) type).wrapped));
+    }
+
+    @Override
+    public Integer readArrayLength(JavaConstant array) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().readArrayLength(array);
+    }
+
+    @Override
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().readArrayElement(array, index);
+    }
+
+    @Override
+    public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        universe.getConstantReflectionProvider().forEachArrayElement(array, consumer);
     }
 
     @Override

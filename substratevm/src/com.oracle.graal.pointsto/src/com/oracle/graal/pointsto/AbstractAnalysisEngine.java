@@ -24,6 +24,25 @@
  */
 package com.oracle.graal.pointsto;
 
+import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
+
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -38,22 +57,11 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import java.io.PrintWriter;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ForkJoinPool;
-import java.util.function.Function;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This abstract class is shared between Reachability and Points-to. It contains generic methods
@@ -67,6 +75,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final HeapScanningPolicy heapScanningPolicy;
 
     protected final Boolean extendedAsserts;
+    protected final int maxConstantObjectsPerType;
+    protected final boolean profileConstantObjects;
 
     protected final OptionValues options;
     protected final DebugContext debug;
@@ -107,6 +117,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
+        maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
+        profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
 
         this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
@@ -222,6 +234,17 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         return extendedAsserts;
     }
 
+    public int maxConstantObjectsPerType() {
+        return maxConstantObjectsPerType;
+    }
+
+    public void profileConstantObject(AnalysisType type) {
+        if (profileConstantObjects) {
+            PointsToAnalysis.ConstantObjectsProfiler.registerConstant(type);
+            PointsToAnalysis.ConstantObjectsProfiler.maybeDumpConstantHistogram();
+        }
+    }
+
     @Override
     public OptionValues getOptions() {
         return options;
@@ -292,7 +315,43 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
+    public final void postTask(CompletionExecutor.DebugContextRunnable task) {
+        executor.execute(task);
+    }
+
+    @Override
+    public final boolean executorIsStarted() {
+        return executor.isStarted();
+    }
+
+    @Override
     public Replacements getReplacements() {
         return replacements;
     }
+
+    /**
+     * Provide a non-null position. Some flows like newInstance and invoke require a non-null
+     * position, for others is just better. The constructed position is best-effort, i.e., it
+     * contains at least the method, and a BCI only if the node provides it.
+     * <p>
+     * This is necessary because {@link Node#getNodeSourcePosition()} doesn't always provide a
+     * position, like for example for generated factory methods in FactoryThrowMethodHolder.
+     */
+    public static BytecodePosition sourcePosition(ValueNode node) {
+        BytecodePosition position = node.getNodeSourcePosition();
+        if (position == null) {
+            position = syntheticSourcePosition(node, node.graph().method());
+        }
+        return position;
+    }
+
+    /** Creates a synthetic position for the node in the given method. */
+    public static BytecodePosition syntheticSourcePosition(ValueNode node, ResolvedJavaMethod method) {
+        int bci = BytecodeFrame.UNKNOWN_BCI;
+        if (node instanceof DeoptBciSupplier) {
+            bci = ((DeoptBciSupplier) node).bci();
+        }
+        return new BytecodePosition(null, method, bci);
+    }
+
 }

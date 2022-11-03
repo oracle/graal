@@ -775,3 +775,31 @@ class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite,
 
 
 mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())
+
+
+class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008BenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+    """
+    SpecJVM2008 for Native Image
+    """
+
+    def name(self):
+        return 'specjvm2008-native-image'
+
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return 'specjvm2008'
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        args = super(SpecJVM2008NativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark.")
+        else:
+            self.benchmark_name = benchmarks[0]
+        return args
+
+    def extra_image_build_argument(self, benchmark, args):
+        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + ["-H:-ParseRuntimeOptions", "-Djava.awt.headless=false"]
+
+
+mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

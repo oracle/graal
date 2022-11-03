@@ -26,7 +26,7 @@ package org.graalvm.polyglot.nativeapi;
 
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 class PolyglotNativeAPIError extends RuntimeException {
 

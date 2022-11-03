@@ -208,6 +208,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndExit;
                     break;
                 case "-showversion":
+                case "--show-version":
                     versionAction = VersionAction.PrintAndContinue;
                     break;
 
@@ -547,8 +548,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             } catch (PolyglotException e) {
                 if (e.isInternalError()) {
                     e.printStackTrace();
+                    throw abort((String) null);
                 } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
+                    throw abort((String) null);
+                } else {
+                    throw abort((String) null, e.getExitStatus());
                 }
             }
         }
@@ -579,6 +584,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         options.add("-classpath");
         options.add("-version");
         options.add("-showversion");
+        options.add("--show-version");
         options.add("-ea");
         options.add("-enableassertions");
         options.add("-esa");

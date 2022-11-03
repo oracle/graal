@@ -40,12 +40,6 @@ public class ReferenceMapIndex {
      */
     public static final int NO_REFERENCE_MAP = -1;
 
-    /**
-     * Reference map index value for {@link StoredContinuation} to indicate this instance needs
-     * special treatment during allocation and GC.
-     */
-    public static final int STORED_CONTINUATION = -2;
-
     public static boolean denotesEmptyReferenceMap(long referenceMapIndex) {
         return referenceMapIndex == EMPTY_REFERENCE_MAP || referenceMapIndex == NO_REFERENCE_MAP;
     }

@@ -36,12 +36,9 @@ To capture a heap dump of, for example, a Ruby application for later analysis, s
 Then right-click its process in VisualVM and invoke the Heap Dump action.
 A new heap viewer for the Ruby process opens.
 
-__Note:__ [Native Image](../reference-manual/native-image/README.md) does not implement the JVMTI agent, so triggering heap dump creation from the Applications area is impossible.
-Apply the `-H:+AllowVMInspection` flag with the `native-image` tool for native image processes.
-This way your application will handle signals and capture a heap dump when it receives the SIGUSR1 signal.
-The guest language REPL process must be started also with the `--jvm` flag to monitor it using VisualVM.
-This functionality is available with [GraalVM Enterprise Edition](https://www.oracle.com/downloads/graalvm-downloads.html).
-It is not available in GraalVM Community Edition.
+__Note:__ Heap dump support must be explicitly enabled when using [Native Image](../reference-manual/native-image/README.md).
+Add the `--enable-monitoring=heapdump,jvmstat` option when invoking the `native-image` tool to enable the heap dump feature and allow VisualVM to detect native executables via `jvmstat`.
+This way your application will handle signals and capture a heap dump when it receives the `SIGUSR1` signal.
 See the [Generating Native Heap Dumps](../reference-manual/native-image/guides/create-heap-dump-from-native-executable.md) page for details on capturing heap dumps from a native image process.
 
 ### Analyzing Objects

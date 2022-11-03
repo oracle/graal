@@ -49,7 +49,7 @@ public final class CallFrame {
         if (anchor == SuspendAnchor.BEFORE) {
             this.location = new Location(script.getId(), sourceSection.getStartLine(), sourceSection.getStartColumn());
         } else {
-            this.location = new Location(script.getId(), sourceSection.getEndLine(), sourceSection.getEndColumn());
+            this.location = new Location(script.getId(), sourceSection.getEndLine(), sourceSection.getEndColumn() + 1);
         }
         if (functionSourceSection != null) {
             this.functionLocation = new Location(script.getId(), functionSourceSection.getStartLine(), functionSourceSection.getStartColumn());

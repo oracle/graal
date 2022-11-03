@@ -73,6 +73,10 @@ public enum AArch64ArithmeticOp {
     REM,
     UDIV,
     UREM,
+    SMAX,
+    SMIN,
+    UMAX,
+    UMIN,
     AND(LOGICAL),
     ANDS(LOGICAL),
     OR(LOGICAL),
@@ -936,6 +940,18 @@ public enum AArch64ArithmeticOp {
                     masm.neon.mulVVV(size, eSize, dst, src1, src2);
                     /* Next negate value. */
                     masm.neon.negVV(size, eSize, dst, dst);
+                    break;
+                case SMAX:
+                    masm.neon.smaxVVV(size, eSize, dst, src1, src2);
+                    break;
+                case SMIN:
+                    masm.neon.sminVVV(size, eSize, dst, src1, src2);
+                    break;
+                case UMAX:
+                    masm.neon.umaxVVV(size, eSize, dst, src1, src2);
+                    break;
+                case UMIN:
+                    masm.neon.uminVVV(size, eSize, dst, src1, src2);
                     break;
                 case FADD:
                     masm.neon.faddVVV(size, eSize, dst, src1, src2);

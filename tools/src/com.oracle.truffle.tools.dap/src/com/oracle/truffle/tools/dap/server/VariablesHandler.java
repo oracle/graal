@@ -89,7 +89,7 @@ public final class VariablesHandler {
         return vars;
     }
 
-    public static Variable setVariable(ThreadsHandler.SuspendedThreadInfo info, SetVariableArguments args) {
+    public static Variable setVariable(ThreadsHandler.SuspendedThreadInfo info, SetVariableArguments args) throws DebugException {
         DebugValue value = null;
         int id = args.getVariablesReference();
         String name = args.getName();
@@ -126,7 +126,14 @@ public final class VariablesHandler {
             }
         }
         if (value != null && (updateReturnValue || value.isWritable())) {
-            DebugValue newValue = getDebugValue(frame, args.getValue());
+            DebugValue newValue;
+            DebugException dex = null;
+            try {
+                newValue = getDebugValue(frame, args.getValue());
+            } catch (DebugException ex) {
+                newValue = null;
+                dex = ex;
+            }
             if (newValue == null || !newValue.isReadable()) {
                 Object newValueObject = getValue(args.getValue());
                 if (newValueObject != null) {
@@ -141,6 +148,8 @@ public final class VariablesHandler {
                     newValue = value;
                 }
                 return createVariable(info, newValue, "");
+            } else {
+                throw dex;
             }
         }
         return null;
@@ -150,7 +159,7 @@ public final class VariablesHandler {
         Collection<DebugValue> properties = val.getProperties();
         int valId = (val.isArray() && !val.getArray().isEmpty()) || (properties != null && !properties.isEmpty()) ? info.getId(val) : 0;
         Variable var = Variable.create(val.getName() != null ? val.getName() : defaultName,
-                        val.isReadable() ? val.isString() ? '"' + val.toDisplayString() + '"' : val.toDisplayString() : "",
+                        val.isReadable() ? val.toDisplayString() : "<not readable>",
                         valId);
         DebugValue metaObject = val.getMetaObject();
         if (metaObject != null) {
@@ -165,10 +174,12 @@ public final class VariablesHandler {
         return var;
     }
 
-    static DebugValue getDebugValue(DebugStackFrame frame, String value) {
+    static DebugValue getDebugValue(DebugStackFrame frame, String value) throws DebugException {
+        DebugException dex;
         try {
             return frame.eval(value);
         } catch (DebugException de) {
+            dex = de;
         }
         DebugValue receiver = frame.getScope().getReceiver();
         if (receiver != null && value.equals(receiver.getName())) {
@@ -182,7 +193,7 @@ public final class VariablesHandler {
             }
             scope = scope.getParent();
         }
-        return null;
+        throw dex;
     }
 
     private static Object getValue(String value) {

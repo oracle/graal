@@ -54,6 +54,9 @@ import datetime
 import re
 import copy
 
+import mx_sdk_vm_impl
+
+
 def parse_prefixed_args(prefix, args):
     ret = []
     for arg in args:
@@ -193,6 +196,16 @@ class NativeImageBenchmarkMixin(object):
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
+    def extraVmArgs(self):
+        assert self.dist
+        distribution = mx.distribution(self.dist)
+        assert distribution.isJARDistribution()
+        jdk = mx.get_jdk(distribution.javaCompliance)
+        add_opens_add_extracts = []
+        if mx_benchmark.mx_benchmark_compatibility().jmh_dist_benchmark_extracts_add_opens_from_manifest():
+            add_opens_add_extracts = mx_benchmark._add_opens_and_exports_from_manifest(distribution.path)
+        return mx.get_runtime_jvm_args([self.dist], jdk=jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes) + add_opens_add_extracts
+
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.
 
@@ -244,6 +257,13 @@ class NativeImageBenchmarkMixin(object):
             return parsed_args[0]
         else:
             return None
+
+    def image_build_stats_file(self, bm_config, args):
+        parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.image-build-stats-file=', args, 'Image build stats file should be specified once')
+        if parsed_arg:
+            return parsed_arg
+        else:
+            return os.path.join(bm_config.output_dir, bm_config.executable_name + '-image-build-stats.json')
 
     def pgo_iteration_num(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.pgo-iteration-num=', args)

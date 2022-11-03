@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.configure.filters;
 
+import java.io.IOException;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.svm.configure.json.JsonWriter;
 
-import java.io.IOException;
-import java.util.Map;
-
 public class ComplexFilter implements ConfigurationFilter {
-    private final HierarchyFilterNode hierarchyFilterNode;
+    private HierarchyFilterNode hierarchyFilterNode;
     private final RegexFilter regexFilter = new RegexFilter();
 
     public ComplexFilter(HierarchyFilterNode hierarchyFilterNode) {
@@ -42,13 +43,14 @@ public class ComplexFilter implements ConfigurationFilter {
         writer.append('{');
         writer.indent().newline();
         hierarchyFilterNode.printJson(writer);
+        writer.append(",\n").newline();
         regexFilter.printJson(writer);
         writer.unindent().newline();
         writer.append('}').newline();
     }
 
     @Override
-    public void parseFromJson(Map<String, Object> topJsonObject) {
+    public void parseFromJson(EconomicMap<String, Object> topJsonObject) {
         hierarchyFilterNode.parseFromJson(topJsonObject);
         regexFilter.parseFromJson(topJsonObject);
     }
@@ -60,5 +62,9 @@ public class ComplexFilter implements ConfigurationFilter {
 
     public HierarchyFilterNode getHierarchyFilterNode() {
         return hierarchyFilterNode;
+    }
+
+    public void setHierarchyFilterNode(HierarchyFilterNode hierarchyFilterNode) {
+        this.hierarchyFilterNode = hierarchyFilterNode;
     }
 }

@@ -32,16 +32,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.AccessControllerUtil;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @SuppressWarnings({"unused"})
-class AccessControlContextReplacerFeature implements Feature {
+class AccessControlContextReplacerFeature implements InternalFeature {
 
     static Map<String, AccessControlContext> allowedContexts = new HashMap<>();
 

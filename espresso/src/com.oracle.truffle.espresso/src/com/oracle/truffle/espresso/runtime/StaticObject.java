@@ -323,8 +323,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         return GuestAllocator.createForeign(language, klass, value, library);
     }
 
-    public static StaticObject createForeignException(Meta meta, Object value, InteropLibrary library) {
-        return meta.getAllocator().createForeignException(value, library);
+    public static StaticObject createForeignException(EspressoContext context, Object value, InteropLibrary library) {
+        return context.getAllocator().createForeignException(context, value, library);
     }
 
     public static StaticObject createForeignNull(EspressoLanguage language, Object value) {

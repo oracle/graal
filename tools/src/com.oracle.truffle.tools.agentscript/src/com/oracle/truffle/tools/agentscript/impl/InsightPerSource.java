@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,12 +58,17 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+import org.graalvm.collections.EconomicMap;
+
 final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSourceListener {
     private final InsightInstrument instrument;
     private final Supplier<Source> src;
     private final AgentObject insight;
     private final IgnoreSources ignoredSources;
-    private volatile EventBinding<?> agentBinding;
+    // Agent initialization bindings for individual contexts.
+    // The context key is removed on binding dispose, or context close.
+    /* @GuardedBy("this") */
+    private final EconomicMap<TruffleContext, EventBinding<?>> initializeBindings = EconomicMap.create();
     /* @GuardedBy("this") */
     private InsightInstrument.Key sourceBinding;
     /* @GuardedBy("this") */
@@ -122,15 +128,32 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
     @Override
     public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-        if (agentBinding != null || language.isInternal()) {
+        if (language.isInternal()) {
             return;
         }
         if (context.isEntered()) {
+            EventBinding<?> agentBinding;
+            synchronized (this) {
+                agentBinding = initializeBindings.removeKey(context);
+            }
+            if (agentBinding != null) {
+                agentBinding.dispose();
+            }
             initializeAgent(context);
         } else {
+            EventBinding<?> agentBinding;
+            synchronized (this) {
+                if (initializeBindings.containsKey(context) || registeredSource.containsKey(context)) {
+                    // Either the binding exists already, or the source is registered already.
+                    return;
+                }
+            }
             final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
             Instrumenter instrumenter = instrument.env().getInstrumenter();
             agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new InitializeLater(context));
+            synchronized (this) {
+                initializeBindings.put(context, agentBinding);
+            }
         }
     }
 
@@ -151,6 +174,13 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
     @Override
     public void onContextClosed(TruffleContext context) {
+        EventBinding<?> binding;
+        synchronized (this) {
+            binding = initializeBindings.removeKey(context);
+        }
+        if (binding != null) {
+            binding.dispose();
+        }
     }
 
     @Override
@@ -164,11 +194,25 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
             bindings = null;
         }
         onInit.dispose();
-        EventBinding<?> agentInitBinding = agentBinding;
-        if (agentInitBinding != null) {
-            agentInitBinding.dispose();
+        EventBinding<?>[] binds; // copy of initializeBindings values, not to dispose under lock
+        synchronized (this) {
+            if (!initializeBindings.isEmpty()) {
+                int n = initializeBindings.size();
+                binds = (EventBinding<?>[]) Array.newInstance(EventBinding.class, n);
+                int i = 0;
+                for (EventBinding<?> agentInitBinding : initializeBindings.getValues()) {
+                    binds[i++] = agentInitBinding;
+                }
+                initializeBindings.clear();
+            } else {
+                binds = null;
+            }
         }
-        agentBinding = null;
+        if (binds != null) {
+            for (EventBinding<?> agentInitBinding : binds) {
+                agentInitBinding.dispose();
+            }
+        }
         instrument.closeKeys(keys);
     }
 
@@ -340,12 +384,17 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
         @Override
         public void onEnter(EventContext ctx, VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            EventBinding<?> agentInitBinding = agentBinding;
-            if (agentInitBinding != null) {
-                agentInitBinding.dispose();
+            if (instrument.env().getEnteredContext() == context) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                EventBinding<?> agentInitBinding;
+                synchronized (InsightPerSource.this) {
+                    agentInitBinding = initializeBindings.removeKey(context);
+                }
+                if (agentInitBinding != null) {
+                    agentInitBinding.dispose();
+                    initializeAgent(context);
+                }
             }
-            initializeAgent(context);
         }
 
         @Override

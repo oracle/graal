@@ -276,6 +276,21 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.200 Move vector element to another vector element.<br>
+     * <p>
+     * Preferred alias for insert vector element from another vector element.
+     *
+     * @param eSize size of value to duplicate.
+     * @param dst SIMD register.
+     * @param dstIdx offset of value to store.
+     * @param src SIMD register.
+     * @param srcIdx offset of value to duplicate.
+     */
+    public void movXX(ElementSize eSize, Register dst, int dstIdx, Register src, int srcIdx) {
+        insXX(eSize, dst, dstIdx, src, srcIdx);
+    }
+
+    /**
      * C7.2.207 Bitwise not.<br>
      * <p>
      * Preferred alias for bitwise not (NOT).

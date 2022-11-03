@@ -36,6 +36,7 @@ import functools
 import glob
 import re
 import sys
+import atexit
 from mx_gate import Task
 
 from os import environ, listdir, remove, linesep
@@ -78,7 +79,7 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
-def _check_compiler_log(compiler_log_file, expectations):
+def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
     """
     Checks that `compiler_log_file` exists and that its contents match each regular expression in `expectations`.
     If all checks succeed, `compiler_log_file` is deleted.
@@ -93,6 +94,8 @@ def _check_compiler_log(compiler_log_file, expectations):
     for pattern in expectations:
         if not re.search(pattern, compiler_log):
             mx.abort('Did not find expected pattern ("{}") in compiler log:{}{}'.format(pattern, linesep, compiler_log))
+    if extra_check is not None:
+        extra_check(compiler_log)
     if mx.get_opts().verbose or in_exception_path:
         mx.log(compiler_log)
     remove(compiler_log_file)
@@ -102,17 +105,65 @@ def _test_libgraal_basic(extra_vm_arguments):
     Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
     """
-    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from[ \w]* JVMCI native library"
+
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    graalvm_jdk = mx.JDKConfig(graalvm_home)
+    jres = [graalvm_home]
+
+    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
+        # Create a minimal image that should contain libgraal
+        libgraal_jre = abspath('libgraal-jre')
+        if exists(libgraal_jre):
+            mx.rmtree(libgraal_jre)
+        mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
+        jres.append(libgraal_jre)
+        atexit.register(mx.rmtree, libgraal_jre)
+
+    expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
-    args = ['-Dgraal.ShowConfiguration=info',
-            '-Dgraal.LogFile=' + compiler_log_file,
+
+    # To test Graal stubs do not create and install duplicate RuntimeStubs:
+    # - use a new libgraal isolate for each compilation
+    # - use 1 JVMCI compiler thread
+    # - enable PrintCompilation (which also logs stub compilations)
+    # - check that log shows at least one stub is compiled and each stub is compiled at most once
+    check_stub_sharing = [
+        '-XX:JVMCIThreadsPerNativeLibraryRuntime=1',
+        '-XX:JVMCICompilerIdleDelay=0',
+        '-XX:JVMCIThreads=1',
+        '-Dlibgraal.PrintCompilation=true',
+        '-Dlibgraal.LogFile=' + compiler_log_file,
+    ]
+
+    def extra_check(compiler_log):
+        """
+        Checks that compiler log shows at least stub compilation
+        and that each stub is compiled at most once.
+        """
+        nl = linesep
+        stub_compilations = {}
+        stub_compilation = re.compile(r'StubCompilation-\d+ +<stub> +([\S]+) +([\S]+) +.*')
+        for line in compiler_log.split('\n'):
+            m = stub_compilation.match(line)
+            if m:
+                stub = f'{m.group(1)}{m.group(2)}'
+                stub_compilations[stub] = stub_compilations.get(stub, 0) + 1
+        if not stub_compilations:
+            mx.abort('Expected at least one stub compilation in compiler log')
+        duplicated = {stub: count for stub, count in stub_compilations.items() if count > 1}
+        if duplicated:
+            table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
+            mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
+
+    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose',
             '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
-    try:
-        mx.run([join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java')] + args)
-    finally:
-        _check_compiler_log(compiler_log_file, expect)
+    for jre in jres:
+        try:
+            mx.run([join(jre, 'bin', 'java')] + args)
+        finally:
+            _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
 
     # Verify execution via `mx vm`.
     import mx_compiler
@@ -239,18 +290,13 @@ def _test_libgraal_truffle(extra_vm_arguments):
     else:
         unittest_args = []
     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
-    compiler_log_file = "graal-compiler.log"
     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
         "-Dpolyglot.engine.AllowExperimentalOptions=true",
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
-        "-Dpolyglot.engine.TraceCompilation=true",
-        "-Dpolyglot.log.file={0}".format(compiler_log_file),
         "-Dgraalvm.locatorDisabled=true",
         "truffle"])
-    if exists(compiler_log_file):
-        remove(compiler_log_file)
 
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:
@@ -273,7 +319,7 @@ def gate_body(args, tasks):
             if libgraal_location is None:
                 mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
             else:
-                extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
+                extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location), '-XX:JVMCIThreadsPerNativeLibraryRuntime=1']
                 if args.extra_vm_argument:
                     extra_vm_arguments += args.extra_vm_argument
 
@@ -464,7 +510,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
 
         if additional_deps:
             build_deps = build_deps + additional_deps
-        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk)
+        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         tests_image = native_image(build_options + extra_image_args)
         import configparser
         artifacts = configparser.RawConfigParser(allow_no_value=True)

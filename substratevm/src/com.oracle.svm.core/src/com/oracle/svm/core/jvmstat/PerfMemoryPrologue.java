@@ -97,7 +97,7 @@ public final class PerfMemoryPrologue {
     private PerfMemoryPrologue() {
     }
 
-    public static long initialize(Word perfMemory, boolean platformIsBigEndian) {
+    public static void initialize(Word perfMemory, boolean platformIsBigEndian) {
         Word pos = perfMemory.add(PERFDATA_PROLOGUE_MAGIC_OFFSET);
 
         // the magic number is always stored in big-endian format
@@ -136,8 +136,6 @@ public final class PerfMemoryPrologue {
         // num_entries = 0
         pos.writeInt(0, 0);
         pos = pos.add(Integer.BYTES);
-
-        return System.nanoTime();
     }
 
     /**

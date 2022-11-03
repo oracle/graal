@@ -90,6 +90,7 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
@@ -128,9 +129,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent);
     }
 
-    public abstract static class IOAccess {
-        protected IOAccess() {
-            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.IOHelper.IOAccessImpl")) {
+    public abstract static class IOAccessor {
+        protected IOAccessor() {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.IOHelper.IOAccessorImpl")) {
                 throw new AssertionError("Only one implementation of IOAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -141,6 +142,12 @@ public abstract class AbstractPolyglotImpl {
         public abstract ProcessHandler.Redirect createRedirectToStream(OutputStream stream);
 
         public abstract OutputStream getOutputStream(ProcessHandler.Redirect redirect);
+
+        public abstract FileSystem getFileSystem(IOAccess ioAccess);
+
+        public abstract boolean hasHostFileAccess(IOAccess ioAccess);
+
+        public abstract boolean hasHostSocketAccess(IOAccess ioaccess);
     }
 
     public abstract static class APIAccess {
@@ -253,7 +260,7 @@ public abstract class AbstractPolyglotImpl {
 
     private APIAccess api;
     private ManagementAccess management;
-    private IOAccess io;
+    private IOAccessor io;
 
     private AbstractPolyglotImpl next;
     private AbstractPolyglotImpl prev;
@@ -285,7 +292,7 @@ public abstract class AbstractPolyglotImpl {
         return next;
     }
 
-    public final void setIO(IOAccess ioAccess) {
+    public final void setIO(IOAccessor ioAccess) {
         Objects.requireNonNull(ioAccess, "IOAccess must be non null.");
         this.io = ioAccess;
         AbstractPolyglotImpl nextImpl = this.next;
@@ -302,7 +309,7 @@ public abstract class AbstractPolyglotImpl {
         return management;
     }
 
-    public final IOAccess getIO() {
+    public final IOAccessor getIO() {
         if (io == null) {
             try {
                 Class.forName("org.graalvm.polyglot.io.IOHelper", true, getClass().getClassLoader());
@@ -560,12 +567,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in,
+                        boolean allowHostLookup,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
-                        boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
+                        boolean allowNativeAccess,
+                        boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
+                        Predicate<String> classFilter,
                         Map<String, String> options,
-                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                        Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
                         boolean allowValueSharing, boolean useSystemExit);
 
@@ -765,6 +775,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
                         boolean hostLookupAllowed);
+
+        public abstract void throwHostLanguageException(String message);
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 

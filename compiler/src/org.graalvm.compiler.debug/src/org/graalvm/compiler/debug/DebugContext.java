@@ -386,7 +386,7 @@ public final class DebugContext implements AutoCloseable {
     /**
      * Describes the computation associated with a {@link DebugContext}.
      */
-    public static class Description {
+    public static final class Description {
         /**
          * The primary input to the computation.
          */
@@ -395,7 +395,7 @@ public final class DebugContext implements AutoCloseable {
         /**
          * A runtime based identifier that is most likely to be unique.
          */
-        final String identifier;
+        public final String identifier;
 
         public Description(Object compilable, String identifier) {
             this.compilable = compilable;
@@ -408,7 +408,7 @@ public final class DebugContext implements AutoCloseable {
             return identifier + ":" + compilableName;
         }
 
-        final String getLabel() {
+        String getLabel() {
             if (compilable instanceof JavaMethod) {
                 JavaMethod method = (JavaMethod) compilable;
                 return method.format("%h.%n(%p)%r");
@@ -419,7 +419,7 @@ public final class DebugContext implements AutoCloseable {
 
     private final Description description;
 
-    private final CompilationListener compilationListener;
+    private CompilationListener compilationListener;
 
     /**
      * Gets a description of the computation associated with this debug context.
@@ -438,6 +438,16 @@ public final class DebugContext implements AutoCloseable {
      */
     public boolean hasCompilationListener() {
         return compilationListener != null;
+    }
+
+    /**
+     * Sets the compilation listener, which will be notified about subsequent inlinings and entered
+     * phases.
+     *
+     * @param compilationListener the new compilation listener
+     */
+    public void setCompilationListener(CompilationListener compilationListener) {
+        this.compilationListener = compilationListener;
     }
 
     private int compilerPhaseNesting = 0;
@@ -781,6 +791,14 @@ public final class DebugContext implements AutoCloseable {
 
     public boolean isLogEnabled(int logLevel) {
         return currentScope != null && currentScope.isLogEnabled(logLevel);
+    }
+
+    /**
+     * Check if the current method matches the {@link DebugOptions#MethodFilter method filter} debug
+     * option.
+     */
+    public boolean methodFilterMatchesCurrentMethod() {
+        return currentConfig != null && currentConfig.methodFilterMatchesCurrentMethod(currentScope);
     }
 
     /**
@@ -2211,6 +2229,13 @@ public final class DebugContext implements AutoCloseable {
 
     public boolean areMetricsEnabled() {
         return metricsEnabled;
+    }
+
+    /**
+     * Returns {@code true} if any unscoped counters are enabled.
+     */
+    public boolean hasUnscopedCounters() {
+        return immutable.unscopedCounters != null && !immutable.unscopedCounters.isEmpty();
     }
 
     @Override

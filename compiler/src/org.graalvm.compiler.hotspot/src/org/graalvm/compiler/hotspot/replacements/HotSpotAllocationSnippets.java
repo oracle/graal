@@ -210,7 +210,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         }
         Class<?> nonNullType = PiNode.piCastNonNullClass(type, SnippetAnchorNode.anchor());
         if (probability(DEOPT_PROBABILITY,
-                        DynamicNewInstanceNode.throwsInstantiationException(nonNullType, classClass))) {
+                        DynamicNewInstanceNode.throwsInstantiationExceptionInjectedProbability(DEOPT_PROBABILITY, nonNullType, classClass))) {
             DeoptimizeNode.deopt(None, RuntimeConstraint);
         }
         return nonNullType;
@@ -232,8 +232,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
          * knownElementKind.
          */
         staticAssert(knownElementKind != JavaKind.Void, "unsupported knownElementKind");
-        if (knownElementKind == JavaKind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType, voidClass))) {
-            DeoptimizeNode.deopt(None, RuntimeConstraint);
+
+        if (knownElementKind == JavaKind.Illegal) {
+            if (probability(SLOW_PATH_PROBABILITY, elementType == null)) {
+                DeoptimizeNode.deopt(None, RuntimeConstraint);
+            }
+            if (probability(SLOW_PATH_PROBABILITY, DynamicNewArrayNode.throwsIllegalArgumentException(elementType, voidClass))) {
+                DeoptimizeNode.deopt(None, RuntimeConstraint);
+            }
         }
 
         KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(INJECTED_VMCONFIG), CLASS_ARRAY_KLASS_LOCATION);
@@ -352,7 +358,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Object callNewArrayStub(Word hub, int length, int fillStartOffset) {
+    protected final Object callNewArrayStub(Word hub, int length) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         if (useNullAllocationStubs(INJECTED_VMCONFIG)) {
             return nonNullOrDeopt(newArrayOrNull(NEW_ARRAY_OR_NULL, klassPtr, length));
@@ -561,18 +567,73 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             this.config = config;
             snippetCounters = new AllocationSnippetCounters(groupFactory);
 
-            allocateInstance = snippet(HotSpotAllocationSnippets.class, "allocateInstance", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION,
+            allocateInstance = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "allocateInstance",
+                            null,
+                            receiver,
+                            MARK_WORD_LOCATION,
+                            HUB_WRITE_LOCATION,
+                            TLAB_TOP_LOCATION,
+                            TLAB_END_LOCATION,
                             PROTOTYPE_MARK_WORD_LOCATION);
-            allocateArray = snippet(HotSpotAllocationSnippets.class, "allocateArray", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-            allocateArrayDynamic = snippet(HotSpotAllocationSnippets.class, "allocateArrayDynamic", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
+            allocateArray = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "allocateArray",
+                            null,
+                            receiver,
+                            MARK_WORD_LOCATION,
+                            HUB_WRITE_LOCATION,
+                            TLAB_TOP_LOCATION,
                             TLAB_END_LOCATION);
-            allocateInstanceDynamic = snippet(HotSpotAllocationSnippets.class, "allocateInstanceDynamic", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
-                            TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION, CLASS_INIT_STATE_LOCATION);
-            validateNewInstanceClass = snippet(HotSpotAllocationSnippets.class, "validateNewInstanceClass", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
-                            TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION, CLASS_INIT_STATE_LOCATION);
-            newmultiarray = snippet(HotSpotAllocationSnippets.class, "newmultiarray", null, receiver, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-            verifyHeap = snippet(HotSpotAllocationSnippets.class, "verifyHeap", null, receiver);
-            threadBeingInitializedCheck = snippet(HotSpotAllocationSnippets.class, "threadBeingInitializedCheck", null, receiver, CLASS_INIT_STATE_LOCATION, CLASS_INIT_THREAD_LOCATION);
+            allocateArrayDynamic = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "allocateArrayDynamic",
+                            null,
+                            receiver,
+                            MARK_WORD_LOCATION,
+                            HUB_WRITE_LOCATION,
+                            TLAB_TOP_LOCATION,
+                            TLAB_END_LOCATION);
+            allocateInstanceDynamic = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "allocateInstanceDynamic",
+                            null,
+                            receiver,
+                            MARK_WORD_LOCATION,
+                            HUB_WRITE_LOCATION,
+                            TLAB_TOP_LOCATION,
+                            TLAB_END_LOCATION,
+                            PROTOTYPE_MARK_WORD_LOCATION,
+                            CLASS_INIT_STATE_LOCATION);
+            validateNewInstanceClass = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "validateNewInstanceClass",
+                            MARK_WORD_LOCATION,
+                            HUB_WRITE_LOCATION,
+                            TLAB_TOP_LOCATION,
+                            TLAB_END_LOCATION,
+                            PROTOTYPE_MARK_WORD_LOCATION,
+                            CLASS_INIT_STATE_LOCATION);
+            newmultiarray = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "newmultiarray",
+                            null,
+                            receiver,
+                            TLAB_TOP_LOCATION,
+                            TLAB_END_LOCATION);
+            verifyHeap = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "verifyHeap",
+                            null,
+                            receiver);
+            threadBeingInitializedCheck = snippet(providers,
+                            HotSpotAllocationSnippets.class,
+                            "threadBeingInitializedCheck",
+                            null,
+                            receiver,
+                            CLASS_INIT_STATE_LOCATION,
+                            CLASS_INIT_THREAD_LOCATION);
         }
 
         private HotSpotAllocationProfilingData getProfilingData(OptionValues localOptions, String path, ResolvedJavaType type) {
@@ -595,7 +656,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             StructuredGraph graph = node.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.instanceClass();
             assert !type.isArray();
-            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), graph);
             long size = instanceSize(type);
 
             OptionValues localOptions = graph.getOptions();
@@ -606,9 +667,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "instance", type));
 
-            SnippetTemplate template = template(node, args);
+            SnippetTemplate template = template(tool, node, args);
             graph.getDebug().log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, node, template, args);
-            template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         /**
@@ -619,7 +680,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             ResolvedJavaType elementType = node.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             JavaKind elementKind = elementType.getJavaKind();
-            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), tool.getMetaAccess(), graph);
             final int arrayBaseOffset = tool.getMetaAccess().getArrayBaseOffset(elementKind);
             int log2ElementSize = CodeUtil.log2(tool.getMetaAccess().getArrayIndexScale(elementKind));
 
@@ -638,9 +699,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
 
-            SnippetTemplate template = template(node, args);
+            SnippetTemplate template = template(tool, node, args);
             graph.getDebug().log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, node, template, args);
-            template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         public void lower(NewMultiArrayNode node, LoweringTool tool) {
@@ -651,14 +712,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                 dims[i] = node.dimension(i);
             }
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.type();
-            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), graph);
 
             Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             args.addConst("rank", rank);
             args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         public void lower(DynamicNewInstanceNode node, LoweringTool tool) {
@@ -670,7 +731,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "", null));
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
@@ -679,7 +740,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("type", node.getInstanceType());
             args.add("classClass", node.getClassClass());
-            template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         public void lower(DynamicNewArrayNode node, LoweringTool tool) {
@@ -709,14 +770,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         public void lower(VerifyHeapNode node, LoweringTool tool) {
             if (config.cAssertions) {
                 Arguments args = new Arguments(verifyHeap, node.graph().getGuardsStage(), tool.getLoweringStage());
 
-                template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             } else {
                 GraphUtil.removeFixedWithUnusedInputs(node);
             }
@@ -726,7 +787,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             Arguments args = new Arguments(threadBeingInitializedCheck, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("klass", node.getKlass());
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 
         private static HotSpotResolvedObjectType lookupArrayClass(LoweringTool tool, JavaKind kind) {

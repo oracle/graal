@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQ
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
@@ -83,7 +84,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
         do {
             cur.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
             cur = cur.add(1);
-        } while (cur.belowOrEqual(end));
+        } while (GraalDirectives.injectIterationCount(10, cur.belowOrEqual(end)));
     }
 
     private void serialWriteBarrier(Pointer ptr, Counters counters, boolean verifyOnly) {
@@ -128,7 +129,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             args.addConst("counters", counters);
             args.addConst("verifyOnly", barrier.getVerifyOnly());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(AbstractTemplates templates, SnippetInfo snippet, SerialArrayRangeWriteBarrier barrier, LoweringTool tool) {
@@ -137,7 +138,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
-            templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
+            templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, DEFAULT_REPLACER, args);
         }
     }
 }

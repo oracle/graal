@@ -30,16 +30,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-@AutomaticFeature
-final class ImageHeapMapFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class ImageHeapMapFeature implements InternalFeature {
 
     private final Set<HostedImageHeapMap<?, ?>> allInstances = ConcurrentHashMap.newKeySet();
 

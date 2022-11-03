@@ -31,9 +31,10 @@ import java.io.PrintStream;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * We use an {@link Feature.DuringSetupAccess#registerObjectReplacer object replacer} because the
@@ -41,8 +42,8 @@ import com.oracle.svm.core.jdk.SystemInOutErrSupport;
  * {@link System}. We do not know all these places, so we do now know where to place
  * {@link RecomputeFieldValue} annotations.
  */
-@AutomaticFeature
-public class SystemInOutErrFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class SystemInOutErrFeature implements InternalFeature {
     private final InputStream hostedIn;
     private final PrintStream hostedOut;
     private final PrintStream hostedErr;

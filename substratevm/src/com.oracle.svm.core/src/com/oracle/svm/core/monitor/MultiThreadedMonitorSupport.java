@@ -41,10 +41,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.WeakIdentityHashMap;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
@@ -182,19 +182,16 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
 
     @Override
-    public int maybeAdjustNewParkStatus(int status) {
-        Object blocker = LockSupport.getBlocker(Thread.currentThread());
+    public int getParkedThreadStatus(Thread thread, boolean timed) {
+        Object blocker = LockSupport.getBlocker(thread);
         if (blocker instanceof JavaMonitorConditionObject) {
             // Blocked on one of the condition objects that implement Object.wait()
-            if (status == ThreadStatus.PARKED_TIMED) {
-                return ThreadStatus.IN_OBJECT_WAIT_TIMED;
-            }
-            return ThreadStatus.IN_OBJECT_WAIT;
+            return timed ? ThreadStatus.IN_OBJECT_WAIT_TIMED : ThreadStatus.IN_OBJECT_WAIT;
         } else if (blocker instanceof JavaMonitor) {
             // Blocked directly on the lock
             return ThreadStatus.BLOCKED_ON_MONITOR_ENTER;
         }
-        return status;
+        return timed ? ThreadStatus.PARKED_TIMED : ThreadStatus.PARKED;
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -406,7 +403,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
-        assert JavaVersionUtil.JAVA_SPEC > 19 ||
+        assert JavaVersionUtil.JAVA_SPEC > 17 ||
                         obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
                         "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");

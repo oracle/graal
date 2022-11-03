@@ -50,6 +50,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor;
 
 final class NodeAccessor extends Accessor {
@@ -149,6 +150,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public boolean isTrivial(RootNode rootNode) {
             return rootNode.isTrivial();
+        }
+
+        @Override
+        public FrameDescriptor getParentFrameDescriptor(RootNode rootNode) {
+            return rootNode.getParentFrameDescriptor();
         }
 
         @Override

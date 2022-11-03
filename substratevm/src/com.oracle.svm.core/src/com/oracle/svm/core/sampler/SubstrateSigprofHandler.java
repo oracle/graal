@@ -22,16 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.sampler;
 
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -46,60 +46,70 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
+import com.oracle.svm.core.jfr.JfrRecorderThread;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
-class SubstrateSigprofHandlerFeature implements Feature {
+class SubstrateSigprofHandlerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.AllowVMInspection.getValue() && SubstrateSigprofHandler.isProfilingSupported() && ImageInfo.isExecutable();
+        return JfrFeature.isInConfiguration(true);
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ThreadListenerFeature.class, JfrFeature.class, ManagementFeature.class);
+        return Arrays.asList(ThreadListenerSupportFeature.class, JfrFeature.class, ManagementFeature.class);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(SubstrateSigprofHandler.class)) {
-            /* No sigprof handler. */
+        if (!SamplerHasSupport.get() && !HasJfrSupport.get()) {
+            /* No Sampler and JFR support. */
             return;
         }
-        VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
+
+        /* The common initialization part between Sampler and JFR. */
 
         /* Create stack visitor. */
         ImageSingletons.add(SamplerStackWalkVisitor.class, new SamplerStackWalkVisitor());
 
-        /* Add listeners. */
+        /* Add thread listener. */
         ThreadListenerSupport.get().register(new SamplerThreadLocal());
-        IsolateListenerSupport.singleton().register(new SamplerIsolateLocal());
 
         /* Add startup hook. */
         RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSigprofHandlerStartupHook());
+
+        /* The Sampler initialization part. */
+        if (SamplerHasSupport.get()) {
+            VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
+
+            /* Add isolate listener. */
+            IsolateListenerSupport.singleton().register(new SamplerIsolateLocal());
+        }
     }
 }
 
@@ -126,13 +136,12 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  * instruction pointers, prepare everything necessary for stack walk, do a stack walk and write IPs
  * into buffer.
  * </p>
- * 
+ *
  * <p>
  * The signal handler is as a <b>producer</b>. On the other side of relation is
- * {@link com.oracle.svm.core.jfr.JfrRecorderThread} that is <b>consumer</b>. The
- * {@link SamplerBuffer} that we are using in this consumer-producer communication is allocated
- * eagerly, in a part of the heap that is not accessible via GC, and there will always be more
- * available buffers that threads.
+ * {@link JfrRecorderThread} that is <b>consumer</b>. The {@link SamplerBuffer} that we are using in
+ * this consumer-producer communication is allocated eagerly, in a part of the heap that is not
+ * accessible via GC, and there will always be more available buffers that threads.
  * </p>
  *
  * <p>
@@ -151,7 +160,7 @@ final class SubstrateSigprofHandlerStartupHook implements RuntimeSupport.Hook {
  * In some rare cases, the profiling is impossible e.g. no available buffers in the pool, unknown IP
  * during stack walk, the thread holds the pool's lock when the signal arrives, etc.
  * </p>
- * 
+ *
  * @see SamplerSpinLock
  * @see SamplerBufferStack
  */
@@ -159,10 +168,30 @@ public abstract class SubstrateSigprofHandler {
 
     public static class Options {
         @Option(help = "Allow sampling-based profiling. Default: disabled in execution.")//
-        static final RuntimeOptionKey<Boolean> SamplingBasedProfiling = new RuntimeOptionKey<>(Boolean.FALSE);
+        static final RuntimeOptionKey<Boolean> SamplingBasedProfiling = new RuntimeOptionKey<>(Boolean.FALSE) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue) {
+                    /* Enabling sampling-based profiling requires to enabled JFR as well. */
+                    SubstrateOptions.FlightRecorder.update(values, true);
+                }
+            }
+        };
+
+        @SuppressWarnings("unused") @Option(help = "Start sampling-based profiling with options.")//
+        public static final RuntimeOptionKey<String> StartSamplingBasedProfiling = new RuntimeOptionKey<>("") {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+                if (!newValue.isEmpty()) {
+                    /* Starting sampling-based profiling requires to start JFR as well. */
+                    SubstrateOptions.StartFlightRecording.update(values, newValue);
+                }
+            }
+        };
     }
 
     private boolean enabled;
+    private volatile boolean isSignalHandlerGloballyDisabled;
     private final SamplerBufferStack availableBuffers;
     private final SamplerBufferStack fullBuffers;
     private SubstrateThreadMXBean threadMXBean;
@@ -174,17 +203,16 @@ public abstract class SubstrateSigprofHandler {
     }
 
     @Fold
-    static SubstrateSigprofHandler singleton() {
+    public static SubstrateSigprofHandler singleton() {
         return ImageSingletons.lookup(SubstrateSigprofHandler.class);
     }
 
     @Fold
-    static SamplerStackWalkVisitor visitor() {
+    public static SamplerStackWalkVisitor visitor() {
         return ImageSingletons.lookup(SamplerStackWalkVisitor.class);
     }
 
-    @Fold
-    static boolean isProfilingSupported() {
+    private static boolean isOSSupported() {
         return Platform.includedIn(Platform.LINUX.class);
     }
 
@@ -194,12 +222,22 @@ public abstract class SubstrateSigprofHandler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    SamplerBufferStack availableBuffers() {
+    private boolean isSignalHandlerDisabled() {
+        return isSignalHandlerGloballyDisabled || SamplerThreadLocal.isSignalHandlerLocallyDisabled();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setSignalHandlerGloballyDisabled(boolean isDisabled) {
+        isSignalHandlerGloballyDisabled = isDisabled;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public SamplerBufferStack availableBuffers() {
         return availableBuffers;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    SamplerBufferStack fullBuffers() {
+    public SamplerBufferStack fullBuffers() {
         return fullBuffers;
     }
 
@@ -212,14 +250,20 @@ public abstract class SubstrateSigprofHandler {
      * Installs the platform dependent sigprof handler.
      */
     void install() {
-        if (Options.SamplingBasedProfiling.getValue()) {
+        if (SubstrateOptions.FlightRecorder.getValue()) {
             threadMXBean = (SubstrateThreadMXBean) ManagementFactory.getThreadMXBean();
             /* Call VM operation to initialize the sampler and the threads. */
             InitializeSamplerOperation initializeSamplerOperation = new InitializeSamplerOperation();
             initializeSamplerOperation.enqueue();
 
-            /* After the VM operations finishes. Install handler and start profiling. */
-            install0();
+            if (Options.SamplingBasedProfiling.getValue()) {
+                if (isOSSupported()) {
+                    /* After the VM operations finishes. Install handler and start profiling. */
+                    install0();
+                } else {
+                    VMError.shouldNotReachHere("Sampling-based profiling is currently supported only on LINUX!");
+                }
+            }
         }
     }
 
@@ -274,46 +318,34 @@ public abstract class SubstrateSigprofHandler {
             }
         }
 
-        /* Initialize stack walk. */
-        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
-        if (prepareStackWalk(data)) {
-            /* Walk the stack. */
-            if (JavaStackWalker.walkCurrentThread(sp, ip, visitor())) {
-                SamplerSampleWriter.commit(data);
-            }
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean prepareStackWalk(SamplerSampleWriterData data) {
-        if (singleton().availableBuffers().isLockedByCurrentThread() || singleton().fullBuffers().isLockedByCurrentThread()) {
+        /* Test if the current thread's signal handler is disabled, or if holds the stack's lock. */
+        if (singleton().isSignalHandlerDisabled() || singleton().availableBuffers().isLockedByCurrentThread() || singleton().fullBuffers().isLockedByCurrentThread()) {
             /*
-             * The current thread already holds the stack lock, so we can't access it. It's way
+             * The current thread already holds the stack's lock, so we can't access it. It's way
              * better to lose one sample, then potentially the whole buffer.
+             * 
+             * In case of disabled signal handler, if we proceed forward it could pollute the JFR
+             * output.
              */
             SamplerThreadLocal.increaseMissedSamples();
-            return false;
+            return;
         }
 
-        SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer();
-        if (buffer.isNull()) {
-            /* Pop first free buffer from the pool. */
-            buffer = singleton().availableBuffers().popBuffer();
-            if (buffer.isNull()) {
-                /* No available buffers on the pool. Fallback! */
-                SamplerThreadLocal.increaseMissedSamples();
-                return false;
+        /* Initialize stack walk. */
+        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
+        /* Buffer size constrains stack walk size. */
+        if (SamplerSampleWriterDataAccess.initialize(data, 0, Integer.MAX_VALUE)) {
+            SamplerSampleWriter.begin(data);
+            /*
+             * Walk the stack.
+             * 
+             * We should commit the sample if: the stack walk was done successfully or the stack
+             * walk was interrupted because stack size exceeded given depth.
+             */
+            if (JavaStackWalker.walkCurrentThread(sp, ip, visitor()) || data.getTruncated()) {
+                SamplerSampleWriter.end(data);
             }
-            SamplerThreadLocal.setThreadLocalBuffer(buffer);
         }
-
-        /* Initialize the buffer. */
-        data.setSamplerBuffer(buffer);
-        data.setStartPos(buffer.getPos());
-        data.setCurrentPos(buffer.getPos());
-        data.setEndPos(SamplerBufferAccess.getDataEnd(buffer));
-        SamplerThreadLocal.setWriterData(data);
-        return true;
     }
 
     /** Called from the platform dependent sigprof handler to enter isolate. */

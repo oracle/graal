@@ -30,8 +30,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.configure.json.JsonWriter;
 
@@ -58,13 +59,11 @@ public class RegexFilter implements ConfigurationFilter {
 
         writer.unindent().newline();
         writer.append("]");
-        writer.unindent().newline();
-        writer.append("}");
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
-    public void parseFromJson(Map<String, Object> topJsonObject) {
+    public void parseFromJson(EconomicMap<String, Object> topJsonObject) {
         Object regexRules = topJsonObject.get("regexRules");
         if (regexRules != null) {
             List<Object> patternList = asList(regexRules, "Field 'regexRules' must be a list of objects.");

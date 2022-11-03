@@ -505,7 +505,7 @@ public class ContextPolicyTest {
         remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
         remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
         remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
-        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         context0.eval(source0);
         remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
@@ -1051,7 +1051,7 @@ public class ContextPolicyTest {
             TruffleContext context = null;
             if (innerContext) {
                 if (langContext.innerContext == null) {
-                    context = langContext.env.newContextBuilder().build();
+                    context = langContext.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                     langContext.innerContext = context;
                 } else {
                     context = langContext.innerContext;

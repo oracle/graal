@@ -341,13 +341,13 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
     private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    private PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, PythonREMode mode) throws RegexSyntaxException {
+    private PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.language = language;
         this.inSource = source;
         this.compilationBuffer = compilationBuffer;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
-        this.mode = mode == PythonREMode.None ? PythonREMode.fromEncoding(source.getEncoding()) : mode;
+        this.mode = PythonREMode.fromEncoding(source.getEncoding());
         this.position = 0;
         this.outPattern = new StringBuilder(inPattern.length());
         this.globalFlags = new PythonFlags(inFlags);
@@ -359,12 +359,12 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
         this.lastTerm = TermCategory.None;
     }
 
-    public static RegexValidator createValidator(RegexSource source, PythonREMode mode) throws RegexSyntaxException {
-        return new PythonRegexParser(null, source, null, mode);
+    public static RegexValidator createValidator(RegexSource source) throws RegexSyntaxException {
+        return new PythonRegexParser(null, source, null);
     }
 
-    public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, PythonREMode mode) throws RegexSyntaxException {
-        return new PythonRegexParser(language, source, compilationBuffer, mode);
+    public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+        return new PythonRegexParser(language, source, compilationBuffer);
     }
 
     @Override

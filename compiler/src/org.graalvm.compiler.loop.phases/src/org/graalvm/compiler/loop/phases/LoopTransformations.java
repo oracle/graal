@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,8 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -63,8 +65,6 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
@@ -110,6 +110,7 @@ public abstract class LoopTransformations {
         LoopFragmentInside inside = loop.inside().duplicate();
         inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
+        loop.loopBegin().graph().getOptimizationLog().withProperty("peelings", loop.loopBegin().peelings()).report(LoopTransformations.class, "LoopPeeling", loop.loopBegin());
         if (mainExit != null) {
             adaptCountedLoopExitProbability(mainExit, frequencyBefore - 1D);
         }
@@ -145,14 +146,13 @@ public abstract class LoopTransformations {
                 try (NodeEventScope peeledScope = graph.trackNodeEvents(peeledListener)) {
                     LoopTransformations.peel(loop);
                 }
-                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After peeling loop %s", loop);
                 c.applyIncremental(graph, context, peeledListener.getNodes());
                 loop.invalidateFragmentsAndIVs();
                 for (Node n : graph.getNewNodes(newNodes)) {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
                         s.simplify(defaultSimplifier);
-                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After simplifying if %s", s);
+                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopCfgSimplification", n);
                     }
                 }
                 if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2 ||
@@ -164,6 +164,7 @@ public abstract class LoopTransformations {
         }
         // Canonicalize with the original canonicalizer to capture all simplifications
         canonicalizer.applyIncremental(graph, context, l.getNodes());
+        loop.loopBegin().graph().getOptimizationLog().report(LoopTransformations.class, "LoopFullUnroll", loop.loopBegin());
     }
 
     public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
@@ -219,14 +220,15 @@ public abstract class LoopTransformations {
         }
 
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
+        loop.loopBegin().graph().getOptimizationLog().withProperty("unswitches", loop.loopBegin().unswitches()).report(LoopTransformations.class, "LoopUnswitching", loop.loopBegin());
     }
 
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
-        loop.loopBegin().graph().getDebug().log("LoopPartialUnroll %s", loop);
         adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
+        loop.loopBegin().graph().getOptimizationLog().withProperty("unrollFactor", loop.loopBegin().getUnrollFactor()).report(LoopTransformations.class, "LoopPartialUnroll", loop.loopBegin());
     }
 
     /**
@@ -411,7 +413,8 @@ public abstract class LoopTransformations {
         preLoopExitNode.setNext(mainLoopBegin.forwardEnd());
 
         // Add and update any phi edges as per merge usage as needed and update usages
-        assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
+        assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
+                        mainLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
         processPreLoopPhis(loop, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) ? (LoopExitNode) mainLoopExitNode : null, mainLoop, postLoop);
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing pre loop phis");
 
@@ -454,7 +457,7 @@ public abstract class LoopTransformations {
                 graph.removeFixed(safepoint);
             }
         }
-        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
+        graph.getOptimizationLog().report(LoopTransformations.class, "PreMainPostInsertion", loop.loopBegin());
 
         return new PreMainPostResult(preLoopBegin, mainLoopBegin, postLoopBegin, preLoop, mainLoop, postLoop);
     }

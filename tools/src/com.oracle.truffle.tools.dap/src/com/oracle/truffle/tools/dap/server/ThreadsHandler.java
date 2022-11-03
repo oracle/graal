@@ -37,6 +37,7 @@ import com.oracle.truffle.tools.dap.types.StoppedEvent;
 import com.oracle.truffle.tools.dap.types.ThreadEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -51,11 +52,12 @@ public final class ThreadsHandler implements ThreadsListener {
 
     private final ExecutionContext context;
     private final DebuggerSession debuggerSession;
-    private final Map<Thread, Integer> thread2Ids = new HashMap<>();
+    private final Map<Thread, Integer> thread2Ids = new LinkedHashMap<>();
     private final Map<Integer, Thread> id2threads = new HashMap<>();
     private final Map<Integer, SuspendedThreadInfo> suspendedThreads = new HashMap<>();
 
-    private int lastId = 0;
+    private int lastThreadId = 0;
+    private int lastRefId = 0;
 
     public ThreadsHandler(ExecutionContext context, DebuggerSession debuggerSession) {
         this.context = context;
@@ -66,7 +68,7 @@ public final class ThreadsHandler implements ThreadsListener {
     public void onThreadInitialized(TruffleContext ctx, Thread thread) {
         Integer id;
         synchronized (thread2Ids) {
-            id = ++lastId;
+            id = ++lastThreadId;
             thread2Ids.put(thread, id);
             id2threads.put(id, thread);
         }
@@ -157,9 +159,14 @@ public final class ThreadsHandler implements ThreadsListener {
                             StringBuilder sb = new StringBuilder();
                             int idx = 0;
                             while (matcher.find()) {
+                                sb.append(logMessage.substring(idx, matcher.start()));
                                 String expression = matcher.group(1);
-                                DebugValue value = VariablesHandler.getDebugValue(event.getTopStackFrame(), expression);
-                                sb.append(logMessage.substring(idx, matcher.start())).append(value.toDisplayString());
+                                try {
+                                    DebugValue value = VariablesHandler.getDebugValue(event.getTopStackFrame(), expression);
+                                    sb.append(value.toDisplayString());
+                                } catch (DebugException ex) {
+                                    sb.append("Error: " + ex.getLocalizedMessage());
+                                }
                                 idx = matcher.end();
                             }
                             sb.append(logMessage.substring(idx));
@@ -196,12 +203,12 @@ public final class ThreadsHandler implements ThreadsListener {
         synchronized (thread2Ids) {
             suspendedThreads.remove(threadId);
             if (suspendedThreads.isEmpty()) {
-                lastId = 0;
+                lastRefId = 0;
             }
         }
         DebugProtocolClient client = context.getClient();
         if (client != null) {
-            client.continued(ContinuedEvent.EventBody.create(threadId));
+            client.continued(ContinuedEvent.EventBody.create(threadId).setAllThreadsContinued(false));
         }
     }
 
@@ -230,8 +237,8 @@ public final class ThreadsHandler implements ThreadsListener {
 
         private final int threadId;
         private final SuspendedEvent event;
-        private Map<Object, Integer> ref2Ids = new HashMap<>(100);
-        private Map<Integer, Object> id2Refs = new HashMap<>(100);
+        private final Map<Object, Integer> ref2Ids = new HashMap<>(100);
+        private final Map<Integer, Object> id2Refs = new HashMap<>(100);
         private final BlockingQueue<Function<SuspendedThreadInfo, Boolean>> executables = new LinkedBlockingQueue<>();
 
         private SuspendedThreadInfo(int threadId, SuspendedEvent event) {
@@ -252,7 +259,7 @@ public final class ThreadsHandler implements ThreadsListener {
             synchronized (thread2Ids) {
                 id = ref2Ids.get(ref);
                 if (id == null) {
-                    id = ++lastId;
+                    id = ++lastRefId;
                     ref2Ids.put(ref, id);
                     id2Refs.put(id, ref);
                 }
@@ -280,6 +287,8 @@ public final class ThreadsHandler implements ThreadsListener {
                     Function<SuspendedThreadInfo, Boolean> task = executables.take();
                     resume = task.apply(this);
                 } catch (InterruptedException ex) {
+                    // Interrupted, resume...
+                    break;
                 }
             }
             threadResumed(threadId);

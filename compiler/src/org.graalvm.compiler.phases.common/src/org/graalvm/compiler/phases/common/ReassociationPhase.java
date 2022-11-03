@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.EnumSet;
+import java.util.Optional;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
@@ -32,6 +33,7 @@ import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -59,6 +61,11 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
 
     public ReassociationPhase(CanonicalizerPhase canonicalizer) {
         this.canonicalizer = canonicalizer;
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return canonicalizer.notApplicableTo(graphState);
     }
 
     @Override
@@ -135,10 +142,8 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
                         assert !result.isDeleted();
                         result = graph.addOrUniqueWithInputs(result);
                     }
-                    if (debug.isLogEnabled()) {
-                        debug.log("%s : Re-associated %s into %s", graph.method().format("%H::%n"), binary, result);
-                    }
                     binary.replaceAtUsages(result);
+                    graph.getOptimizationLog().report(ReassociationPhase.class, "ConstantReassociation", binary);
                     GraphUtil.killWithUnusedFloatingInputs(binary);
                 }
             }
@@ -160,7 +165,9 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
         EconomicSetNodeEventListener nev = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.NODE_ADDED));
         try (NodeEventScope news = graph.trackNodeEvents(nev)) {
             for (LeftShiftNode l : graph.getNodes().filter(LeftShiftNode.class)) {
-                l.tryReplaceWithMulNode();
+                if (l.tryReplaceWithMulNode()) {
+                    graph.getOptimizationLog().withLazyProperty("replacedNodeClass", () -> l.getNodeClass().shortName()).report(ReassociationPhase.class, "ArithmeticWithMulReplacement", l);
+                }
             }
         }
         debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Reassociation: after creating mul nodes from shifts");
@@ -169,19 +176,26 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
                 assert ((MulNode) newNode).getY().isConstant();
                 MulNode mul = (MulNode) newNode;
                 for (Node usage : newNode.usages()) {
+                    boolean replaced = false;
                     if (usage instanceof AddNode) {
                         if (((BinaryArithmeticNode<?>) usage).getX() == mul.getX() && ((BinaryArithmeticNode<?>) usage).getY() == mul ||
                                         ((BinaryArithmeticNode<?>) usage).getY() == mul.getX() && ((BinaryArithmeticNode<?>) usage).getX() == mul) {
                             long i = ((PrimitiveConstant) mul.getY().asConstant()).asLong();
                             MulNode newMul = graph.addOrUnique(new MulNode(mul.getX(), ConstantNode.forIntegerStamp(mul.getY().stamp(NodeView.DEFAULT), i + 1, graph)));
                             usage.replaceAtUsages(newMul);
+                            replaced = true;
                         }
                     } else if (usage instanceof SubNode) {
                         if (((BinaryArithmeticNode<?>) usage).getX() == mul && ((BinaryArithmeticNode<?>) usage).getY() == mul.getX()) {
                             long i = ((PrimitiveConstant) mul.getY().asConstant()).asLong();
                             MulNode newMul = graph.addOrUnique(new MulNode(mul.getX(), ConstantNode.forIntegerStamp(mul.getY().stamp(NodeView.DEFAULT), i - 1, graph)));
                             usage.replaceAtUsages(newMul);
+                            replaced = true;
                         }
+                    }
+                    if (replaced) {
+                        graph.getOptimizationLog().withLazyProperty("replacedNodeClass", () -> usage.getNodeClass().shortName()).report(ReassociationPhase.class, "ArithmeticWithMulReplacement",
+                                        usage);
                     }
                 }
             }

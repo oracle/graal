@@ -80,7 +80,7 @@ public final class LinkAtBuildTimeSupport {
     private final ImageClassLoader imageClassLoader;
     private final Map<URI, Module> uriModuleMap;
 
-    LinkAtBuildTimeSupport(ImageClassLoader imageClassLoader, ClassLoaderSupport classLoaderSupport) {
+    public LinkAtBuildTimeSupport(ImageClassLoader imageClassLoader, ClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         this.imageClassLoader = imageClassLoader;
 

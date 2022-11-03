@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,6 +42,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -87,6 +88,9 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     /* All threads that try to parse the current method synchronize and only the first parses. */
     private synchronized void createFlowsGraph(PointsToAnalysis bb, InvokeTypeFlow reason) {
         if (flowsGraph == null) {
+            AnalysisError.guarantee(reason == null || reason.getSource() == null ||
+                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself " + method.format("%H.%n"));
+
             parsingReason = reason;
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method);
@@ -139,6 +143,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? EconomicMap.emptyMap() : flowsGraph.getInvokes();
     }
 
+    public TypeFlow<?> getParameter(int idx) {
+        return flowsGraph == null ? null : flowsGraph.getParameter(idx);
+    }
+
     public Iterable<TypeFlow<?>> getParameters() {
         return flowsGraph == null ? Collections.emptyList() : Arrays.asList(flowsGraph.getParameters());
     }
@@ -163,18 +171,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameterIndex;
     }
 
-    public StackTraceElement[] getParsingContext() {
-        List<StackTraceElement> parsingContext = new ArrayList<>();
-        InvokeTypeFlow invokeFlow = parsingReason;
-
-        /* Defend against cycles in the parsing context. GR-35744 should fix this properly. */
-        int maxSize = 100;
-
-        while (invokeFlow != null && parsingContext.size() < maxSize) {
-            parsingContext.add(invokeFlow.getSource().getMethod().asStackTraceElement(invokeFlow.getSource().getBCI()));
-            invokeFlow = ((PointsToAnalysisMethod) invokeFlow.getSource().getMethod()).getTypeFlow().parsingReason;
-        }
-        return parsingContext.toArray(new StackTraceElement[0]);
+    public BytecodePosition getParsingReason() {
+        return parsingReason != null ? parsingReason.getSource() : null;
     }
 
     @Override

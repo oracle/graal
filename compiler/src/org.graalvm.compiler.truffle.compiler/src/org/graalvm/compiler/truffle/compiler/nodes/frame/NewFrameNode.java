@@ -91,7 +91,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     public static final byte FrameSlotKindStaticTag = 8; // FrameSlotKind.Static.tag
 
     private static final byte FrameDescriptorNoStaticMode = 1; // FrameDescriptor.NO_STATIC_MODE
-    private static final byte FrameDescriptorAllStaticMode = 2; // FrameDescriptor.ALL_STATIC_MODe
+    private static final byte FrameDescriptorAllStaticMode = 2; // FrameDescriptor.ALL_STATIC_MODE
     private static final byte FrameDescriptorMixedStaticMode = FrameDescriptorNoStaticMode | FrameDescriptorAllStaticMode; // FrameDescriptor.MIXED_STATIC_MODE
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
@@ -250,10 +250,12 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         }
         this.virtualFrameArrays = new NodeInputList<>(this, new ValueNode[]{indexedLocals, indexedPrimitiveLocals, indexedTags, auxiliarySlotsArray});
 
-        ValueNode[] c = new ValueNode[TruffleCompilerRuntime.getRuntime().getFrameSlotKindTagsCount()];
+        // We double the frame slot kind tags count to support static assertion tags.
+        ValueNode[] c = new ValueNode[TruffleCompilerRuntime.getRuntime().getFrameSlotKindTagsCount() * 2];
         for (int i = 0; i < c.length; i++) {
             c[i] = ConstantNode.forInt(i, graph);
         }
+
         this.smallIntConstants = new NodeInputList<>(this, c);
     }
 
@@ -362,14 +364,14 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         return this;
     }
 
-    public VirtualArrayNode getTagArray(VirtualFrameAccessType type) {
+    public ValueNode getTagArray(VirtualFrameAccessType type) {
         /*
          * If one of these casts fails, there's an access into a zero-length array, which should not
          * get to this point.
          */
         switch (type) {
             case Indexed:
-                return (VirtualArrayNode) virtualFrameArrays.get(INDEXED_TAGS_ARRAY);
+                return virtualFrameArrays.get(INDEXED_TAGS_ARRAY);
             case Auxiliary:
                 return null;
             default:
@@ -377,29 +379,29 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         }
     }
 
-    public VirtualArrayNode getObjectArray(VirtualFrameAccessType type) {
+    public ValueNode getObjectArray(VirtualFrameAccessType type) {
         /*
          * If one of these casts fails, there's an access into a zero-length array, which should not
          * get to this point.
          */
         switch (type) {
             case Indexed:
-                return (VirtualArrayNode) virtualFrameArrays.get(INDEXED_OBJECT_ARRAY);
+                return virtualFrameArrays.get(INDEXED_OBJECT_ARRAY);
             case Auxiliary:
-                return (VirtualArrayNode) virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY);
+                return virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY);
             default:
                 throw GraalError.shouldNotReachHere();
         }
     }
 
-    public VirtualArrayNode getPrimitiveArray(VirtualFrameAccessType type) {
+    public ValueNode getPrimitiveArray(VirtualFrameAccessType type) {
         /*
          * If one of these casts fails, there's an access into a zero-length array, which should not
          * get to this point.
          */
         switch (type) {
             case Indexed:
-                return (VirtualArrayNode) virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY);
+                return virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY);
             case Auxiliary:
                 return null;
             default:

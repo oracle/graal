@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.dsl.Cached.Shared;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkArrayRange;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkByteLengthUTF16;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkByteLengthUTF32;
-import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
 import static com.oracle.truffle.api.strings.TStringGuards.indexOfCannotMatch;
 import static com.oracle.truffle.api.strings.TStringGuards.is16Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.is7Bit;
@@ -535,17 +534,13 @@ final class TStringInternalNodes {
         int utf8Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") Encoding encoding, int extraOffsetRaw, int index,
                         boolean isLength) {
             assert isStride0(a);
-            int cpi = 0;
-            for (int i = extraOffsetRaw; i < a.length(); i++) {
-                if (!isUTF8ContinuationByte(TStringOps.readS0(a, arrayA, i))) {
-                    if (cpi == index) {
-                        return i - extraOffsetRaw;
-                    }
-                    cpi++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
+            int regionOffset = a.offset() + extraOffsetRaw;
+            int regionLength = a.length() - extraOffsetRaw;
+            int byteIndex = TStringOps.codePointIndexToByteIndexUTF8Valid(this, arrayA, regionOffset, regionLength, index);
+            if (byteIndex < 0 || !isLength && byteIndex == regionLength) {
+                throw InternalErrors.indexOutOfBounds();
             }
-            return atEnd(a, extraOffsetRaw, index, isLength, cpi);
+            return byteIndex;
         }
 
         @Specialization(guards = {"isUTF8(encoding)", "isBrokenMultiByte(codeRangeA)"})
@@ -567,17 +562,13 @@ final class TStringInternalNodes {
         int utf16Valid(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") Encoding encoding, int extraOffsetRaw, int index,
                         boolean isLength) {
             assert isStride1(a);
-            int cpi = 0;
-            for (int i = extraOffsetRaw; i < a.length(); i++) {
-                if (!Encodings.isUTF16LowSurrogate(TStringOps.readS1(a, arrayA, i))) {
-                    if (cpi == index) {
-                        return i - extraOffsetRaw;
-                    }
-                    cpi++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
+            int regionOffset = a.offset() + (extraOffsetRaw << 1);
+            int regionLength = a.length() - extraOffsetRaw;
+            int result = TStringOps.codePointIndexToByteIndexUTF16Valid(this, arrayA, regionOffset, regionLength, index);
+            if (result < 0 || !isLength && result == regionLength) {
+                throw InternalErrors.indexOutOfBounds();
             }
-            return atEnd(a, extraOffsetRaw, index, isLength, cpi);
+            return result;
         }
 
         @Specialization(guards = {"isUTF16(encoding)", "isBrokenMultiByte(codeRangeA)"})
@@ -1542,7 +1533,8 @@ final class TStringInternalNodes {
             TruffleString ret = TruffleString.createFromArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange);
             if (length == javaString.length()) {
                 assert charOffset == 0;
-                ret.cacheInsert(TruffleString.createWrapJavaString(javaString, codePointLength, codeRange));
+                TruffleString wrapped = TruffleString.createWrapJavaString(javaString, codePointLength, codeRange);
+                ret.cacheInsertFirstBeforePublished(wrapped);
             }
             return ret;
         }

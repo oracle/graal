@@ -29,7 +29,6 @@ import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -101,7 +100,6 @@ public class SignatureUtil {
     }
 }
 
-@AutomaticFeature
 class SignatureUtilFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

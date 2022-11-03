@@ -71,6 +71,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.jniutils.HSObject;
@@ -461,9 +462,18 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
         @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
         @Override
-        public void accept(OptimizedAssumptionDependency dependency) {
-            JObject dependencyHandle = dependency == null ? WordFactory.nullPointer() : ((HSCompilableTruffleAST) dependency).getHandle();
-            callConsumeOptimizedAssumptionDependency(env(), getHandle(), dependencyHandle);
+        public void accept(OptimizedAssumptionDependency optimizedDependency) {
+            TruffleCompilerAssumptionDependency dependency = (TruffleCompilerAssumptionDependency) optimizedDependency;
+            JObject compilable;
+            long installedCode;
+            if (dependency == null) {
+                compilable = WordFactory.nullPointer();
+                installedCode = 0;
+            } else {
+                compilable = ((HSCompilableTruffleAST) dependency.getCompilable()).getHandle();
+                installedCode = LibGraal.translate(dependency.getInstalledCode());
+            }
+            callConsumeOptimizedAssumptionDependency(env(), getHandle(), compilable, installedCode);
         }
     }
 }

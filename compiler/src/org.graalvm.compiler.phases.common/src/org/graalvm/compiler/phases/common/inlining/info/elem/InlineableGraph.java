@@ -209,7 +209,7 @@ public class InlineableGraph implements Inlineable {
             canonicalizer.apply(newGraph, context);
 
             if (GraalOptions.EarlyGVN.getValue(newGraph.getOptions())) {
-                new DominatorBasedGlobalValueNumberingPhase().apply(newGraph, context);
+                new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(newGraph, context);
             }
             return newGraph;
         } catch (Throwable e) {

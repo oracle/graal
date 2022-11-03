@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 
-@AutomaticFeature
-public class JRTFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class JRTFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

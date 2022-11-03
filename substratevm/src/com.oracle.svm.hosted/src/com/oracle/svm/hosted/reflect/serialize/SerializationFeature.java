@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -66,11 +66,12 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
@@ -89,7 +90,6 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -97,8 +97,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@AutomaticFeature
-public class SerializationFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class SerializationFeature implements InternalFeature {
     static final HashSet<Class<?>> capturingClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
@@ -137,12 +137,12 @@ public class SerializationFeature implements Feature {
 
     @SuppressWarnings("try")
     private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, DebugContext debug) {
+        HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .method(method)
                         .recordInlinedMethods(false)
                         .build();
         try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
-            HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -170,7 +170,7 @@ public class SerializationFeature implements Feature {
             return null;
         }
 
-        HotSpotObjectConstant fieldValue = (HotSpotObjectConstant) GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(targetField, (JavaConstant) constant);
+        JavaConstant fieldValue = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(targetField, (JavaConstant) constant);
         Member memberField = GraalAccess.getOriginalProviders().getSnippetReflection().asObject(Member.class, fieldValue);
         return memberField.getDeclaringClass();
     }
@@ -192,7 +192,7 @@ public class SerializationFeature implements Feature {
         for (ConstantNode cNode : constantNodes) {
             Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
 
-            if (lambdaClass != null) {
+            if (lambdaClass != null && Serializable.class.isAssignableFrom(lambdaClass)) {
                 try {
                     Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
                     RuntimeReflection.register(serializeLambdaMethod);
@@ -424,7 +424,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
         if (conditionClass == null) {
             return;
         }
@@ -456,7 +456,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, String targetClassName, String customTargetConstructorClassName) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
         if (conditionClass == null) {
             return;
         }
@@ -481,7 +481,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
         if (conditionClass == null) {
             return;
         }

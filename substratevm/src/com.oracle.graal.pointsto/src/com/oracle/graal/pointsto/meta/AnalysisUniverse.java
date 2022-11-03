@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -56,6 +57,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -366,6 +368,29 @@ public class AnalysisUniverse implements Universe {
             AnalysisType declaringType = lookup(field.getDeclaringClass());
             declaringType.registerAsReachable();
             declaringType.ensureInitialized();
+
+            /*
+             * Ensure that all reachability handler that were present at the time the type was
+             * marked as reachable are executed before creating the field. This allows field value
+             * transformer to be installed reliably in reachability handler.
+             *
+             * This is necessary because field value transformer are currently implemented via
+             * ComputedValueField that are injected into the substitution universe. A
+             * ComputedValueField added after the AnalysisField is created would be ignored. In the
+             * future, we want a better implementation of field value transformer that do not rely
+             * on the substitution universe, then this code can be removed.
+             */
+            List<AnalysisFuture<Void>> notifications = declaringType.scheduledTypeReachableNotifications;
+            if (notifications != null) {
+                for (var notification : notifications) {
+                    notification.ensureDone();
+                }
+                /*
+                 * Now we know all the handlers have been executed, so subsequent field lookups do
+                 * not need to check anymore.
+                 */
+                declaringType.scheduledTypeReachableNotifications = null;
+            }
         }
 
         field = substitutions.lookup(field);
@@ -473,7 +498,18 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return snippetReflection.forObject(originalSnippetReflection.asObject(Object.class, constant));
+            Object original = originalSnippetReflection.asObject(Object.class, constant);
+            if (original instanceof ImageHeapConstant) {
+                /*
+                 * The value is an ImageHeapObject, i.e., it already has a build time
+                 * representation, so there is no need to re-wrap it. The value likely comes from
+                 * reading a field of a normal object that is referencing a simulated object. The
+                 * originalConstantReflection provider is not aware of simulated constants, and it
+                 * always wraps them into a HotSpotObjectConstant when reading fields.
+                 */
+                return (JavaConstant) original;
+            }
+            return snippetReflection.forObject(original);
         } else {
             return constant;
         }
@@ -584,7 +620,7 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
-    private static Set<AnalysisMethod> getMethodImplementations(AnalysisMethod method, boolean includeInlinedMethods) {
+    public static Set<AnalysisMethod> getMethodImplementations(AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
             if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {

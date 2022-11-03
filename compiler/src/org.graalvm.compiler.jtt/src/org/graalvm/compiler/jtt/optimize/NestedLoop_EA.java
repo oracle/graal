@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,19 @@ package org.graalvm.compiler.jtt.optimize;
 
 import java.util.ListIterator;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.jtt.JTTTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.junit.Assume;
+import org.junit.Test;
 
 public class NestedLoop_EA extends JTTTest {
 
@@ -44,7 +46,18 @@ public class NestedLoop_EA extends JTTTest {
     protected Suites createSuites(OptionValues options) {
         Suites suites = super.createSuites(options);
         ListIterator<BasePhase<? super HighTierContext>> position = suites.getHighTier().findPhase(PartialEscapePhase.class);
+        Assume.assumeNotNull(position);
+
         CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
+
+        // This test needs an InliningPhase before PEA to pass the test in checkHighTierGraph.
+        boolean fuzzedPhasePlan = Boolean.parseBoolean(System.getProperty(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY));
+        if (fuzzedPhasePlan) {
+            position.previous();
+            position.add(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
+            position.next();
+        }
+
         // incremental canonicalizer of PEA is missing some important canonicalization (TODO?)
         position.add(canonicalizer);
         position.add(new PartialEscapePhase(true, canonicalizer, options));

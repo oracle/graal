@@ -22,10 +22,11 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import java.util.List;
+
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import java.util.List;
 
 import com.oracle.truffle.espresso.processor.EspressoProcessor.InjectableType;
 
@@ -82,5 +83,9 @@ public class SubstitutionHelper {
 
     public Element getTarget() {
         return target;
+    }
+
+    public final boolean needsContextInjection() {
+        return hasContextInjection || hasMetaInjection;
     }
 }

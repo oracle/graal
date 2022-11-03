@@ -53,6 +53,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
@@ -64,6 +66,9 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 
@@ -71,6 +76,17 @@ public class SubstrateOptions {
 
     @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
+                    "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
+    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                throw VMError.shouldNotReachHere("Enabling ParseOnceJIT is currently not supported");
+            }
+            super.onValueUpdate(values, oldValue, newValue);
+        }
+    };
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
@@ -78,10 +94,10 @@ public class SubstrateOptions {
 
     public static boolean parseOnce() {
         /*
-         * Parsing all graphs before static analysis is work-in-progress, and not yet working for
-         * graphs parsed for deoptimization entry points and JIT compilation.
+         * Parsing all graphs before static analysis is work-in-progress and for JIT compilation is
+         * only enabled when ParseOnceJIT is set.
          */
-        return ParseOnce.getValue() && !DeoptimizationSupport.enabled();
+        return ParseOnce.getValue() && (ParseOnceJIT.getValue() || !DeoptimizationSupport.enabled());
     }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
@@ -133,16 +149,6 @@ public class SubstrateOptions {
 
     @Option(help = "Support continuations (without requiring a Project Loom JDK)") //
     public static final HostedOptionKey<Boolean> SupportContinuations = new HostedOptionKey<>(false);
-
-    @Option(help = "Build with Project Loom JDK") //
-    public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                SupportContinuations.update(values, true);
-            }
-        }
-    };
 
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
@@ -385,11 +391,11 @@ public class SubstrateOptions {
 
     @APIOption(name = "trace-class-initialization")//
     @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
-    public static final HostedOptionKey<String> TraceClassInitialization = new HostedOptionKey<>("");
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @APIOption(name = "trace-object-instantiation")//
     @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
-    public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Trace all native tool invocations as part of image building", type = User)//
     public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
@@ -479,6 +485,9 @@ public class SubstrateOptions {
     @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(64);
 
+    @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
+    public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
+
     /*
      * Isolate tear down options.
      */
@@ -544,6 +553,16 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
+                boolean isLLVMBackendMissing;
+                if (ModuleSupport.modulePathBuild) {
+                    isLLVMBackendMissing = ModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty();
+                } else {
+                    isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
+                }
+                if (isLLVMBackendMissing) {
+                    throw UserError.abort("Please install the LLVM backend for GraalVM Native Image via `$JAVA_HOME/bin/gu install native-image-llvm-backend`.");
+                }
+
                 /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
                 GraalOptions.EmitStringSubstitutions.update(values, false);
                 /*
@@ -667,6 +686,9 @@ public class SubstrateOptions {
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
 
+    @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
+    public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
+
     @Fold
     public static boolean supportCompileInIsolates() {
         UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
@@ -724,6 +746,10 @@ public class SubstrateOptions {
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
         public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, Immutable);
+
+        /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
+        @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
+        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -835,5 +861,24 @@ public class SubstrateOptions {
 
     @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
     public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
+
+    @Option(help = "Initializes and runs main entry point in a new native thread.", type = Expert)//
+    public static final HostedOptionKey<Boolean> RunMainInNewThread = new HostedOptionKey<>(false) {
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this) && Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(MuslLibC.class)) {
+                return true;
+            }
+            return (Boolean) values.get(this, this.getDefaultValue());
+        }
+    };
+
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = Debug)//
+    public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
 }

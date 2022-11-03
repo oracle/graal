@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.methodhandles;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -35,12 +36,13 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.internal.misc.Unsafe;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -74,9 +76,9 @@ import sun.invoke.util.Wrapper;
  * calls into the JDK internals with equivalent implementations (see
  * {@code Target_java_lang_invoke_MethodHandleNatives}).
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
-public class MethodHandleFeature implements Feature {
+public class MethodHandleFeature implements InternalFeature {
 
     private Set<MethodHandle> seenMethodHandles;
     private Class<?> directMethodHandleClass;
@@ -186,6 +188,9 @@ public class MethodHandleFeature implements Feature {
                         access.findClassByName("java.lang.invoke.VarHandle"));
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, boundMethodHandleClass);
+
+        access.registerReachabilityHandler(MethodHandleFeature::registerUnsafePutReference,
+                        ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectSetter", Field.class));
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -262,6 +267,10 @@ public class MethodHandleFeature implements Feature {
         }
     }
 
+    private static void registerUnsafePutReference(DuringAnalysisAccess access) {
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(Unsafe.class, "putReference", Object.class, long.class, Object.class));
+    }
+
     private static String valueConverterName(Wrapper src, Wrapper dest) {
         String srcType = src.primitiveSimpleName();
         String destType = dest.primitiveSimpleName();
@@ -335,7 +344,10 @@ public class MethodHandleFeature implements Feature {
                 for (int i = arity; i < names.length; ++i) {
                     Object function = nameFunction.get(names[i]);
                     if (function != null) {
-                        registerMemberName(namedFunctionMemberName.get(function));
+                        Object memberName = namedFunctionMemberName.get(function);
+                        if (memberName != null) {
+                            registerMemberName(memberName);
+                        }
                     }
                 }
             } catch (IllegalAccessException e) {
@@ -383,11 +395,17 @@ public class MethodHandleFeature implements Feature {
         access.rescanRoot(typedAccessors);
     }
 
-    private static void scanBoundMethodHandle(FeatureAccess a, Class<?> bmhSubtype) {
+    private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
-        if (bmhSpeciesField != null) {
-            access.rescanRoot(bmhSpeciesField);
+        access.getBigBang().postTask(unused -> {
+            Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
+            if (bmhSpeciesField != null) {
+                access.rescanRoot(bmhSpeciesField);
+            }
+        });
+
+        if (!access.getBigBang().executorIsStarted()) {
+            access.requireAnalysisIteration();
         }
     }
 }

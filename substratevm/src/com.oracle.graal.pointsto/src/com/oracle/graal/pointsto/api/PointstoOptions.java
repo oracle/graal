@@ -32,8 +32,11 @@ import org.graalvm.compiler.options.OptionKey;
 
 public class PointstoOptions {
 
-    @Option(help = "Use experimental reachability analysis instead of points-to.")//
+    @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
     public static final OptionKey<Boolean> UseExperimentalReachabilityAnalysis = new OptionKey<>(false);
+
+    @Option(help = "Use method summaries for Reachability Analysis.")//
+    public static final OptionKey<Boolean> UseReachabilityMethodSummaries = new OptionKey<>(false);
 
     @Option(help = "Enable hybrid context for static methods, i.e. uses invocation site as context for static methods.")//
     public static final OptionKey<Boolean> HybridStaticContext = new OptionKey<>(false);
@@ -65,8 +68,9 @@ public class PointstoOptions {
     @Option(help = "The maximum number of objects recorded for each type of a type state before disabling heap sensitivity for that type. The analysis must be heap sensitive. It has a minimum value of 1.")//
     public static final OptionKey<Integer> MaxObjectSetSize = new OptionKey<>(100);
 
-    @Option(help = "The maximum number of constant objects recorded for each type before merging the constants into one unique constant object per type. The analysis must be heap sensitive. It has a minimum value of 1.")//
-    public static final OptionKey<Integer> MaxConstantObjectsPerType = new OptionKey<>(100);
+    @Option(help = "The maximum number of constant objects recorded for each type before merging the constants into one unique constant object per type. " +
+                    "If the value is 0 there is no limit.")//
+    public static final OptionKey<Integer> MaxConstantObjectsPerType = new OptionKey<>(0);
 
     @Option(help = "Track the progress of the static analysis.")//
     public static final OptionKey<Boolean> ProfileAnalysisOperations = new OptionKey<>(false);
@@ -85,6 +89,9 @@ public class PointstoOptions {
 
     @Option(help = "Track the callers for methods and accessing methods for fields.")//
     public static final OptionKey<Boolean> TrackAccessChain = new OptionKey<>(false);
+
+    @Option(help = "Limit the parsing context depth. Default value is arbitrary set at 100.")//
+    public static final OptionKey<Integer> ParsingContextMaxDepth = new OptionKey<>(100);
 
     @Option(help = "Track the input for type flows.")//
     public static final OptionKey<Boolean> TrackInputFlows = new OptionKey<>(false);

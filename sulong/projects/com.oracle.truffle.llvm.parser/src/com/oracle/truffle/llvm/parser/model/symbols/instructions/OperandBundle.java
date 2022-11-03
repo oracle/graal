@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,36 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.runtime.types.Type;
+
 /**
  * Placeholder for operand bundles. For now, we just record their presence. Currently the only place
  * where we support operand bundles is the llvm.assume builtin, and there we ignore its contents.
  */
-public enum OperandBundle {
+public class OperandBundle {
+    private final String tag;
+    private final Type[] argTypes;
+    private final int[] argValues;
 
-    PRESENT;
+    public OperandBundle(String tag, Type[] argTypes, int[] argValues) {
+        this.tag = tag;
+        this.argTypes = argTypes;
+        this.argValues = argValues;
+    }
+
+    public boolean isFunclet() {
+        return "funclet".equals(tag);
+    }
+
+    Type[] getArgTypes() {
+        return argTypes;
+    }
+
+    int[] getArgValues() {
+        return argValues;
+    }
+
+    public String getTag() {
+        return tag;
+    }
 }

@@ -28,7 +28,7 @@ import com.oracle.truffle.api.impl.Accessor;
 
 final class GraalRuntimeAccessor extends Accessor {
 
-    private static final GraalRuntimeAccessor ACCESSOR = new GraalRuntimeAccessor();
+    static final GraalRuntimeAccessor ACCESSOR = new GraalRuntimeAccessor();
 
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();

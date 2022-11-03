@@ -39,6 +39,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -146,14 +147,25 @@ public class ProcessUtil {
         }
     }
 
-    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
-        return executeSulongTestMainSameEngine(bitcodeFile, args, options, captureOutput, Engine.newBuilder().allowExperimentalOptions(true).build(), false);
+    public abstract static class TestEngineMode implements Closeable {
+        public abstract ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException;
+
+        @Override
+        public void close() {
+        }
     }
 
-    public static ProcessResult executeSulongTestMainSameEngine(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput, Engine engine,
-                    boolean evalSourceOnly)
-                    throws IOException {
-        if (TestOptions.TEST_AOT_IMAGE == null) {
+    public static class CachedEngineMode extends TestEngineMode {
+        private Engine engine;
+        private Function<Builder, CaptureOutput> captureOutput;
+
+        public CachedEngineMode(Engine engine, Function<Context.Builder, CaptureOutput> captureOutput) {
+            this.engine = engine;
+            this.captureOutput = captureOutput;
+        }
+
+        @Override
+        public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
             Builder builder = Context.newBuilder();
             try (CaptureOutput out = captureOutput.apply(builder)) {
@@ -169,7 +181,36 @@ public class ProcessUtil {
                 }
                 return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
             }
-        } else {
+        }
+
+        @Override
+        public void close() {
+            engine.close();
+        }
+    }
+
+    public static class SeparateProcessEngineMode extends TestEngineMode {
+        private ProcessHarnessManager manager;
+
+        public SeparateProcessEngineMode() throws IOException {
+            this.manager = ProcessHarnessManager.create(1);
+        }
+
+        @Override
+        public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
+            return manager.startTask(bitcodeFile.getAbsolutePath()).get();
+        }
+
+        @Override
+        public void close() {
+            manager.shutdown();
+        }
+    }
+
+    public static class AOTEngineMode extends TestEngineMode {
+        @Override
+        public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
+
             ArrayList<String> command = new ArrayList<>();
             command.add(TestOptions.TEST_AOT_IMAGE);
             if (evalSourceOnly) {
@@ -184,6 +225,13 @@ public class ProcessUtil {
             command.addAll(Arrays.asList(args));
             return executeNativeCommand(command);
         }
+    }
+
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
+        TestEngineMode mode = new CachedEngineMode(Engine.newBuilder().allowExperimentalOptions(true).build(), captureOutput);
+        ProcessResult result = mode.run(bitcodeFile, args, options, false);
+        mode.close();
+        return result;
     }
 
     private static List<String> concatOptions(Map<String, String> options) {

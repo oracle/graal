@@ -126,22 +126,22 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     /**
      * Emit an atomic read-and-add instruction.
      *
+     * @param accessKind the access kind for the value to be written
      * @param address address of the value to be read and written
-     * @param valueKind the access kind for the value to be written
      * @param delta the value to be added
      */
-    default Value emitAtomicReadAndAdd(Value address, ValueKind<?> valueKind, Value delta) {
+    default Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
         throw GraalError.unimplemented();
     }
 
     /**
      * Emit an atomic read-and-write instruction.
      *
+     * @param accessKind the access kind for the value to be written
      * @param address address of the value to be read and written
-     * @param valueKind the access kind for the value to be written
      * @param newValue the new value to be written
      */
-    default Value emitAtomicReadAndWrite(Value address, ValueKind<?> valueKind, Value newValue) {
+    default Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
         throw GraalError.unimplemented();
     }
 
@@ -292,12 +292,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * snippet.
      */
     @SuppressWarnings("unused")
-    default void emitStringLatin1Inflate(Value src, Value dst, Value len) {
+    default void emitStringLatin1Inflate(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringLatin1.inflate substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
+    default Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
     }
 
@@ -307,12 +307,37 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+    default Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitHasNegatives(Value array, Value length) {
+    default Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitAESEncrypt(Value from, Value to, Value key) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitAESDecrypt(Value from, Value to, Value key) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitCTRAESCrypt(Value inAddr, Value outAddr, Value kAddr, Value counterAddr, Value len, Value encryptedCounterAddr, Value usedPtr) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

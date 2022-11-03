@@ -199,6 +199,7 @@ public class GraphEncoder {
      */
     public void prepare(StructuredGraph graph) {
         addObject(graph.getGuardsStage());
+        addObject(graph.getGraphState().getStageFlags());
         for (Node node : graph.getNodes()) {
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
             nodeClasses.addObject(nodeClass);
@@ -331,6 +332,7 @@ public class GraphEncoder {
         int metadataStart = TypeConversion.asS4(writer.getBytesWritten());
         writer.putUV(nodeOrder.maxFixedNodeOrderId);
         writeObjectId(graph.getGuardsStage());
+        writeObjectId(graph.getGraphState().getStageFlags());
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);

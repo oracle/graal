@@ -50,13 +50,13 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * Compact format:
  * 
  * <code>
- *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | returnLength (unsigned 8-bit) | stackSize (unsigned 8-bit) | unused (16-bit) |
+ *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | resultCount (unsigned 8-bit) | stackSize (unsigned 8-bit) | unused (16-bit) |
  * </code>
  * 
  * Extended format:
  * 
  * <code>
- *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | returnLength (signed 32-bit) | stackSize (signed 32-bit) |
+ *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | resultCount (signed 32-bit) | stackSize (signed 32-bit) |
  * </code>
  */
 public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
@@ -68,7 +68,7 @@ public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
     protected int generateCompactData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
-        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, returnLength(), stackSize());
+        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, resultCount(), stackSize());
         return offset;
     }
 
@@ -76,7 +76,7 @@ public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
     protected int generateExtendedData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
-        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, returnLength(), stackSize());
+        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, resultCount(), stackSize());
         return offset;
     }
 

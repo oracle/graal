@@ -12,14 +12,12 @@ GraalVM Native Image supports JFR events and users can use [`jdk.jfr.Event`](htt
 
 To record JFR events when running a native executable, JFR support and JFR recording must be enabled, and this guide covers how to do that.
 
-> Note: JFR events recording is not supported on GraalVM distribution for Windows. JFR is only supported with native executables built on GraalVM JDK 11.
+> Note: JFR events recording is not supported on GraalVM JDK for Windows. JFR is only supported with native executables built on GraalVM JDK 11.
 
 ## Enable JFR Support and Record Events at Run Time
 
-To build a native executable with the JFR events support, you first need to include JFR at build time, then enable the system, start a recording, and configure logging at native executable run time. 
-The following options are supported:
-  * `-H:+AllowVMInspection`: enable the VM inspection
-  * `-XX:+FlightRecorder`: use to enable JFR
+To build a native executable with the JFR events support, you first need to add the `--enable-monitoring=jfr` option when invoking the `native-image` tool. Then enable the system, start a recording, and configure logging at native executable run time:
+  * `-XX:+FlightRecorder`: use to enable JFR at run time
   * `-XX:StartFlightRecording`: use to start a recording on application's startup
   * `-XX:FlightRecorderLogging`: use to configure the log output for the JFR system
 
@@ -61,9 +59,9 @@ Follow the steps below to practice building a native executable with JFR support
 
 3. Build a native executable with the VM inspection enabled:
     ```shell
-    $JAVA_HOME/bin/native-image -H:+AllowVMInspection JFRDemo
+    $JAVA_HOME/bin/native-image --enable-monitoring=jfr JFRDemo
     ```
-    The `-H:+AllowVMInspection` option enables features such as JFR that can be used to inspect the VM.
+    The `--enable-monitoring=jfr` option enables features such as JFR that can be used to inspect the VM.
 
 4. Run the executable and start recording:
     ```shell

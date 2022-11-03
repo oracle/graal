@@ -52,14 +52,16 @@ public class DigestBaseSnippets implements Snippets {
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
+        public final SnippetTemplate.SnippetInfo implCompressMultiBlock0;
+
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
-        }
 
-        public final SnippetTemplate.SnippetInfo implCompressMultiBlock0 = snippet(DigestBaseSnippets.class, "implCompressMultiBlock0");
+            this.implCompressMultiBlock0 = snippet(providers, DigestBaseSnippets.class, "implCompressMultiBlock0");
+        }
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     static int implCompressMultiBlock0(Object receiver, byte[] buf, int ofs, int limit,
                     @Snippet.ConstantParameter ResolvedJavaType receiverType,
                     @Snippet.ConstantParameter ResolvedJavaType md5type,

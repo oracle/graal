@@ -29,12 +29,12 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ImageHeapMap;
 
+@AutomaticallyRegisteredImageSingleton
 public class ClassLoadingExceptionSupport {
 
     /** The exit code used when terminating abruptly due to missing metadata. */
@@ -71,13 +71,5 @@ public class ClassLoadingExceptionSupport {
     private static void terminateUnconfigured(String className) {
         System.err.println("Missing metadata error: Unable to process Class.forName invocation for class name " + className);
         System.exit(EXIT_CODE);
-    }
-}
-
-@AutomaticFeature
-final class ClassLoadingExceptionFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ClassLoadingExceptionSupport.class, new ClassLoadingExceptionSupport());
     }
 }

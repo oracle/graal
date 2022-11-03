@@ -31,8 +31,8 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter;
@@ -89,6 +89,16 @@ public final class CodeInfoDecoder {
     }
 
     static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult) {
+        lookupCodeInfo0(info, ip, codeInfoQueryResult, FrameInfoDecoder.HeapBasedFrameInfoQueryResultLoader);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void lookupCodeInfoUninterruptible(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult) {
+        lookupCodeInfo0(info, ip, codeInfoQueryResult, FrameInfoDecoder.UninterruptibleFrameInfoQueryResultLoader);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void lookupCodeInfo0(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult, FrameInfoDecoder.FrameInfoQueryResultLoader loader) {
         long sizeEncoding = initialSizeEncoding();
         long entryIP = lookupEntryIP(ip);
         long entryOffset = loadEntryOffset(info, ip);
@@ -99,7 +109,7 @@ public final class CodeInfoDecoder {
                 codeInfoQueryResult.encodedFrameSize = sizeEncoding;
                 codeInfoQueryResult.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
                 codeInfoQueryResult.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
-                codeInfoQueryResult.frameInfo = loadFrameInfo(info, entryOffset, entryFlags);
+                codeInfoQueryResult.frameInfo = loadFrameInfo(info, entryOffset, entryFlags, loader);
                 return;
             }
 
@@ -172,7 +182,7 @@ public final class CodeInfoDecoder {
                 codeInfo.encodedFrameSize = sizeEncoding;
                 codeInfo.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
                 codeInfo.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
-                codeInfo.frameInfo = loadFrameInfo(info, entryOffset, entryFlags);
+                codeInfo.frameInfo = loadFrameInfo(info, entryOffset, entryFlags, FrameInfoDecoder.HeapBasedFrameInfoQueryResultLoader);
                 assert codeInfo.frameInfo.isDeoptEntry() && codeInfo.frameInfo.getCaller() == null : "Deoptimization entry must not have inlined frames";
                 return entryIP;
             }
@@ -184,6 +194,7 @@ public final class CodeInfoDecoder {
         return -1;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static long lookupStackReferenceMapIndex(CodeInfo info, long ip) {
         long entryIP = lookupEntryIP(ip);
         long entryOffset = loadEntryOffset(info, ip);
@@ -338,7 +349,7 @@ public final class CodeInfoDecoder {
         }
     }
 
-    static boolean initFrameInfoReader(CodeInfo info, long entryOffset, ReusableTypeReader frameInfoReader) {
+    static boolean initFrameInfoReader(CodeInfo info, long entryOffset, UninterruptibleReusableTypeReader frameInfoReader) {
         int entryFlags = loadEntryFlags(info, entryOffset);
         int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
         frameInfoReader.setByteIndex(frameInfoIndex);
@@ -346,8 +357,8 @@ public final class CodeInfoDecoder {
         return extractFI(entryFlags) != FI_NO_DEOPT;
     }
 
-    private static FrameInfoQueryResult loadFrameInfo(CodeInfo info, long entryOffset, int entryFlags) {
-
+    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    private static FrameInfoQueryResult loadFrameInfo(CodeInfo info, long entryOffset, int entryFlags, FrameInfoDecoder.FrameInfoQueryResultLoader loader) {
         boolean isDeoptEntry;
         switch (extractFI(entryFlags)) {
             case FI_NO_DEOPT:
@@ -362,8 +373,7 @@ public final class CodeInfoDecoder {
                 throw shouldNotReachHere();
         }
         int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info,
-                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator);
+        return loader.load(info, isDeoptEntry, frameInfoIndex);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
@@ -465,6 +475,7 @@ public final class CodeInfoDecoder {
         return (entryFlags & RM_MASK_IN_PLACE) >> RM_SHIFT;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static int extractFI(int entryFlags) {
         return (entryFlags & FI_MASK_IN_PLACE) >> FI_SHIFT;
     }
@@ -497,6 +508,7 @@ public final class CodeInfoDecoder {
         return entryOffset + getU1(RM_OFFSET, entryFlags);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long offsetFI(long entryOffset, int entryFlags) {
         assert extractFI(entryFlags) != FI_NO_DEOPT;
         return entryOffset + getU1(FI_OFFSET, entryFlags);

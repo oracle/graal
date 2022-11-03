@@ -39,8 +39,8 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -66,10 +66,8 @@ public abstract class CustomTypeFieldHandler {
         assert field.isAccessed();
         if (field.wrapped instanceof ComputedValueField) {
             ComputedValueField computedField = ((ComputedValueField) field.wrapped);
-            Class<?>[] customTypes = computedField.getCustomTypes();
-            if (customTypes != null) {
-                injectFieldTypes(field, transformTypes(field, customTypes));
-                field.setCanBeNull(computedField.getComputedValueCanBeNull());
+            if (!computedField.isValueAvailableBeforeAnalysis()) {
+                injectFieldTypes(field, field.getType());
             }
         } else {
             UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);

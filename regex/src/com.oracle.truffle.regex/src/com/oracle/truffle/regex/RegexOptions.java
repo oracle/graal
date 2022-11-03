@@ -334,10 +334,8 @@ public final class RegexOptions {
         if (isMustAdvance()) {
             sb.append(MUST_ADVANCE_NAME + "=true,");
         }
-        if (flavor == PythonFlavor.STR_INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
-        } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_BYTES + ",");
+        if (flavor == PythonFlavor.INSTANCE) {
+            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON + ",");
         } else if (flavor == RubyFlavor.INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
         }
@@ -474,21 +472,19 @@ public final class RegexOptions {
                     flavor = RubyFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
                 case 'P':
+                    flavor = PythonFlavor.INSTANCE;
                     if (iVal + 6 >= src.length()) {
-                        flavor = PythonFlavor.INSTANCE;
                         return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
                     }
                     switch (src.charAt(iVal + 6)) {
                         case 'B':
-                            flavor = PythonFlavor.BYTES_INSTANCE;
                             encoding = Encodings.LATIN_1;
                             return expectValue(iVal, FLAVOR_PYTHON_BYTES, FLAVOR_OPTIONS);
                         case 'S':
-                            flavor = PythonFlavor.STR_INSTANCE;
-                            encoding = Encodings.UTF_16;
+                            encoding = Encodings.UTF_32;
                             return expectValue(iVal, FLAVOR_PYTHON_STR, FLAVOR_OPTIONS);
                         default:
-                            throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
+                            return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
                     }
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
@@ -635,12 +631,6 @@ public final class RegexOptions {
 
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {
             this.flavor = flavor;
-            if (flavor == PythonFlavor.BYTES_INSTANCE) {
-                this.encoding = Encodings.LATIN_1;
-            }
-            if (flavor == PythonFlavor.STR_INSTANCE) {
-                this.encoding = Encodings.UTF_16;
-            }
             return this;
         }
 

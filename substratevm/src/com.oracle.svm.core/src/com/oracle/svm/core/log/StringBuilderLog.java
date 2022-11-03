@@ -28,8 +28,8 @@ package com.oracle.svm.core.log;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.Uninterruptible;
 
 public class StringBuilderLog extends RealLog {
     private final StringBuilder stringBuilder = new StringBuilder();

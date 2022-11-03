@@ -25,13 +25,13 @@
 package com.oracle.svm.core.posix.linux;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Stdlib;
@@ -70,7 +70,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
     protected String osNameValue() {
-        Utsname.utsname name = StackValue.get(Utsname.utsname.class);
+        Utsname.utsname name = UnsafeStackValue.get(Utsname.utsname.class);
         if (Utsname.uname(name) >= 0) {
             return CTypeConversion.toJavaString(name.sysname());
         }
@@ -79,7 +79,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
     protected String osVersionValue() {
-        Utsname.utsname name = StackValue.get(Utsname.utsname.class);
+        Utsname.utsname name = UnsafeStackValue.get(Utsname.utsname.class);
         if (Utsname.uname(name) >= 0) {
             return CTypeConversion.toJavaString(name.release());
         }
@@ -87,8 +87,9 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
-@AutomaticFeature
-class LinuxSystemPropertiesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class LinuxSystemPropertiesFeature implements InternalFeature {
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());

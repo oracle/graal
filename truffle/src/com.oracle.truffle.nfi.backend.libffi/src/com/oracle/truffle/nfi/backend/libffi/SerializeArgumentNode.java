@@ -40,17 +40,25 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ArrayType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.BasicType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
@@ -270,6 +278,118 @@ abstract class SerializeArgumentNode extends Node {
         @Override
         public boolean isAdoptable() {
             return false;
+        }
+    }
+
+    @ValueType
+    @ExportLibrary(InteropLibrary.class)
+    static final class BufferSlice implements TruffleObject {
+
+        private final NativeArgumentBuffer buffer;
+        private final int startOffset;
+        private final int limit;
+
+        private BufferSlice(NativeArgumentBuffer buffer, int startOffset, int limit) {
+            this.buffer = buffer;
+            this.startOffset = startOffset;
+            this.limit = limit;
+        }
+
+        private void setPosition(long offset, int size) throws InvalidBufferOffsetException {
+            if (0 <= offset && (offset + size) <= limit) {
+                buffer.position(startOffset + (int) offset);
+            } else {
+                throw InvalidBufferOffsetException.create(offset, size);
+            }
+        }
+
+        @ExportMessage
+        boolean hasBufferElements() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isBufferWritable() {
+            return true;
+        }
+
+        @ExportMessage
+        long getBufferSize() {
+            return limit;
+        }
+
+        @ExportMessage
+        void writeBufferByte(long offset, byte value) throws InvalidBufferOffsetException {
+            setPosition(offset, Byte.BYTES);
+            buffer.putInt8(value);
+        }
+
+        @ExportMessage
+        void writeBufferShort(ByteOrder order, long offset, short value) throws InvalidBufferOffsetException {
+            assert order == ByteOrder.nativeOrder();
+            setPosition(offset, Short.BYTES);
+            buffer.putInt16(value);
+        }
+
+        @ExportMessage
+        void writeBufferInt(ByteOrder order, long offset, int value) throws InvalidBufferOffsetException {
+            assert order == ByteOrder.nativeOrder();
+            setPosition(offset, Integer.BYTES);
+            buffer.putInt32(value);
+        }
+
+        @ExportMessage
+        void writeBufferLong(ByteOrder order, long offset, long value) throws InvalidBufferOffsetException {
+            assert order == ByteOrder.nativeOrder();
+            setPosition(offset, Long.BYTES);
+            buffer.putInt64(value);
+        }
+
+        @ExportMessage
+        void writeBufferFloat(ByteOrder order, long offset, float value) throws InvalidBufferOffsetException {
+            assert order == ByteOrder.nativeOrder();
+            setPosition(offset, Float.BYTES);
+            buffer.putFloat(value);
+        }
+
+        @ExportMessage
+        void writeBufferDouble(ByteOrder order, long offset, double value) throws InvalidBufferOffsetException {
+            assert order == ByteOrder.nativeOrder();
+            setPosition(offset, Double.BYTES);
+            buffer.putDouble(value);
+        }
+
+        @ExportMessage
+        byte readBufferByte(long offset) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage(name = "readBufferShort")
+        @ExportMessage(name = "readBufferInt")
+        @ExportMessage(name = "readBufferLong")
+        @ExportMessage(name = "readBufferFloat")
+        @ExportMessage(name = "readBufferDouble")
+        short readOther(ByteOrder order, long offset) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    abstract static class SerializeSerializableNode extends SerializeArgumentNode {
+
+        SerializeSerializableNode(CachedTypeInfo type) {
+            super(type);
+        }
+
+        @Specialization(limit = "3", guards = "serialize.isSerializable(arg)")
+        void doSerializable(Object arg, NativeArgumentBuffer buffer,
+                        @CachedLibrary("arg") SerializableLibrary serialize) {
+            BufferSlice b = new BufferSlice(buffer, buffer.position(), type.size);
+            try {
+                serialize.serialize(arg, b);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+            buffer.position(b.startOffset + type.size);
         }
     }
 

@@ -54,6 +54,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 import com.oracle.truffle.host.HostObject.GuestToHostCalls;
@@ -96,6 +97,11 @@ public class HostLanguageService extends AbstractHostLanguageService {
             return null;
         }
         return HostObject.forClass(found, context);
+    }
+
+    @Override
+    public void throwHostLanguageException(String message) {
+        throw new HostLanguageException(message);
     }
 
     @Override

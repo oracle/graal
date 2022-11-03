@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -197,6 +198,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         return piCastToSnippetReplaceeStamp(result);
     }
 
+    private final SnippetInfo doClone;
+
     @SuppressWarnings("unused")
     public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         new SubstrateObjectCloneSnippets(options, providers, lowerings);
@@ -205,25 +208,26 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     private SubstrateObjectCloneSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
+        this.doClone = snippet(providers, SubstrateObjectCloneSnippets.class, "cloneSnippet");
+
         ObjectCloneLowering objectCloneLowering = new ObjectCloneLowering();
         lowerings.put(SubstrateObjectCloneNode.class, objectCloneLowering);
         ObjectCloneWithExceptionLowering objectCloneWithExceptionLowering = new ObjectCloneWithExceptionLowering();
         lowerings.put(SubstrateObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
+
     }
 
     final class ObjectCloneLowering implements NodeLoweringProvider<SubstrateObjectCloneNode> {
-        private final SnippetInfo doClone = snippet(SubstrateObjectCloneSnippets.class, "cloneSnippet");
-
         @Override
         public void lower(SubstrateObjectCloneNode node, LoweringTool tool) {
-            if (node.graph().getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (node.graph().getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
                 return;
             }
 
             Arguments args = new Arguments(doClone, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.getObject());
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

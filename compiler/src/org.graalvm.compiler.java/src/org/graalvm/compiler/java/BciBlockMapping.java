@@ -312,6 +312,9 @@ public class BciBlockMapping implements JavaMethodContext {
 
     protected static final int UNASSIGNED_ID = -1;
 
+    private static final BitSet SHARED_EMPTY_BITSET = new BitSet();
+    private static final Set<BciBlock> SHARED_EMPTY_BCIBLOCK_SET = Set.of();
+
     public static class BciBlock implements Cloneable {
 
         int id = UNASSIGNED_ID;
@@ -754,7 +757,7 @@ public class BciBlockMapping implements JavaMethodContext {
     protected BciBlockMapping(Bytecode code, DebugContext debug, int maxDuplicationBoost) {
         this.code = code;
         this.debug = debug;
-        this.exceptionHandlers = code.getExceptionHandlers();
+        this.exceptionHandlers = code.getExceptionHandlers().length != 0 ? code.getExceptionHandlers() : null;
         this.blockMap = new BciBlock[code.getCodeSize()];
         assert maxDuplicationBoost >= 1 : maxDuplicationBoost;
         this.maxDuplicationBoost = maxDuplicationBoost;
@@ -847,12 +850,17 @@ public class BciBlockMapping implements JavaMethodContext {
      * directed to.
      */
     private void computeBciExceptionHandlerIDs(BytecodeStream stream) {
+        if (exceptionHandlers == null) {
+            // No handlers exist, so it is unnecessary to store per-bci information
+            return;
+        }
+
         bciExceptionHandlerIDs = new BitSet[code.getCodeSize()];
         /* Initialize BitSets for all bcis corresponding to bytecodes. */
         stream.setBCI(0);
         while (stream.currentBC() != Bytecodes.END) {
             int bci = stream.currentBCI();
-            bciExceptionHandlerIDs[bci] = new BitSet();
+            bciExceptionHandlerIDs[bci] = SHARED_EMPTY_BITSET;
             stream.next();
         }
 
@@ -864,6 +872,11 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (currentIDs == null) {
                     /* No instruction for this bci. */
                     continue;
+                }
+                if (currentIDs == SHARED_EMPTY_BITSET) {
+                    /* Initialize unique BitSet for instruction. */
+                    currentIDs = new BitSet();
+                    bciExceptionHandlerIDs[bci] = currentIDs;
                 }
                 if (h.isCatchAll()) {
                     /*
@@ -906,6 +919,10 @@ public class BciBlockMapping implements JavaMethodContext {
      * @return blocks that were requested to be the start of new blocks.
      */
     protected Set<BciBlock> makeExceptionEntries(boolean splitRanges) {
+        if (exceptionHandlers == null) {
+            return SHARED_EMPTY_BCIBLOCK_SET;
+        }
+
         Set<BciBlock> requestedBlockStarts = new HashSet<>();
         // start basic blocks at all exception handler blocks and mark them as exception entries
         for (int i = 0; i < exceptionHandlers.length; i++) {
@@ -1405,26 +1422,29 @@ public class BciBlockMapping implements JavaMethodContext {
 
     protected ExceptionDispatchBlock handleExceptions(int bci, boolean processNewBlock, boolean isInvoke) {
         ExceptionDispatchBlock lastHandler = null;
-        int dispatchBlocks = 0;
 
-        BitSet handlerIDs = getBciExceptionHandlerIDs(bci);
-        assert handlerIDs != null : "missing handlers for bci";
-        for (int handlerID = handlerIDs.length(); (handlerID = handlerIDs.previousSetBit(handlerID - 1)) >= 0;) {
-            if (handlerIDs.get(handlerID)) {
-                /*
-                 * We do not reuse exception dispatch blocks, because nested exception handlers
-                 * might have problems reasoning about the correct frame state.
-                 */
-                ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], bci);
-                dispatchBlocks++;
-                curHandler.addSuccessor(getHandlerBlock(handlerID));
-                if (lastHandler != null) {
-                    curHandler.addSuccessor(lastHandler);
+        if (exceptionHandlers != null) {
+            int dispatchBlocks = 0;
+
+            BitSet handlerIDs = getBciExceptionHandlerIDs(bci);
+            assert handlerIDs != null : "missing handlers for bci";
+            for (int handlerID = handlerIDs.length(); (handlerID = handlerIDs.previousSetBit(handlerID - 1)) >= 0;) {
+                if (handlerIDs.get(handlerID)) {
+                    /*
+                     * We do not reuse exception dispatch blocks, because nested exception handlers
+                     * might have problems reasoning about the correct frame state.
+                     */
+                    ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], bci);
+                    dispatchBlocks++;
+                    curHandler.addSuccessor(getHandlerBlock(handlerID));
+                    if (lastHandler != null) {
+                        curHandler.addSuccessor(lastHandler);
+                    }
+                    lastHandler = curHandler;
                 }
-                lastHandler = curHandler;
             }
+            blocksNotYetAssignedId += dispatchBlocks;
         }
-        blocksNotYetAssignedId += dispatchBlocks;
         if (processNewBlock) {
             return processNewExceptionDispatchBlock(bci, isInvoke, lastHandler);
         } else {

@@ -56,12 +56,14 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
 import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
+import org.graalvm.tools.lsp.server.utils.ThreadId;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -130,7 +132,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             final TruffleAdapter truffleAdapter = launchServer(new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
             SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().includeInternal(options.get(Internal)).build();
             eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(eventFilter, new ExecutionEventNodeFactory() {
-                private final long creatorThreadId = Thread.currentThread().getId();
+                private final long creatorThreadId = ThreadId.getCurrent();
 
                 @Override
                 public ExecutionEventNode create(final EventContext eventContext) {
@@ -201,7 +203,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
         builder.engine(Engine.create());
-        builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
+        builder.allowIO(IOAccess.newBuilder().fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter)).build());
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
         setWaitForClose();

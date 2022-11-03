@@ -24,29 +24,30 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.graphio.GraphOutput;
-import org.graalvm.graphio.GraphStructure;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.channels.Channels;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.nio.channels.Channels;
 
-@AutomaticFeature
-public class DashboardDumpFeature implements Feature {
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
+
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
+
+@AutomaticallyRegisteredFeature
+public class DashboardDumpFeature implements InternalFeature {
 
     private static boolean isHeapBreakdownDumped() {
         return DashboardOptions.DashboardAll.getValue() || DashboardOptions.DashboardHeap.getValue();
