@@ -230,7 +230,7 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
         HeapDump.Builder g = getGeneratorOrNull();
         if (g == null) {
             if (getSink() == null) {
-                TruffleFile file = env.getTruffleFile(path);
+                TruffleFile file = env.getTruffleFile(null, path);
                 final OutputStream rawStream = file.newOutputStream();
                 setSink(new BufferedOutputStream(rawStream));
             }
