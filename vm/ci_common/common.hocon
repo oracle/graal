@@ -361,7 +361,6 @@ deploy_graalvm_linux_amd64: {
     # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-    ${notify-nexus-deploy}
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
@@ -380,7 +379,6 @@ deploy_graalvm_linux_aarch64: {
     # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-    ${notify-nexus-deploy}
   ]
   logs: ${common_vm.logs}
   timelimit: "1:30:00"
@@ -393,7 +391,6 @@ deploy_graalvm_base_darwin_amd64: {
     # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-    ${notify-nexus-deploy}
   ]
   timelimit: "1:45:00"
 }
@@ -403,7 +400,6 @@ deploy_graalvm_installables_darwin_amd64: {
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
-    ${notify-nexus-deploy}
     ${notify-releaser}
   ]
   timelimit: "3:00:00"
@@ -417,7 +413,6 @@ deploy_graalvm_base_windows_amd64: {
     # ${mx_vm_common} ${record_file_sizes}
     # ${upload_file_sizes}
     ${mx_vm_common} ${maven_deploy_sdk_base}
-    ${notify-nexus-deploy}
   ]
   timelimit: "1:30:00"
 }
@@ -428,7 +423,6 @@ deploy_graalvm_installables_windows_amd64: {
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, graalvm-show]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, build]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
-    ${notify-nexus-deploy}
   ]
   timelimit: "1:30:00"
 }
@@ -450,7 +444,6 @@ deploy_graalvm_plus_ruby: {
     # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
     # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-    ${notify-nexus-deploy}
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
@@ -531,7 +524,6 @@ builds += [
       ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java8-linux-amd64
@@ -542,7 +534,6 @@ builds += [
       ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-java11-linux-amd64
@@ -555,7 +546,6 @@ builds += [
       ${mx_vm_common} [graalvm-show]
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"
     name: deploy-vm-no-fastr-java11-darwin-amd64
