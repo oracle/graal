@@ -41,17 +41,20 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.parser.bytecode.BytecodeList;
 
 /**
  * Representation of a wasm block during module validation.
  */
 class BlockFrame extends ControlFrame {
+    private final IntArrayList branchTargets;
+
     BlockFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
+        branchTargets = new IntArrayList();
     }
 
     @Override
@@ -60,15 +63,30 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+    void enterElse(ParserState state, BytecodeList bytecode) {
         throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
     }
 
     @Override
-    void exit(ExtraDataList extraData, int offset) {
-        for (BranchTargetWithStackChange jumpTarget : branchTargets()) {
-            jumpTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            jumpTarget.setStackInfo(labelUnwindType(), labelTypeLength(), initialStackSize());
+    void exit(BytecodeList bytecode) {
+        final int location = bytecode.addPrimitiveLabel(resultTypeLength(), initialStackSize());
+        for (int branchLocation : branchTargets.toArray()) {
+            bytecode.patchLocation(branchLocation, location);
         }
+    }
+
+    @Override
+    void addBranch(BytecodeList bytecodeList) {
+        branchTargets.add(bytecodeList.addBranchLocation());
+    }
+
+    @Override
+    void addBranchIf(BytecodeList bytecodeList) {
+        branchTargets.add(bytecodeList.addBranchIfLocation());
+    }
+
+    @Override
+    void addBranchTableItem(BytecodeList bytecodeList) {
+        branchTargets.add(bytecodeList.addBranchTableElementLocation());
     }
 }

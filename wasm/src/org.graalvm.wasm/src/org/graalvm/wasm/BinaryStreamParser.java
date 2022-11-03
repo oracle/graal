@@ -293,6 +293,34 @@ public abstract class BinaryStreamParser {
         return data[initialOffset];
     }
 
+    public static int rawPeek2(byte[] data, int initialOffset) {
+        return ((data[initialOffset] & 0xFF) | ((data[initialOffset + 1] & 0xFF) << 8)) << 16 >> 16;
+    }
+
+    public static int rawPeek3(byte[] data, int initialOffset) {
+        return ((data[initialOffset] & 0xFF) |
+                        ((data[initialOffset + 1] & 0xFF) << 8) |
+                        ((data[initialOffset + 2] & 0xFF) << 16)) << 8 >> 8;
+    }
+
+    public static int rawPeek4(byte[] data, int initialOffset) {
+        return (data[initialOffset] & 0xFF) |
+                        ((data[initialOffset + 1] & 0xFF) << 8) |
+                        ((data[initialOffset + 2] & 0xFF) << 16) |
+                        ((data[initialOffset + 3] & 0xFF) << 24);
+    }
+
+    public static long rawPeek8(byte[] data, int initialOffset) {
+        return (data[initialOffset] & 0xFFL) |
+                        ((data[initialOffset + 1] & 0xFFL) << 8) |
+                        ((data[initialOffset + 2] & 0xFFL) << 16) |
+                        ((data[initialOffset + 3] & 0xFFL) << 24) |
+                        ((data[initialOffset + 4] & 0xFFL) << 32) |
+                        ((data[initialOffset + 5] & 0xFFL) << 40) |
+                        ((data[initialOffset + 6] & 0xFFL) << 48) |
+                        ((data[initialOffset + 7] & 0xFFL) << 56);
+    }
+
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static int peek4(byte[] data, int initialOffset) {
         int result = 0;

@@ -41,22 +41,21 @@
 
 package org.graalvm.wasm;
 
-import java.util.List;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -88,7 +87,7 @@ public class WasmInstantiator {
     @TruffleBoundary
     public WasmInstance createInstance(WasmContext context, WasmModule module) {
         WasmInstance instance = new WasmInstance(context, module);
-        int binarySize = instance.module().data().length;
+        int binarySize = instance.module().bytecode().length;
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
         if (binarySize < asyncParsingBinarySize) {
             instantiateCodeEntries(context, instance);
@@ -135,8 +134,7 @@ public class WasmInstantiator {
     private void instantiateCodeEntry(WasmContext context, WasmInstance instance, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.getFunctionIndex();
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
-        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getResultTypes(), codeEntry.getMaxStackSize(),
-                        codeEntry.getExtraData());
+        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().bytecode(), codeEntry.getLocalTypes(), codeEntry.getResultTypes(), codeEntry.getMaxStackSize());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize());
         final WasmFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
         final WasmRootNode rootNode;

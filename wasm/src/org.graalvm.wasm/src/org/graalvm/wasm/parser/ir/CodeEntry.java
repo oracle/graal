@@ -50,17 +50,15 @@ public class CodeEntry {
     private final int functionIndex;
     private final int maxStackSize;
     private final byte[] localTypes;
-    private final int[] extraData;
     private final List<CallNode> callNodes;
     private final int startOffset;
     private final int endOffset;
     private final byte[] resultTypes;
 
-    public CodeEntry(int functionIndex, int currentMaxStackSize, byte[] localTypes, int[] extraData, List<CallNode> callNodes, int startOffset, int endOffset, byte[] resultTypes) {
+    public CodeEntry(int functionIndex, int currentMaxStackSize, byte[] localTypes, List<CallNode> callNodes, int startOffset, int endOffset, byte[] resultTypes) {
         this.functionIndex = functionIndex;
         this.maxStackSize = currentMaxStackSize;
         this.localTypes = localTypes;
-        this.extraData = extraData;
         this.callNodes = callNodes;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
@@ -77,10 +75,6 @@ public class CodeEntry {
 
     public byte[] getLocalTypes() {
         return localTypes;
-    }
-
-    public int[] getExtraData() {
-        return extraData;
     }
 
     public List<CallNode> getCallNodes() {

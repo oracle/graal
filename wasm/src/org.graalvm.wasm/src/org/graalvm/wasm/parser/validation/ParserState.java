@@ -46,12 +46,11 @@ import static java.lang.Integer.compareUnsigned;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.parser.bytecode.BytecodeList;
 import org.graalvm.wasm.parser.validation.collections.ControlStack;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTableEntry;
-import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -63,14 +62,14 @@ public class ParserState {
 
     private final ByteArrayList valueStack;
     private final ControlStack controlStack;
-    private final ExtraDataList extraData;
+    private final BytecodeList bytecode;
 
     private int maxStackSize;
 
-    public ParserState() {
+    public ParserState(BytecodeList bytecode) {
         this.valueStack = new ByteArrayList();
         this.controlStack = new ControlStack();
-        this.extraData = new ExtraDataList();
+        this.bytecode = bytecode;
 
         this.maxStackSize = 0;
     }
@@ -283,10 +282,10 @@ public class ParserState {
      *
      * @param paramTypes The param types of the loop that was entered.
      * @param resultTypes The result types of the loop that was entered.
-     * @param offset The offset in the wasm binary of the loop that was entered.
      */
-    public void enterLoop(byte[] paramTypes, byte[] resultTypes, int offset) {
-        ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
+    public void enterLoop(byte[] paramTypes, byte[] resultTypes) {
+        final int label = bytecode.addPrimitiveLoopLabel(resultTypes.length, valueStack.size());
+        ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
         controlStack.push(frame);
         pushAll(paramTypes);
     }
@@ -297,38 +296,26 @@ public class ParserState {
      *
      * @param paramTypes The param types of the if and else branch that was entered.
      * @param resultTypes The result type of the if and else branch that was entered.
-     * @param offset The offset in the wasm binary of the if that was entered.
      */
-    public void enterIf(byte[] paramTypes, byte[] resultTypes, int offset) {
-        ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, extraData.addIf(offset));
+    public void enterIf(byte[] paramTypes, byte[] resultTypes) {
+        bytecode.addInstruction(Bytecode.I32_NEG);
+        final int fixupLocation = bytecode.addBranchIfLocation();
+        ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, fixupLocation);
         controlStack.push(frame);
         pushAll(paramTypes);
     }
 
     /**
      * Gets the current control frame and tries to enter the else branch.
-     *
-     * @param offset The offset in the wasm binary of the else branch that was entered.
      */
-    public void enterElse(int offset) {
+    public void enterElse() {
         ControlFrame frame = controlStack.peek();
-        frame.enterElse(this, extraData, offset);
+        frame.enterElse(this, bytecode);
         pushAll(frame.paramTypes());
     }
 
-    /**
-     * Unwinds the frame up to the given limit. After using this method, the values should be pushed
-     * back onto the stack.
-     * 
-     * @return The value types on the stack.
-     */
-    private byte[] unwindStackToInitialFrameStackSize(int initialFrameStackSize) {
-        final int stackSize = valueStack.size();
-        final byte[] unwindTypes = new byte[stackSize - initialFrameStackSize];
-        for (int i = unwindTypes.length - 1; i >= 0; i--) {
-            unwindTypes[i] = valueStack.popBack();
-        }
-        return unwindTypes;
+    public void addInstruction(int instruction) {
+        bytecode.addInstruction(instruction);
     }
 
     /**
@@ -336,17 +323,14 @@ public class ParserState {
      * data array.
      *
      * @param branchLabel The target label.
-     * @param offset The offset in the wasm binary of the conditional branch.
      */
-    public void addConditionalBranch(int branchLabel, int offset) {
+    public void addConditionalBranch(int branchLabel) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        final byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
-        pushAll(unwindValueTypes);
         pushAll(labelTypes);
+        frame.addBranchIf(bytecode);
     }
 
     /**
@@ -354,16 +338,13 @@ public class ParserState {
      * extra data array.
      * 
      * @param branchLabel The target label.
-     * @param offset The offset in the wasm binary of the unconditional branch.
      */
-    public void addUnconditionalBranch(int branchLabel, int offset) {
+    public void addUnconditionalBranch(int branchLabel) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        final byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
-        pushAll(unwindValueTypes);
+        frame.addBranch(bytecode);
     }
 
     /**
@@ -371,25 +352,20 @@ public class ParserState {
      * array.
      * 
      * @param branchLabels The target labels.
-     * @param offset The offset in the wasm binary of the branch table.
      */
-    public void addBranchTable(int[] branchLabels, int offset) {
+    public void addBranchTable(int[] branchLabels) {
+        bytecode.addBranchTable(branchLabels.length);
         int branchLabel = branchLabels[branchLabels.length - 1];
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
         byte[] branchLabelReturnTypes = frame.labelTypes();
-        BranchTableEntry branchTable = extraData.addBranchTable(branchLabels.length, offset);
-        for (int i = 0; i < branchLabels.length; i++) {
-            int otherBranchLabel = branchLabels[i];
+        for (int otherBranchLabel : branchLabels) {
             checkLabelExists(otherBranchLabel);
             frame = getFrame(otherBranchLabel);
             byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
-            byte[] returnTypes = popAll(otherBranchLabelReturnTypes);
-            byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
-            frame.addBranchTarget(branchTable.updateItemUnwindType(i, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
-            pushAll(unwindValueTypes);
-            pushAll(returnTypes);
+            pushAll(popAll(otherBranchLabelReturnTypes));
+            frame.addBranchTableItem(bytecode);
         }
         popAll(branchLabelReturnTypes);
     }
@@ -405,6 +381,8 @@ public class ParserState {
             Assert.assertIntLessOrEqual(frame.labelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
         }
         checkResultTypes(frame);
+
+        bytecode.addInstruction(Bytecode.RETURN);
     }
 
     /**
@@ -412,8 +390,8 @@ public class ParserState {
      * 
      * @param nodeIndex The index of the indirect call.
      */
-    public void addIndirectCall(int nodeIndex) {
-        extraData.addIndirectCall(nodeIndex);
+    public void addIndirectCall(int nodeIndex, int typeIndex, int tableIndex) {
+        bytecode.addIndirectCall(nodeIndex, typeIndex, tableIndex);
     }
 
     /**
@@ -421,25 +399,40 @@ public class ParserState {
      * 
      * @param nodeIndex The index of the direct call.
      */
-    public void addCall(int nodeIndex) {
-        extraData.addCall(nodeIndex);
+    public void addCall(int nodeIndex, int functionIndex) {
+        bytecode.addCall(nodeIndex, functionIndex);
+    }
+
+    public void addImmediateInstruction(int instruction, int immediateValue) {
+        bytecode.addImmediateInstruction(instruction, immediateValue);
+    }
+
+    public void addImmediateInstruction(int instruction, long immediateValue) {
+        bytecode.addImmediateInstruction(instruction, immediateValue);
+    }
+
+    public void addRelativeImmediateInstruction(int instruction, int immediateValue) {
+        bytecode.addImmediateInstruction(instruction, instruction + 1, immediateValue);
+    }
+
+    public void addRelativeImmediateInstruction(int instruction, long immediateValue) {
+        bytecode.addImmediateInstruction(instruction, instruction + 1, immediateValue);
     }
 
     /**
      * Finishes the current control frame and removes it from the control frame stack.
-     * 
-     * @param offset The offset in the wasm binary.
+     *
      * @param multiValue If multiple return values are supported.
      * 
      * @throws WasmException If the number of return value types do not match with the remaining
      *             stack or the number of return values is greater than 1.
      */
-    public void exit(int offset, boolean multiValue) {
+    public void exit(boolean multiValue) {
         Assert.assertTrue(!controlStack.isEmpty(), Failure.UNEXPECTED_END_OF_BLOCK);
         ControlFrame frame = controlStack.peek();
         byte[] resultTypes = frame.resultTypes();
 
-        frame.exit(extraData, offset);
+        frame.exit(bytecode);
 
         checkStackAfterFrameExit(frame, resultTypes);
 
@@ -576,9 +569,5 @@ public class ParserState {
 
     public int maxStackSize() {
         return maxStackSize;
-    }
-
-    public int[] extraData() {
-        return extraData.extraDataArray();
     }
 }

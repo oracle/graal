@@ -70,6 +70,8 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -80,6 +82,10 @@ import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ExceptionType;
+import org.graalvm.wasm.parser.bytecode.BytecodeList;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
@@ -197,14 +203,12 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
-            if (sectionID == Section.DATA && !wasmContext.getContextOptions().keepDataSections()) {
-                removeSection(startOffset, size);
-                module.setData(data);
-                offset = startOffset;
-            }
         }
         if (!hasCodeSection) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
+        }
+        if (!wasmContext.getContextOptions().keepDataSections()) {
+            module.setData(null);
         }
     }
 
@@ -392,6 +396,7 @@ public class BinaryParser extends BinaryStreamParser {
         final int expectedCodeEntryCount = module.numFunctions() - importedFunctionCount;
         assertIntEqual(codeEntryCount, expectedCodeEntryCount, Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
         final CodeEntry[] codeEntries = new CodeEntry[codeEntryCount];
+        final BytecodeList bytecode = new BytecodeList();
         for (int entryIndex = 0; entryIndex != codeEntryCount; entryIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int codeEntrySize = readUnsignedInt32();
@@ -400,13 +405,14 @@ public class BinaryParser extends BinaryStreamParser {
             final ByteArrayList locals = readCodeEntryLocals();
             final int localCount = locals.size() + module.function(importedFunctionCount + entryIndex).paramCount();
             module.limits().checkLocalCount(localCount);
-            codeEntries[entryIndex] = readCodeEntry(importedFunctionCount + entryIndex, locals, startOffset + codeEntrySize, entryIndex < codeEntryCount - 1);
+            codeEntries[entryIndex] = readCodeEntry(importedFunctionCount + entryIndex, locals, startOffset + codeEntrySize, entryIndex < codeEntryCount - 1, bytecode);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
         }
         module.setCodeEntries(codeEntries);
+        module.setBytecode(bytecode.toArray());
     }
 
-    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction) {
+    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, BytecodeList bytecode) {
         final WasmFunction function = module.symbolTable().function(functionIndex);
         int paramCount = function.paramCount();
         byte[] localTypes = new byte[function.paramCount() + locals.size()];
@@ -420,7 +426,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int index = 0; index != resultTypes.length; index++) {
             resultTypes[index] = function.resultTypeAt(index);
         }
-        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction);
+        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction, bytecode);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -479,10 +485,10 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int endOffset, boolean hasNextFunction) {
-        final ParserState state = new ParserState();
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int endOffset, boolean hasNextFunction, BytecodeList bytecode) {
+        final ParserState state = new ParserState(bytecode);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
-        int startOffset = offset;
+        final int startOffset = bytecode.location();
         state.enterFunction(resultTypes);
         int opcode;
         while (offset < endOffset) {
@@ -490,8 +496,10 @@ public class BinaryParser extends BinaryStreamParser {
             switch (opcode) {
                 case Instructions.UNREACHABLE:
                     state.setUnreachable();
+                    state.addInstruction(Bytecode.UNREACHABLE);
                     break;
                 case Instructions.NOP:
+                    state.addInstruction(Bytecode.NOP);
                     break;
                 case Instructions.BLOCK: {
                     final byte[] blockParamTypes;
@@ -513,7 +521,6 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.LOOP: {
                     // Jumps are targeting the loop instruction for OSR.
-                    final int loopOffset = offset - 1;
                     final byte[] loopParamTypes;
                     final byte[] loopResultTypes;
                     readBlockType(multiResult, bulkMemoryAndRefTypes);
@@ -528,11 +535,10 @@ public class BinaryParser extends BinaryStreamParser {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
                     state.popAll(loopParamTypes);
-                    state.enterLoop(loopParamTypes, loopResultTypes, loopOffset);
+                    state.enterLoop(loopParamTypes, loopResultTypes);
                     break;
                 }
                 case Instructions.IF: {
-                    final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // condition
                     final byte[] ifParamTypes;
                     final byte[] ifResultTypes;
@@ -548,36 +554,33 @@ public class BinaryParser extends BinaryStreamParser {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
                     state.popAll(ifParamTypes);
-                    state.enterIf(ifParamTypes, ifResultTypes, branchOffset);
+                    state.enterIf(ifParamTypes, ifResultTypes);
                     break;
                 }
                 case Instructions.END: {
-                    state.exit(offset, multiValue);
+                    state.exit(multiValue);
                     break;
                 }
                 case Instructions.ELSE: {
-                    state.enterElse(offset);
+                    state.enterElse();
                     break;
                 }
                 case Instructions.BR: {
-                    final int branchOffset = offset;
                     final int branchLabel = readTargetOffset();
-                    state.addUnconditionalBranch(branchLabel, branchOffset);
+                    state.addUnconditionalBranch(branchLabel);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
                     break;
                 }
                 case Instructions.BR_IF: {
-                    final int branchOffset = offset;
                     final int branchLabel = readTargetOffset();
                     state.popChecked(I32_TYPE); // condition
-                    state.addConditionalBranch(branchLabel, branchOffset);
+                    state.addConditionalBranch(branchLabel);
 
                     break;
                 }
                 case Instructions.BR_TABLE: {
-                    final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // index
                     final int length = readLength();
 
@@ -586,7 +589,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final int branchLabel = readTargetOffset();
                         branchTable[i] = branchLabel;
                     }
-                    state.addBranchTable(branchTable, branchOffset);
+                    state.addBranchTable(branchTable);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
@@ -615,7 +618,7 @@ public class BinaryParser extends BinaryStreamParser {
                         assertIntLessOrEqual(function.resultCount(), 1, Failure.INVALID_RESULT_ARITY);
                     }
                     state.pushAll(function.type().resultTypes());
-                    state.addCall(callNodes.size());
+                    state.addCall(callNodes.size(), callFunctionIndex);
                     callNodes.add(new CallNode(callFunctionIndex));
                     break;
                 }
@@ -641,15 +644,16 @@ public class BinaryParser extends BinaryStreamParser {
                         callResultTypes[i] = module.functionTypeResultTypeAt(expectedFunctionTypeIndex, i);
                     }
                     state.pushAll(callResultTypes);
-                    state.addIndirectCall(callNodes.size());
+                    state.addIndirectCall(callNodes.size(), expectedFunctionTypeIndex, 0);
                     callNodes.add(new CallNode());
                     break;
                 }
                 case Instructions.DROP:
-                case Instructions.DROP_REF:
                     final byte type = state.pop();
-                    if (WasmType.isReferenceType(type)) {
-                        replaceInstruction(offset - 1, (byte) Instructions.DROP_REF);
+                    if (WasmType.isNumberType(type)) {
+                        state.addInstruction(Bytecode.DROP);
+                    } else {
+                        state.addInstruction(Bytecode.DROP_REF);
                     }
                     break;
                 case Instructions.SELECT: {
@@ -659,6 +663,8 @@ public class BinaryParser extends BinaryStreamParser {
                     assertTrue(WasmType.isNumberType(t1) && WasmType.isNumberType(t2), Failure.TYPE_MISMATCH);
                     assertTrue(t1 == t2 || t1 == WasmType.UNKNOWN_TYPE || t2 == WasmType.UNKNOWN_TYPE, Failure.TYPE_MISMATCH);
                     state.push(t1 == WasmType.UNKNOWN_TYPE ? t2 : t1);
+                    break;
+                    state.addInstruction(Bytecode.SELECT);
                     break;
                 }
                 case Instructions.SELECT_T: {
@@ -670,48 +676,57 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(t);
                     state.popChecked(t);
                     state.push(t);
+                    if (WasmType.isNumberType(t)) {
+                        state.addInstruction(Bytecode.SELECT);
+                    } else {
+                        state.addInstruction(Bytecode.SELECT_REF);
+                    }
                     break;
                 }
                 case Instructions.LOCAL_GET:
                 case Instructions.LOCAL_GET_REF: {
-                    final int instructionOffset = offset - 1;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
                     state.push(localType);
-                    if (WasmType.isReferenceType(localType)) {
-                        replaceInstruction(instructionOffset, (byte) Instructions.LOCAL_GET_REF);
+                    if (WasmType.isNumberType(localType)) {
+                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_GET_I8, localIndex);
+                    } else {
+                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_GET_REF_I8, localIndex);
                     }
                     break;
                 }
                 case Instructions.LOCAL_SET:
                 case Instructions.LOCAL_SET_REF: {
-                    final int instructionOffset = offset - 1;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
                     state.popChecked(localType);
-                    if (WasmType.isReferenceType(localType)) {
-                        replaceInstruction(instructionOffset, (byte) Instructions.LOCAL_SET_REF);
+                    if (WasmType.isNumberType(localType)) {
+                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_SET_I8, localIndex);
+                    } else {
+                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_SET_REF_I8, localIndex);
                     }
                     break;
                 }
                 case Instructions.LOCAL_TEE:
                 case Instructions.LOCAL_TEE_REF: {
-                    final int instructionOffset = offset - 1;
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
                     state.popChecked(localType);
                     state.push(localType);
-                    if (WasmType.isReferenceType(localType)) {
-                        replaceInstruction(instructionOffset, (byte) Instructions.LOCAL_TEE_REF);
+                    if (WasmType.isNumberType(localType)) {
+                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_TEE_I8, localIndex);
+                    } else {
+                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_TEE_REF_I8, localIndex);
                     }
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
                     final int index = readGlobalIndex();
                     state.push(module.symbolTable().globalValueType(index));
+                    state.addRelativeImmediateInstruction(Bytecode.GLOBAL_GET_I8, index);
                     break;
                 }
                 case Instructions.GLOBAL_SET: {
@@ -720,6 +735,7 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(module.symbolTable().globalMutability(index), GlobalModifier.MUTABLE,
                                     "Immutable globals cannot be set: " + index, Failure.IMMUTABLE_GLOBAL_WRITE);
                     state.popChecked(module.symbolTable().globalValueType(index));
+                    state.addRelativeImmediateInstruction(Bytecode.GLOBAL_SET_I8, index);
                     break;
                 }
                 case Instructions.TABLE_GET: {
@@ -728,6 +744,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte elementType = module.tableElementType(index);
                     state.popChecked(I32_TYPE);
                     state.push(elementType);
+                    state.addInstruction(Bytecode.TABLE_GET);
                     break;
                 }
                 case Instructions.TABLE_SET: {
@@ -736,66 +753,77 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte elementType = module.tableElementType(index);
                     state.popChecked(elementType);
                     state.popChecked(I32_TYPE);
+                    state.addInstruction(Bytecode.TABLE_SET);
                     break;
                 }
                 case Instructions.F32_LOAD:
-                    load(state, F32_TYPE, 32);
+                    state.addRelativeImmediateInstruction(Bytecode.F32_LOAD_I8, load(state, F32_TYPE, 32));
                     break;
                 case Instructions.F64_LOAD:
-                    load(state, F64_TYPE, 64);
+                    state.addRelativeImmediateInstruction(Bytecode.F64_LOAD_I8, load(state, F64_TYPE, 64));
                     break;
                 case Instructions.I32_LOAD:
-                    load(state, I32_TYPE, 32);
+                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD_I8, load(state, I32_TYPE, 32));
                     break;
                 case Instructions.I32_LOAD8_S:
+                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD8_S_I8, load(state, I32_TYPE, 8));
+                    break;
                 case Instructions.I32_LOAD8_U:
-                    load(state, I32_TYPE, 8);
+                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD8_U_I8, load(state, I32_TYPE, 8));
                     break;
                 case Instructions.I32_LOAD16_S:
+                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD16_S_I8, load(state, I32_TYPE, 8));
+                    break;
                 case Instructions.I32_LOAD16_U:
-                    load(state, I32_TYPE, 16);
+                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD16_U_I8, load(state, I32_TYPE, 16));
                     break;
                 case Instructions.I64_LOAD:
-                    load(state, I64_TYPE, 64);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD_I8, load(state, I64_TYPE, 64));
                     break;
                 case Instructions.I64_LOAD8_S:
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD8_S_I8, load(state, I64_TYPE, 8));
+                    break;
                 case Instructions.I64_LOAD8_U:
-                    load(state, I64_TYPE, 8);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD8_U_I8, load(state, I64_TYPE, 8));
                     break;
                 case Instructions.I64_LOAD16_S:
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD16_S_I8, load(state, I64_TYPE, 16));
+                    break;
                 case Instructions.I64_LOAD16_U:
-                    load(state, I64_TYPE, 16);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD16_U_I8, load(state, I64_TYPE, 16));
                     break;
                 case Instructions.I64_LOAD32_S:
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD32_S_I8, load(state, I64_TYPE, 32));
+                    break;
                 case Instructions.I64_LOAD32_U:
-                    load(state, I64_TYPE, 32);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD32_U_I8, load(state, I64_TYPE, 32));
                     break;
                 case Instructions.F32_STORE:
-                    store(state, F32_TYPE, 32);
+                    state.addRelativeImmediateInstruction(Bytecode.F32_STORE_I8, store(state, F32_TYPE, 32));
                     break;
                 case Instructions.F64_STORE:
-                    store(state, F64_TYPE, 64);
+                    state.addRelativeImmediateInstruction(Bytecode.F64_STORE_I8, store(state, F64_TYPE, 64));
                     break;
                 case Instructions.I32_STORE:
-                    store(state, I32_TYPE, 32);
+                    state.addRelativeImmediateInstruction(Bytecode.I32_STORE_8_I8, store(state, I32_TYPE, 32));
                     break;
                 case Instructions.I32_STORE_8:
-                    store(state, I32_TYPE, 8);
+                    state.addRelativeImmediateInstruction(Bytecode.I32_STORE_8_I8, store(state, I32_TYPE, 8));
                     break;
                 case Instructions.I32_STORE_16:
-                    store(state, I32_TYPE, 16);
+                    state.addRelativeImmediateInstruction(Bytecode.I32_STORE_16_I8, store(state, I32_TYPE, 16));
                     break;
                 case Instructions.I64_STORE:
-                    store(state, I64_TYPE, 64);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_I8, store(state, I64_TYPE, 64));
                     break;
                 case Instructions.I64_STORE_8:
-                    store(state, I64_TYPE, 8);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_8_I8, store(state, I64_TYPE, 8));
                     break;
                 case Instructions.I64_STORE_16:
-                    store(state, I64_TYPE, 16);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_16_I8, store(state, I64_TYPE, 16));
                     break;
                 case Instructions.I64_STORE_32:
-                    store(state, I64_TYPE, 32);
+                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_32_I8, store(state, I64_TYPE, 32));
                     break;
                 case Instructions.MEMORY_SIZE: {
                     final int flag = read1();
@@ -803,8 +831,10 @@ public class BinaryParser extends BinaryStreamParser {
                     checkMemoryIndex(0);
                     if (module.memoryHasIndexType64() && memory64) {
                         state.push(I64_TYPE);
+                        state.addInstruction(Bytecode.MEMORY64_SIZE);
                     } else {
                         state.push(I32_TYPE);
+                        state.addInstruction(Bytecode.MEMORY_SIZE)
                     }
                     break;
                 }
@@ -815,9 +845,11 @@ public class BinaryParser extends BinaryStreamParser {
                     if (module.memoryHasIndexType64() && memory64) {
                         state.popChecked(I64_TYPE);
                         state.push(I64_TYPE);
+                        state.addInstruction(Bytecode.MEMORY64_GROW);
                     } else {
                         state.popChecked(I32_TYPE);
                         state.push(I32_TYPE);
+                        state.addInstruction(Bytecode.MEMORY_GROW);
                     }
                     break;
                 }
@@ -838,30 +870,39 @@ public class BinaryParser extends BinaryStreamParser {
                 fail(Failure.SECTION_SIZE_MISMATCH, "END opcode expected");
             }
         }
-        return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), callNodes, startOffset, endOffset, resultTypes);
+        return new CodeEntry(functionIndex, state.maxStackSize(), locals, callNodes, startOffset, bytecode.location(), resultTypes);
     }
 
     private void readNumericInstructions(ParserState state, int opcode) {
         switch (opcode) {
-            case Instructions.I32_CONST:
-                readSignedInt32();
+            case Instructions.I32_CONST: {
+                final int value = readSignedInt32();
                 state.push(I32_TYPE);
+                state.addRelativeImmediateInstruction(Bytecode.I32_CONST_I8, value);
                 break;
-            case Instructions.I64_CONST:
-                readSignedInt64();
+            }
+            case Instructions.I64_CONST: {
+                final long value = readSignedInt64();
                 state.push(I64_TYPE);
+                state.addRelativeImmediateInstruction(Bytecode.I64_CONST_I8, value);
                 break;
-            case Instructions.F32_CONST:
-                read4();
+            }
+            case Instructions.F32_CONST: {
+                final int value = read4();
                 state.push(F32_TYPE);
+                state.addImmediateInstruction(Bytecode.F32_CONST, value);
                 break;
-            case Instructions.F64_CONST:
-                read8();
+            }
+            case Instructions.F64_CONST: {
+                final long value = read8();
                 state.push(F64_TYPE);
+                state.addImmediateInstruction(Bytecode.F64_CONST, value);
                 break;
+            }
             case Instructions.I32_EQZ:
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(Bytecode.I32_EQZ);
                 break;
             case Instructions.I32_EQ:
             case Instructions.I32_NE:
@@ -876,10 +917,12 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I32_TYPE);
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_EQZ:
                 state.popChecked(I64_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(Bytecode.I64_EQZ);
                 break;
             case Instructions.I64_EQ:
             case Instructions.I64_NE:
@@ -894,6 +937,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I64_TYPE);
                 state.popChecked(I64_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_EQ:
             case Instructions.F32_NE:
@@ -904,6 +948,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F32_TYPE);
                 state.popChecked(F32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_EQ:
             case Instructions.F64_NE:
@@ -914,12 +959,14 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F64_TYPE);
                 state.popChecked(F64_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I32_CLZ:
             case Instructions.I32_CTZ:
             case Instructions.I32_POPCNT:
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I32_ADD:
             case Instructions.I32_SUB:
@@ -939,12 +986,14 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I32_TYPE);
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_CLZ:
             case Instructions.I64_CTZ:
             case Instructions.I64_POPCNT:
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_ADD:
             case Instructions.I64_SUB:
@@ -964,6 +1013,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I64_TYPE);
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_ABS:
             case Instructions.F32_NEG:
@@ -974,6 +1024,7 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.F32_SQRT:
                 state.popChecked(F32_TYPE);
                 state.push(F32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_ADD:
             case Instructions.F32_SUB:
@@ -985,6 +1036,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F32_TYPE);
                 state.popChecked(F32_TYPE);
                 state.push(F32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_ABS:
             case Instructions.F64_NEG:
@@ -995,6 +1047,7 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.F64_SQRT:
                 state.popChecked(F64_TYPE);
                 state.push(F64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_ADD:
             case Instructions.F64_SUB:
@@ -1006,106 +1059,127 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F64_TYPE);
                 state.popChecked(F64_TYPE);
                 state.push(F64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I32_WRAP_I64:
                 state.popChecked(I64_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(Bytecode.I32_WRAP_I64);
                 break;
             case Instructions.I32_TRUNC_F32_S:
             case Instructions.I32_TRUNC_F32_U:
                 state.popChecked(F32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I32_TRUNC_F64_S:
             case Instructions.I32_TRUNC_F64_U:
                 state.popChecked(F64_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_EXTEND_I32_S:
             case Instructions.I64_EXTEND_I32_U:
                 state.popChecked(I32_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_TRUNC_F32_S:
             case Instructions.I64_TRUNC_F32_U:
                 state.popChecked(F32_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_TRUNC_F64_S:
             case Instructions.I64_TRUNC_F64_U:
                 state.popChecked(F64_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_CONVERT_I32_S:
             case Instructions.F32_CONVERT_I32_U:
                 state.popChecked(I32_TYPE);
                 state.push(F32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_CONVERT_I64_S:
             case Instructions.F32_CONVERT_I64_U:
                 state.popChecked(I64_TYPE);
                 state.push(F32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_DEMOTE_F64:
                 state.popChecked(F64_TYPE);
                 state.push(F32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_CONVERT_I32_S:
             case Instructions.F64_CONVERT_I32_U:
                 state.popChecked(I32_TYPE);
                 state.push(F64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_CONVERT_I64_S:
             case Instructions.F64_CONVERT_I64_U:
                 state.popChecked(I64_TYPE);
                 state.push(F64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_PROMOTE_F32:
                 state.popChecked(F32_TYPE);
                 state.push(F64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I32_REINTERPRET_F32:
                 state.popChecked(F32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_REINTERPRET_F64:
                 state.popChecked(F64_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F32_REINTERPRET_I32:
                 state.popChecked(I32_TYPE);
                 state.push(F32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.F64_REINTERPRET_I64:
                 state.popChecked(I64_TYPE);
                 state.push(F64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.MISC:
-                int miscOpcode = readUnsignedInt32();
+                int miscOpcode = read1() & 0xFF;
                 switch (miscOpcode) {
                     case Instructions.I32_TRUNC_SAT_F32_S:
                     case Instructions.I32_TRUNC_SAT_F32_U:
                         checkSaturatingFloatToIntSupport(miscOpcode);
                         state.popChecked(F32_TYPE);
                         state.push(I32_TYPE);
+                        state.addInstruction(miscOpcode + 0xE3);
                         break;
                     case Instructions.I32_TRUNC_SAT_F64_S:
                     case Instructions.I32_TRUNC_SAT_F64_U:
                         checkSaturatingFloatToIntSupport(miscOpcode);
                         state.popChecked(F64_TYPE);
                         state.push(I32_TYPE);
+                        state.addInstruction(miscOpcode + 0xE3);
                         break;
                     case Instructions.I64_TRUNC_SAT_F32_S:
                     case Instructions.I64_TRUNC_SAT_F32_U:
                         checkSaturatingFloatToIntSupport(miscOpcode);
                         state.popChecked(F32_TYPE);
                         state.push(I64_TYPE);
+                        state.addInstruction(miscOpcode + 0xE3);
                         break;
                     case Instructions.I64_TRUNC_SAT_F64_S:
                     case Instructions.I64_TRUNC_SAT_F64_U:
                         checkSaturatingFloatToIntSupport(miscOpcode);
                         state.popChecked(F64_TYPE);
                         state.push(I64_TYPE);
+                        state.addInstruction(miscOpcode + 0xE3);
                         break;
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
@@ -1116,8 +1190,10 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         if (module.memoryHasIndexType64() && memory64) {
                             state.popChecked(I64_TYPE);
+                            state.addInstruction(Bytecode.MEMORY64_INIT);
                         } else {
                             state.popChecked(I32_TYPE);
+                            state.addInstruction(Bytecode.MEMORY_INIT);
                         }
                         break;
                     }
@@ -1125,6 +1201,7 @@ public class BinaryParser extends BinaryStreamParser {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
                         module.checkDataSegmentIndex(dataIndex);
+                        state.addInstruction(Bytecode.DATA_DROP);
                         break;
                     }
                     case Instructions.MEMORY_COPY: {
@@ -1135,10 +1212,12 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
+                            state.addInstruction(Bytecode.MEMORY64_COPY);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
+                            state.addInstruction(Bytecode.MEMORY_COPY);
                         }
                         break;
                     }
@@ -1149,10 +1228,12 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I64_TYPE);
+                            state.addInstruction(Bytecode.MEMORY64_FILL);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
+                            state.addInstruction(Bytecode.MEMORY_FILL);
                         }
                         break;
                     }
@@ -1166,12 +1247,14 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
+                        state.addInstruction(Bytecode.TABLE_INIT);
                         break;
                     }
                     case Instructions.ELEM_DROP: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int elementIndex = readUnsignedInt32();
                         module.checkElemIndex(elementIndex);
+                        state.addInstruction(Bytecode.ELEM_DROP);
                         break;
                     }
                     case Instructions.TABLE_COPY:
@@ -1184,11 +1267,13 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
+                        state.addInstruction(Bytecode.TABLE_COPY);
                         break;
                     case Instructions.TABLE_SIZE: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         readTableIndex();
                         state.push(I32_TYPE);
+                        state.addInstruction(Bytecode.TABLE_SIZE);
                         break;
                     }
                     case Instructions.TABLE_GROW: {
@@ -1198,6 +1283,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(elementType);
                         state.push(I32_TYPE);
+                        state.addInstruction(Bytecode.TABLE_GROW);
                         break;
                     }
                     case Instructions.TABLE_FILL: {
@@ -1207,6 +1293,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(elementType);
                         state.popChecked(I32_TYPE);
+                        state.addInstruction(Bytecode.TABLE_FILL);
                         break;
                     }
                     default:
@@ -1218,6 +1305,7 @@ public class BinaryParser extends BinaryStreamParser {
                 checkSignExtensionOpsSupport(opcode);
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.I64_EXTEND8_S:
             case Instructions.I64_EXTEND16_S:
@@ -1225,6 +1313,7 @@ public class BinaryParser extends BinaryStreamParser {
                 checkSignExtensionOpsSupport(opcode);
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
+                state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.REF_NULL:
                 checkBulkMemoryAndRefTypesSupport(opcode);
@@ -1266,19 +1355,22 @@ public class BinaryParser extends BinaryStreamParser {
         checkContextOption(wasmContext.getContextOptions().supportBulkMemoryAndRefTypes(), "Bulk memory operations and reference types are not enabled (opcode: 0x%02x)", opcode);
     }
 
-    private void store(ParserState state, byte type, int n) {
+    private long store(ParserState state, byte type, int n) {
         assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
         final boolean idxType64 = module.memoryHasIndexType64();
         // We don't store the `align` literal, as our implementation does not make use
         // of it, but we need to store its byte length, so that we can skip it
         // during the execution.
         readAlignHint(n); // align hint
+        final long memoryOffset;
         if (idxType64) {
-            final long memoryOffset = readUnsignedInt64(); // 64-bit store offset
-            assertUnsignedLongLessOrEqual(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            final long m = readUnsignedInt64(); // 64-bit store offset
+            assertUnsignedLongLessOrEqual(m, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            memoryOffset = m;
         } else {
-            final int memoryOffset = readUnsignedInt32(); // 32-bit store offset
-            assertUnsignedIntLessOrEqual(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            final int m = readUnsignedInt32(); // 32-bit store offset
+            assertUnsignedIntLessOrEqual(m, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            memoryOffset = m;
         }
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64() && memory64) {
@@ -1286,9 +1378,10 @@ public class BinaryParser extends BinaryStreamParser {
         } else {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
+        return memoryOffset;
     }
 
-    private void load(ParserState state, byte type, int n) {
+    private long load(ParserState state, byte type, int n) {
         assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
         final boolean idxType64 = module.memoryHasIndexType64();
 
@@ -1296,12 +1389,15 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during execution.
         readAlignHint(n); // align hint
+        final long memoryOffset;
         if (idxType64) {
-            final long memoryOffset = readUnsignedInt64(); // 64-bit load offset
-            assertUnsignedLongLessOrEqual(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            final long m = readUnsignedInt64(); // 64-bit load offset
+            assertUnsignedLongLessOrEqual(m, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            memoryOffset = m;
         } else {
-            final int memoryOffset = readUnsignedInt32(); // 32-bit load offset
-            assertUnsignedIntLessOrEqual(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            final int m = readUnsignedInt32(); // 32-bit load offset
+            assertUnsignedIntLessOrEqual(m, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            memoryOffset = m;
         }
         if (idxType64 && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
@@ -1309,6 +1405,7 @@ public class BinaryParser extends BinaryStreamParser {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
         state.push(type); // loaded value
+        return memoryOffset;
     }
 
     private void readOffsetExpression(int[] result) {

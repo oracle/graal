@@ -66,6 +66,8 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     @CompilationFinal private boolean hasCodeSection;
     @CompilationFinal(dimensions = 1) private byte[] data;
+
+    @CompilationFinal(dimensions = 1) private byte[] bytecode;
     @CompilationFinal private boolean isParsed;
 
     private WasmModule(String name, byte[] data, ModuleLimits limits) {
@@ -116,6 +118,14 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     public void setData(byte[] data) {
         this.data = data;
+    }
+
+    public byte[] bytecode() {
+        return bytecode;
+    }
+
+    public void setBytecode(byte[] bytecode) {
+        this.bytecode = bytecode;
     }
 
     public boolean isBuiltin() {

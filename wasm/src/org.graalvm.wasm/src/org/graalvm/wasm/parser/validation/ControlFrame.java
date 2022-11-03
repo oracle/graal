@@ -41,11 +41,7 @@
 
 package org.graalvm.wasm.parser.validation;
 
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
-import org.graalvm.wasm.util.ExtraDataUtil;
-
-import java.util.ArrayList;
+import org.graalvm.wasm.parser.bytecode.BytecodeList;
 
 /**
  * Represents the scope of a block structure during module validation.
@@ -55,8 +51,6 @@ public abstract class ControlFrame {
     private final byte[] resultTypes;
     private final int initialStackSize;
     private boolean unreachable;
-    private final ArrayList<BranchTargetWithStackChange> branchTargets;
-
     /**
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.
@@ -68,8 +62,6 @@ public abstract class ControlFrame {
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
-
-        this.branchTargets = new ArrayList<>(0);
     }
 
     /**
@@ -81,26 +73,22 @@ public abstract class ControlFrame {
      * Performs checks and actions when entering an else branch.
      * 
      * @param state The current parser state.
-     * @param extraData The current extra data array.
-     * @param offset The offset of the else branch in the wasm binary.
+     * @param bytecode The current extra data array.
      */
-    abstract void enterElse(ParserState state, ExtraDataList extraData, int offset);
+    abstract void enterElse(ParserState state, BytecodeList bytecode);
 
     /**
      * Performs checks and actions when exiting a frame.
      * 
-     * @param extraData The current extra data array.
-     * @param offset The offset of the end instruction in the wasm binary.
+     * @param bytecode The current extra data array.
      */
-    abstract void exit(ExtraDataList extraData, int offset);
+    abstract void exit(BytecodeList bytecode);
 
-    void addBranchTarget(BranchTargetWithStackChange jumpTarget) {
-        branchTargets.add(jumpTarget);
-    }
+    abstract void addBranch(BytecodeList bytecodeList);
 
-    protected ArrayList<BranchTargetWithStackChange> branchTargets() {
-        return branchTargets;
-    }
+    abstract void addBranchIf(BytecodeList bytecodeList);
+
+    abstract void addBranchTableItem(BytecodeList bytecodeList);
 
     protected byte[] paramTypes() {
         return paramTypes;
@@ -114,8 +102,8 @@ public abstract class ControlFrame {
         return labelTypes().length;
     }
 
-    protected int labelUnwindType() {
-        return ExtraDataUtil.extractUnwindType(labelTypes());
+    protected int resultTypeLength() {
+        return resultTypes.length;
     }
 
     int initialStackSize() {
