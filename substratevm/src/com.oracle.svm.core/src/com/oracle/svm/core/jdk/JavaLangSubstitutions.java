@@ -31,6 +31,8 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -72,6 +74,10 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.module.ServicesCatalog;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -720,14 +726,40 @@ final class Target_jdk_internal_loader_BootLoader {
     }
 
     /**
-     * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
-     * loaders.
+     * Most {@link ClassLoaderValue}s are reset. For the list of preserved transformers see
+     * {@link ClassLoaderValueMapFieldValueTransformer}.
      */
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
     // Checkstyle: resume
+}
+
+final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) {
+            return null;
+        }
+
+        ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
+        List<ClassLoaderValue<?>> clvs = Arrays.asList(
+                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
+                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
+
+        var res = new ConcurrentHashMap<>();
+        for (ClassLoaderValue<?> clv : clvs) {
+            if (clv == null) {
+                throw VMError.shouldNotReachHere("Field must not be null. Please check what changed in the JDK.");
+            }
+            var catalog = original.get(clv);
+            if (catalog != null) {
+                res.put(clv, catalog);
+            }
+        }
+
+        return res;
+    }
 }
 
 /** Dummy class to have a class with the file's name. */

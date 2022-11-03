@@ -219,6 +219,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -750,7 +751,9 @@ public class NativeImageGenerator {
         try (Indent ignored = debug.logAndIndent("run analysis")) {
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
+                ServiceCatalogSupport.instance().enableServiceCatalogMapTransformer(config);
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                ServiceCatalogSupport.instance().seal();
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
