@@ -1167,7 +1167,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
-    void ensureClosed(boolean force, boolean inShutdownHook, boolean initiatedByContext, boolean failedPatch) {
+    void ensureClosed(boolean force, boolean inShutdownHook, boolean initiatedByContext) {
         synchronized (this.lock) {
             Thread currentThread = Thread.currentThread();
             boolean interrupted = false;
@@ -1285,9 +1285,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     logHandler.close();
                 }
 
-                if (!failedPatch) {
-                    polyglotHostService.notifyEngineClosed(this, force);
-                }
+                polyglotHostService.notifyEngineClosed(this, force);
+
                 if (runtimeData != null) {
                     EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
                 }
@@ -1804,7 +1803,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     if (contextAddedToEngine) {
                         disposeContext(context);
                         if (boundEngine) {
-                            ensureClosed(false, false, false, false);
+                            ensureClosed(false, false, false);
                         }
                     }
                     throw t;
@@ -1908,7 +1907,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     context = null;
                 } else {
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
-                    ensureClosed(true, false, false, true);
+                    // If the patching fails we have to perform a silent engine close without
+                    // notifying the new polyglotHostService.
+                    polyglotHostService = new DefaultPolyglotHostService(impl);
+                    ensureClosed(true, false, false);
                     synchronized (engine.lock) {
                         context = new PolyglotContextImpl(engine, config);
                         engine.addContext(context);
@@ -2190,7 +2192,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             log.println();
             createdLocation.printStackTrace();
         }
-        ensureClosed(false, true, false, false);
+        ensureClosed(false, true, false);
     }
 
     void addSystemThread(InstrumentSystemThread thread) {
@@ -2244,7 +2246,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         if (engineToClose != null) {
-            engineToClose.ensureClosed(false, false, false, false);
+            engineToClose.ensureClosed(false, false, false);
         }
     }
 

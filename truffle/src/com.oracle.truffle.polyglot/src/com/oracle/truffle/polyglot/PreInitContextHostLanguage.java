@@ -55,18 +55,7 @@ final class PreInitContextHostLanguage extends TruffleLanguage<Object> {
         throw CompilerDirectives.shouldNotReachHere("Host language context must not be created during context pre-initialization.");
     }
 
-    static boolean isInstance(PolyglotLanguageInstance languageInstance) {
-        if (languageInstance == null) {
-            return false;
-        }
-        return isInstance(languageInstance.language);
-    }
-
     static boolean isInstance(PolyglotLanguage language) {
-        if (language == null) {
-            return false;
-        }
-        assert language.isHost() : "Must be host language";
-        return PreInitContextHostLanguage.class.getName().equals(language.cache.getClassName());
+        return language.isHost() && language.cache.loadLanguage().getClass() == PreInitContextHostLanguage.class;
     }
 }
