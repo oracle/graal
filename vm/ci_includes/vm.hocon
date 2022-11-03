@@ -174,7 +174,6 @@ builds += [
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
     ]
     logs: ${common_vm.logs}
     timelimit: "1:30:00"
