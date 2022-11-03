@@ -992,7 +992,7 @@ def _native_image_launcher_extra_jvm_args():
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
 
-driver_build_args=[
+driver_build_args = [
     '-H:-ParseRuntimeOptions',
     '--features=com.oracle.svm.driver.APIOptionFeature',
     '--initialize-at-build-time=com.oracle.svm.driver',
