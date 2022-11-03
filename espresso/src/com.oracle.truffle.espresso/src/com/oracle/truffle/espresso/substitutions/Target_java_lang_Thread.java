@@ -239,6 +239,12 @@ public final class Target_java_lang_Thread {
         return 0x13371337;
     }
 
+    @Substitution
+    public static @JavaType(Thread.class) StaticObject currentCarrierThread(@Inject EspressoContext context) {
+        // FIXME: this is wrong
+        return context.getCurrentThread();
+    }
+
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void interrupt0(@JavaType(Object.class) StaticObject self,
