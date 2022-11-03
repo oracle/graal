@@ -103,10 +103,12 @@ public abstract class SystemPropertiesSupport {
         }
 
         initializeProperty("java.vm.name", "Substrate VM");
-        initializeProperty("java.vm.vendor", "Oracle Corporation");
+        initializeProperty("java.runtime.name", ImageSingletons.lookup(VM.class).runtimeName);
+        initializeProperty("java.vm.vendor", ImageSingletons.lookup(VM.class).vendor);
         initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
-        initializeProperty("java.vendor", "Oracle Corporation");
-        initializeProperty("java.vendor.url", "https://www.graalvm.org/");
+        initializeProperty("java.runtime.version", ImageSingletons.lookup(VM.class).version);
+        initializeProperty("java.vendor", ImageSingletons.lookup(VM.class).vendor);
+        initializeProperty("java.vendor.url", ImageSingletons.lookup(VM.class).vendorUrl);
 
         initializeProperty("java.class.path", "");
         initializeProperty("java.endorsed.dirs", "");
