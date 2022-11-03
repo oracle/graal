@@ -174,7 +174,6 @@ public abstract class NativeImage extends AbstractImage {
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }
-        resultingImageSize = (int) outputFile.toFile().length();
         debugInfoSize = 0;
         String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
         for (Element e : objectFile.getElements()) {

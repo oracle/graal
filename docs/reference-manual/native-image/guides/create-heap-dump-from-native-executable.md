@@ -16,9 +16,12 @@ To enable heap dump support, native executables must be built with the `--enable
 3. Create heap dumps sending a `SIGUSR1` signal at run time.
 4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API.
 
-All three approaches are described below.
+All approaches are described below.
 
->Note: Creating heap dumps is not available on the Microsoft Windows platform.
+>Note: By default, heap dumps are created in the current working directory. The `-XX:HeapDumpPath` option can be used to specify an alternative filename or directory. For example:  
+> `./helloworld -XX:HeapDumpPath=$HOME/helloworld.hprof`
+
+>Also note: Creating heap dumps is not available on the Microsoft Windows platform.
 
 ## Create Heap Dumps with VisualVM
 

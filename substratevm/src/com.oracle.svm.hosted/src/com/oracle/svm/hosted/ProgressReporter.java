@@ -446,37 +446,37 @@ public class ProgressReporter {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeAreaSize,
+    public void printCreationEnd(int imageFileSize, int numHeapObjects, long imageHeapSize, int codeAreaSize,
                     int numCompilations, int debugInfoSize) {
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
-        l().a(format, Utils.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageFileSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
         EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
         int numResources = resources.size();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
-        l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageFileSize * 100)
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", numHeapObjects, numResources).println();
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric
-            DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
+            DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageFileSize * 100)
                             .doclink("debug info", "#glossary-debug-info");
             if (debugInfoTimer != null) {
                 l.a(" generated in %.1fs", Utils.millisToSeconds(debugInfoTimer.getTotalTime()));
             }
             l.println();
         }
-        long otherBytes = imageSize - codeAreaSize - imageHeapSize - debugInfoSize;
+        long otherBytes = imageFileSize - codeAreaSize - imageHeapSize - debugInfoSize;
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_SIZE, imageHeapSize);
-        recordJsonMetric(ImageDetailKey.TOTAL_SIZE, imageSize);
+        recordJsonMetric(ImageDetailKey.TOTAL_SIZE, imageFileSize);
         recordJsonMetric(ImageDetailKey.CODE_AREA_SIZE, codeAreaSize);
         recordJsonMetric(ImageDetailKey.NUM_COMP_UNITS, numCompilations);
-        l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageFileSize * 100)
                         .doclink("other data", "#glossary-other-data").println();
-        l().a("%9s in total", Utils.bytesToHuman(imageSize)).println();
+        l().a("%9s in total", Utils.bytesToHuman(imageFileSize)).println();
         printBreakdowns();
     }
 
