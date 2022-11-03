@@ -178,6 +178,13 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
     local SEE_ALSO_1 = [examples.expand_variants],
   } + _impl.platform_spec(run_spec),
 
+  // Generates a variants entry using a feature map.
+  // See the example for a detailed explanation.
+  assert examples.generate_variants,
+  generate_variants(variant_spec, feature_map, order=null):: {
+    local SEE_ALSO = [$.run_job],
+  } + _impl.generate_variants(variant_spec, feature_map, order=order),
+
   // Registers a multiplier for the given task. This allows generating multiple jobs out of a single
   // task description. This is useful for splitting up long running jobs into several batches.
   // The parameter is an array of $.task_spec objects.
