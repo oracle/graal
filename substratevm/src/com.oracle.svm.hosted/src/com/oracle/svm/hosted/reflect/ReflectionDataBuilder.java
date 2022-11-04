@@ -63,7 +63,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.ClassLoadingExceptionSupport;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -79,7 +78,6 @@ import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaType;
@@ -248,6 +246,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (Field reflectField : reflectionFields) {
             if (!registeredFields.containsKey(reflectField) && !SubstitutionReflectivityFilter.shouldExclude(reflectField, access.getMetaAccess(), access.getUniverse())) {
                 AnalysisField analysisField = access.getMetaAccess().lookupJavaField(reflectField);
+                access.requireAnalysisIteration();
                 registerTypesForField(access, analysisField, reflectField);
                 registeredFields.put(reflectField, analysisField);
             }
@@ -261,6 +260,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
             if (!registeredMethods.containsKey(method)) {
                 AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
+                access.requireAnalysisIteration();
                 registerTypesForMethod(access, analysisMethod, method);
                 registeredMethods.put(method, analysisMethod);
             }
@@ -285,12 +285,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     Field field = (Field) object;
                     if (!SubstitutionReflectivityFilter.shouldExclude(field, access.getMetaAccess(), access.getUniverse())) {
                         analysisElement = access.getMetaAccess().lookupJavaField(field);
+                        access.requireAnalysisIteration();
                         registerTypesForField(access, (AnalysisField) analysisElement, field);
                     }
                 } else if (object instanceof Executable) {
                     Executable executable = (Executable) object;
                     if (!SubstitutionReflectivityFilter.shouldExclude(executable, access.getMetaAccess(), access.getUniverse())) {
                         analysisElement = access.getMetaAccess().lookupJavaMethod(executable);
+                        access.requireAnalysisIteration();
                         registerTypesForMethod(access, (AnalysisMethod) analysisElement, executable);
                     }
                 }
@@ -471,13 +473,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as unsafe-accessible, whether they have been explicitly registered or their
          * Field object is reachable in the image heap.
          */
-        if (!analysisField.isUnsafeAccessed() && !GuardedAnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
-            analysisField.registerAsAccessed();
-            analysisField.registerAsUnsafeAccessed();
-        }
+        access.registerAsUnsafeAccessed(analysisField);
 
-        makeAnalysisTypeReachable(access, analysisField.getDeclaringClass());
-        makeAnalysisTypeReachable(access, analysisField.getType());
         registerTypesForGenericSignature(access, reflectField.getGenericType());
 
         /*
@@ -488,8 +485,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForMethod(DuringAnalysisAccessImpl access, AnalysisMethod analysisMethod, Executable reflectMethod) {
-        makeAnalysisTypeReachable(access, analysisMethod.getDeclaringClass());
-
         registerTypesForGenericSignature(access, reflectMethod.getTypeParameters());
         registerTypesForGenericSignature(access, reflectMethod.getGenericParameterTypes());
         registerTypesForGenericSignature(access, reflectMethod.getGenericExceptionTypes());
@@ -547,22 +542,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         processedTypes.put(type, dimension);
         if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
             Class<?> clazz = (Class<?>) type;
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz).getArrayClass(dimension));
-
-            /*
-             * Reflection signature parsing will try to instantiate classes via Class.forName().
-             */
-            if (ClassForNameSupport.forNameOrNull(clazz.getName(), null) == null) {
-                access.requireAnalysisIteration();
+            if (dimension > 0) {
+                /*
+                 * We only need to register the array type here, since it is the one that gets
+                 * stored in the heap. The component type will be registered elsewhere if needed.
+                 */
+                makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz).getArrayClass(dimension));
             }
+            /* Generic signature parsing will try to instantiate classes via Class.forName(). */
             ClassForNameSupport.registerClass(clazz);
         } else if (type instanceof TypeVariable<?>) {
             registerTypesForGenericSignature(access, ((TypeVariable<?>) type).getBounds());
         } else if (type instanceof GenericArrayType) {
-            /*
-             * We only need to register the array type here, since it is the one that gets stored in
-             * the heap. The component type will be registered elsewhere if needed.
-             */
             registerTypesForGenericSignature(access, ((GenericArrayType) type).getGenericComponentType(), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
