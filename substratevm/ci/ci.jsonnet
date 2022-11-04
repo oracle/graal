@@ -4,6 +4,7 @@
   local sg         = import "ci_common/svm-gate.libsonnet",
   local inc        = import "ci_common/include.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
+  local exclude    = run_spec.exclude,
 
   local task_spec = run_spec.task_spec,
   local platform_spec = run_spec.platform_spec,
@@ -17,6 +18,8 @@
   local jdt = task_spec(common.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
+  local use_musl = sg.use_musl,
+  local add_quickbuild = sg.add_quickbuild,
 
   local maven = task_spec({
     packages+: {
@@ -75,6 +78,21 @@
   local no_jobs = {
     "<all-os>"+: run_spec.exclude,
   },
+  local feature_map = {
+    libc: {
+      musl: {
+        "<all-os>"+: exclude + musl_toolchain,
+      },
+    },
+    optlevel: {
+      quickbuild: {
+        "<all-os>"+: exclude + add_quickbuild,
+      },
+    },
+  },
+  local feature_order = ["libc", "optlevel"],
+
+  local variants(s) = run_spec.generate_variants(s, feature_map, order=feature_order),
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
@@ -91,9 +109,10 @@
       "linux:amd64:jdk17": gate + t("55:00"),
       "linux:amd64:jdk19": gate + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
-    }),
-    "basics-quickbuild": mxgate("build,helloworld_quickbuild,test_quickbuild,svmjunit_quickbuild") + platform_spec(no_jobs) + platform_spec({
-      "windows:amd64:jdk17": gate + t("1:30:00"),
+    }) + variants({
+      "optlevel:quickbuild": {
+        "windows:amd64:jdk17": gate + t("1:30:00"),
+      }
     }),
   },
   // END MAIN BUILD DEFINITION
