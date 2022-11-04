@@ -8,6 +8,7 @@
 
   local task_spec = run_spec.task_spec,
   local platform_spec = run_spec.platform_spec,
+  local evaluate_late = run_spec.evaluate_late,
 
   local t(limit) = task_spec({timelimit: limit}),
 
@@ -21,11 +22,19 @@
   local use_musl = sg.use_musl,
   local add_quickbuild = sg.add_quickbuild,
 
-  local maven = task_spec({
+  local maven = task_spec(evaluate_late('05_add_maven', function(b)
+  if b.os == 'windows' then {
+    downloads+: {
+      MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
+    },
+    environment+: {
+      PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
+    },
+  } else {
     packages+: {
       maven: "==3.6.3",
     },
-  }),
+  })),
 
   local jsonschema = task_spec({
     packages+: {
