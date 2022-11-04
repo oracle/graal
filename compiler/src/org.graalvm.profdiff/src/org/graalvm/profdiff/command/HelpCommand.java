@@ -24,7 +24,6 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
@@ -33,7 +32,7 @@ import org.graalvm.profdiff.util.Writer;
 /**
  * A command that shows a help message for the whole program or a particular command.
  */
-public class HelpCommand implements Command {
+public class HelpCommand extends Command {
     private final ProgramArgumentParser programArgumentParser;
 
     private final ArgumentParser argumentParser;
@@ -79,10 +78,5 @@ public class HelpCommand implements Command {
             return;
         }
         writer.writeln(programArgumentParser.formatHelp(command));
-    }
-
-    @Override
-    public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
-
     }
 }

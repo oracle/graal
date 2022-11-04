@@ -24,6 +24,7 @@
  */
 package org.graalvm.profdiff;
 
+import org.graalvm.profdiff.command.Command;
 import org.graalvm.profdiff.command.HelpCommand;
 import org.graalvm.profdiff.command.JITAOTCommand;
 import org.graalvm.profdiff.command.JITJITCommand;
@@ -33,6 +34,7 @@ import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.parser.args.CommandGroup;
 import org.graalvm.profdiff.parser.args.DoubleArgument;
 import org.graalvm.profdiff.parser.args.EnumArgument;
+import org.graalvm.profdiff.parser.args.FlagArgument;
 import org.graalvm.profdiff.parser.args.IntegerArgument;
 import org.graalvm.profdiff.parser.args.InvalidArgumentException;
 import org.graalvm.profdiff.parser.args.MissingArgumentException;
@@ -49,6 +51,8 @@ public class Profdiff {
         private final IntegerArgument hotMaxArgument;
 
         private final DoubleArgument percentileArgument;
+
+        private final FlagArgument optimizationContextTreeArgument;
 
         private final EnumArgument<VerbosityLevel> verbosityLevelArgument;
 
@@ -67,6 +71,8 @@ public class Profdiff {
             percentileArgument = argumentParser.addDoubleArgument(
                             "--hot-percentile", 0.9,
                             "the percentile of the execution period that is spent executing hot compilation units");
+            optimizationContextTreeArgument = argumentParser.addFlagArgument(
+                            "--optimization-context-tree", "combine optimization/inlining trees into an optimization-context tree");
             verbosityLevelArgument = argumentParser.addEnumArgument(
                             "--verbosity", VerbosityLevel.DEFAULT,
                             "the verbosity level of the diff");
@@ -105,16 +111,20 @@ public class Profdiff {
             return argumentParser;
         }
 
-        public HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
+        private HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
             HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
             hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
             hotCompilationUnitPolicy.setHotMaxLimit(hotMaxArgument.getValue());
             hotCompilationUnitPolicy.setHotPercentile(percentileArgument.getValue());
             return hotCompilationUnitPolicy;
         }
+
+        public Command.CommandArguments getCommandArguments() {
+            return new Command.CommandArguments(getHotCompilationUnitPolicy(), optimizationContextTreeArgument.getValue());
+        }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         ProgramArguments programArguments = new ProgramArguments();
         CommandGroup commandGroup = programArguments.getCommandGroup();
         commandGroup.addCommand(new ReportCommand());
@@ -124,15 +134,14 @@ public class Profdiff {
 
         programArguments.parseOrExit(args);
 
-        commandGroup.getSelectedCommand().setHotCompilationUnitPolicy(programArguments.getHotCompilationUnitPolicy());
+        commandGroup.getSelectedCommand().setCommandArguments(programArguments.getCommandArguments());
         VerbosityLevel verbosityLevel = programArguments.getVerbosityLevel();
         StdoutWriter writer = new StdoutWriter(verbosityLevel);
         try {
             commandGroup.getSelectedCommand().invoke(writer);
         } catch (Exception exception) {
             System.err.println(exception.getMessage());
-            throw exception;
-            // System.exit(1);
+            System.exit(1);
         }
     }
 }

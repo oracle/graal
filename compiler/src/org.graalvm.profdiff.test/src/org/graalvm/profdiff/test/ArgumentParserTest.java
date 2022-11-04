@@ -29,7 +29,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.profdiff.command.Command;
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.CommandGroup;
 import org.graalvm.profdiff.parser.args.DoubleArgument;
@@ -52,7 +51,7 @@ public class ArgumentParserTest {
         BAR
     }
 
-    private static final class CommandFoo implements Command {
+    private static final class CommandFoo extends Command {
         private final ArgumentParser argumentParser = new ArgumentParser();
 
         @Override
@@ -74,14 +73,9 @@ public class ArgumentParserTest {
         public void invoke(Writer writer) {
 
         }
-
-        @Override
-        public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
-
-        }
     }
 
-    private static final class CommandBar implements Command {
+    private static final class CommandBar extends Command {
         private final ArgumentParser argumentParser = new ArgumentParser();
 
         private final FlagArgument flagArgument;
@@ -107,11 +101,6 @@ public class ArgumentParserTest {
 
         @Override
         public void invoke(Writer writer) {
-
-        }
-
-        @Override
-        public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
 
         }
     }

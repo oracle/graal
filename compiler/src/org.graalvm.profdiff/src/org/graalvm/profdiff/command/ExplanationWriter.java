@@ -49,6 +49,8 @@ public class ExplanationWriter {
      */
     private final boolean onlyHotMethods;
 
+    private final boolean optimizationContextTreeEnabled;
+
     /**
      * Constructs an explanation writer.
      *
@@ -56,10 +58,11 @@ public class ExplanationWriter {
      * @param singleExperiment the output consists of only one experiment
      * @param onlyHotMethods only hot methods are displayed
      */
-    public ExplanationWriter(Writer writer, boolean singleExperiment, boolean onlyHotMethods) {
+    public ExplanationWriter(Writer writer, boolean singleExperiment, boolean onlyHotMethods, boolean optimizationContextTreeEnabled) {
         this.writer = writer;
         this.singleExperiment = singleExperiment;
         this.onlyHotMethods = onlyHotMethods;
+        this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
     }
 
     /**
@@ -76,10 +79,19 @@ public class ExplanationWriter {
             writer.writeln("each compiled method is printed in a separate section below");
         }
         if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
-            writer.writeln("hot compilation units are paired by their fraction of execution");
+            writer.writeln("hot compilations are paired by their fraction of execution");
         }
-        explainOptimizationTree();
-        explainInliningTree();
+        writer.writeln("a compilation refers to either a compilation unit or a compilation fragment");
+        writer.increaseIndent();
+        writer.writeln("a compilation unit is the result of a Graal compilation");
+        writer.writeln("a compilation fragment is created from a compilation unit");
+        writer.decreaseIndent();
+        if (optimizationContextTreeEnabled) {
+            explainOptimizationContextTree();
+        } else {
+            explainOptimizationTree();
+            explainInliningTree();
+        }
         writer.writeln("this message is adapted to the " + verbosityLevel.toString().toLowerCase() + " verbosity level");
         writer.decreaseIndent();
         writer.setPrefixAfterIndent("");
@@ -107,7 +119,7 @@ public class ExplanationWriter {
         writer.writeln("properties are key-value pairs that give additional information");
         writer.decreaseIndent();
         if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
-            writer.writeln("the optimization trees of two paired compilation units are diffed");
+            writer.writeln("the optimization trees of two paired compilations are diffed");
             writer.writeln("a list of operations to transform the first optimization tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion and subtree insertion");
             writer.writeln("the diff is printed in the form of a tree");
@@ -118,7 +130,7 @@ public class ExplanationWriter {
             writer.increaseIndent();
             writer.writeln("`" + EditScript.IDENTITY_PREFIX + "SomePhase` - the node is present in both compilations");
             writer.writeln("`" + EditScript.DELETE_PREFIX + "SomePhase` - the node is present in the first compilation but absent in the second");
-            writer.writeln("`" + EditScript.INSERT_PREFIX + "SomePhase` - the node is absent in the frist compilation but present in the second");
+            writer.writeln("`" + EditScript.INSERT_PREFIX + "SomePhase` - the node is absent in the first compilation but present in the second");
             writer.decreaseIndent();
         }
         writer.decreaseIndent();
@@ -140,7 +152,7 @@ public class ExplanationWriter {
             writer.writeln("the children of a node are in the order they appeared in the log");
         }
         if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
-            writer.writeln("the inlining trees of two paired compilation units are diffed");
+            writer.writeln("the inlining trees of two paired compilations are diffed");
             writer.increaseIndent();
             writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but ultimately not inlined");
             writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
@@ -151,6 +163,53 @@ public class ExplanationWriter {
             }
             writer.writeln("each node's prefix shows the type of operation it took part in, for example");
             writer.increaseIndent();
+            writer.writeln("`" + EditScript.RELABEL_PREFIX +
+                            "(inlined -> not inlined) someMethod()` - the callsite was inlined in the first compilation unit but not inlined in the second compilation");
+            writer.writeln("`" + EditScript.IDENTITY_PREFIX + "someMethod()` - the callsite was inlined in both compilations");
+            writer.writeln("`" + EditScript.IDENTITY_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX + "someMethod()` - the callsite was considered and not inlined in both compilations");
+            writer.writeln("`" + EditScript.DELETE_PREFIX + "someMethod()` - the callsite was inlined in the first compilation unit but not considered at all in the second compilation");
+            writer.writeln("`" + EditScript.INSERT_PREFIX + "someMethod()` - the callsite was not considered at all in the first compilation unit but inlined in the second compilation");
+            writer.writeln("`" + EditScript.DELETE_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX +
+                            "someMethod()` - the callsite was not inlined in the first compilation unit and not considered at all in the second compilation");
+            writer.writeln("`" + EditScript.INSERT_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX +
+                            "(not inlined) someMethod()` - the callsite was not considered at all in the first compilation unit and not inlined in the second compilation");
+            writer.decreaseIndent();
+            writer.decreaseIndent();
+        }
+        writer.decreaseIndent();
+    }
+
+    private void explainOptimizationContextTree() {
+        VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
+        if (!verbosityLevel.shouldPrintOptimizationTree() && !verbosityLevel.shouldDiffCompilations()) {
+            return;
+        }
+        writer.writeln("the optimization-context tree is a tree of methods and the optimizations performed in them");
+        writer.increaseIndent();
+        writer.writeln("each node in the tree is either an inlined/not inlined method or an optimization");
+        writer.writeln("the root of the tree is the compilation root method");
+        writer.writeln("the children of an inlined method are");
+        writer.increaseIndent();
+        writer.writeln("the inlined callees at a particular bci");
+        writer.writeln("the callees which were considered for inlining but not inlined, displayed with the prefix `" + InliningTreeNode.NOT_INLINED_PREFIX + "`");
+        writer.writeln("the optimizations performed in the inlined method");
+        writer.decreaseIndent();
+        writer.writeln("an optimization is a always a leaf node in the tree");
+        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
+            writer.writeln("the optimization-context trees of two paired compilations are diffed");
+            writer.increaseIndent();
+            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but ultimately not inlined");
+            writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
+            writer.writeln("the operations include subtree deletion, subtree insertion and relabeling (changing one node to another node)");
+            writer.writeln("the diff is printed in the form of a tree");
+            if (verbosityLevel.shouldShowOnlyDiff()) {
+                writer.writeln("only the different parts of the trees are displayed at this verbosity level");
+            }
+            writer.writeln("each node's prefix shows the type of operation it took part in, for example");
+            writer.increaseIndent();
+            writer.writeln("`" + EditScript.IDENTITY_PREFIX + "SomeOptimization` - the optimization is present in both compilations");
+            writer.writeln("`" + EditScript.DELETE_PREFIX + "SomeOptimization` - the optimization is present in the first compilation but absent in the second");
+            writer.writeln("`" + EditScript.INSERT_PREFIX + "SomeOptimization` - the optimization is absent in the first compilation but present in the second");
             writer.writeln("`" + EditScript.RELABEL_PREFIX +
                             "(inlined -> not inlined) someMethod()` - the callsite was inlined in the first compilation unit but not inlined in the second compilation");
             writer.writeln("`" + EditScript.IDENTITY_PREFIX + "someMethod()` - the callsite was inlined in both compilations");

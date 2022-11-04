@@ -43,6 +43,7 @@ import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationContextTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
+import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.graalvm.profdiff.util.Writer;
 
 /**
@@ -67,8 +68,11 @@ public class ExperimentMatcher {
      */
     private final Writer writer;
 
-    public ExperimentMatcher(Writer writer) {
+    private final boolean optimizationContextTreeEnabled;
+
+    public ExperimentMatcher(Writer writer, boolean optimizationContextTreeEnabled) {
         this.writer = writer;
+        this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
     }
 
     /**
@@ -82,7 +86,7 @@ public class ExperimentMatcher {
      *
      * @param experimentPair the pair of experiments to be matched
      */
-    public void match(ExperimentPair experimentPair) throws Exception {
+    public void match(ExperimentPair experimentPair) throws ExperimentParserError {
         experimentPair.createCompilationFragments();
         VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
         for (MethodPair methodPair : experimentPair.getHotMethodPairsByDescendingPeriod()) {
@@ -103,10 +107,12 @@ public class ExperimentMatcher {
                 if (compilationUnitPair.bothHot()) {
                     CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();
                     CompilationUnit.TreePair treePair2 = compilationUnitPair.getCompilationUnit2().loadTrees();
-                    contextualizeAndMatch(treePair1, treePair2);
-                    // matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
-                    // matchOptimizationTrees(treePair1.getOptimizationTree(),
-                    // treePair2.getOptimizationTree());
+                    if (optimizationContextTreeEnabled) {
+                        createOptimizationContextTreeAndMatch(treePair1, treePair2);
+                    } else {
+                        matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
+                        matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
+                    }
                 } else if (!verbosityLevel.shouldShowOnlyDiff()) {
                     compilationUnitPair.firstNonNull().write(writer);
                 }
@@ -156,9 +162,9 @@ public class ExperimentMatcher {
         optimizationDeltaTree.accept(optimizationDeltaTreeWriter);
     }
 
-    private void contextualizeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
+    private void createOptimizationContextTreeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
         if (treePair1.getInliningTree().getRoot() == null || treePair2.getInliningTree().getRoot() == null) {
-            return;
+            throw new RuntimeException("Cannot create an optimization context tree, because an inlining tree is missing.");
         }
         treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());
         treePair2.getInliningTree().preprocess(writer.getVerbosityLevel());

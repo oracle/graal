@@ -24,18 +24,14 @@
  */
 package org.graalvm.profdiff.core.pair;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
 import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
@@ -130,15 +126,14 @@ public class ExperimentPair {
                     if (node.getName() == null || !node.isPositive() || method.getMethodName().equals(node.getName())) {
                         return;
                     }
-                    // make sure that the method is hot in the other (source) experiment as well
-                    Method methodInSource = source.getMethodsByName().get(node.getName());
-                    if (methodInSource == null || !methodInSource.isHot()) {
+                    // make sure the path is unique
+                    InliningPath pathToNode = nodePaths.get(node);
+                    if (CollectionsUtil.anyMatch(nodePaths.getValues(), otherPath -> otherPath != pathToNode && pathToNode.matches(otherPath))) {
                         return;
                     }
-                    // check that the method is not inlined in at least one compilation unit of the
-                    // other experiment
-                    InliningPath pathToNode = nodePaths.get(node);
-                    // this is expensive but actually makes things faster
+                    // check that the method is not inlined in at least one hot compilation unit of
+                    // the other experiment
+                    boolean notInlinedInAtLeastOneCompilationUnit = false;
                     for (CompilationUnit otherCompilationUnit : source.getMethodOrCreate(method.getMethodName()).getHotCompilationUnits()) {
                         if (otherCompilationUnit instanceof CompilationFragment) {
                             continue;
@@ -150,17 +145,17 @@ public class ExperimentPair {
                                     otherNodes.add(otherNode);
                                 }
                             });
-                            for (InliningTreeNode otherNode : otherNodes) {
-                                if (InliningPath.fromRootToNode(otherNode).matches(pathToNode)) {
-                                    return;
-                                }
+                            boolean inlinedInOtherCompilationUnit = CollectionsUtil.anyMatch(otherNodes,
+                                            otherNode -> otherNode.isPositive() && InliningPath.fromRootToNode(otherNode).matches(pathToNode));
+                            if (!inlinedInOtherCompilationUnit) {
+                                notInlinedInAtLeastOneCompilationUnit = true;
+                                break;
                             }
                         } catch (ExperimentParserError e) {
                             throw new RuntimeException(e);
                         }
                     }
-                    // make sure the path is unique
-                    if (CollectionsUtil.anyMatch(nodePaths.getValues(), otherPath -> otherPath != pathToNode && pathToNode.matches(otherPath))) {
+                    if (!notInlinedInAtLeastOneCompilationUnit) {
                         return;
                     }
                     destination.getMethodOrCreate(node.getName()).addCompilationFragment(compilationUnit, pathToNode);

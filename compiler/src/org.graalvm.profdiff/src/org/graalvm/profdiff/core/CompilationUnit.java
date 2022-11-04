@@ -193,7 +193,7 @@ public class CompilationUnit {
      *
      * @param writer the destination writer
      */
-    public void write(Writer writer) throws Exception {
+    public void write(Writer writer) throws ExperimentParserError {
         writer.write("Compilation " + compilationId);
         if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");

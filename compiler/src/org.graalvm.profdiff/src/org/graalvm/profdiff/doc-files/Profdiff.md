@@ -141,7 +141,7 @@ hot compilations. This is relevant only when proftool data is provided. `--hot-m
 upper and lower bounds, respectively, on the number of hot compilations. `--hot-percentile` is the percentile of the
 execution period taken up by hot compilations. Read the section about hot compilations for more information.
 
-## Hot compilations
+## Hot compilation units
 
 Proftool collects samples the number of cycles spent executing each compilation unit. The tool marks some of
 the compilation units with the highest timeshare as *hot*. This is a different term than "hot" in the context of
@@ -231,10 +231,47 @@ We can see that the root method `java.util.stream.ReduceOps$ReduceOp.evaluateSeq
 has 3 compilations in the 1st experiment and 2 compilations in the 2nd experiment. Some of these compilations were
 marked as hot.
 
-In this case, we would like to show the diff between the 2 hot compilations, even though there are 3 * 2 possible pairs
-of compilations. In the general case, the 1st hottest compilation from the 1st experiment is diffed with the 1st hottest
-compilation from the 2nd experiment, the 2nd hottest is diffed with the 2nd hottest and so on. When a hot compilation
-does not have a pair in the other experiment, the whole optimization tree is simply dumped.
+In the general case, all pairs of *hot* compilations are diffed. In this case, the only pair of hot compilations is
+diffed.
+
+### Compilation fragments
+
+A compilation fragment is a kind of compilation, which is defined as a part of a compilation unit. This enables the tool
+to compare a part of a compilation unit with a different compilation unit (or with another part of a compilation unit).
+
+Consider the following scenario. A method `a()` calls an important method `b()`. In experiment 1, the method `a()` is
+compiled and `b()` is inlined. In experiment 2, only the method `b()` is compiled.
+
+ ```
+Method a() is hot only in experiment 1
+    Compilation unit X
+        a()
+            ...
+                ...
+                b()
+                    ...
+                ...
+Method b() is hot only in experiment 2
+    Compilation unit Y
+        b()
+            ...
+```
+
+We would like to compare the hot compilation of `b()` with the hot compilation of `a()`, which encompasses `b()`. Thus,
+the idea is to take only the `b()` part of the `a()` compilation. We denote the `b()` part of `a()` a compilation
+fragment.
+
+```
+Method b()
+    Compilation fragment X#1
+        b()
+          ...
+    Compilation unit Y
+        b()
+            ...
+```
+
+The compilation fragment of `a()` can be compared with the compilation unit of `b()` directly.
 
 ### Optimization tree matching
 
@@ -243,9 +280,9 @@ displayed in the form of a delta tree. Each node in the delta tree is an optimiz
 paired with an edit operation. Edit operations include insertion, deletion, and identity. The kind of the edit operation
 is displayed as the prefix of the node.
 
+- prefix `.` = this phase/optimization is present and unchanged in both compilations (identity)
 - prefix `-` = this phase/optimization is present in the 1st compilation but absent in the 2nd compilation (deletion)
 - prefix `+` = this phase/optimization is absent in the 1st compilation but present in the 2nd compilation (insertion)
-- (no prefix) = this phase/optimization is present and unchanged in both compilations (identity)
 
 Consider the following example:
 
@@ -254,21 +291,21 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
     ...
     Compilation 9068 (19.74% of Graal execution, 11.64% of total) in experiment 1 vs compilation 12622 (16.24% of Graal
     execution, 9.74% of total) in experiment 2
-          RootPhase
-              Parsing
-                  GraphBuilderPhase
-                  DeadCodeEliminationPhase
-              HighTier
-                  CanonicalizerPhase
-                  InliningPhase
+        . RootPhase
+            . Parsing
+                . GraphBuilderPhase
+                . DeadCodeEliminationPhase
+            . HighTier
+                . CanonicalizerPhase
+                . InliningPhase
                   ...
 ```
 
-We can see a few phase names without any prefix, which means the phases present in both compilations. Further down, we
+We can see a few phase names with the prefix `.`, which means the phases present in both compilations. Further down, we
 can observe something like this:
 
 ```
-CanonicalizerPhase
+. CanonicalizerPhase
     - Canonicalizer CanonicalReplacement at bci 6 {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
     - Canonicalizer CanonicalReplacement at bci 9 {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
     + Canonicalizer CanonicalReplacement at bci 6 {replacedNodeClass: Pi, canonicalNodeClass: Pi}
@@ -286,11 +323,11 @@ The result of 2 matched inlining trees is again a delta tree. Each node in the d
 paired with an edit operation. Edit operations include insertion, deletion, relabelling, and identity. The kind of the
 edit operation is indicated by the prefix of the node.
 
+- prefix `.` = this inlining tree node is present and unchanged in both compilations (identity)
 - prefix `-` = this inlining tree node is present in the 1st compilation but absent in the 2nd compilation (deletion)
 - prefix `+` = this inlining tree node is absent in the 1st compilation but present in the 2nd compilation (insertion)
 - prefix `*` = this inlining tree node is present int both compilations but the inlining decisions are different
   (relabelling)
-- (no prefix) = this inlining tree node is present and unchanged in both compilations (identity)
 
 Provided that there 2 kinds of inlining tree nodes with respect to the inlining decision (inlined and not inlined),
 there are 2 * 4 cases to be interpreted.
@@ -304,6 +341,9 @@ the method in the inlining tree.
 
 Therefore, all possible combinations in the delta tree are:
 
+- `. java.lang.String.equals(Object) at bci 44` = the method was evaluated and inlined in both compilations
+- `. (not inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated and not inlined in both
+  compilations
 - `- java.lang.String.equals(Object) at bci 44` = the method was inlined in the 1st compilation but not evaluated in the
   2nd compilation
 - `- (not inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated but not inlined in the 1st
@@ -316,6 +356,3 @@ Therefore, all possible combinations in the delta tree are:
   compilations, inlined the 1st compilation but not inlined in the 2nd compilation
 - `* (not inlined -> inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated in both
   compilations, not inlined the 1st compilation but inlined in the 2nd compilation
-- `java.lang.String.equals(Object) at bci 44` = the method was evaluated and inlined in both compilations
-- `(not inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated and not inlined in both
-  compilations
