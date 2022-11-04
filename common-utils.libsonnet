@@ -81,7 +81,7 @@
     if std.member(build.targets, "gate") then
     build + {
       guard+: {
-        includes+: [ suite + "/**"      for suite in suites ] + extra_includes,
+        includes+: [ suite + "/**"      for suite in suites ] + extra_includes + ["/*.jsonnet", "/*.libsonnet", "/*.json"],
         excludes+: [ suite + "/docs/**" for suite in suites ] + [ "**.md" ] + extra_excludes
       }
     }
