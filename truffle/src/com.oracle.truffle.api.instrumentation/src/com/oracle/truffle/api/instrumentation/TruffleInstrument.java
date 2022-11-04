@@ -65,6 +65,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -1310,6 +1311,10 @@ public abstract class TruffleInstrument {
         /**
          * A link to a website with more information about the instrument. Will be shown in the help
          * text of GraalVM launchers.
+         * <p>
+         * The link can contain the substitution {@code ${graalvm-version}}, which will be replaced
+         * by the current GraalVM version. Optionally, a format string can be provided for the
+         * version using {@code ${graalvm-version:format}}. See {@link Version#format}.
          * 
          * @since 22.1.0
          */
