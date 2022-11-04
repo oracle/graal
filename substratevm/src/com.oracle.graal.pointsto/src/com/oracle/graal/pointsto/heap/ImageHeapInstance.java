@@ -60,16 +60,12 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         this(type, null, type.getInstanceFields(true).length);
     }
 
-    ImageHeapInstance(JavaConstant object, int length) {
-        this(null, object, length);
-    }
-
     ImageHeapInstance(ResolvedJavaType type, JavaConstant object, int length) {
-        this(type, object, new Object[length], false);
+        this(type, object, new Object[length], createIdentityHashCode(object), false);
     }
 
-    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, Object[] fieldValues, boolean compressed) {
-        super(type, object, compressed);
+    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, Object[] fieldValues, int identityHashCode, boolean compressed) {
+        super(type, object, identityHashCode, compressed);
         this.fieldValues = fieldValues;
     }
 
@@ -112,13 +108,13 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     @Override
     public JavaConstant compress() {
         assert !compressed;
-        return new ImageHeapInstance(type, hostedObject, fieldValues, true);
+        return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, true);
     }
 
     @Override
     public JavaConstant uncompress() {
         assert compressed;
-        return new ImageHeapInstance(type, hostedObject, fieldValues, false);
+        return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, false);
     }
 
     @Override
