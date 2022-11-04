@@ -487,7 +487,7 @@ def svm_gate_body(args, tasks):
                 from jsonschema.exceptions import ValidationError, SchemaError
             except ImportError:
                 mx.abort('Unable to import jsonschema')
-            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.0.json')) as f:
+            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.1.json')) as f:
                 json_schema = json.load(f)
             with tempfile.NamedTemporaryFile(prefix='build_json') as json_file:
                 helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={json_file.name}'])
