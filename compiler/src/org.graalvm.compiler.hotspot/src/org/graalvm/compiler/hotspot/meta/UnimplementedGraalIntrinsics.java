@@ -311,6 +311,21 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "java/lang/Object.<blackhole>*");
         }
 
+        if (JAVA_SPEC >= 18) {
+            add(ignore,
+                            "java/lang/StrictMath.max(II)I",
+                            "java/lang/StrictMath.min(II)I");
+            if (arch instanceof AMD64) {
+                if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
+                    add(ignore,
+                                    "java/lang/StrictMath.max(DD)D",
+                                    "java/lang/StrictMath.max(FF)F",
+                                    "java/lang/StrictMath.min(DD)D",
+                                    "java/lang/StrictMath.min(FF)F");
+                }
+            }
+        }
+
         if (JAVA_SPEC >= 16) {
             add(toBeInvestigated,
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
@@ -345,13 +360,6 @@ public final class UnimplementedGraalIntrinsics {
         if (JAVA_SPEC >= 18) {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I",
-                            "java/lang/StrictMath.max(DD)D",
-                            "java/lang/StrictMath.max(FF)F",
-                            "java/lang/StrictMath.max(II)I",
-                            "java/lang/StrictMath.min(DD)D",
-                            "java/lang/StrictMath.min(FF)F",
-                            "java/lang/StrictMath.min(II)I",
-                            "jdk/internal/misc/Unsafe.storeStoreFence()V",
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$VectorPayload;" +
                                             "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$BinaryOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
                             "jdk/internal/vm/vector/VectorSupport.broadcastCoerced(Ljava/lang/Class;Ljava/lang/Class;IJLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$BroadcastOperation;)" +

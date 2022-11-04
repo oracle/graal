@@ -116,6 +116,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
                 registerMathPlugins(invocationPlugins, arch, replacements);
+                registerStrictMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
             }
@@ -262,6 +263,11 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
                     return true;
                 }
+
+                @Override
+                public boolean isOptional() {
+                    return JavaVersionUtil.JAVA_SPEC < 18;
+                }
             });
             r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX), new InvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
                 @Override
@@ -269,8 +275,18 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
                     return true;
                 }
+
+                @Override
+                public boolean isOptional() {
+                    return JavaVersionUtil.JAVA_SPEC < 18;
+                }
             });
         }
+    }
+
+    private static void registerStrictMathPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
+        Registration r = new Registration(plugins, StrictMath.class, replacements);
+        registerMinMax(r, arch);
     }
 
     private static final class ArrayCompareToPlugin extends InvocationPlugin {

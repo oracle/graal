@@ -103,6 +103,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
                 registerMathPlugins(invocationPlugins, registerForeignCallMath);
+                registerStrictMathPlugins(invocationPlugins);
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
@@ -212,6 +213,11 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
                     return true;
                 }
+
+                @Override
+                public boolean isOptional() {
+                    return JavaVersionUtil.JAVA_SPEC < 18;
+                }
             });
             r.register(new InvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
                 @Override
@@ -219,8 +225,18 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
                     return true;
                 }
+
+                @Override
+                public boolean isOptional() {
+                    return JavaVersionUtil.JAVA_SPEC < 18;
+                }
             });
         }
+    }
+
+    private static void registerStrictMathPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, StrictMath.class);
+        registerMinMax(r);
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {

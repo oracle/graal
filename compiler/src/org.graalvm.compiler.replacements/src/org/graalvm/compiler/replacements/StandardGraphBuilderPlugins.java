@@ -742,6 +742,13 @@ public class StandardGraphBuilderPlugins {
             r.register(new CacheWritebackPlugin(false, "writeback0", Receiver.class, long.class));
             r.register(new CacheWritebackPlugin(true, "writebackPreSync0", Receiver.class));
             r.register(new CacheWritebackPlugin(false, "writebackPostSync0", Receiver.class));
+
+            r.register(new UnsafeFencePlugin(MembarNode.FenceKind.STORE_STORE, "storeStoreFence") {
+                @Override
+                public boolean isOptional() {
+                    return JavaVersionUtil.JAVA_SPEC < 18;
+                }
+            });
         }
 
         r.register(new InvocationPlugin("arrayBaseOffset", Receiver.class, Class.class) {

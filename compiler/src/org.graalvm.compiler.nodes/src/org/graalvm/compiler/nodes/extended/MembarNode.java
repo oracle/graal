@@ -50,6 +50,7 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
     public enum FenceKind {
         NONE(0),
         STORE_LOAD(MemoryBarriers.STORE_LOAD),
+        STORE_STORE(MemoryBarriers.STORE_STORE),
         LOAD_ACQUIRE(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE),
         STORE_RELEASE(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE),
         ALLOCATION_INIT(MemoryBarriers.STORE_STORE),
