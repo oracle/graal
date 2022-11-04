@@ -357,6 +357,8 @@ public class MethodTypeFlowBuilder {
                 if (((BytecodeExceptionNode) usage).getExceptionKind() != BytecodeExceptionKind.CLASS_CAST) {
                     return false;
                 }
+            } else if (usage instanceof FrameState) {
+                /* FrameState usages are only for debugging and not necessary for correctness. */
             } else {
                 return false;
             }
