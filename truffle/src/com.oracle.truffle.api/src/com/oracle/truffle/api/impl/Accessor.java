@@ -736,6 +736,8 @@ public abstract class Accessor {
         public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
 
         public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract String isSafeToPreinitialize(Path path);
     }
 
     public abstract static class LanguageSupport extends Support {

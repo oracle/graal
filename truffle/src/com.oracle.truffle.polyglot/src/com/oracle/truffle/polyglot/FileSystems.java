@@ -180,6 +180,31 @@ final class FileSystems {
         }
     }
 
+    /**
+     * Checks if the Path is safe to be stored in the image heap. A path is considered safe if it is
+     * either relative or points to the language home.
+     *
+     * @return {@code null} if the path can be safely stored in the image heap. Returns a string
+     *         path when the path cannot be safely stored in the image heap.
+     */
+    static String isSafeToPreinitialize(Path path) {
+        if (path instanceof PreInitializeContextFileSystem.PreInitializePath) {
+            Object delegatePath = ((PreInitializeContextFileSystem.PreInitializePath) path).delegatePath;
+            if (delegatePath instanceof PreInitializeContextFileSystem.ImageHeapPath) {
+                PreInitializeContextFileSystem.ImageHeapPath imageHeapPath = (PreInitializeContextFileSystem.ImageHeapPath) delegatePath;
+                if (imageHeapPath.safe) {
+                    return null;
+                } else {
+                    return imageHeapPath.path;
+                }
+            } else {
+                throw new IllegalStateException("Can be called only during native image store");
+            }
+        } else {
+            throw new IllegalStateException("Can be called only during native image store.");
+        }
+    }
+
     private static String relativizeToLanguageHome(FileSystem fs, Path path, PolyglotLanguage language) {
         String languageHome = language.cache.getLanguageHome();
         if (languageHome == null) {
@@ -544,7 +569,7 @@ final class FileSystems {
                         break;
                     }
                 }
-                delegatePath = new ImageHeapPath(languageId, internalPath.toString());
+                delegatePath = new ImageHeapPath(languageId, internalPath.toString(), !internalPath.isAbsolute());
             }
 
             @Override
@@ -703,11 +728,13 @@ final class FileSystems {
 
             private final String languageId;
             private final String path;
+            private final boolean safe;
 
-            ImageHeapPath(String languageId, String path) {
+            ImageHeapPath(String languageId, String path, boolean safe) {
                 assert path != null;
                 this.languageId = languageId;
                 this.path = path;
+                this.safe = safe;
             }
         }
     }
