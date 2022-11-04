@@ -17,7 +17,6 @@
   local jdt = task_spec(common.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
-  local clone_js_benchmarks = sg.clone_js_benchmarks,
 
   local maven = task_spec({
     packages+: {
@@ -79,13 +78,6 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "js": mxgate("build,js") + clone_js_benchmarks + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk17": gate + t("35:00"),
-      "darwin:amd64:jdk17": gate + t("45:00"),
-    }),
-    "js-quickbuild": mxgate("build,js_quickbuild") + clone_js_benchmarks + platform_spec(no_jobs) + platform_spec({
-      "darwin:amd64:jdk17": gate + t("45:00"),
-    }),
     "build-ce": mxgate("build,checkstubs,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + musl_toolchain + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk11": gate + t("35:00"),
     }),

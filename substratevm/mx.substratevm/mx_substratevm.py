@@ -220,8 +220,6 @@ GraalTags = Tags([
     'debuginfotest_quickbuild',
     'test',
     'test_quickbuild',
-    'js',
-    'js_quickbuild',
     'build',
     'benchmarktest',
     "nativeimagehelp",
@@ -456,24 +454,6 @@ def svm_gate_body(args, tasks):
                 mx.abort('mx native-image --help does not seem to output the proper message. This can happen if you add extra arguments the mx native-image call without checking if an argument was --help or --help-extra.')
 
             mx.log('mx native-image --help output check detected no errors.')
-
-    with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
-        if t:
-            config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
-                                         dynamicimports=['/' + svm_suite().name, '/graal-js'])
-            with native_image_context(IMAGE_ASSERTION_FLAGS, config=config) as native_image:
-                jslib = build_js_lib(native_image)
-                test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js(jslib, [('octane-richards', 1000, 100, 300)])
-
-    with Task('JavaScript with quickbuild', tasks, tags=[GraalTags.js_quickbuild]) as t:
-        if t:
-            config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
-                                         dynamicimports=['/' + svm_suite().name, '/graal-js'])
-            with native_image_context(IMAGE_ASSERTION_FLAGS + DEVMODE_FLAGS, config=config) as native_image:
-                jslib = build_js_lib(native_image)
-                test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js(jslib, [('octane-richards', 1000, 100, 300)])
 
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
