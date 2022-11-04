@@ -99,9 +99,6 @@
     "build-ce": mxgate("build,checkstubs,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + musl_toolchain + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk11": gate + t("35:00"),
     }),
-    "modules-basic": mxgate("build,hellomodule,test") + maven + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk11": gate + t("30:00"),
-    }),
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + jsonschema + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk17": gate + t("30:00"),
     }),
