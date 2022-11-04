@@ -1252,6 +1252,7 @@ suite = {
             },
           },
         },
+        "<others>" : {"<others>": {}},
       },
       "testProject" : True,
       "defaultBuild" : False,
