@@ -564,6 +564,11 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
+    @Fold
+    public static boolean useLIRBackend() {
+        return "lir".equals(CompilerBackend.getValue());
+    }
+
     /*
      * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
      * segfaults when the -dead_strip option is used.

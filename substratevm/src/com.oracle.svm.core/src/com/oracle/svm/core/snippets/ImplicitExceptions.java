@@ -67,6 +67,8 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor CREATE_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIllegalArgumentException", false);
     public static final SubstrateForeignCallDescriptor CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNegativeArraySizeException", false);
     public static final SubstrateForeignCallDescriptor CREATE_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createDivisionByZeroException", false);
+    public static final SubstrateForeignCallDescriptor CREATE_INTEGER_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIntegerOverflowException", false);
+    public static final SubstrateForeignCallDescriptor CREATE_LONG_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createLongOverflowException", false);
     public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorNullary", false);
     public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorObject", false);
 
@@ -85,6 +87,8 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNegativeArraySizeException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArithmeticException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewDivisionByZeroException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_INTEGER_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewIntegerOverflowException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_LONG_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewLongOverflowException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorNullary", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorObject", true);
 
@@ -111,10 +115,11 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION,
                     CREATE_ILLEGAL_ARGUMENT_EXCEPTION, CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION,
-                    CREATE_DIVISION_BY_ZERO_EXCEPTION, CREATE_ASSERTION_ERROR_NULLARY, CREATE_ASSERTION_ERROR_OBJECT,
+                    CREATE_DIVISION_BY_ZERO_EXCEPTION, CREATE_INTEGER_OVERFLOW_EXCEPTION, CREATE_LONG_OVERFLOW_EXCEPTION, CREATE_ASSERTION_ERROR_NULLARY, CREATE_ASSERTION_ERROR_OBJECT,
                     THROW_NEW_NULL_POINTER_EXCEPTION, THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION, THROW_NEW_CLASS_CAST_EXCEPTION, THROW_NEW_ARRAY_STORE_EXCEPTION, THROW_NEW_ARITHMETIC_EXCEPTION,
                     THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS, THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS, THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS, THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS,
-                    THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION, THROW_NEW_DIVISION_BY_ZERO_EXCEPTION, THROW_NEW_ASSERTION_ERROR_NULLARY, THROW_NEW_ASSERTION_ERROR_OBJECT,
+                    THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION, THROW_NEW_DIVISION_BY_ZERO_EXCEPTION, THROW_NEW_INTEGER_OVERFLOW_EXCEPTION, THROW_NEW_LONG_OVERFLOW_EXCEPTION,
+                    THROW_NEW_ASSERTION_ERROR_NULLARY, THROW_NEW_ASSERTION_ERROR_OBJECT,
                     GET_CACHED_NULL_POINTER_EXCEPTION, GET_CACHED_OUT_OF_BOUNDS_EXCEPTION, GET_CACHED_CLASS_CAST_EXCEPTION, GET_CACHED_ARRAY_STORE_EXCEPTION, GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION,
                     GET_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION, GET_CACHED_ARITHMETIC_EXCEPTION, GET_CACHED_ASSERTION_ERROR,
                     THROW_CACHED_NULL_POINTER_EXCEPTION, THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION, THROW_CACHED_CLASS_CAST_EXCEPTION, THROW_CACHED_ARRAY_STORE_EXCEPTION,
@@ -212,6 +217,20 @@ public class ImplicitExceptions {
     private static ArithmeticException createDivisionByZeroException() {
         vmErrorIfImplicitExceptionsAreFatal();
         return new ArithmeticException("/ by zero");
+    }
+
+    /** Foreign call: {@link #CREATE_INTEGER_OVERFLOW_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static ArithmeticException createIntegerOverflowException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return new ArithmeticException("integer overflow");
+    }
+
+    /** Foreign call: {@link #CREATE_LONG_OVERFLOW_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static ArithmeticException createLongOverflowException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return new ArithmeticException("long overflow");
     }
 
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_NULLARY}. */
@@ -315,6 +334,20 @@ public class ImplicitExceptions {
     private static void throwNewDivisionByZeroException() {
         vmErrorIfImplicitExceptionsAreFatal();
         throw new ArithmeticException("/ by zero");
+    }
+
+    /** Foreign call: {@link #THROW_NEW_INTEGER_OVERFLOW_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwNewIntegerOverflowException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw new ArithmeticException("integer overflow");
+    }
+
+    /** Foreign call: {@link #THROW_NEW_LONG_OVERFLOW_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwNewLongOverflowException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw new ArithmeticException("long overflow");
     }
 
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_NULLARY}. */
