@@ -696,8 +696,6 @@ public class OptimizationLogImpl implements OptimizationLog {
     /**
      * Converts an inlining subtree to a JSON map starting from a callsite.
      *
-     * Subtrees representing a node replaced by an inlined snippet are not included.
-     *
      * @param callsite the root of the inlining subtree
      * @param isInlined {@code true} if the callsite was inlined
      * @param reason the list of reasons for the inlining decisions made about the callsite
@@ -716,9 +714,6 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         List<Object> invokes = null;
         for (InliningLog.Callsite child : callsite.children) {
-            if (child.isInlinedSnippet()) {
-                continue;
-            }
             boolean childIsInlined = false;
             List<String> childReason = null;
             for (InliningLog.Decision childDecision : child.decisions) {

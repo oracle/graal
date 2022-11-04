@@ -104,43 +104,15 @@ public class InliningLog {
         public ResolvedJavaMethod target;
         public Invokable invoke;
 
-        /**
-         * {@code true} if this subtree represents a node replaced with an inlined snippet.
-         */
-        private final boolean inlinedSnippet;
-
-        Callsite(Callsite parent, Invokable originalInvoke, boolean inlinedSnippet) {
+        Callsite(Callsite parent, Invokable originalInvoke) {
             this.parent = parent;
             this.decisions = new ArrayList<>();
             this.children = new ArrayList<>();
             this.invoke = originalInvoke;
-            this.inlinedSnippet = inlinedSnippet;
         }
 
-        /**
-         * Adds a child callsite represented by an invoke, inheriting the {@link #inlinedSnippet}
-         * flag.
-         *
-         * @param childInvoke the invoke representing a child callsite
-         * @return the added child callsite
-         */
         public Callsite addChild(Invokable childInvoke) {
-            Callsite child = new Callsite(this, childInvoke, inlinedSnippet);
-            children.add(child);
-            return child;
-        }
-
-        /**
-         * Adds a child callsite represented by an invoke and sets the child's
-         * {@link #inlinedSnippet} flag.
-         *
-         * @param childInvoke the invoke representing a child callsite
-         * @param isInlinedSnippet {@code true} if the child's subtree represents a node replaced
-         *            with an inlined snippet
-         * @return the added child callsite
-         */
-        public Callsite addChild(Invokable childInvoke, boolean isInlinedSnippet) {
-            Callsite child = new Callsite(this, childInvoke, isInlinedSnippet);
+            Callsite child = new Callsite(this, childInvoke);
             children.add(child);
             return child;
         }
@@ -169,20 +141,13 @@ public class InliningLog {
         public int getBci() {
             return invoke != null ? invoke.bci() : -1;
         }
-
-        /**
-         * Gets whether this subtree represents a node replaced with an inlined snippet.
-         */
-        public boolean isInlinedSnippet() {
-            return inlinedSnippet;
-        }
     }
 
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null, false);
+        this.root = new Callsite(null, null);
         this.root.target = rootMethod;
         this.leaves = EconomicMap.create();
     }
@@ -232,14 +197,13 @@ public class InliningLog {
      * This is called for example when a node in a graph is replaced with a snippet.
      *
      * @param replacementLog if non-null, its subtrees are appended below the root of this log.
-     * @param isInlinedSnippet {@code true} if this is called when a node is replaced with a snippet
      * @see InliningLog#addDecision
      */
-    public void addLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog, boolean isInlinedSnippet) {
+    public void addLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
         if (replacementLog != null) {
             EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             for (Callsite calleeChild : replacementLog.root.children) {
-                Callsite child = root.addChild(calleeChild.invoke, isInlinedSnippet);
+                Callsite child = root.addChild(calleeChild.invoke);
                 copyTree(child, calleeChild, replacements, mapping);
             }
             MapCursor<Invokable, Callsite> entries = replacementLog.leaves.getEntries();
