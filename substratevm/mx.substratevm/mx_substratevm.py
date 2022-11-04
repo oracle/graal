@@ -364,8 +364,11 @@ def svm_gate_body(args, tasks):
 
     with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                debuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+            if mx.is_windows():
+                mx.warn('debuginfotest does not work on Windows')
+            else:
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    debuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
     with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
         if t:
