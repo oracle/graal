@@ -226,7 +226,6 @@ GraalTags = Tags([
     'muslcbuild',
     'hellomodule',
     'condconfig',
-    'checkstubs',
 ])
 
 def vm_native_image_path(config=None):

@@ -84,7 +84,7 @@
     "modules-basic": mxgate("build,hellomodule,test") + maven + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk11": gate + t("30:00"),
     }),
-    "style-fullbuild": mxgate("fullbuild,style,checkstubs,nativeimagehelp") + eclipse + jdt + maven + jsonschema + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + jsonschema + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk17": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,test,svmjunit") + platform_spec(no_jobs) + platform_spec({
