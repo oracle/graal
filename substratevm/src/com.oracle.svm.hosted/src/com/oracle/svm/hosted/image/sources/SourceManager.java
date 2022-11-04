@@ -28,7 +28,7 @@ package com.oracle.svm.hosted.image.sources;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -36,15 +36,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A singleton class responsible for locating source files for classes included in a native image
- * and copying them into the local sources.
+ * and copying them into the local sources cache directory.
  */
 public class SourceManager {
 
-    SourceCache cache = new SourceCache();
-
     /**
      * Find and cache a source file for a given Java class and return a Path to the file relative to
-     * the source.
+     * the local sources cache directory.
      * 
      * @param resolvedType the Java type whose source file should be located and cached
      * @param clazz the Java class associated with the resolved type
@@ -53,39 +51,35 @@ public class SourceManager {
      *         generated debug info or null if a source file cannot be found or cached.
      */
     public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz, DebugContext debugContext) {
-        /* short circuit if we have already seen this type */
-        Path path = verifiedPaths.get(resolvedType);
-        if (path != null) {
-            return (path != INVALID_PATH ? path : null);
+        // only instance classes and interfaces have a source file
+        if (!resolvedType.isInstanceClass() && !resolvedType.isInterface()) {
+            return null;
         }
-
+        // see if we can find a base file name for the class
         String fileName = computeBaseName(resolvedType);
-        /*
-         * null for the name means this class will not have a source so we skip on that
-         */
-        if (fileName != null) {
-            /*
-             * we can only provide sources for known classes and interfaces
-             */
-            if (resolvedType.isInstanceClass() || resolvedType.isInterface()) {
-                String packageName = computePackageName(resolvedType);
-                path = locateSource(fileName, packageName, clazz);
-                if (path == null) {
-                    // as a last ditch effort derive path from the Java class name
-                    if (debugContext.areScopesEnabled()) {
-                        debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s\n", resolvedType.toJavaName());
-                    }
-                    if (packageName.length() > 0) {
-                        path = Paths.get("", packageName.split("\\."));
-                        path = path.resolve(fileName);
-                    }
-                }
-            }
+        if (fileName == null) {
+            return null;
         }
-        /* memoize the lookup */
-        verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
+        String packageName = computePackageName(resolvedType);
+        Path path = computePrototypeName(fileName, packageName);
 
-        return path;
+        /* lookup the source and race with other threads to cache it */
+        Source source = sourceIndex.computeIfAbsent(path, Source::new);
+        if (source.shouldCache()) {
+            // ask the source cache to locate the source file
+            String moduleName = null;
+            if (clazz != null) {
+                /* Paths require the module name as prefix */
+                moduleName = clazz.getModule().getName();
+            }
+
+            cache.resolve(source, moduleName);
+
+            assert !source.isCaching();
+        }
+
+        /* cache attempt has been tried - return any associated path */
+        return source.getPath();
     }
 
     /**
@@ -157,23 +151,12 @@ public class SourceManager {
     }
 
     /**
-     * A map from a Java type to an associated source paths which is known to have an up to date
-     * entry in the relevant source file cache. This is used to memoize previous lookups.
+     * A SourceCache that is responsible for locating and caching source files.
      */
-    private static HashMap<ResolvedJavaType, Path> verifiedPaths = new HashMap<>();
+    private SourceCache cache = new SourceCache();
 
     /**
-     * An invalid path used as a marker to track failed lookups so we don't waste time looking up
-     * the source again. Note that all legitimate paths will end with a ".java" suffix.
+     * An index recording the status of target files in the source file cache.
      */
-    private static final Path INVALID_PATH = Paths.get("invalid");
-
-    private Path locateSource(String fileName, String packagename, Class<?> clazz) {
-        Path prototypeName = computePrototypeName(fileName, packagename);
-        if (prototypeName != null) {
-            return cache.resolve(prototypeName, clazz);
-        } else {
-            return null;
-        }
-    }
+    private ConcurrentHashMap<Path, Source> sourceIndex = new ConcurrentHashMap<>();
 }

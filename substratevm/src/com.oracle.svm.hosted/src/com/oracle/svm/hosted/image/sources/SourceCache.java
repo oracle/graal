@@ -48,12 +48,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 /**
- * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
- * This class implements core behaviours that manage a cache of source files in a specific
- * subdirectory of the local sources directory. It allows source files to be located when present in
- * the local cache or cached when not already present. Subclasses are responsible for providing
- * behaviours that identify an original source for addition to the cache and for verifying that a
- * cached file is not out of date with respect to its original.
+ * A thread safe cache manager for application, GraalVM and JDK Java source files.
  */
 
 public class SourceCache {
@@ -61,21 +56,21 @@ public class SourceCache {
     /**
      * A list of all entries in the classpath used by the native image classloader.
      */
-    protected static final List<Path> classPathEntries = new ArrayList<>();
+    private static final List<Path> classPathEntries = new ArrayList<>();
     /**
      * A list of all entries in the module path used by the native image classloader.
      */
-    protected static final List<Path> modulePathEntries = new ArrayList<>();
+    private static final List<Path> modulePathEntries = new ArrayList<>();
     /**
      * A list of all entries in the source search path specified by the user on the command line.
      */
-    protected static final List<String> sourcePathEntries = new ArrayList<>();
+    private static final List<String> sourcePathEntries = new ArrayList<>();
 
     /**
      * A list of root directories which may contain source files from which this cache can be
      * populated.
      */
-    protected List<SourceRoot> srcRoots;
+    private List<SourceRoot> srcRoots;
 
     /**
      * Modules needing special case root processing.
@@ -88,12 +83,12 @@ public class SourceCache {
     /**
      * Extra root directories for files in the jdk.internal.vm.ci/compiler modules.
      */
-    private HashMap<String, List<Path>> specialSrcRoots;
+    private final HashMap<String, List<Path>> specialSrcRoots;
 
     /**
      * Create the source cache.
      */
-    protected SourceCache() {
+    public SourceCache() {
         basePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
         srcRoots = new ArrayList<>();
         specialSrcRoots = new HashMap<>();
@@ -191,7 +186,7 @@ public class SourceCache {
                         .forEach(sourcePathEntry -> addApplicationSourceRoot(Paths.get(sourcePathEntry), false));
     }
 
-    protected void addApplicationSourceRoot(Path sourceRoot, boolean fromClassPath) {
+    private void addApplicationSourceRoot(Path sourceRoot, boolean fromClassPath) {
         try {
             Path sourcePath = sourceRoot;
             String fileNameString = sourcePath.getFileName().toString();
@@ -263,65 +258,49 @@ public class SourceCache {
      * alternatively identify and validate any existing candidate cache entry to ensure it is not
      * out of date refreshing it if need be.
      *
-     * @param filePath a prototype path for a file to be included in the cache derived from the name
-     *            of some associated class.
-     * @return a path identifying the cached file or null if the candidate cannot be found.
+     * @param source details of the source file to be searched for
+     * @param moduleName The module classes in the source file are expected to belong to.
      */
-    public Path resolve(Path filePath, Class<?> clazz) {
-        File cachedFile = findCandidate(filePath);
-        if (cachedFile == null) {
-            return tryCacheFile(filePath, clazz);
+    public void resolve(Source source, String moduleName) {
+        assert source.isCaching() : "invalid state for source resolve";
+        Path subPath = source.getPath();
+        // first try to locate the file
+        Path sourcePath = locateSourceFile(subPath, moduleName);
+        if (sourcePath == null) {
+            // mark it as missing, notifying any concurrent threads which may be trying to look up
+            // the same file
+            source.updateStatus(CacheStatus.MISSING);
         } else {
-            return checkCacheFile(filePath, clazz);
+            // mark it as located, notifying any concurrent threads which may be trying to look up
+            // the same file
+            source.updateStatus(CacheStatus.LOCATED);
+            // see if the same file already exists in the cache
+            Path targetPath = cachedPath(subPath);
+            // see whether we need to update the cached copy
+            maybeCacheSource(source, sourcePath, targetPath);
         }
     }
 
     /**
-     * Given a prototype path for a file to be resolved return a File identifying a cached candidate
-     * for for that Path or null if no cached candidate exists.
-     *
-     * @param filePath a prototype path for a file to be included in the cache derived from the name
-     *            of some associated class.
-     * @return a File identifying a cached candidate or null.
+     * Look for a source file in one of the source roots whose path matches that of the supplied
+     * source.
+     * 
+     * @param subPath
+     * @param moduleName The name of the module to which the classes in the source are expected to
+     *            belong.
+     * @return A path to the source file in the file system to which it belongs or null if a source
+     *         cannot be found.
      */
-    public File findCandidate(Path filePath) {
-        /*
-         * JDK source candidates are stored in the src.zip file using the path we are being asked
-         * for. A cached version should exist under this cache's root using that same path.
-         */
-        File file = cachedFile(filePath);
-        if (file.exists()) {
-            return file;
-        }
-        return null;
-    }
-
-    /**
-     * Attempt to copy a source file from one of this cache's source roots to the local sources
-     * directory storing it in the subdirectory that belongs to this cache.
-     *
-     * @param filePath a path appended to each of the cache's source roots in turn until an
-     *            acceptable source file is found and copied to the local source directory.
-     * @return the supplied path if the file has been located and copied to the local sources
-     *         directory or null if it was not found or the copy failed.
-     */
-    protected Path tryCacheFile(Path filePath, Class<?> clazz) {
-        final Path targetPath = cachedPath(filePath);
-        String moduleName = null;
-        if (clazz != null) {
-            /* Paths require the module name as prefix */
-            moduleName = clazz.getModule().getName();
-        }
-
+    private Path locateSourceFile(Path subPath, String moduleName) {
         if (moduleName != null) {
             for (String specialRootModule : specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
-                        String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
-                        if (filePath.toString().startsWith(srcRootGroup)) {
-                            Path sourcePath = extendPath(srcRoot, filePath);
-                            if (tryCacheFileFromRoot(sourcePath, targetPath)) {
-                                return filePath;
+                        String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", subPath.getFileSystem().getSeparator());
+                        if (subPath.toString().startsWith(srcRootGroup)) {
+                            Path sourcePath = extendPath(srcRoot, subPath);
+                            if (sourceExists(sourcePath)) {
+                                return sourcePath;
                             }
                         }
                     }
@@ -331,112 +310,64 @@ public class SourceCache {
         }
 
         for (SourceRoot root : srcRoots) {
-            final Path scopedFilePath;
+            final Path scopedSubPath;
             if (moduleName != null && root.isJDK) {
-                scopedFilePath = Paths.get(moduleName, filePath.toString());
+                scopedSubPath = Paths.get(moduleName, subPath.toString());
             } else {
-                scopedFilePath = filePath;
+                scopedSubPath = subPath;
             }
-            final Path sourcePath = extendPath(root.path, scopedFilePath);
-            if (tryCacheFileFromRoot(sourcePath, targetPath)) {
-                // return the original filePath
-                // we don't want the sources/ prefix to go into the debuginfo
-                return filePath;
+            final Path sourcePath = extendPath(root.path, scopedSubPath);
+            if (sourceExists(sourcePath)) {
+                return sourcePath;
             }
         }
         return null;
     }
 
-    protected boolean tryCacheFileFromRoot(Path sourcePath, Path targetPath) {
-        try {
-            if (checkSourcePath(sourcePath)) {
-                ensureTargetDirs(targetPath.getParent());
-                Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-                return true;
-            }
-        } catch (IOException ioe) {
-        }
-        return false;
-    }
-
     /**
-     * Check whether the copy of a given source file in the local source cache is up to date with
-     * respect to any original located in this cache's and if not copy the original to the
-     * subdirectory that belongs to this cache.
-     *
-     * @param filePath a path appended to each of the cache's source roots in turn until an matching
-     *            original source is found for comparison against the local source directory.
-     * @return the supplied path if the file is up to date or if an updated version has been copied
-     *         to the local sources directory or null if was not found or the copy failed.
+     * Check whether we need ot update the cache with a copy of a source file located for the
+     * current source and if so try ot copy it.
+     * 
+     * @param source Details of the source file that may need caching.
+     * @param sourcePath A path for the file that may nee dot be cached
+     * @param targetPath A path for the target file in the cache
      */
-    protected Path checkCacheFile(Path filePath, Class<?> clazz) {
-        Path targetPath = cachedPath(filePath);
-        String moduleName = null;
-        if (clazz != null) {
-            /* Paths require the module name as prefix */
-            moduleName = clazz.getModule().getName();
-        }
+    void maybeCacheSource(Source source, Path sourcePath, Path targetPath) {
+        // see if the target file already exists
+        File cachedFile = targetPath.toFile();
+        boolean doCopy;
 
-        if (moduleName != null) {
-            for (String specialRootModule : specialRootModules) {
-                if (moduleName.equals(specialRootModule)) {
-                    // handle this module specially as it has intermediate dirs
-                    for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
-                        String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
-                        if (filePath.toString().startsWith(srcRootGroup)) {
-                            Path sourcePath = extendPath(srcRoot, filePath);
-                            try {
-                                if (tryCheckCacheFile(sourcePath, targetPath)) {
-                                    return filePath;
-                                }
-                            } catch (IOException e) {
-                                /* delete the target file as it is invalid */
-                                targetPath.toFile().delete();
-                                /* have another go at caching it */
-                                return tryCacheFile(filePath, clazz);
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-
-        for (SourceRoot root : srcRoots) {
-            final Path scopedFilePath;
-            if (moduleName != null && root.isJDK) {
-                scopedFilePath = Paths.get(moduleName, filePath.toString());
-            } else {
-                scopedFilePath = filePath;
-            }
-            final Path sourcePath = extendPath(root.path, scopedFilePath);
+        if (cachedFile.exists()) {
             try {
-                if (tryCheckCacheFile(sourcePath, targetPath)) {
-                    return filePath;
-                }
+                // only copy if the size is different or the target is older than the source
+                FileTime sourceTime = Files.getLastModifiedTime(sourcePath);
+                FileTime destTime = Files.getLastModifiedTime(targetPath);
+                long sourceSize = Files.size(sourcePath);
+                long destSize = Files.size(targetPath);
+                doCopy = sourceSize != destSize || destTime.compareTo(sourceTime) < 0;
             } catch (IOException e) {
-                /* delete the target file as it is invalid */
-                targetPath.toFile().delete();
-                /* have another go at caching it */
-                return tryCacheFile(filePath, clazz);
+                // copy anyway just in case
+                System.out.println("IOException " + e);
+                e.printStackTrace();
+                doCopy = true;
             }
+        } else {
+            // we need to create the cached file and cache dir hierarchy
+            ensureTargetDirs(targetPath.getParent());
+            doCopy = true;
         }
-        /* delete the cached file as it is invalid */
-        targetPath.toFile().delete();
 
-        return null;
-    }
-
-    protected boolean tryCheckCacheFile(Path sourcePath, Path targetPath) throws IOException {
-        if (checkSourcePath(sourcePath)) {
-            FileTime sourceTime = Files.getLastModifiedTime(sourcePath);
-            FileTime destTime = Files.getLastModifiedTime(targetPath);
-            if (destTime.compareTo(sourceTime) < 0) {
+        if (doCopy) {
+            try {
                 Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+            } catch (IOException e) {
+                // cached file may be invalid so remove it
+                cachedFile.delete();
+                source.updateStatus(CacheStatus.MISSING);
+                return;
             }
-            return true;
         }
-        return false;
+        source.updateStatus(CacheStatus.CACHED);
     }
 
     /**
@@ -445,12 +376,12 @@ public class SourceCache {
      * necessary.
      *
      * @param root the path to be extended
-     * @param filePath the subpath to extend it with
+     * @param subPath the subpath to extend it with
      * @return the extended path
      */
-    protected Path extendPath(Path root, Path filePath) {
-        String filePathString = filePath.toString();
-        String fileSeparator = filePath.getFileSystem().getSeparator();
+    private Path extendPath(Path root, Path subPath) {
+        String filePathString = subPath.toString();
+        String fileSeparator = subPath.getFileSystem().getSeparator();
         String newSeparator = root.getFileSystem().getSeparator();
         if (!fileSeparator.equals(newSeparator)) {
             filePathString = filePathString.replace(fileSeparator, newSeparator);
@@ -464,18 +395,8 @@ public class SourceCache {
      * @param candidate a resolved candidate path for some given resolution request
      * @return the corresponding local Path
      */
-    protected Path cachedPath(Path candidate) {
+    private Path cachedPath(Path candidate) {
         return basePath.resolve(candidate);
-    }
-
-    /**
-     * Convert a potential resolved candidate path to the corresponding local File in this cache.
-     *
-     * @param candidate a resolved candidate path for some given resolution request
-     * @return the corresponding local File
-     */
-    protected File cachedFile(Path candidate) {
-        return cachedPath(candidate).toFile();
     }
 
     /**
@@ -484,7 +405,7 @@ public class SourceCache {
      * @param sourcePath the path to check
      * @return true if the path identifies a file or false if no such file can be found.
      */
-    protected static boolean checkSourcePath(Path sourcePath) {
+    private static boolean sourceExists(Path sourcePath) {
         return Files.isRegularFile(sourcePath);
     }
 
@@ -492,8 +413,10 @@ public class SourceCache {
      * Ensure the directory hierarchy for a path exists creating any missing directories if needed.
      *
      * @param targetDir a path to the desired directory
+     *
+     *            TODO: investigate whether this needs to be synchronized in order to be thread safe
      */
-    protected static void ensureTargetDirs(Path targetDir) {
+    private static void ensureTargetDirs(Path targetDir) {
         if (targetDir != null) {
             File targetFile = targetDir.toFile();
             if (!targetFile.exists()) {

@@ -350,10 +350,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
                 Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-                if (filePath == null && hostedType instanceof HostedInstanceClass) {
+                if (filePath == null && (hostedType.isInstanceClass() || hostedType.isInterface())) {
                     // conjure up an appropriate, unique file name to keep tools happy
                     // even though we cannot find a corresponding source
-                    filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
+                    filePath = fullFilePathFromClassName(hostedType);
                 }
                 fullFilePath = filePath;
             } catch (Throwable e) {
@@ -425,8 +425,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
-        String[] elements = hostedInstanceClass.toJavaName().split("\\.");
+    private static Path fullFilePathFromClassName(HostedType hostedClass) {
+        String[] elements = hostedClass.toJavaName().split("\\.");
         int count = elements.length;
         String name = elements[count - 1];
         while (name.startsWith("$")) {
