@@ -271,6 +271,9 @@ suite = {
               "<lib:sulongtest>",
               "<staticlib:sulongtest>",
             ],
+            "cmakeConfig" : {
+              "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
+            },
           },
         },
         "<others>" : {
