@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion" : "6.11.2",
   "name" : "sdk",
   "version" : "23.0.0",
   "release" : False,
@@ -80,19 +80,19 @@ suite = {
   "libraries" : {
     "WRK_MULTIARCH": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch.tar.gz"],
-      "sha1": "48f9df44d53b3fef8515e6d463a885aa00b5a954",
+      "digest": "sha512:a7f7a7fd9bf8b87423a682ff1390a6ba87cc8dec43d41a3dcabb9a4fa5516b3d2e71f2384661a4248440c0ba4f2e27b8ef50d5dc123c5ae118866fa38254e23c",
       "packedResource": True,
       "license": "Apache-2.0-wrk-a211dd5",
     },
     "WRK2_MULTIARCH": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch.tar.gz"],
-      "sha1": "04a75fe3362e3b708c0c44db81fa73029d9fb604",
+      "digest": "sha512:597d64086e4d8126bea480ae5edc15b3b9ed649a4ad38c99c42968f25e260da351780921c5013200eddefcc5a4b715676df194d52ff04a5bfcec024cc6140530",
       "packedResource": True,
       "license": "Apache-2.0",
     },
     "APACHE_JMETER_5.3": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/apache-jmeter-5.3.zip"],
-      "sha1": "17480a0905d9d485bc8ce8e7be9daec2de98c251",
+      "digest": "sha512:e84dfe57397ca5bd9ed5d38c85a1081373b047ff9d41658a64a09dcf8329c25aaa7c23b5bba1b492c3d12edce7f141504baba8071b05df760303c1873ee46ddb",
       "packedResource": True,
       "license": "Apache-2.0",
     },
@@ -123,7 +123,7 @@ suite = {
       }
     },
     "JLINE" : {
-      "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",
+      "digest" : "sha512:27f6e2523e539383cede51d8eae7e97d49038c5a66cb4a94a9ce85165f16e7382b937a238cdb0c92e1136af56c5f57bcc6c04435a370c5d49f7e4bd32f0d9194",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",
@@ -131,7 +131,7 @@ suite = {
       }
     },
     "JLINE3" : {
-      "sha1" : "78571ca051ec786f4140c91661058ce56a45d433",
+      "digest" : "sha512:d9518c40e206950b3815593de83b1e3632896096407937f15646c81c69f167900c67bd88f3ff2b86258960bbd108d3c0cf09a1ad7cfbf1be489b2af4feccbb58",
       "version" : "3.16.0.3",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new",
@@ -195,7 +195,7 @@ suite = {
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
-            "sha1" : "f8a11403a5a975ff7eb231c785979a37000cbf62",
+            "digest" : "sha512:6ab8d86a4d9f0df32921d44c8b4e627a848df552b0bec9a278c42a578013b49b1bb1f43bb236c89965ae10f458760b8e5cf0106f1fbf7a137550a5d981df6c47",
           }
         },
         "windows" : {
@@ -217,7 +217,7 @@ suite = {
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "e214d63812b9276880e5c4e1849a493653f1e269",
+      "digest" : "sha512:62821277a43e558b1c0bd6da494e64407871af87fada9017ade5a48567e418cc83ad297a729aea3d606c3290d8909eeeae9d374cd439a5254ffcfb44a83d3935",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
@@ -225,7 +225,7 @@ suite = {
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "4b631ecd732e38d491ff6f41da796e393cb1d874",
+      "digest" : "sha512:6f99f1f7950521a8a5f261b536ae7066cece753ed1dde458c7ffb4e38652f5bfe15b03cf6e0e67ec5c7c402cf57c2898f445f329bc115195f29cdb5b424089b8",
       "license" : "Apache-2.0-LLVM",
     },
   },

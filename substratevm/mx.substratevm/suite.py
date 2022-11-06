@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion" : "6.9.9",
+    "mxversion" : "6.11.2",
     "name": "substratevm",
     "version" : "23.0.0",
     "release" : False,
@@ -60,15 +60,15 @@ suite = {
         },
         "RENAISSANCE_HARNESS_v0.13" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.13.0.tar.gz"],
-            "sha1" : "8edc1db5c7ea977e2a9c037b5324bb4cbee40082",
+            "digest" : "sha512:11b1c1effbca954948e8b51657c36aed60a806e4e5ded8a7eac8247cd217d05b6d0b761f6341438d137dfc18e16546e01e687f70a1a8cedbfbbc44e917dbf3aa",
             "packedResource": True,
         },
         "SPARK_BREEZE_PATCHED" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/breeze_2.11-0.11.2-patched.jar"],
-            "sha1" : "e3327f5d890b5af0f7363a8b3cd95b6ce24bc1ea",
+            "digest" : "sha512:754c06ddd1be0938d421ff332328e05ab754ea8fe95620c5d387fdf4bda6193455498ab82c6b449abadb7ca4aea4defc42ed00deb71fc40dfc619644b40990c3",
         },
         "XERCES_IMPL" : {
-            "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
+            "digest" : "sha512:abc3cc088fba82c3ad02e18f8664c1aebed018cf39b835824ec2ff2eb9bf9ca4521d805ddfcb112cdfbd0e2ac093a7be1261e7c3d99560d30f8888da4ab0cc85",
             "maven" : {
                 "groupId" : "xerces",
                 "artifactId" : "xercesImpl",
@@ -76,8 +76,8 @@ suite = {
            },
         },
         "LLVM_WRAPPER_SHADOWED": {
-            "sha1" : "6e2ccf2127750962ac10fbedee7476fb392d967a",
-            "sourceSha1" : "f3e062834bd7eac4e7d7ec039e2961d07556a87b",
+            "digest" : "sha512:bcb73fed249ef14e61b7be4153cede889de7aba4344884a54a84fc2d78f59a0b56b5045f390c378ffb727f454f26e48f92d2f6d4bad8a94ff05ad3949335c7f6",
+            "sourceDigest" : "sha512:31796d30a17df22e6624300f360cef39ce4a8ab06605d31fa4809f16ce347ebfa94e87e2ddedaf4d6e7b7682fa3192d8561bb056d797f09b27c101a9a0d98cde",
             "dependencies" : ["JAVACPP_SHADOWED"],
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
             "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7.jar"],
@@ -86,8 +86,8 @@ suite = {
             "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm"
         },
         "JAVACPP_SHADOWED": {
-            "sha1" : "85ba34efaf9b0ce71b4d2a426637ba37b89cf05c",
-            "sourceSha1" : "99c5aaba05b0772577722f51ba3c9eb28ae6a435",
+            "digest" : "sha512:2b1d23f4c00f1ee04546aee4467622f78b0cca8d231e9bcb77e507ad6a3afb8bdad31a956d7a8bed801eae44c6f70215bf8f891156521768d9ee9726b3fd860f",
+            "sourceDigest" : "sha512:b84f22e2bd85407eb60fb6923d708d1928249064e2e405954558392f295fcb167738d095f4c926c4a470068409cb1db45d2da7729d1650769a68aa237492793f",
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
             "urls": ["{urlbase}/javacpp-shadowed-1.5.7.jar"],
             "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.7-sources.jar"],

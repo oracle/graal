@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion" : "6.11.2",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -81,7 +81,7 @@ suite = {
     # ------------- Libraries -------------
 
     "JAVA_ALLOCATION_INSTRUMENTER" : {
-      "sha1" : "d0bdc21c5e6404726b102998e44c66a738897905",
+      "digest" : "sha512:25fe57cd6d3ecabb52f411c884f801109ece37570a2dd19fa1e5b83cc2039ed02a90787600eb9303eaa730aabf0dc70b506fb9fe40ca6c3417428bb89c2c8940",
       "maven" : {
         "groupId" : "com.google.code.java-allocation-instrumenter",
         "artifactId" : "java-allocation-instrumenter",
@@ -92,7 +92,7 @@ suite = {
 
     "HCFDIS" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hcfdis/hcfdis-3.jar"],
-      "sha1" : "a71247c6ddb90aad4abf7c77e501acc60674ef57",
+      "digest" : "sha512:207b178aaab27754e331e9ce9e931ccda1cd4906aeb96f425028f58b3865f8527e8564757c10a8acdcbba9808abaaf5d55d9663d597dab029785da1e12cae20d",
     },
 
     "C1VISUALIZER_DIST" : {
@@ -102,7 +102,7 @@ suite = {
     },
 
     "JOL_CLI" : {
-      "sha1" : "45dd0cf195b16e70710a8d6d763cda614cf6f31e",
+      "digest" : "sha512:aeefbf80b51e6aa546f7522b7dfd6a405529fc0d07be4b11fda56103b5b187a03f3b202c1d7ab65ffaa166630a0ec9a4684efccdf224743a3f79b4ca7504819c",
       "maven" : {
         "groupId" : "org.openjdk.jol",
         "artifactId" : "jol-cli",
@@ -112,12 +112,12 @@ suite = {
     },
 
     "BATIK" : {
-      "sha1" : "122b87ca88e41a415cf8b523fd3d03b4325134a3",
+      "digest" : "sha512:cefc274dab0f3cd8064f135a8a3bccb59b8168864acd2143f8a5563c6feacd9651a740bcfc9998031d78b6c219168b7e5ba3341d1d11e429f1bf53629000566d",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
     "ASM_9.1" : {
-      "sha1" : "a99500cf6eea30535eeac6be73899d048f8d12a8",
+      "digest" : "sha512:0a586544f3053ec8425d252b6f7e3e6772f010eb81d75020b4fd4759a561a4534dab4f805ffd18130594d1abbeb1ad7116b9d3a1e2e643d427e12bb866655954",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
@@ -126,7 +126,7 @@ suite = {
     },
 
     "ASM_TREE_9.1" : {
-      "sha1" : "c333f2a855069cb8eb17a40a3eb8b1b67755d0eb",
+      "digest" : "sha512:2e7c7e2453b4453db83aa5f13a7a9ec9fa7896d3b13670b171f6e8f186f3ec2f382a985c69018a510ea1b14a2e986f00e1bd3dd6e77a59a28f82b7fbe738916d",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
@@ -136,7 +136,7 @@ suite = {
     },
 
     "ASM_UTIL_9.1" : {
-      "sha1" : "36464a45d871779f3383a8a9aba2b26562a86729",
+      "digest" : "sha512:2182c016c5547cd9e904a4a6d803c45a2c481533e1ffb5b0e18109b40a3d12e106654bbf0673da28ce9ac46cae3b7cfc016dfec68adf5d444917188c70f8b534",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-util",

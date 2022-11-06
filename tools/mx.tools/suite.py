@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.9.9",
+    "mxversion": "6.11.2",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -318,13 +318,13 @@ suite = {
     "libraries": {
         "TruffleJWS" : {
           "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.2.jar"],
-          "sha1" : "9a0b23fb70ec828405ade9252c2e1e946a2eb455",
+          "digest" : "sha512:6435a25bea1335553ce318be089f50ab56bbdd2f2e449b8d7f52dbfa69ee57e7aed4d2cf3225ba7dd63a7bc54ffafdc7ac497dfa64ac09f3552a1fec04016188",
           "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.2-src.jar"],
-          "sourceSha1" : "4b6f04d25ae52ace16f8ff9e7561f965e04f5848",
+          "sourceDigest" : "sha512:a0d6c208a0bdb40a8b5960ba43569cb2b976a1387f0c85d97781704d5df642072b318826715191f6f49df0d981aecbd8a0b83b05dbc84018504554e2887f1a8c",
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089.tar.gz"],
-            "sha1" : "9be26b4a0767960934ff45416a338b4ae8a82ee6",
+            "digest" : "sha512:404e526e244440f5d7ff470396eb39a011128c97cc8ebe0e750b4f818fd8dff3c1ed4f963417ab68f461a37a6e2f4457c127b516a45879a43887fe146b43827c",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
