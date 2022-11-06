@@ -1,6 +1,7 @@
 // Holds repo specific definitions
 {
   graalvm_edition:: "ce",
+  repo_name:: "graal",
 
   compiler:: {
     default_jvm_config:: "graal-core",

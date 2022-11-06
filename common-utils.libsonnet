@@ -75,13 +75,16 @@
   hyphenize(a_list)::
     std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), a_list)),
 
+  # Pattern for a guard.includes clause that captures all top-level CI files.
+  top_level_ci:: ["*.json", "*.jsonnet", "*.libsonnet", "ci/**"],
+
   # Adds a CI build predicate to `build` if it is a gate such that it is only
-  # run if a non-documentation file in any of `suites` has been updated.
+  # run if a top level CI file or a non-documentation file in any of `suites` has been updated
   add_gate_predicate(build, suites, extra_includes=[], extra_excludes=[])::
     if std.member(build.targets, "gate") then
     build + {
       guard+: {
-        includes+: [ suite + "/**"      for suite in suites ] + extra_includes + ["/*.jsonnet", "/*.libsonnet", "/*.json"],
+        includes+: [ suite + "/**"      for suite in suites ] + extra_includes + $.top_level_ci,
         excludes+: [ suite + "/docs/**" for suite in suites ] + [ "**.md" ] + extra_excludes
       }
     }
