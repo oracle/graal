@@ -322,7 +322,8 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     javac_image(image_args)
     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
     helloworld(image_args + javac_command)
-    helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
+    if '--static' not in image_args:
+        helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
     if not mx.is_windows() and flightrecorder:
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
     cinterfacetutorial(extra_image_args)
