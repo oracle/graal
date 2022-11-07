@@ -98,8 +98,13 @@
         "<all-os>"+: exclude + add_quickbuild,
       },
     },
+    "java-compiler": {
+      ecj: {
+        "<all-os>"+: exclude + sg.use_ecj,
+      },
+    },
   },
-  local feature_order = ["libc", "optlevel"],
+  local feature_order = ["libc", "optlevel", "java-compiler"],
 
   local variants(s) = run_spec.generate_variants(s, feature_map, order=feature_order),
 
@@ -116,6 +121,9 @@
         "windows:amd64:jdk17": gate + t("1:30:00"),
       },
       "libc:musl": {
+        "linux:amd64:jdk17": gate + gdb("10.2") + t("55:00"),
+      },
+      "java-compiler:ecj": {
         "linux:amd64:jdk17": gate + gdb("10.2") + t("55:00"),
       },
     }),

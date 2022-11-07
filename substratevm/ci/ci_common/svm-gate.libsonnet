@@ -83,6 +83,12 @@
       mxgate_extra_args+: ["--extra-image-builder-arguments=-H:CompilerBackend=llvm"],
   }),
 
+  use_ecj:: task_spec({
+      mxgate_config+::["ecj"],
+  } + evaluate_late("05_ecj_gate", function(b) {
+      mxgate_tags:: [if tag == "build" then "ecjbuild" else tag for tag in b.mxgate_tags],
+  })),
+
   clone_js_benchmarks:: task_spec({
     setup+: [["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"]],
   }),
