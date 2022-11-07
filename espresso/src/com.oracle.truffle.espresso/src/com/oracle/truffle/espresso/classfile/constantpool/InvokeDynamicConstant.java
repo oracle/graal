@@ -168,7 +168,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
                 StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
                 StaticObject memberName;
-                if (meta.getJavaVersion().varHandlesEnabled()) {
+                if (meta.getJavaVersion().varHandlesEnabled() && !meta.getJavaVersion().java19OrLater()) {
                     memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
                                     null,
                                     accessingKlass.mirror(),
