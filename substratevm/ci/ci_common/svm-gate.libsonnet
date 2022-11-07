@@ -70,12 +70,12 @@
 
   use_musl:: require_musl + task_spec({
       mxgate_config+::["musl"],
-      mxgate_extra_args+: ["--use-musl"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl --static"],
   }),
 
   add_quickbuild:: task_spec({
       mxgate_config+::["quickbuild"],
-      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:Optimize=b"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-Ob"],
   }),
 
   use_llvm:: task_spec({
