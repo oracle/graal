@@ -94,4 +94,22 @@
     if objectHas(o, f) then o[f] else default
   ,
 
+  # Makes all properties of an object visible. By default, this function will turn hidden properties to public ones.
+  # Some properties, namely functions, cannot be manifested as json. Trying to do so will result in an error.
+  # Sometimes, e.g., for error reporting or debugging, it is useful to print it nevertheless, ignoring the
+  # functions.
+  make_visible(o, inc_hidden=true)::
+    local objectFields = if inc_hidden then std.objectFieldsAll else std.objectFields;
+    if std.type(o) == "array" then
+      [$.make_visible(e, inc_hidden=inc_hidden) for e in o]
+    else if std.type(o) == "object" then
+      {
+        [key] : $.make_visible(o[key], inc_hidden=inc_hidden)
+        for key in objectFields(o)
+      }
+    else if std.type(o) == "function" then
+      "<function>"
+    else
+      o
+    ,
 }

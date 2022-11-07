@@ -2,6 +2,7 @@
   local common = import "../../common.jsonnet",
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
+  local inc        = import "ci_common/include.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
 
   local task_spec = run_spec.task_spec,
@@ -30,21 +31,7 @@
     },
   }),
 
-  local musl_toolchain = task_spec({
-    downloads+: {
-      "MUSL_TOOLCHAIN": {
-        "name": "musl-toolchain",
-        "version": "1.0",
-        "platformspecific": true,
-      },
-    },
-    environment+: {
-      # Note that we must add the toolchain to the end of the PATH so that the system gcc still remains the first choice
-      # for building the rest of GraalVM. The musl toolchain also provides a gcc executable that would shadow the system one
-      # if it were added at the start of the PATH.
-      PATH: "$PATH:$MUSL_TOOLCHAIN/bin",
-    },
-  }),
+  local musl_toolchain = task_spec(inc.musl_dependency),
 
   local mx_build_exploded = task_spec({
     environment+: {

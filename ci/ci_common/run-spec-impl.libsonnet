@@ -103,7 +103,7 @@ local std_get = (import "../../common-utils.libsonnet").std_get;
       for field in std.objectFieldsAll(obj)
     ]);
     // create a stable name from features
-    local variant_name_from_features(features) = std.join("_", [features[f] for f in feature_order if std.member(std.objectFieldsAll(features), f)]);
+    local variant_name_from_features(features) = std.join("_", ["%s:%s" % [f, features[f]] for f in feature_order if std.member(std.objectFieldsAll(features), f)]);
     // turn the features list into a variants dictionary
     local features_to_variant(arr) = [
       {

@@ -184,7 +184,7 @@ local r      = import "run-spec.libsonnet";
       //
       local _result =
       {
-        "serialgc": {
+        "gc:serialgc": {
           "<all-os>": {
             "<build-config>": {
               "features": "SerialGC"
@@ -197,7 +197,7 @@ local r      = import "run-spec.libsonnet";
             }
           }
         },
-        "serialgc_musl": {
+        "gc:serialgc_libc:musl": {
           "<all-os>": {
             "<build-config>": {
               "features": "SerialGCMusl"
@@ -210,7 +210,7 @@ local r      = import "run-spec.libsonnet";
             }
           }
         },
-        "g1gc": {
+        "gc:g1gc": {
           "<all-os>": {
             "<build-config>": {
               "features": "G1GC"
