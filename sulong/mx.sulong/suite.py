@@ -50,13 +50,9 @@ suite = {
             "path": "tests/support.txt",
             "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
-          "<others>": {
-            "optional": True,
-          }
+          "<others>": {"optional": True},
         },
-        "<others>:<others>": {
-          "optional": True,
-        },
+        "<others>": {"<others>" : {"optional": True}},
       },
     },
     # This is a dummy library for malloc.h support.
@@ -67,13 +63,9 @@ suite = {
             "path": "tests/support.txt",
             "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
-          "<others>": {
-            "optional": True,
-          }
+          "<others>": {"optional": True},
         },
-        "<others>:<others>": {
-          "optional": True,
-        },
+        "<others>": {"<others>" : {"optional": True}},
       },
     },
     # This is a dummy library for alias() support.
@@ -84,9 +76,7 @@ suite = {
             "path": "tests/support.txt",
             "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
-          "<others>": {
-            "optional": True,
-          }
+          "<others>": {"optional": True},
         },
         "windows": {
           "<others>" : {
@@ -94,9 +84,7 @@ suite = {
             "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
           },
         },
-        "<others>:<others>": {
-          "optional": True,
-        },
+        "<others>": {"<others>" : {"optional": True}},
       },
     },
     # This is a dummy library for linux amd64 support.
@@ -107,49 +95,35 @@ suite = {
             "path": "tests/support.txt",
             "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
-          "<others>": {
-            "optional": True,
-          }
+          "<others>": {"optional": True},
         },
-        "<others>:<others>": {
-          "optional": True,
-        },
+        "<others>" : {"<others>": {"optional": True}},
       },
     },
     # This is a dummy library for amd64 support.
     "AMD64_SUPPORT" : {
-      "os_arch" : {
-        "<others>" : {
-          "amd64" : {
-            "path": "tests/support.txt",
-            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-          },
-          "<others>": {
-            "optional": True,
-          }
+      "arch" : {
+        "amd64" : {
+          "path": "tests/support.txt",
+          "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
         },
+        "<others>": {"optional": True},
       },
     },
     # This is a dummy library for amd64 support.
     "AARCH64_SUPPORT" : {
-      "os_arch" : {
-        "<others>" : {
-          "aarch64" : {
-            "path": "tests/support.txt",
-            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-          },
-          "<others>": {
-            "optional": True,
-          }
+      "arch" : {
+        "aarch64" : {
+          "path": "tests/support.txt",
+          "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
         },
+        "<others>": {"optional": True},
       },
     },
     # This is a dummy library for marking sulong native mode support.
     "NATIVE_MODE_SUPPORT" : {
       "os" : {
-        "windows" : {
-          "optional": True,
-        },
+        "windows" : {"optional": True},
         "<others>" : {
           "path": "tests/support.txt",
           "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
@@ -159,9 +133,7 @@ suite = {
     # This is a dummy library for disabling tests that won't compile because of missing GNU make.
     "UNIX_SUPPORT" : {
       "os" : {
-        "windows" : {
-          "optional": True,
-        },
+        "windows" : {"optional": True},
         "<others>" : {
           "path": "tests/support.txt",
           "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
@@ -175,9 +147,7 @@ suite = {
           "path": "tests/support.txt",
           "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
         },
-        "<others>" : {
-          "optional": True,
-        },
+        "<others>" : {"optional": True},
       },
     },
   },
@@ -250,19 +220,12 @@ suite = {
       "ninja_targets" : [
         "default",
       ],
-      "results" : [
-        "<lib:sulongtest>",
-      ],
-      "os_arch" : {
-        "windows" : {
-          "results" : [
-            "<lib:sulongtest>",
-          ],
-        },
+      "results" : ["<lib:sulongtest>"],
+      "os" : {
+        "windows" : {"results" : ["<lib:sulongtest>"]},
         "<others>" : {},
       },
-      "buildDependencies" : [
-      ],
+      "buildDependencies" : [],
       "license" : "BSD-new",
       "testProject" : True,
     },
@@ -304,9 +267,7 @@ suite = {
       "native" : True,
       "vpath" : True,
       "defaultBuild" : False,
-      "results" : [
-        "bin/"
-      ],
+      "results" : ["bin/"],
       "buildDependencies" : [
         "SULONG_BOOTSTRAP_TOOLCHAIN",
         "SULONG_HOME",
@@ -334,9 +295,7 @@ suite = {
     "com.oracle.truffle.llvm.api" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API",
-      ],
+      "dependencies" : ["truffle:TRUFFLE_API"],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "11+",
       "workingSets" : "Truffle, LLVM",
@@ -346,9 +305,7 @@ suite = {
     "com.oracle.truffle.llvm.spi" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API",
-      ],
+      "dependencies" : ["truffle:TRUFFLE_API"],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "11+",
@@ -390,7 +347,7 @@ suite = {
             "ldflags" : ["-shared"]
           },
         },
-        "<others>" : {"<others" : {}},
+        "<others>" : {"<others>" : {}},
       },
     },
 
@@ -412,7 +369,7 @@ suite = {
             "ldflags" : ["-shared"]
           },
         },
-        "<others>" : {"<others" : {}},
+        "<others>" : {"<others>" : {}},
       },
     },
 
@@ -734,15 +691,13 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "os" : {
-        "windows" : {
-            "cflags" : []
-        },
+        "windows" : {},
         "solaris" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
-            "ldflags" : ["-m64"],
+          "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+          "ldflags" : ["-m64"],
         },
         "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
+          "cflags" : ["-g", "-Wall", "-Werror"],
         },
       },
     },
@@ -877,7 +832,6 @@ suite = {
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
-      "toolchain" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/cmake/toolchain.cmake",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
@@ -888,25 +842,19 @@ suite = {
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
-        "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
       },
-      "ninja_targets" : [
-        "<lib:sulong-native>",
-      ],
-      "results" : [
-        "bin/<lib:sulong-native>",
-      ],
+      "ninja_targets" : ["<lib:sulong-native>"],
+      "results" : ["bin/<lib:sulong-native>"],
       "os" : {
         "windows" : {
-          "ninja_targets" : [
-              "<staticlib:sulong-native>",
-          ],
-          "results" : [
-              "bin/<staticlib:sulong-native>",
-          ],
+          "ninja_targets" : ["<staticlib:sulong-native>"],
+          "results" : ["bin/<staticlib:sulong-native>"],
           "cmakeConfig" : {
             "CMAKE_SHARED_LINKER_FLAGS" : "",
+            "CMAKE_RC_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
+            "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
           },
         },
         "<others>" : {
@@ -915,9 +863,7 @@ suite = {
           },
         },
       },
-      "buildDependencies" : [
-        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
-      ],
+      "buildDependencies" : ["truffle:TRUFFLE_NFI_NATIVE"],
       "license" : "BSD-new",
     },
 
@@ -963,50 +909,29 @@ suite = {
       },
       "ninja_targets" : ["cxx"],
       "ninja_install_targets" : ["install-cxx"],
-      "os_arch" : {
+      "os" : {
         "<others>" : {
-          "<others>" : {
-            "ninja_targets" : ["cxxabi"],
-            "ninja_install_targets" : ["install-cxxabi"],
-            "results" : ["native"],
-            "cmakeConfig" : {
-              # the only difference to darwin is CMAKE_INSTALL_RPATH
-              "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
-              "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
-              "LIBCXXABI_INCLUDE_TESTS": "NO",
-              "LIBCXXABI_ENABLE_STATIC" : "NO",
-              "LIBCXX_INCLUDE_BENCHMARKS": "NO",
-              "LIBCXX_INCLUDE_TESTS": "NO",
-              "LIBCXX_ENABLE_STATIC" : "NO",
-              "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
-              "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
-              "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
-              "CMAKE_INSTALL_PREFIX" : "native",
-              # workaround for build problem with cmake >=3.22
-              # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
-              "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
-            },
+          "ninja_targets" : ["cxxabi"],
+          "ninja_install_targets" : ["install-cxxabi"],
+          "results" : ["native"],
+          "cmakeConfig" : {
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
           },
         },
         "darwin" : {
-          "<others>" : {
-            "ninja_targets" : ["cxxabi", "cxx"],
-            "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
-            "results" : ["native"],
-            "cmakeConfig" : {
-              # the only difference to the other unixes is CMAKE_INSTALL_RPATH
-              "CMAKE_INSTALL_RPATH" : "@loader_path/",
-              "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
-            },
+          "ninja_targets" : ["cxxabi"],
+          "ninja_install_targets" : ["install-cxxabi"],
+          "results" : ["native"],
+          "cmakeConfig" : {
+            "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
           },
         },
         "windows" : {
-          "<others>" : {
-            "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
-            "cmakeConfig" : {
-              "LLVM_ENABLE_RUNTIMES" : "libcxx",
-            }
-          },
+          "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
+          "cmakeConfig" : {
+            "LLVM_ENABLE_RUNTIMES" : "libcxx",
+          }
         },
       },
       "buildDependencies" : [
@@ -1468,11 +1393,13 @@ suite = {
             },
           },
         },
-		"<others>:<others>": {
-          "buildEnv" : {
-            "PLATFORM" : "unknown_platform",
+		"<others>": {
+          "<others>" : {
+            "buildEnv" : {
+              "PLATFORM" : "unknown_platform",
+            },
           },
-        }
+        },
       },
       "buildEnv" : {
         "OS" : "<os>",
