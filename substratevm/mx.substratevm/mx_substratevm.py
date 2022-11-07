@@ -326,8 +326,9 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
         helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
     if not mx.is_windows() and flightrecorder:
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
-    cinterfacetutorial(extra_image_args)
-    clinittest([])
+    if '--static' not in image_args:
+        cinterfacetutorial(extra_image_args)
+    clinittest(extra_image_args)
 
 
 def truffle_unittest_task(extra_image_args=None):
