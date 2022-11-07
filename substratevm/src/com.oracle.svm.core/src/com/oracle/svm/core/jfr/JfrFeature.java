@@ -49,7 +49,6 @@ import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.internal.PlatformMBeanProviderImpl;
 
 import jdk.jfr.Configuration;
-import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
 
@@ -59,9 +58,9 @@ import jdk.jfr.internal.jfc.JFC;
  *
  * There are two different kinds of JFR events:
  * <ul>
- * <li>Java-level events are defined by a Java class that extends {@link Event} and that is
- * annotated with JFR-specific annotations. Those events are typically triggered by the Java
- * application and a Java {@code EventWriter} object is used when writing the event to a
+ * <li>Java-level events are defined by a Java class that extends {@link jdk.internal.event.Event}
+ * and that is annotated with JFR-specific annotations. Those events are typically triggered by the
+ * Java application and a Java {@code EventWriter} object is used when writing the event to a
  * buffer.</li>
  * <li>Native events are triggered by the JVM itself and are defined in the JFR metadata.xml file.
  * For writing such an event to a buffer, we call into {@link JfrNativeEventWriter} and pass a

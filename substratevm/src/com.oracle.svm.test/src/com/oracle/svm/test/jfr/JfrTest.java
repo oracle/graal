@@ -37,7 +37,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
-import com.oracle.svm.util.ClassUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.After;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.test.jfr.utils.Jfr;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.LocalJfr;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.jfr.Recording;
@@ -66,35 +66,21 @@ public abstract class JfrTest {
     }
 
     @Before
-    public void startRecording() {
-        try {
-            jfr = new LocalJfr();
-            recording = jfr.createRecording(getClass().getName());
-            enableEvents();
-            jfr.startRecording(recording);
-        } catch (Exception e) {
-            Assert.fail("Fail to start recording! Cause: " + e.getMessage());
-        }
+    public void startRecording() throws Throwable {
+        jfr = new LocalJfr();
+        recording = jfr.createRecording(getClass().getName());
+        enableEvents();
+        jfr.startRecording(recording);
     }
 
     @After
-    public void endRecording() {
+    public void endRecording() throws Throwable {
         try {
             jfr.endRecording(recording);
             checkRecording();
-        } catch (Exception e) {
-            Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
-        }
-        try {
             validateEvents();
-        } catch (Throwable throwable) {
-            Assert.fail("validateEvents failed: " + throwable.getMessage());
         } finally {
-            try {
-                jfr.cleanupRecording(recording);
-            } catch (Exception e) {
-                Assert.fail("Fail to cleanup recording! Cause: " + e.getMessage());
-            }
+            jfr.cleanupRecording(recording);
         }
     }
 

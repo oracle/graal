@@ -36,7 +36,8 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
-public class ThreadSleepEvent {
+public class ThreadSleepEventJDK17 {
+    private static final JfrEvent ThreadSleep = JfrEvent.create("jdk.ThreadSleep");
 
     public static void emit(long time, long startTicks) {
         if (com.oracle.svm.core.jfr.HasJfrSupport.get()) {
@@ -46,15 +47,15 @@ public class ThreadSleepEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long time, long startTicks) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadSleep)) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(ThreadSleep)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadSleep);
+            JfrNativeEventWriter.beginSmallEvent(data, ThreadSleep);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadSleep, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(ThreadSleep, 0));
             JfrNativeEventWriter.putLong(data, time);
             JfrNativeEventWriter.endSmallEvent(data);
         }

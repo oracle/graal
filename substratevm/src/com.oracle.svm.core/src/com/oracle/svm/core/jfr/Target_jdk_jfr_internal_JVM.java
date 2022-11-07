@@ -97,8 +97,16 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
-    public List<Class<? extends Event>> getAllEventClasses() {
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public List<Class<? extends jdk.internal.event.Event>> getAllEventClasses() {
         return JfrJavaEvents.getAllEventClasses();
+    }
+
+    /** See {@link JVM#getAllEventClasses}. */
+    @Substitute
+    @TargetElement(name = "getAllEventClasses", onlyWith = JDK11OrEarlier.class)
+    public List<Class<? extends Event>> getAllEventClassesJDK11() {
+        return JfrJavaEvents.getJfrEventClasses();
     }
 
     /** See {@link JVM#getUnloadedEventClassCount}. */
