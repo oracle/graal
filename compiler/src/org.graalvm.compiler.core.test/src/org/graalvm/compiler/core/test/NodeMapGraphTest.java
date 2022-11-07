@@ -42,7 +42,12 @@ public class NodeMapGraphTest extends GraalCompilerTest {
         for (int i = 0; i < 1024; i++) {
             lastAdded = g.addWithoutUnique(ConstantNode.forInt(i));
         }
-
+        /*
+         * Up until now the map internal data array did not grow because no nodes have been added.
+         * Adding a random value (map for simplicity here) for a node with an id> map.array.length
+         * will force a grow operation. The grow strategy of the graph and map are not necessarily
+         * the same.
+         */
         map.setAndGrow(lastAdded, map);
 
         return map;

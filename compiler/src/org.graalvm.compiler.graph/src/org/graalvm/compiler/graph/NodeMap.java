@@ -139,40 +139,71 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         Arrays.fill(values, null);
     }
 
+    /**
+     * Return the next value entry of this node map based on the given {@code currentIndex}. A valid
+     * entry in a node map is one where both the {@code key}, i.e., the node in the {@link Graph} as
+     * well as the {@code value} are not {@code null}.
+     */
+    private int getNextValidMapEntry(int currentIndex) {
+        int nextValidIndex = currentIndex;
+        while (nextValidIndex < NodeMap.this.values.length && (NodeMap.this.values[nextValidIndex] == null || NodeMap.this.getKey(nextValidIndex) == null)) {
+            nextValidIndex++;
+        }
+        return nextValidIndex;
+    }
+
+    private abstract class NodeMapIterator<K> implements Iterator<K> {
+        int index = 0;
+
+        @Override
+        public boolean hasNext() {
+            forward();
+            return index < NodeMap.this.values.length && index < NodeMap.this.graph.nodeIdCount();
+        }
+
+        void forward() {
+            index = getNextValidMapEntry(index);
+        }
+
+        @Override
+        public K next() {
+            final int pos = index;
+            final K val = getVal(pos);
+            index++;
+            forward();
+            return val;
+        }
+
+        abstract K getVal(int pos);
+    }
+
     @Override
     public Iterable<Node> getKeys() {
         return new Iterable<>() {
-
             @Override
             public Iterator<Node> iterator() {
-                return new Iterator<>() {
-
-                    int i = 0;
-
+                return new NodeMapIterator<>() {
                     @Override
-                    public boolean hasNext() {
-                        forward();
-                        return i < NodeMap.this.values.length;
+                    Node getVal(int pos) {
+                        return NodeMap.this.getKey(pos);
                     }
+                };
+            }
+        };
+    }
 
+    @Override
+    public Iterable<T> getValues() {
+        return new Iterable<>() {
+
+            @Override
+            public Iterator<T> iterator() {
+                return new NodeMapIterator<>() {
+
+                    @SuppressWarnings("unchecked")
                     @Override
-                    public Node next() {
-                        final int pos = i;
-                        final Node key = NodeMap.this.getKey(pos);
-                        i++;
-                        forward();
-                        return key;
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    private void forward() {
-                        while (i < NodeMap.this.values.length && (NodeMap.this.values[i] == null || NodeMap.this.getKey(i) == null)) {
-                            i++;
-                        }
+                    T getVal(int pos) {
+                        return (T) NodeMap.this.values[pos];
                     }
                 };
             }
@@ -188,9 +219,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
             @Override
             public boolean advance() {
                 current++;
-                while (current < NodeMap.this.values.length && (NodeMap.this.values[current] == null || NodeMap.this.getKey(current) == null)) {
-                    current++;
-                }
+                current = getNextValidMapEntry(current);
                 return current < NodeMap.this.values.length;
             }
 
@@ -217,47 +246,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                 T oldValue = (T) NodeMap.this.values[current];
                 NodeMap.this.values[current] = newValue;
                 return oldValue;
-            }
-        };
-    }
-
-    @Override
-    public Iterable<T> getValues() {
-        return new Iterable<>() {
-
-            @Override
-            public Iterator<T> iterator() {
-                return new Iterator<>() {
-
-                    int i = 0;
-
-                    @Override
-                    public boolean hasNext() {
-                        forward();
-                        return i < NodeMap.this.values.length;
-                    }
-
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public T next() {
-                        final int pos = i;
-                        final T value = (T) NodeMap.this.values[pos];
-                        i++;
-                        forward();
-                        return value;
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    private void forward() {
-                        while (i < NodeMap.this.values.length && (NodeMap.this.values[i] == null || NodeMap.this.getKey(i) == null)) {
-                            i++;
-                        }
-                    }
-                };
             }
         };
     }
