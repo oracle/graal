@@ -90,7 +90,7 @@
   local feature_map = {
     libc: {
       musl: {
-        "<all-os>"+: exclude + musl_toolchain,
+        "<all-os>"+: exclude + use_musl,
       },
     },
     optlevel: {
@@ -105,20 +105,19 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "build-ce": mxgate("build,checkstubs,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + musl_toolchain + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk11": gate + t("35:00"),
-    }),
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + jsonschema + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk17": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,test,svmjunit,debuginfotest,hellomodule") + maven + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk17": gate + gdb("10.2") + t("55:00"),
       "linux:amd64:jdk19": gate + gdb("10.2") + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
         "windows:amd64:jdk17": gate + t("1:30:00"),
-      }
+      },
+      "libc:musl": {
+        "linux:amd64:jdk17": gate + gdb("10.2") + t("55:00"),
+      },
     }),
   },
   // END MAIN BUILD DEFINITION
