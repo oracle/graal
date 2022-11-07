@@ -704,7 +704,7 @@ suite = {
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
-      "toolchain" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/cmake/toolchain.cmake",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
@@ -769,7 +769,7 @@ suite = {
     "com.oracle.truffle.llvm.libraries.graalvm.llvm.libs" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
-      "toolchain" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/cmake/toolchain.cmake",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
@@ -870,7 +870,7 @@ suite = {
     "com.oracle.truffle.llvm.libraries.oldnames" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
-      "toolchain" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/cmake/toolchain.cmake",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
@@ -892,7 +892,7 @@ suite = {
       "vpath" : True,
       "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/runtimes",
       "class" : "CMakeNinjaProject",
-      "toolchain" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/cmake/toolchain.cmake",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "cmakeConfig" : {
