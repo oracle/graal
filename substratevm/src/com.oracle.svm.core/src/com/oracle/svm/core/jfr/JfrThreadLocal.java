@@ -170,7 +170,6 @@ public class JfrThreadLocal implements ThreadListener {
                         flush(jb, WordFactory.unsigned(0), 0);
                     }
                 }
-//                getJavaBufferList().unlockSection(jbn);
                 boolean ret = getJavaBufferList().removeNode(jbn, false); //also releases locks
                 com.oracle.svm.core.util.VMError.guarantee( ret, "^^^112");//assert !acquire();
             } else {
@@ -188,7 +187,6 @@ public class JfrThreadLocal implements ThreadListener {
                         flush(nb, WordFactory.unsigned(0), 0);
                     }
                 }
-//                getNativeBufferList().unlockSection(nbn);
                 boolean ret = getNativeBufferList().removeNode(nbn, false);
                 com.oracle.svm.core.util.VMError.guarantee( ret, "^^^113");//assert !acquire();
             } else {
@@ -322,18 +320,13 @@ public class JfrThreadLocal implements ThreadListener {
     }
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
-        com.oracle.svm.core.util.VMError.guarantee(threadLocalBuffer.isNonNull(), "^^^15");//assert threadLocalBuffer.isNonNull();
-        com.oracle.svm.core.util.VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint() , "^^^70");//assert !acquire();
+        com.oracle.svm.core.util.VMError.guarantee(threadLocalBuffer.isNonNull(), "^^^15");
+        com.oracle.svm.core.util.VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint() , "^^^70");
 
         if (!acquireBufferWithRetry(threadLocalBuffer)) {
-            com.oracle.svm.core.util.VMError.guarantee(false , "^^^80 unable to promote. Lost event data");//assert !acquire();
+            com.oracle.svm.core.util.VMError.guarantee(false , "^^^80 unable to promote. Lost event data");
             return WordFactory.nullPointer();
         }
-//        int count =0;
-//        while(!JfrBufferAccess.acquire(threadLocalBuffer)); {// new
-//            count++;
-//            VMError.guarantee(count < 20000, "^^^60");
-//        }
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {

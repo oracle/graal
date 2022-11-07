@@ -50,11 +50,11 @@ import com.oracle.svm.core.util.VMError;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList;
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
-import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.createNode;
 import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.release;
-import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.acquire;
 import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.tryAcquire;
 import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.isAcquired;
+import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
+import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
 
 /**
@@ -93,9 +93,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private int lastMetadataId = 0;
     private int currentMetadataId = 0;
-    private boolean staticConstantsSerialized = false;
     private boolean newChunk = true;
     private boolean isFinal = false;
+    private SignedWord _metadataPosition;
+
 
     public void setCurrentMetadataId(){
         currentMetadataId++;
@@ -215,29 +216,23 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         filename = null;
         fd = WordFactory.nullPointer();
+        newChunk = false;
     }
-    private SignedWord _constantPoolPosition;
-    private SignedWord _metadataPosition;
     public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
         assert lock.isHeldByCurrentThread();// fd should always be correct because its cleared and set within locked critical section
-
-//        JfrChangeEpochOperation op = new JfrChangeEpochOperation(true);
-//        op.enqueue();
         flushStorage();
 
         if (threadRepo.isDirty(true)){
             writeThreadCheckpointEvent(threadRepo, true);
         }
         assert lock.isHeldByCurrentThread();
-        SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true); // WILL get written again when the chunk closes and overwrite what we write here. In that case we shouldn't wipe the repos right? How does hotspot handle it?
+        SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true);
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
         assert lock.isHeldByCurrentThread();
 
-//        patchFileHeader(_constantPoolPosition, metadataPosition, true);
         patchFileHeader(constantPoolPosition, metadataPosition, true);
-
+        newChunk = false;
         // unlike rotate chunk, don't close file.
-
     }
 
     private void writeFileHeader() {
@@ -355,14 +350,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeInt(fd, 0); // We'll patch this later.
         JfrConstantPool[] serializers = JfrSerializerSupport.get().getSerializers();
 
-        int poolCount;
-        if (!staticConstantsSerialized) {
-            poolCount = writeConstantPools(serializers, flush) + writeConstantPools(repositories, flush);
-            staticConstantsSerialized = true;
-        } else {
-            poolCount = writeConstantPools(repositories, flush);
+        int poolCount = 0;
+        if (newChunk) {
+            poolCount = writeConstantPools(serializers, flush);
         }
-//        int poolCount = writeConstantPools(serializers, flush) + writeConstantPools(repositories, flush);
+        poolCount += writeConstantPools(repositories, flush);
+
         SignedWord currentPos = getFileSupport().position(fd);
         getFileSupport().seek(fd, poolCountPos); // *** write number of constant pools written
         getFileSupport().writeInt(fd, makePaddedInt(poolCount));
@@ -376,10 +369,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private int writeConstantPools(JfrConstantPool[] constantPools, boolean flush) {
         int count = 0;
         for (JfrConstantPool constantPool : constantPools) {
-//            if (constantPool instanceof com.oracle.svm.core.jfr.JfrThreadRepository) {
-//                System.out.println("*** Skipping thread repo");
-//                continue;
-//            }
             int poolCount = constantPool.write(this, flush);
             count += poolCount;
         }
@@ -388,10 +377,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private SignedWord writeMetadataEvent(byte[] metadataDescriptor) {
         assert lock.isHeldByCurrentThread();
-        // *** works to prevent duplicate metadata from being written to disk
+        //always write metadata on a new chunk!
         if (currentMetadataId != lastMetadataId || newChunk) {
             lastMetadataId = currentMetadataId;
-            newChunk = false; //always write metadata on a new chunk!
         } else {
             return _metadataPosition;
         }
@@ -562,8 +550,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             // Write unflushed data from the thread local buffers but do *not* reinitialize them
             // The thread local code will handle space reclamation on their own time
 
-            JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
-            JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
+            JfrBufferNodeLinkedList javaBuffers = getJavaBufferList();
+            JfrBufferNodeLinkedList nativeBuffers = getNativeBufferList();
 
             traverseList(javaBuffers, true, true);
             traverseList(nativeBuffers, false, true);
@@ -586,8 +574,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage() {
-        com.oracle.svm.core.jfr.JfrBufferNodeLinkedList javaBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList();
-        com.oracle.svm.core.jfr.JfrBufferNodeLinkedList nativeBuffers = com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList();
+        JfrBufferNodeLinkedList javaBuffers =  getJavaBufferList();
+        JfrBufferNodeLinkedList nativeBuffers = getNativeBufferList();
 
 //        javaBuffers.addNode(javaBuffers.createNode());
 //        javaBuffers.addNode(javaBuffers.createNode());
