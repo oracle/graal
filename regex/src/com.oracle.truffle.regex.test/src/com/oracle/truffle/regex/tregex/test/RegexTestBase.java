@@ -44,9 +44,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -54,6 +52,8 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexTestBase {
 
@@ -106,7 +106,8 @@ public abstract class RegexTestBase {
     void test(String pattern, String flags, String options, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         Value compiledRegex = compileRegex(pattern, flags, options);
         Value result = execRegex(compiledRegex, input, fromIndex);
-        validateResult("Pattern: /" + pattern + "/" + flags + "\nInput: " + input + "\nfromIndex: " + fromIndex + "\n",result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+        validateResult("Pattern: /" + pattern + "/" + flags + "\nInput: " + input + "\nfromIndex: " + fromIndex + "\n",
+                        result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
     }
 
     void testBytes(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
@@ -172,19 +173,16 @@ public abstract class RegexTestBase {
 
     private static void fail(Value result, int... captureGroupBoundsAndLastGroup) {
         StringBuilder sb = new StringBuilder("expected: \n");
-
         for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
             sb.append("Capture Group ").append(i).append(": Start: ").append(captureGroupBoundsAndLastGroup[i * 2]).append(", End: ").append(captureGroupBoundsAndLastGroup[i * 2 + 1]).append("\n");
         }
-
         sb.append("actual: \n");
-
-//        append(Arrays.toString(captureGroupBoundsAndLastGroup)).append(", actual: [");
         for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
-            sb.append("Capture Group ").append(i).append(": Start: ").append(result.invokeMember("getStart", i).asInt()).append(", End: ").append(result.invokeMember("getEnd", i).asInt()).append("\n");
+            sb.append("Capture Group ").append(i);
+            sb.append(": Start: ").append(result.invokeMember("getStart", i).asInt());
+            sb.append(", End: ").append(result.invokeMember("getEnd", i).asInt()).append("\n");
         }
-//        sb.append(", ");
-        if((captureGroupBoundsAndLastGroup.length & 1) != 0) {
+        if ((captureGroupBoundsAndLastGroup.length & 1) != 0) {
             sb.append("Expected lastGroup: ").append(captureGroupBoundsAndLastGroup[captureGroupBoundsAndLastGroup.length - 1]);
             sb.append("\nActual lastGroup: ").append(result.getMember("lastGroup").asInt());
         }
