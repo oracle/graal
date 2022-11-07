@@ -141,6 +141,10 @@ hot compilations. This is relevant only when proftool data is provided. `--hot-m
 upper and lower bounds, respectively, on the number of hot compilations. `--hot-percentile` is the percentile of the
 execution period taken up by hot compilations. Read the section about hot compilations for more information.
 
+The flag `--optimization-context-tree` enables the optimization-context tree. The optimization-context tree visualizes
+optimizations in their inlining context and replaces the inlining and optimization tree. Read the separate section about
+the optimization-context tree to learn more.
+
 ## Hot compilation units
 
 Proftool collects samples the number of cycles spent executing each compilation unit. The tool marks some of
@@ -201,6 +205,46 @@ delta tree is the result of tree matching. Each node represents either a deletio
   which do not have any deletion or insertion as a descendant are deleted. As a result of this, a matching of equivalent
   trees is an empty tree at `--verbosity low`.
 
+## Optimization-context tree
+
+The optimization context tree is the inlining tree extended with optimizations placed in their method context.
+Optimization-context trees make it easier to attribute optimizations to inlining decisions. However, the structure of
+the optimization tree is lost. The feature is enabled with the flag `--optimization-context-tree`, and is compatible
+with each use case, e.g., `mx profdiff --optimization-context-tree report scrabble_log`.
+
+As an instance, consider the inlining and optimization tree below:
+
+```
+A compilation unit of the method a()
+    Inlining tree
+        a() at bci -1
+            b() at bci 1
+                d() at bci 3
+            c() at bci 2
+    Optimization tree
+        RootPhase
+            SomeOptimizationPhase
+                SomeOptimization OptimizationA at bci {a(): 3}
+                SomeOptimization OptimizationB at bci {b(): 4, a(): 1}
+                SomeOptimization OptimizationC at bci {c(): 5, a(): 2}
+                SomeOptimization OptimizationD at bci {d(): 6, b(): 3, a(): 1}
+```
+
+By combining the trees, we obtain the following optimization-context tree:
+
+```
+A compilation unit of the method a()
+    Optimization context tree
+        a() at bci -1
+            SomeOptimization OptimizationA at bci 3
+            b() at bci 1
+                SomeOptimization OptimizationB at bci 4
+                d() at bci 3
+                    SomeOptimization OptimizationD at bci 6
+            c() at bci 2
+              SomeOptimization OptimizationC at bci 5
+```
+
 ## Comparing experiments
 
 This section describes algorithms and output formats that are relevant for comparing experiments.
@@ -233,45 +277,6 @@ marked as hot.
 
 In the general case, all pairs of *hot* compilations are diffed. In this case, the only pair of hot compilations is
 diffed.
-
-### Compilation fragments
-
-A compilation fragment is a kind of compilation, which is defined as a part of a compilation unit. This enables the tool
-to compare a part of a compilation unit with a different compilation unit (or with another part of a compilation unit).
-
-Consider the following scenario. A method `a()` calls an important method `b()`. In experiment 1, the method `a()` is
-compiled and `b()` is inlined. In experiment 2, only the method `b()` is compiled.
-
- ```
-Method a() is hot only in experiment 1
-    Compilation unit X
-        a()
-            ...
-                ...
-                b()
-                    ...
-                ...
-Method b() is hot only in experiment 2
-    Compilation unit Y
-        b()
-            ...
-```
-
-We would like to compare the hot compilation of `b()` with the hot compilation of `a()`, which encompasses `b()`. Thus,
-the idea is to take only the `b()` part of the `a()` compilation. We denote the `b()` part of `a()` a compilation
-fragment.
-
-```
-Method b()
-    Compilation fragment X#1
-        b()
-          ...
-    Compilation unit Y
-        b()
-            ...
-```
-
-The compilation fragment of `a()` can be compared with the compilation unit of `b()` directly.
 
 ### Optimization tree matching
 
@@ -356,3 +361,87 @@ Therefore, all possible combinations in the delta tree are:
   compilations, inlined the 1st compilation but not inlined in the 2nd compilation
 - `* (not inlined -> inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated in both
   compilations, not inlined the 1st compilation but inlined in the 2nd compilation
+
+### Compilation fragments
+
+A compilation fragment is a kind of compilation, which is defined as a part of a compilation unit. This enables the tool
+to compare a part of a compilation unit with a different compilation unit (or with another part of a compilation unit).
+
+Consider the following scenario. A method `a()` calls an important method `b()`. In experiment 1, the method `a()` is
+compiled and `b()` is inlined. In experiment 2, only the method `b()` is compiled.
+
+ ```
+Method a() is hot only in experiment 1
+    Compilation unit X
+        a()
+            ...
+                ...
+                b()
+                    ...
+                ...
+Method b() is hot only in experiment 2
+    Compilation unit Y
+        b()
+            ...
+```
+
+We would like to compare the hot compilation of `b()` with the hot compilation of `a()`, which encompasses `b()`. Thus,
+the idea is to take only the `b()` part of the `a()` compilation. We denote the `b()` part of `a()` a compilation
+fragment.
+
+```
+Method b()
+    Compilation fragment X#1
+        b()
+          ...
+    Compilation unit Y
+        b()
+            ...
+```
+
+The compilation fragment of `a()` can be compared with the compilation unit of `b()` directly.
+
+#### Fragment implementation details
+
+The following algorithm finds the parts of compilation units suitable for fragment creation.
+
+```
+def find_fragments():
+    for each method M in the experiment:
+        for each hot compilation unit CU of the method M:
+            for each inlined method I in CU:
+                if (1) the path to I in CU is unique
+                   (2) and there exists a hot compilation unit of M in the other experiment
+                                        where I is not inlined:
+                   create a fragment from CU rooted in I
+```
+
+The first condition (1) ensures that optimizations can be properly attributed to the fragments. Consider the example
+below:
+
+```
+A compilation unit of the method a()
+    Inlining tree
+        a() at bci -1
+            b() at bci 1
+                c() at bci 3
+                c() at bci 3
+            c() at bci 2
+    Optimization tree
+        RootPhase
+            SomePhase SomeOptimization at bci {c(): 5, b(): 3, a(): 1}
+```
+
+The method `b()` has 2 inlined callees `c() at bci 3`, which means they are not reachable via a unique path. This is a
+side effect of code duplication. It is not clear to which callee `c() at bci 3` the optimization from the example
+belongs.
+
+The second condition (2) reduces the set of created fragments to only those that are likely useful.
+
+A fragment is created from the parent compilation unit's inlining tree and optimization tree. A subtree of the inlining
+tree becomes the inlining tree of the newly created fragment. The optimization tree of the fragment is created by
+cloning all internal nodes of the compilation unit's optimization tree and cloning individual optimizations, whose
+position is in the fragment's inlining subtree.
+
+Proftool provides execution data on the granularity of compilation units. For that reason, the reported execution
+fraction of a compilation fragment is inherited from its parent compilation unit.
