@@ -43,7 +43,6 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
-
 /**
  * Repository that collects all metadata about threads and thread groups.
  */
@@ -200,8 +199,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
         if (flush) {
             mutex.lock(); // only required when possibility of read/write same epoch data
         }
-        int count = writeThreads(writer, epochData, flush);
-        count += writeThreadGroups(writer, epochData, flush);
+        int count = writeThreads(writer, epochData);
+        count += writeThreadGroups(writer, epochData);
 
         epochData.clear();
 
@@ -218,7 +217,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         return epochData.isDirty;
     }
 
-    private static int writeThreads(JfrChunkWriter writer, JfrThreadEpochData epochData, boolean flush) {
+    private static int writeThreads(JfrChunkWriter writer, JfrThreadEpochData epochData) {
         VMError.guarantee(epochData.visitedThreads.getSize() > 0, "Thread repository must not be empty.");
 
         writer.writeCompressedLong(JfrType.Thread.getId());
@@ -228,7 +227,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         return NON_EMPTY;
     }
 
-    private static int writeThreadGroups(JfrChunkWriter writer, JfrThreadEpochData epochData, boolean flush) {
+    private static int writeThreadGroups(JfrChunkWriter writer, JfrThreadEpochData epochData) {
         int threadGroupCount = epochData.visitedThreadGroups.getSize();
         if (threadGroupCount == 0) {
             return EMPTY;

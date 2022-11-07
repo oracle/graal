@@ -77,7 +77,6 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
     private static final FastThreadLocalLong threadId = FastThreadLocalFactory.createLong("JfrThreadLocal.threadId");
     private static final FastThreadLocalLong parentThreadId = FastThreadLocalFactory.createLong("JfrThreadLocal.parentThreadId");
-    private static final com.oracle.svm.core.threadlocal.FastThreadLocalInt isExcluded = FastThreadLocalFactory.createInt("JfrThreadLocal.enabled");
 
     private long threadLocalBufferSize;
     private static JfrBufferNodeLinkedList javaBufferList;
@@ -103,9 +102,6 @@ public class JfrThreadLocal implements ThreadListener {
         nativeBufferList = new JfrBufferNodeLinkedList();
     }
 
-    public void exclude(Thread javaThread) {
-        getIsolateThread(javaThread);
-    }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
@@ -115,7 +111,6 @@ public class JfrThreadLocal implements ThreadListener {
         // Java object.
         Target_java_lang_Thread t = SubstrateUtil.cast(javaThread, Target_java_lang_Thread.class);
         threadId.set(isolateThread, t.getId());
-        isExcluded.set(isolateThread, 0);
         parentThreadId.set(isolateThread, JavaThreads.getParentThreadId(javaThread));
 
         SubstrateJVM.getThreadRepo().registerThread(javaThread);
@@ -145,7 +140,7 @@ public class JfrThreadLocal implements ThreadListener {
                         flush(jb, WordFactory.unsigned(0), 0);
                     }
                 }
-                boolean ret = getJavaBufferList().removeNode(jbn, false); // also releases locks
+                getJavaBufferList().removeNode(jbn, false); // also releases locks
             } else {
                 jbn.setAlive(false);
             }
@@ -161,7 +156,7 @@ public class JfrThreadLocal implements ThreadListener {
                         flush(nb, WordFactory.unsigned(0), 0);
                     }
                 }
-                boolean ret = getNativeBufferList().removeNode(nbn, false);
+                getNativeBufferList().removeNode(nbn, false);
             } else {
                 nbn.setAlive(false);
             }
@@ -298,7 +293,7 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
         VMError.guarantee(threadLocalBuffer.isNonNull(), "TLB cannot be null if promoting.");
-        VMError.guarantee(!com.oracle.svm.core.thread.VMOperation.isInProgressAtSafepoint(), "Should not be promoting if at safepoint. ");
+        VMError.guarantee(!VMOperation.isInProgressAtSafepoint(), "Should not be promoting if at safepoint. ");
 
         if (!acquireBufferWithRetry(threadLocalBuffer)) {
             return WordFactory.nullPointer();

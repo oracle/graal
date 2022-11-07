@@ -114,12 +114,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
-        JfrSymbolHashtable table;
-        if (flush) {
-            table = getTable(false);
-        } else {
-            table = getTable(true);
-        }
+        JfrSymbolHashtable table = getTable(!flush);
 
         if (table.getSize() == 0) {
             return EMPTY;
