@@ -1280,7 +1280,8 @@ def hellomodule(args):
         mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
         mx.run([
-            vm_executable_path('java'),
+            # On Windows, java is always an .exe, never a .cmd symlink
+            join(_vm_home(None), 'bin', mx.exe_suffix('java')),
             ] + moduletest_run_args)
 
         # Build module into native image
