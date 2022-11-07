@@ -200,7 +200,6 @@ public class JfrThreadLocal implements ThreadListener {
     // uninterruptible.
     public Target_jdk_jfr_internal_EventWriter newEventWriter() {
         assert javaEventWriter.get() == null;
-// assert javaBuffer.get().isNull();
         assert javaBufferNode.get().isNull();
 
         JfrBuffer buffer = getJavaBuffer();
