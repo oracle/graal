@@ -21,10 +21,9 @@ At runtime, an application is loaded and executed normally by the JVM.
 In order to follow the steps in this guide, you must have GraalVM installed.
 In case you do not have it installed, getting GraalVM  downloaded and ready-to-go should only take a few minutes.
 Choose your operating system and proceed to the installation steps:
-- [Linux](../getting-started/graalvm-community/linux.md)
-- [Linux AArch64](../getting-started/graalvm-community/linux-aarch64.md)
-- [macOS](../getting-started/graalvm-community/macos.md)
-- [Windows](../getting-started/graalvm-community/windows.md)
+- [Linux](https://www.graalvm.org/21.3/docs/getting-started/linux/)
+- [macOS](https://www.graalvm.org/21.3/docs/getting-started/macos/)
+- [Windows](https://www.graalvm.org/21.3/docs/getting-started/windows/)
 
 For the purpose of this guide, GraalVM Enterprise based on Java 11 distribution for macOS platform is used.
 To ensure you have successfully installed GraalVM, verify it is available in the `PATH` environment variable and the `JAVA_HOME` points to it.

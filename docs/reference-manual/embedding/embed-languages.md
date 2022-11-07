@@ -16,7 +16,7 @@ permalink: /reference-manual/embed-languages/
 * [Host Access](#host-access)
 * [Build Native Executables from Polyglot Applications](#build-native-executables-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
-* [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
+* [Embed Languages in Guest Languages](#embed-guest-languages-in-guest-languages)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 

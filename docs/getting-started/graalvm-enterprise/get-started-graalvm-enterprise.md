@@ -266,13 +266,9 @@ wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
 
 More details can be found in the [WebAssembly reference manual](../../reference-manual/wasm/README.md).
 
-## Native Image
+## Native Images
 
-<<<<<<< HEAD
-With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and a smaller footprint for your application.
-=======
 With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
->>>>>>> 7c86aa8c43a (Native image > native executable)
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image

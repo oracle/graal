@@ -28,7 +28,7 @@ It is available as of version 21.0.0.
 
 ## Install Java on Truffle
 
-To run Java on Truffle, you need to have [GraalVM installed](../../getting-started/graalvm-community/get-started-graalvm-community.md).
+To run Java on Truffle, you need to have [GraalVM installed](https://www.graalvm.org/21.3/docs/getting-started/).
 The Java on Truffle runtime is not available by default, but can be easily added to GraalVM using the [GraalVM Updater tool](../graalvm-updater.md).
 
 For GraalVM Community Edition users, run the following command to install Java on Truffle from the GitHub catalog:
