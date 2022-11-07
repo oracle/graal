@@ -61,6 +61,10 @@ public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
         Arrays.sort(this.keys);
     }
 
+    public int size() {
+        return keys.length;
+    }
+
     @TruffleBoundary
     public boolean contains(String key) {
         return Arrays.binarySearch(keys, key) >= 0;

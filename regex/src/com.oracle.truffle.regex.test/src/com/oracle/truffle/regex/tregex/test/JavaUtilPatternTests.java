@@ -42,14 +42,13 @@ package com.oracle.truffle.regex.tregex.test;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
-import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.Range;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 import com.oracle.truffle.regex.util.EmptyArrays;
 
 public class JavaUtilPatternTests extends RegexTestBase {
@@ -285,13 +284,9 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("te(?i:st)", 0, "teST");
         test("(?i)te(?-i)st", 0, "test");
         test("(?i)te(?-i)st", 0, "teST");
-
         test("(?x)a#b", 0, "a");
-
         test("(?s).*", 0, "ab\n\ndef");
-
         test("(?m).*", 0, "ab\n\ndef");
-
         test("(?dm)^.", 0, "a\rb\nc");
     }
 
@@ -303,69 +298,41 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("te(?i:st)", 0, "TEST");
         test("(?i)te(?-i)st", 0, "TEst");
         test("(?i)te(?-i)st", 0, "TEST");
-
     }
 
     @Test
-    public void dTest() {
-        Pattern p = Pattern.compile("\\d", Pattern.UNICODE_CHARACTER_CLASS);
-        CodePointSet cps = UnicodeProperties.getProperty("Nd");
-        for(int i = 0; i < Character.MAX_CODE_POINT; i++) {
-            StringBuilder sb = new StringBuilder();
-            sb.appendCodePoint(i);
-            Matcher m = p.matcher(sb.toString());
-        }
-
-        Assert.assertEquals(UnicodeProperties.getProperty("sc=Brai", true), UnicodeProperties.getProperty("Script=Brai", true));
+    public void incompleteQuantifier() {
+        test("a{1,", 0, "a{1,");
     }
 
     void test(String pattern, int flags, String input) {
         test(pattern, flags, input, 0);
     }
 
-    void test(String pattern, int flags, String input, int fromIndex) {
-        Matcher m = Pattern.compile(pattern, flags).matcher(input);
-        boolean isMatch = m.find(fromIndex);
-        final int[] groupBoundaries;
-        if (isMatch) {
-            groupBoundaries = new int[(m.groupCount() + 1) << 1];
-            for (int i = 0; i < m.groupCount() + 1; i++) {
-                groupBoundaries[i << 1] = m.start(i);
-                groupBoundaries[(i << 1) + 1] = m.end(i);
+    void test(String pattern, int javaFlags, String input, int fromIndex) {
+        String flags = new JavaFlags(javaFlags).toString();
+        try {
+            Matcher m = Pattern.compile(pattern, javaFlags).matcher(input);
+            boolean isMatch = m.find(fromIndex);
+            final int[] groupBoundaries;
+            if (isMatch) {
+                groupBoundaries = new int[(m.groupCount() + 1) << 1];
+                for (int i = 0; i < m.groupCount() + 1; i++) {
+                    groupBoundaries[i << 1] = m.start(i);
+                    groupBoundaries[(i << 1) + 1] = m.end(i);
+                }
+            } else {
+                groupBoundaries = EmptyArrays.INT;
             }
-        } else {
-            groupBoundaries = EmptyArrays.INT;
+            test(pattern, flags, input, fromIndex, isMatch, groupBoundaries);
+        } catch (PatternSyntaxException javaPatternException) {
+            try {
+                compileRegex(pattern, flags, "");
+            } catch (RegexSyntaxException tRegexException) {
+                Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
+                return;
+            }
+            Assert.fail("expected syntax exception: " + javaPatternException.getDescription());
         }
-        test(pattern, flagsToString(flags), input, fromIndex, isMatch, groupBoundaries);
-    }
-
-    String flagsToString(int javaUtilPatternFlags) {
-        if (javaUtilPatternFlags == 0) {
-            return "";
-        }
-
-        if ((javaUtilPatternFlags & Pattern.UNIX_LINES) != 0) {
-            return "d";
-        }
-        if ((javaUtilPatternFlags & Pattern.CASE_INSENSITIVE) != 0) {
-            return "i";
-        }
-        if ((javaUtilPatternFlags & Pattern.COMMENTS) != 0) {
-            return "x";
-        }
-        if ((javaUtilPatternFlags & Pattern.MULTILINE) != 0) {
-            return "m";
-        }
-        if ((javaUtilPatternFlags & Pattern.DOTALL) != 0) {
-            return "s";
-        }
-        if ((javaUtilPatternFlags & Pattern.UNICODE_CASE) != 0) {
-            return "u";
-        }
-        if ((javaUtilPatternFlags & Pattern.UNICODE_CHARACTER_CLASS) != 0) {
-            return "U";
-        }
-
-        throw new UnsupportedOperationException();
     }
 }

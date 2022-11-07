@@ -40,15 +40,16 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-
-import java.util.Objects;
 
 public class Token implements JsonConvertible {
 
@@ -84,12 +85,11 @@ public class Token implements JsonConvertible {
     private static final Token NEGATIVE_LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(true);
     private static final Token GROUP_END = new Token(Kind.groupEnd);
 
-
     public static Token createAnchor(char ancValue) {
         return new Anchor(ancValue);
     }
 
-    public static Token addInlineFlag(boolean remove, String flags, boolean open) {
+    public static Token addInlineFlag(boolean remove, JavaFlags flags, boolean open) {
         return new InlineFlagToken(Kind.inlineFlag, remove, flags, open);
     }
 
@@ -373,10 +373,10 @@ public class Token implements JsonConvertible {
     public static class InlineFlagToken extends Token {
 
         private final boolean remove;
-        private final String flags;
+        private final JavaFlags flags;
         private final boolean open;
 
-        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags, boolean open) {
+        protected InlineFlagToken(Token.Kind kind, boolean remove, JavaFlags flags, boolean open) {
             super(kind);
             this.remove = remove;
             this.flags = flags;
@@ -391,7 +391,7 @@ public class Token implements JsonConvertible {
             return open;
         }
 
-        public String getFlags() {
+        public JavaFlags getFlags() {
             return flags;
         }
     }

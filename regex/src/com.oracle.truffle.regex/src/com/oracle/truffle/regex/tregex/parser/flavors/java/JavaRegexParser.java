@@ -57,8 +57,6 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 
-import java.util.Map;
-
 /**
  * Implements the parsing and translating of java.util.Pattern regular expressions to ECMAScript
  * regular expressions.
@@ -94,7 +92,7 @@ public final class JavaRegexParser implements RegexParser {
 
         this.astBuilder = astBuilder;
 
-        this.lexer = new JavaLexer(inSource, new JavaFlags(inFlags));
+        this.lexer = new JavaLexer(inSource, JavaFlags.parseFlags(inFlags));
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
@@ -115,14 +113,14 @@ public final class JavaRegexParser implements RegexParser {
                     dollar();
                     break;
                 case wordBoundary:
-                    if (lexer.getLocalFlags().isUnicode()) {
+                    if (lexer.getLocalFlags().isUnicodeCase()) {
                         buildWordBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
                     } else {
                         buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
                     }
                     break;
                 case nonWordBoundary:
-                    if (lexer.getLocalFlags().isUnicode()) {
+                    if (lexer.getLocalFlags().isUnicodeCase()) {
                         buildWordNonBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
                     } else {
                         buildWordNonBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
@@ -135,7 +133,7 @@ public final class JavaRegexParser implements RegexParser {
                     if (astBuilder.getCurTerm() == null) {
                         throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                     }
-                    if (lexer.getLocalFlags().isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                    if (lexer.getLocalFlags().isUnicodeCase() && astBuilder.getCurTerm().isLookAheadAssertion()) {
                         throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                     }
                     if (astBuilder.getCurTerm().isLookBehindAssertion()) {
@@ -172,9 +170,10 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 case inlineFlag:
                     openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
-                    if (!openInlineFlag)
+                    if (!openInlineFlag) {
                         astBuilder.pushGroup();
-                    lexer.pushFlagsStack(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
+                    }
+                    lexer.pushFlagsStack(((Token.InlineFlagToken) token).getFlags());
                     break;
                 case captureGroupBegin:
                     astBuilder.pushCaptureGroup(token);
@@ -217,8 +216,8 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     @Override
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return lexer.getNamedCaptureGroups();
+    public AbstractRegexObject getNamedCaptureGroups() {
+        return AbstractRegexObject.createNamedCaptureGroupMapInt(lexer.getNamedCaptureGroups());
     }
 
     // Error reporting
@@ -301,18 +300,18 @@ public final class JavaRegexParser implements RegexParser {
             popGroup(); // )
             popGroup(); // )
         } else {
-            /* From doc of Dollar extends Node in java.util.Pattern
-             * Node to anchor at the end of a line or the end of input based on the
-             * multiline mode.
+            /*
+             * From doc of Dollar extends Node in java.util.Pattern Node to anchor at the end of a
+             * line or the end of input based on the multiline mode.
              *
-             * When not in multiline mode, the $ can only match at the very end
-             * of the input, unless the input ends in a line terminator in which
-             * it matches right before the last line terminator.
+             * When not in multiline mode, the $ can only match at the very end of the input, unless
+             * the input ends in a line terminator in which it matches right before the last line
+             * terminator.
              *
              * Note that \r\n is considered an atomic line terminator.
              *
-             * Like ^ the $ operator matches at a position, it does not match the
-             * line terminators themselves.
+             * Like ^ the $ operator matches at a position, it does not match the line terminators
+             * themselves.
              */
             // (?:$|(?=(?:\r\n|\n)$))
             pushGroup();    // (?:
@@ -323,7 +322,6 @@ public final class JavaRegexParser implements RegexParser {
             addCharClass(CodePointSet.create('\n'));
             nextSequence();
             addCharClass(CodePointSet.create('\n'));
-//            popGroup();
             addDollar();
             popGroup();
             popGroup();

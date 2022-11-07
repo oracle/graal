@@ -1,5 +1,15 @@
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
@@ -20,50 +30,36 @@ import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseUnfoldingTrie;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.function.Predicate;
-
 public class JavaLexer extends BaseLexer {
 
     public static final CodePointSet PRE_DEF_H = CodePointSet.createNoDedup(
-            0x0000, 0x0008,
-            0x000a, 0x001f,
-            0x0021, 0x009f,
-            0x00a1, 0x180d,
-            0x180f, 0x1fff,
-            0x202b, 0x202e,
-            0x2030, 0x205e,
-            0x2060, 0x2fff,
-            0x3001, 0x10ffff
-    );
+                    0x0000, 0x0008,
+                    0x000a, 0x001f,
+                    0x0021, 0x009f,
+                    0x00a1, 0x180d,
+                    0x180f, 0x1fff,
+                    0x202b, 0x202e,
+                    0x2030, 0x205e,
+                    0x2060, 0x2fff,
+                    0x3001, 0x10ffff);
     public static final CodePointSet PRE_DEF__H = CodePointSet.createNoDedup(
-            0x0009, 0x0009,
-            0x0020, 0x0020,
-            0x00a0, 0x00a0,
-            0x1680, 0x1680,
-            0x2000, 0x200a,
-            0x202f, 0x202f,
-            0x205f, 0x205f,
-            0x3000, 0x3000
-    );
+                    0x0009, 0x0009,
+                    0x0020, 0x0020,
+                    0x00a0, 0x00a0,
+                    0x1680, 0x1680,
+                    0x2000, 0x200a,
+                    0x202f, 0x202f,
+                    0x205f, 0x205f,
+                    0x3000, 0x3000);
     public static final CodePointSet PRE_DEF_V = CodePointSet.createNoDedup(
-            0x0000, 0x0009,
-            0x000e, 0x0084,
-            0x0086, 0x2027,
-            0x202a, 0x10ffff
-    );
+                    0x0000, 0x0009,
+                    0x000e, 0x0084,
+                    0x0086, 0x2027,
+                    0x202a, 0x10ffff);
     public static final CodePointSet PRE_DEF__V = CodePointSet.createNoDedup(
-            0x000a, 0x000d,
-            0x0085, 0x0085,
-            0x2028, 0x2029
-    );
+                    0x000a, 0x000d,
+                    0x0085, 0x0085,
+                    0x2028, 0x2029);
 
     /**
      * A stack of the locally enabled flags. Java enables establishing new flags and modifying flags
@@ -72,9 +68,9 @@ public class JavaLexer extends BaseLexer {
     private final Deque<JavaFlags> flagsStack;
 
     /**
-     * Characters considered as whitespace in Java's regex extended mode.
+     * Characters considered as whitespace in Java's regex with comments mode.
      */
-    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' '); // '\x0B' = '\u000b'
+    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' ');
 
     /**
      * Characters considered as predefined character classes in Java.
@@ -104,12 +100,12 @@ public class JavaLexer extends BaseLexer {
         CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
         CodePointSet space = UnicodeProperties.getProperty("White_Space");
         CodePointSet xdigit = CodePointSet.create('0', '9', 'A', 'F', 'a', 'f');
-        CodePointSet word = alpha.union(UnicodeProperties.getProperty("General_Category=Nonspacing_Mark")).union(UnicodeProperties.getProperty("General_Category=Enclosing_Mark")).
-                union(UnicodeProperties.getProperty("General_Category=Spacing_Mark")).union(digit).union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation"));
+        CodePointSet word = alpha.union(UnicodeProperties.getProperty("General_Category=Nonspacing_Mark")).union(UnicodeProperties.getProperty("General_Category=Enclosing_Mark")).union(
+                        UnicodeProperties.getProperty("General_Category=Spacing_Mark")).union(digit).union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation"));
         CodePointSet blank = UnicodeProperties.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
         CodePointSet cntrl = UnicodeProperties.getProperty("General_Category=Control");
         CodePointSet graph = space.union(UnicodeProperties.getProperty("General_Category=Control")).union(UnicodeProperties.getProperty("General_Category=Surrogate")).union(
-                UnicodeProperties.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
+                        UnicodeProperties.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
 
         UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));
         UNICODE_POSIX_CHAR_CLASSES.put("graph", graph);
@@ -151,12 +147,8 @@ public class JavaLexer extends BaseLexer {
      */
     private final List<CodePointSetAccumulator> charClassPool = new ArrayList<>();
 
-    private final JavaFlags flags;
-
     public JavaLexer(RegexSource source, JavaFlags flags) {
         super(source);
-        this.flags = flags;
-
         this.flagsStack = new LinkedList<>();
         flagsStack.push(flags);
     }
@@ -213,7 +205,7 @@ public class JavaLexer extends BaseLexer {
     }
 
     private Token charClass(int codePoint) {
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             curCharClass.clear();
             curCharClass.appendRange(codePoint, codePoint);
             return charClass(false);
@@ -224,8 +216,9 @@ public class JavaLexer extends BaseLexer {
 
     private Token charClass(boolean invert) {
         boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
-        if (getLocalFlags().isIgnoreCase()) {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+        if (getLocalFlags().isCaseInsensitive()) {
+            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicodeCase() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode
+                            : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
             CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
         }
         CodePointSet cps = curCharClass.toCodePointSet();
@@ -237,7 +230,7 @@ public class JavaLexer extends BaseLexer {
     protected Token getNext() throws RegexSyntaxException {
         char ch = consumeChar();
 
-        if (getLocalFlags().isExtended()) {
+        if (getLocalFlags().isComments()) {
             if (ch == '#') {
                 comment();
                 return Token.createComment();
@@ -273,12 +266,13 @@ public class JavaLexer extends BaseLexer {
             case '$':
                 return Token.createDollar();
             default:
-                if (getLocalFlags().isIgnoreCase()) {
+                if (getLocalFlags().isCaseInsensitive()) {
                     curCharClass.clear();
                     curCharClass.appendRange(ch, ch);
 
                     boolean wasSingleChar = curCharClass.matchesSingleChar();
-                    CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+                    CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicodeCase() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode
+                                    : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
                     CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
 
                     CodePointSet cps = curCharClass.toCodePointSet();
@@ -318,7 +312,7 @@ public class JavaLexer extends BaseLexer {
             final int backRefNumber = (ch - '0');
             if (backRefNumber < numberOfCaptureGroups()) {
                 return Token.createBackReference(backRefNumber);
-            } else if (getLocalFlags().isUnicode()) {
+            } else if (getLocalFlags().isUnicodeCase()) {
                 throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
             }
             index = restoreIn;
@@ -330,7 +324,7 @@ public class JavaLexer extends BaseLexer {
             case 'G':
                 return Token.createAnchor(ch);
             case 'k':
-                if (getLocalFlags().isUnicode() || hasNamedCaptureGroups()) {
+                if (getLocalFlags().isUnicodeCase() || hasNamedCaptureGroups()) {
                     if (atEnd()) {
                         throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
                     }
@@ -370,7 +364,7 @@ public class JavaLexer extends BaseLexer {
                     }
                     unicodeParseProperty(capitalP, propertySpec);
                     CodePointSet property = unicodeParseProperty(capitalP, propertySpec);
-                    if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
+                    if (getLocalFlags().isCaseInsensitive() && !propertySpec.equalsIgnoreCase("ascii")) {
                         fullyFoldableCharacters.addSet(property);
                     }
                     return Token.createCharClass(property);
@@ -439,7 +433,7 @@ public class JavaLexer extends BaseLexer {
                         bailOut("atomic groups are not supported");
                     }
                     return Token.createNonCaptureGroupBegin();
-                case '-':       // https://www.regular-expressions.info/refmodifiers.html
+                case '-':
                 case 'm':
                 case 's':
                 case 'i':
@@ -447,6 +441,7 @@ public class JavaLexer extends BaseLexer {
                 case 'd':
                 case 'u':
                 case 'U':
+                    // https://www.regular-expressions.info/refmodifiers.html
                     // use the InlineFlagToken, check if ":" or ")" and deal with it properly
                     return inlineFlag(ch1);
                 default:
@@ -477,7 +472,7 @@ public class JavaLexer extends BaseLexer {
     // --- additional Quantifier ---
 
     protected Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
-        if (getLocalFlags().isUnicode()) {
+        if (getLocalFlags().isUnicodeCase()) {
             throw syntaxError(ErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         index = resetIndex;
@@ -505,8 +500,7 @@ public class JavaLexer extends BaseLexer {
             negated = true;
         }
         int firstPosInside = index;
-        classBody:
-        while (true) {
+        classBody: while (true) {
             if (atEnd()) {
                 throw syntaxErrorAt(JavaErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos);
             }
@@ -531,7 +525,7 @@ public class JavaLexer extends BaseLexer {
                             advance();
                         }
                         CodePointSet property = unicodeParseProperty(capitalP, propertySpec);
-                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
+                        if (getLocalFlags().isCaseInsensitive() && !propertySpec.equalsIgnoreCase("ascii")) {
                             fullyFoldableCharacters.addSet(property);
                         }
                         curCharClass.addSet(property);
@@ -540,7 +534,6 @@ public class JavaLexer extends BaseLexer {
 
                 index = restorePosition;
             }
-
 
             switch (ch) {
                 case ']':
@@ -616,9 +609,10 @@ public class JavaLexer extends BaseLexer {
                     }
                     curCharClassAddRange(lowerBound.get(), upperBound.get());
                 }
-            } else lowerBound.ifPresent(this::curCharClassAddCodePoint);
+            } else
+                lowerBound.ifPresent(this::curCharClassAddCodePoint);
         }
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             caseClosure();
         }
         if (negated) {
@@ -627,12 +621,11 @@ public class JavaLexer extends BaseLexer {
 
     }
 
-
     /**
      * Parses a nested character class.
      *
      * @return true iff a nested character class was found, otherwise, the input should be treated
-     * as literal characters
+     *         as literal characters
      */
     private boolean nestedCharClass() {
         CodePointSetAccumulator curCharClassBackup = curCharClass;
@@ -645,8 +638,9 @@ public class JavaLexer extends BaseLexer {
     }
 
     /**
-     * This method modifies {@code curCharClass} to contains its closure on case mapping.
-     * As Ruby and Java have similar character classes, we take the advantage of Ruby's already existing classes (for caseFold for example)
+     * This method modifies {@code curCharClass} to contains its closure on case mapping. As Ruby
+     * and Java have similar character classes, we take the advantage of Ruby's already existing
+     * classes (for caseFold for example)
      */
     private void caseClosure() {
         charClassTmp.clear();
@@ -685,8 +679,9 @@ public class JavaLexer extends BaseLexer {
     }
 
     /**
-     * Calls the argument on any element of the character class which has a case-folding.
-     * As Ruby and Java have similar character classes, we take the advantage of Ruby's already existing classes (for caseFold for example)
+     * Calls the argument on any element of the character class which has a case-folding. As Ruby
+     * and Java have similar character classes, we take the advantage of Ruby's already existing
+     * classes (for caseFold for example)
      */
     private void caseFoldCharClass(BiConsumer<Integer, int[]> caseFoldItem) {
         if (curCharClass.get().size() < RubyCaseFoldingData.CASE_FOLD.size()) {
@@ -710,21 +705,21 @@ public class JavaLexer extends BaseLexer {
 
     private void curCharClassClear() {
         curCharClass.clear();
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             fullyFoldableCharacters.clear();
         }
     }
 
     private void curCharClassAddCodePoint(int codepoint) {
         curCharClass.addCodePoint(codepoint);
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             fullyFoldableCharacters.addCodePoint(codepoint);
         }
     }
 
     private void curCharClassAddRange(int lower, int upper) {
         curCharClass.addRange(lower, upper);
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             fullyFoldableCharacters.addRange(lower, upper);
         }
     }
@@ -747,13 +742,13 @@ public class JavaLexer extends BaseLexer {
         CodePointSetAccumulator curCharClassBackup = curCharClass;
         CodePointSetAccumulator foldableCharsBackup = fullyFoldableCharacters;
         curCharClass = acquireCodePointSetAccumulator();
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             fullyFoldableCharacters = acquireCodePointSetAccumulator();
         }
         collectCharClass();
         curCharClassBackup.intersectWith(curCharClass.get());
         curCharClass = curCharClassBackup;
-        if (getLocalFlags().isIgnoreCase()) {
+        if (getLocalFlags().isCaseInsensitive()) {
             foldableCharsBackup.addSet(fullyFoldableCharacters.get());
             fullyFoldableCharacters = foldableCharsBackup;
         }
@@ -823,7 +818,7 @@ public class JavaLexer extends BaseLexer {
             case 'w':
                 if (getLocalFlags().isUnicodeCharacterClass()) {
                     return UNICODE_POSIX_CHAR_CLASSES.get("word");
-                } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
+                } else if (getLocalFlags().isUnicodeCase() && getLocalFlags().isCaseInsensitive()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.WORD_CHARS;
@@ -831,7 +826,7 @@ public class JavaLexer extends BaseLexer {
             case 'W':
                 if (getLocalFlags().isUnicodeCharacterClass()) {
                     return UNICODE_POSIX_CHAR_CLASSES.get("word").createInverse(Encodings.UTF_32);
-                } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
+                } else if (getLocalFlags().isUnicodeCase() && getLocalFlags().isCaseInsensitive()) {
                     return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.NON_WORD_CHARS;
@@ -855,10 +850,10 @@ public class JavaLexer extends BaseLexer {
         }
         switch (c) {
             case '0':
-                if (getLocalFlags().isUnicode() && !atEnd() && isDecimal(curChar())) {
+                if (getLocalFlags().isUnicodeCase() && !atEnd() && isDecimal(curChar())) {
                     throw syntaxError(ErrorMessages.INVALID_ESCAPE);
                 }
-                if (!getLocalFlags().isUnicode() && !atEnd() && isDecimal(curChar())) {
+                if (!getLocalFlags().isUnicodeCase() && !atEnd() && isDecimal(curChar())) {
                     return parseOctal(0);
                 }
                 return '\0';
@@ -871,11 +866,11 @@ public class JavaLexer extends BaseLexer {
             case 'r':
                 return '\r';
             default:
-                if (!getLocalFlags().isUnicode() && isOctal(c)) {
+                if (!getLocalFlags().isUnicodeCase() && isOctal(c)) {
                     return parseOctal(c - '0');
                 }
                 if (!SYNTAX_CHARS.get(c)) {
-                    if (getLocalFlags().isUnicode()) {
+                    if (getLocalFlags().isUnicodeCase()) {
                         throw syntaxError(ErrorMessages.INVALID_ESCAPE);
                     }
                 }
@@ -898,9 +893,6 @@ public class JavaLexer extends BaseLexer {
                 advance();
                 String code = getUpTo(2, JavaLexer::isHex);
                 int byteValue = Integer.parseInt(code, 16);
-//                if (byteValue > 0x7F) {
-//                    bailOut("unsupported multibyte escape");
-//                }
                 return Optional.of(byteValue);
             }
             case 'u': {
@@ -958,13 +950,13 @@ public class JavaLexer extends BaseLexer {
     }
 
     /**
-     * Like {@link #parseEscape}, but restricted to the forms of escapes usable in character classes.
-     * This includes character escapes and character class escapes, but not assertion escapes or
-     * backreferences.
+     * Like {@link #parseEscape}, but restricted to the forms of escapes usable in character
+     * classes. This includes character escapes and character class escapes, but not assertion
+     * escapes or backreferences.
      *
      * @return {@code Optional.of(ch)} if the escape sequence was a character escape sequence for
-     * some character {@code ch}; {@code Optional.empty()} if it was a character class
-     * escape sequence
+     *         some character {@code ch}; {@code Optional.empty()} if it was a character class
+     *         escape sequence
      */
     private Optional<Integer> classEscape() {
         if (isPredefCharClass(curChar())) {
@@ -1014,7 +1006,7 @@ public class JavaLexer extends BaseLexer {
             ch = consumeChar();
         }
 
-        return Token.addInlineFlag(negative, newFlags.toString(), ch == ')');
+        return Token.addInlineFlag(negative, newFlags, ch == ')');
     }
 
     /**
@@ -1073,4 +1065,3 @@ public class JavaLexer extends BaseLexer {
     }
 
 }
-

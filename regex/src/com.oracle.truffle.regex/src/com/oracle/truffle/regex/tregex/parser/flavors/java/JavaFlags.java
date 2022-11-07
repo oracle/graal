@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
+import java.util.regex.Pattern;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,6 +49,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
+import com.oracle.truffle.regex.util.TBitSet;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -55,50 +58,154 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 @ExportLibrary(InteropLibrary.class)
 public final class JavaFlags extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray();
+    private static final String PROP_CANON_EQ = "CANON_EQ";
+    private static final String PROP_UNICODE_CHARACTER_CLASS = "UNICODE_CHARACTER_CLASS";
+    private static final String PROP_UNIX_LINES = "UNIX_LINES";
+    private static final String PROP_CASE_INSENSITIVE = "CASE_INSENSITIVE";
+    private static final String PROP_MULTILINE = "MULTILINE";
+    private static final String PROP_DOTALL = "DOTALL";
+    private static final String PROP_UNICODE_CASE = "UNICODE_CASE";
+    private static final String PROP_COMMENTS = "COMMENTS";
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
+                    PROP_CANON_EQ,
+                    PROP_UNICODE_CHARACTER_CLASS,
+                    PROP_UNIX_LINES,
+                    PROP_CASE_INSENSITIVE,
+                    PROP_MULTILINE,
+                    PROP_DOTALL,
+                    PROP_UNICODE_CASE,
+                    PROP_COMMENTS);
+    private static final TBitSet FLAGS = TBitSet.valueOf('C', 'U', 'd', 'i', 'm', 's', 'u', 'x');
+    private static final TBitSet TYPE_FLAGS = TBitSet.valueOf('U', 'd', 'u');
 
     private final int value;
-
-    private static final String FLAGS = "idmsuxU";
-    private static final String TYPE_FLAGS = "duU";
-
-    public JavaFlags(String source) {
-        int bits = 0;
-        for (int i = 0; i < source.length(); i++) {
-            bits |= maskForFlag(source.charAt(i));
-        }
-        this.value = bits;
-    }
 
     public JavaFlags(int bits) {
         this.value = bits;
     }
 
-    @Override
-    public boolean equals(Object other) {
-        return other instanceof JavaFlags && this.value == ((JavaFlags) other).value;
+    public static JavaFlags parseFlags(String source) {
+        int flags = 0;
+        for (int i = 0; i < source.length(); i++) {
+            char ch = source.charAt(i);
+            switch (ch) {
+                case 'C':
+                    flags |= Pattern.CANON_EQ;
+                    break;
+                case 'U':
+                    flags |= Pattern.UNICODE_CHARACTER_CLASS;
+                    break;
+                case 'd':
+                    flags |= Pattern.UNIX_LINES;
+                    break;
+                case 'i':
+                    flags |= Pattern.CASE_INSENSITIVE;
+                    break;
+                case 'm':
+                    flags |= Pattern.MULTILINE;
+                    break;
+                case 's':
+                    flags |= Pattern.DOTALL;
+                    break;
+                case 'u':
+                    flags |= Pattern.UNICODE_CASE;
+                    break;
+                case 'x':
+                    flags |= Pattern.COMMENTS;
+                    break;
+            }
+        }
+        return new JavaFlags(flags);
     }
 
-    @Override
-    public int hashCode() {
-        return value;
+    private static int maskForFlag(int flagChar) {
+        switch (flagChar) {
+            case 'C':
+                return Pattern.CANON_EQ;
+            case 'U':
+                return Pattern.UNICODE_CHARACTER_CLASS;
+            case 'd':
+                return Pattern.UNIX_LINES;
+            case 'i':
+                return Pattern.CASE_INSENSITIVE;
+            case 'm':
+                return Pattern.MULTILINE;
+            case 's':
+                return Pattern.DOTALL;
+            case 'u':
+                return Pattern.UNICODE_CASE;
+            case 'x':
+                return Pattern.COMMENTS;
+            default:
+                throw new IllegalStateException("should not reach here");
+        }
     }
 
     @TruffleBoundary
     @Override
     public String toString() {
-        StringBuilder out = new StringBuilder(FLAGS.length());
-        for (int i = 0; i < FLAGS.length(); i++) {
-            char flag = FLAGS.charAt(i);
-            if (this.hasFlag(flag)) {
-                out.append(flag);
-            }
+        StringBuilder sb = new StringBuilder(KEYS.size());
+        if (isSet(Pattern.CANON_EQ)) {
+            sb.append('C');
         }
-        return out.toString();
+        if (isSet(Pattern.UNICODE_CHARACTER_CLASS)) {
+            sb.append('U');
+        }
+        if (isSet(Pattern.UNIX_LINES)) {
+            sb.append('d');
+        }
+        if (isSet(Pattern.CASE_INSENSITIVE)) {
+            sb.append('i');
+        }
+        if (isSet(Pattern.MULTILINE)) {
+            sb.append('m');
+        }
+        if (isSet(Pattern.DOTALL)) {
+            sb.append('s');
+        }
+        if (isSet(Pattern.UNICODE_CASE)) {
+            sb.append('u');
+        }
+        if (isSet(Pattern.COMMENTS)) {
+            sb.append('x');
+        }
+        return sb.toString();
     }
 
-    public boolean hasFlag(int flagChar) {
-        return (this.value & maskForFlag(flagChar)) != 0;
+    public boolean isCanonEq() {
+        return isSet(Pattern.CANON_EQ);
+    }
+
+    public boolean isUnicodeCharacterClass() {
+        return isSet(Pattern.UNICODE_CHARACTER_CLASS);
+    }
+
+    public boolean isUnixLines() {
+        return isSet(Pattern.UNIX_LINES);
+    }
+
+    public boolean isCaseInsensitive() {
+        return isSet(Pattern.CASE_INSENSITIVE);
+    }
+
+    public boolean isMultiline() {
+        return isSet(Pattern.MULTILINE);
+    }
+
+    public boolean isDotAll() {
+        return isSet(Pattern.DOTALL);
+    }
+
+    public boolean isComments() {
+        return isSet(Pattern.COMMENTS);
+    }
+
+    public boolean isUnicodeCase() {
+        return isSet(Pattern.UNICODE_CASE);
+    }
+
+    private boolean isSet(int flag) {
+        return (value & flag) != 0;
     }
 
     public JavaFlags addFlag(int flagChar) {
@@ -113,40 +220,22 @@ public final class JavaFlags extends AbstractConstantKeysObject {
         return new JavaFlags(this.value & ~maskForFlag(flagChar));
     }
 
-    private static int maskForFlag(int flagChar) {
-        return 1 << FLAGS.indexOf(flagChar);
-    }
-
-    public boolean isIgnoreCase() {
-        return hasFlag('i');
-    }
-
-    public boolean isMultiline() {
-        return hasFlag('m');
-    }
-
-    public boolean isDotAll() {
-        return hasFlag('s');
-    }
-
-    public boolean isExtended() {
-        return hasFlag('x');
-    }
-
-    public boolean isUnicode() {
-        return hasFlag('u');
-    }
-
-    public boolean isUnicodeCharacterClass() {
-        return hasFlag('U');
-    }
-
     public static boolean isValidFlagChar(int candidateChar) {
-        return FLAGS.indexOf(candidateChar) >= 0;
+        return FLAGS.get(candidateChar);
     }
 
     public static boolean isTypeFlag(int candidateChar) {
-        return TYPE_FLAGS.indexOf(candidateChar) >= 0;
+        return TYPE_FLAGS.get(candidateChar);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof JavaFlags && this.value == ((JavaFlags) other).value;
+    }
+
+    @Override
+    public int hashCode() {
+        return value;
     }
 
     @TruffleBoundary
@@ -162,14 +251,41 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_CANON_EQ:
+            case PROP_UNICODE_CHARACTER_CLASS:
+            case PROP_UNIX_LINES:
+            case PROP_CASE_INSENSITIVE:
+            case PROP_MULTILINE:
+            case PROP_DOTALL:
+            case PROP_UNICODE_CASE:
+            case PROP_COMMENTS:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "EXTENDED":
-                return isExtended();
-            case "IGNORECASE":
-                return isIgnoreCase();
-            case "MULTILINE":
+            case PROP_CANON_EQ:
+                return isCanonEq();
+            case PROP_UNICODE_CHARACTER_CLASS:
+                return isUnicodeCharacterClass();
+            case PROP_UNIX_LINES:
+                return isUnixLines();
+            case PROP_CASE_INSENSITIVE:
+                return isCaseInsensitive();
+            case PROP_MULTILINE:
                 return isMultiline();
+            case PROP_DOTALL:
+                return isDotAll();
+            case PROP_UNICODE_CASE:
+                return isUnicodeCase();
+            case PROP_COMMENTS:
+                return isComments();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
