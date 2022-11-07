@@ -214,7 +214,7 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'debuginfotest',
-    'test',
+    'native_unittests',
     'build',
     'benchmarktest',
     "nativeimagehelp",
@@ -373,7 +373,7 @@ def svm_gate_body(args, tasks):
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                     debuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
-    with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
+    with Task('native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task(args.extra_image_builder_arguments)
