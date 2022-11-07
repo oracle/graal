@@ -268,8 +268,14 @@ public final class VM extends NativeEnv {
                 return JavaVersion.forVersion(major);
             }
         } else {
-            // JDK 14+
-            return JavaVersion.latestSupported();
+            TruffleObject probeJDK19 = getNativeAccess().lookupAndBindSymbol(libJava, "Java_java_lang_ref_Finalizer_isFinalizationEnabled", NativeSignature.create(NativeType.CHAR, NativeType.POINTER, NativeType.POINTER));
+            if (probeJDK19 != null) {
+                // JDK 19+
+                return JavaVersion.latestSupported();
+            } else {
+                // JDK 14-17
+                return JavaVersion.forVersion(17);
+            }
         }
     }
 
