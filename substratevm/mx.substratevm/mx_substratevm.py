@@ -221,6 +221,7 @@ GraalTags = Tags([
     'muslcbuild',
     'hellomodule',
     'condconfig',
+    'truffle_unittests',
 ])
 
 def vm_native_image_path(config=None):
@@ -382,12 +383,12 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 conditional_config_task(native_image)
 
-    with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
+    with Task('Run Truffle unittests with SVM image', tasks, tags=[GraalTags.truffle_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 truffle_unittest_task(args.extra_image_builder_arguments)
 
-    with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
+    with Task('Run Truffle NFI unittests with SVM image', tasks, tags=[GraalTags.truffle_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
