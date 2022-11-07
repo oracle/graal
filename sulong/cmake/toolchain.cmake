@@ -41,9 +41,9 @@ if(WIN32)
   set(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/lld-link${SULONG_CMD_SUFFIX})
   set(CMAKE_RC_COMPILER ${GRAAL_HOME}/lib/llvm/llvm-rc.exe)
 
-  # Set the build profile to release. Otherwise the program is compiled with -O0
-  # preventing interop from working.
-  set(CMAKE_BUILD_TYPE "Release")
+  # Set the build profile to sulong. This prevents CMake from adding additional
+  # flags such as -O0 which preventing interop from working.
+  set(CMAKE_BUILD_TYPE "Sulong")
 elseif(APPLE)
   set(SULONG_CMD_SUFFIX "")
   set(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld64.lld${SULONG_CMD_SUFFIX})
