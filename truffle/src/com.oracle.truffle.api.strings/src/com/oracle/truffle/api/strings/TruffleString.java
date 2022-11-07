@@ -5835,37 +5835,37 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(allocator);
             CompilerAsserts.partialEvaluationConstant(useCompaction);
             CompilerAsserts.partialEvaluationConstant(cacheResult);
-            if (isNativeProfile.profile(a.isNative())) {
+            int strideA = inflateStrideProfile.profile(a.stride());
+            if (isNativeProfile.profile(a.isNative() && strideA == (useCompaction ? Stride.fromCodeRange(a.codeRange(), encoding) : encoding.naturalStride))) {
                 return a;
             }
             TruffleString cur = a.next;
             assert !a.isJavaString();
             if (cacheResult && cur != null) {
-                while (cur != a && (!cur.isNative() || !cur.isCompatibleTo(encoding) || cur.stride() != (useCompaction ? a.stride() : encoding.naturalStride) || cur.isJavaString())) {
+                while (cur != a && (!cur.isNative() || !cur.isCompatibleTo(encoding) || cur.stride() != (useCompaction ? strideA : encoding.naturalStride) || cur.isJavaString())) {
                     cur = cur.next;
                 }
                 if (cacheHit.profile(cur != a)) {
-                    assert cur.isCompatibleTo(encoding) && cur.isNative() && !cur.isJavaString() && cur.stride() == (useCompaction ? a.stride() : encoding.naturalStride);
+                    assert cur.isCompatibleTo(encoding) && cur.isNative() && !cur.isJavaString() && cur.stride() == (useCompaction ? strideA : encoding.naturalStride);
                     return cur;
                 }
             }
             int length = a.length();
-            int stride = useCompaction ? a.stride() : encoding.naturalStride;
+            int stride = useCompaction ? Stride.fromCodeRange(a.codeRange(), encoding) : encoding.naturalStride;
             int byteSize = length << stride;
             Object buffer = allocator.allocate(byteSize + 4);
             NativePointer nativePointer = NativePointer.create(this, buffer, interopLibrary);
-            byte[] arrayA = (byte[]) toIndexableNode.execute(a, a.data());
+            Object arrayA = toIndexableNode.execute(a, a.data());
+            int offsetA = a.offset();
             if (useCompaction) {
-                TStringUnsafe.copyToNative(arrayA, a.offset(), nativePointer.pointer, 0, byteSize);
+                TStringOps.arraycopyWithStride(this, arrayA, offsetA, strideA, 0, nativePointer, 0, stride, 0, length);
             } else {
-                int offsetA = a.offset();
-                int strideA = a.stride();
                 if (isUTF16(encoding)) {
-                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, inflateStrideProfile.profile(strideA), 0, nativePointer, 0, 1, 0, length);
+                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, strideA, 0, nativePointer, 0, 1, 0, length);
                 } else if (isUTF32(encoding)) {
-                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, inflateStrideProfile.profile(strideA), 0, nativePointer, 0, 2, 0, length);
+                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, strideA, 0, nativePointer, 0, 2, 0, length);
                 } else {
-                    TStringUnsafe.copyToNative(arrayA, offsetA, nativePointer.pointer, 0, byteSize);
+                    TStringOps.arraycopyWithStride(this, arrayA, offsetA, 0, 0, nativePointer, 0, 0, 0, byteSize);
                 }
             }
             // zero-terminate the string with four zero bytes, to make absolutely sure any

@@ -562,7 +562,7 @@ public abstract class AbstractTruffleString {
      * Shorthand for calling the uncached version of
      * {@link TruffleString.GetStringCompactionLevelNode}.
      *
-     * @since 22.3
+     * @since 23.0
      */
     @TruffleBoundary
     public final int getStringCompactionLevelUncached(TruffleString.Encoding expectedEncoding) {

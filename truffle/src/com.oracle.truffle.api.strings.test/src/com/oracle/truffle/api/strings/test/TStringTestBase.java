@@ -694,6 +694,21 @@ public class TStringTestBase {
         return 0;
     }
 
+    public static int getCompactStride(TruffleString.CodeRange codeRange, TruffleString.Encoding encoding) {
+        switch (codeRange) {
+            case ASCII:
+            case LATIN_1:
+                return 0;
+            case BMP:
+                return 1;
+            case VALID:
+            case BROKEN:
+                return getNaturalStride(encoding);
+            default:
+                throw new RuntimeException("should not reach here");
+        }
+    }
+
     protected static ArrayList<Object[]> crossProductErrorHandling(Iterable<Node> nodes) {
         ArrayList<Object[]> ret = new ArrayList<>();
         for (Node n : nodes) {
