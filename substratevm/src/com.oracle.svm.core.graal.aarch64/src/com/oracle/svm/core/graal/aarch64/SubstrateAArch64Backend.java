@@ -1255,11 +1255,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         } catch (BranchTargetOutOfBoundsException e) {
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
+            resetForEmittingCode(crb);
             crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
             lir.resetLabels();
             crb.emit(lir);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void resetForEmittingCode(CompilationResultBuilder crb) {
+
     }
 
     @Override
