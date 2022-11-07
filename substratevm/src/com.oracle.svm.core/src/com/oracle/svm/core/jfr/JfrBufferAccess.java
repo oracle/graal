@@ -94,7 +94,6 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void release(JfrBuffer buffer) {
-        com.oracle.svm.core.util.VMError.guarantee(buffer.getAcquired() == ACQUIRED, "^^^21");////assert buffer.getAcquired() == ACQUIRED;
         buffer.setAcquired(NOT_ACQUIRED);
     }
 

@@ -77,8 +77,7 @@ public class JfrTypeRepository implements JfrConstantPool {
                 if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
                     visitClass(typeInfo, clazz);
                 }
-            }
-            else if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+            } else if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
                 JfrTraceId.clearUsedPreviousEpoch(clazz);
                 visitClass(typeInfo, clazz);
             }
@@ -126,7 +125,6 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     private static void writeClass(JfrChunkWriter writer, TypeInfo typeInfo, Class<?> clazz, boolean flush) {
-//        System.out.println("*** --- Writing Class:"+clazz.getName());
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));  // key
         writer.writeCompressedLong(typeInfo.getClassLoaderId(clazz.getClassLoader()));

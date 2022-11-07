@@ -341,13 +341,12 @@ public class SubstrateJVM {
                 if (existingFile) {
                     chunkWriter.closeFile(metadataDescriptor, repositories, threadRepo);
                 }
-                System.out.println("*** setOutput: "+ file);
                 if (file != null) {
-                    chunkWriter.openFile(file);// *** open up the new file
+                    chunkWriter.openFile(file);
                     // If in-memory recording was active so far, we should notify the recorder
                     // thread because the global memory buffers could be rather full.
                     if (!existingFile) {
-                        recorderThread.signal();// *** do this if there was no existing file
+                        recorderThread.signal();
                     }
                 }
             } else {
@@ -431,15 +430,13 @@ public class SubstrateJVM {
 
     /** See {@link JVM#flush}. */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) { // *** seems like its for the java buffers
+    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
         assert oldBuffer.isNonNull();
-//        threadLocal.lockJava();
         JfrBuffer newBuffer = JfrThreadLocal.flush(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
-//        threadLocal.unlockJava();
         if (newBuffer.isNull()) {
             // The flush failed for some reason, so mark the EventWriter as invalid for this write
             // attempt.
@@ -463,13 +460,12 @@ public class SubstrateJVM {
     }
 
     public void flush() {
-        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock(); //does this make it a safepoint? [NO]
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
                     chunkWriter.flush(metadataDescriptor, repositories, threadRepo);
-                    System.out.println("*** Done Flush");
                 }
             }
         } finally {
@@ -478,7 +474,7 @@ public class SubstrateJVM {
     }
 
     public void markChunkFinal() {
-        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock(); //does this make it a safepoint? [NO]
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();

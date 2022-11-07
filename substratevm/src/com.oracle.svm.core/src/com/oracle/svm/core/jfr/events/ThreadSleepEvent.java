@@ -48,7 +48,7 @@ public class ThreadSleepEvent {
     private static void emit0(long time, long startTicks) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadSleep)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data); // *** would need to lock here
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadSleep);
             JfrNativeEventWriter.putLong(data, startTicks);
@@ -56,7 +56,7 @@ public class ThreadSleepEvent {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadSleep, 0));
             JfrNativeEventWriter.putLong(data, time);
-            JfrNativeEventWriter.endSmallEvent(data); // // *** can unlock here
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }

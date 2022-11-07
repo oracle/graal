@@ -48,7 +48,7 @@ public interface JfrConstantPool {
 
     /**
      * Persists the data of the previous epoch. May only be called at a safepoint, after the epoch
-     * changed. [*** change this comment]
+     * changed, or during flush.
      */
     int write(JfrChunkWriter writer, boolean flush);
 }

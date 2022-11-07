@@ -292,11 +292,7 @@ public final class JfrNativeEventWriter {
         JfrBuffer oldBuffer = data.getJfrBuffer();
         switch (oldBuffer.getBufferType()) {
             case THREAD_LOCAL_NATIVE:
-//                JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-//               jfrThreadLocal.lockNative();
-               com.oracle.svm.core.jfr.JfrBuffer buffer = JfrThreadLocal.flush(oldBuffer, uncommitted, requested);
-//               jfrThreadLocal.unlockNative();
-               return buffer;
+               return JfrThreadLocal.flush(oldBuffer, uncommitted, requested);
             case C_HEAP:
                 return reuseOrReallocateBuffer(oldBuffer, uncommitted, requested);
             default:

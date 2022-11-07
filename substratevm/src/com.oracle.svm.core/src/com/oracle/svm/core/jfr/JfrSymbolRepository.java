@@ -117,12 +117,11 @@ public class JfrSymbolRepository implements JfrConstantPool {
         JfrSymbolHashtable table;
         if (flush) {
             table = getTable(false);
-        }else {
+        } else {
             table = getTable(true);
         }
 
         if (table.getSize() == 0) {
-            System.out.println("*** ---- empty symbol table");
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Symbol.getId());
@@ -138,9 +137,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
                 }
             }
         }
-//        if (!flush) {
-            table.clear();
-//        }
+        table.clear();
         return NON_EMPTY;
     }
 
@@ -148,7 +145,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         writer.writeCompressedLong(symbol.getId());
         writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
         byte[] value = symbol.getValue().getBytes(StandardCharsets.UTF_8);
-        if (symbol.getReplaceDotWithSlash()) { // *** this is where java.lang.Object gets converted
+        if (symbol.getReplaceDotWithSlash()) {
             replaceDotWithSlash(value);
         }
         writer.writeCompressedInt(value.length);

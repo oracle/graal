@@ -45,6 +45,7 @@ public class JfrMethodRepository implements JfrConstantPool {
     private final VMMutex mutex;
     private final JfrMethodEpochData epochData0;
     private final JfrMethodEpochData epochData1;
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void acquireLock() {
         mutex.lockNoTransition();
@@ -54,6 +55,7 @@ public class JfrMethodRepository implements JfrConstantPool {
     private void releaseLock() {
         mutex.unlock();
     }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrMethodRepository() {
         this.epochData0 = new JfrMethodEpochData();
@@ -125,11 +127,10 @@ public class JfrMethodRepository implements JfrConstantPool {
             acquireLock();
         }
         JfrMethodEpochData epochData = getEpochData(!flush);
-        System.out.println("writing methods");
         int count = writeMethods(writer, epochData, flush);
         if (!flush) {
             epochData.clear();
-        }else{
+        } else {
             releaseLock();
         }
         return count;
@@ -138,10 +139,8 @@ public class JfrMethodRepository implements JfrConstantPool {
     private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData, boolean flush) {
         int numberOfMethods = epochData.visitedMethods.getSize();
         if (numberOfMethods == 0) {
-            System.out.println(" NO methods to write");
             return EMPTY;
         }
-        System.out.println(" YES methods to write");
 
         writer.writeCompressedLong(JfrType.Method.getId());
         writer.writeCompressedInt(numberOfMethods);
