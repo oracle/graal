@@ -35,14 +35,14 @@ import com.oracle.svm.core.Uninterruptible;
 public interface JfrConstantPool {
 
     /**
-     * If constant pool is empty, the {@link JfrConstantPool#write(JfrChunkWriter, boolean)} function returns
-     * this value.
+     * If constant pool is empty, the {@link JfrConstantPool#write(JfrChunkWriter, boolean)}
+     * function returns this value.
      */
     int EMPTY = 0;
 
     /**
-     * If constant pool is not empty, the {@link JfrConstantPool#write(JfrChunkWriter, boolean)} function
-     * returns this value.
+     * If constant pool is not empty, the {@link JfrConstantPool#write(JfrChunkWriter, boolean)}
+     * function returns this value.
      */
     int NON_EMPTY = 1;
 

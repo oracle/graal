@@ -240,10 +240,8 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
     private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData, boolean flush) {
         if (epochData.numberOfSerializedStackTraces == 0) {
-//            System.out.println("no stacktraces to write");
             return EMPTY;
         }
-//        System.out.println(" YES stacktraces to write");
 
         writer.writeCompressedLong(JfrType.StackTrace.getId());
         writer.writeCompressedInt(epochData.numberOfSerializedStackTraces);

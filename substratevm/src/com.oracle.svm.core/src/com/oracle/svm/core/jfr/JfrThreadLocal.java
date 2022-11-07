@@ -100,7 +100,6 @@ public class JfrThreadLocal implements ThreadListener {
         nativeBufferList = new JfrBufferNodeLinkedList();
     }
 
-
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
     public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {

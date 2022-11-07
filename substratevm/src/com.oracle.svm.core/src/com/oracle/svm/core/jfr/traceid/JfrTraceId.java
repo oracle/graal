@@ -58,6 +58,7 @@ public class JfrTraceId {
         long predicate = JfrTraceIdEpoch.getInstance().previousEpochBit();
         return predicate(clazz, predicate);
     }
+
     @Uninterruptible(reason = "Epoch must not change.")
     public static boolean isUsedCurrentEpoch(Class<?> clazz) {
         long predicate = JfrTraceIdEpoch.getInstance().thisEpochBit();
