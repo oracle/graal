@@ -65,6 +65,7 @@ public final class JfrBufferAccess {
         if (result.isNonNull()) {
             result.setSize(dataSize);
             result.setBufferType(bufferType);
+            result.setAcquired(NOT_ACQUIRED);
             reinitialize(result);
         }
         return result;

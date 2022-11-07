@@ -282,7 +282,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     private static boolean acquireBufferWithRetry(JfrBuffer buffer) {
-        for (int retry = 0; retry < 100; retry++) {
+        for (int retry = 0; retry < 100000; retry++) {
             if (JfrBufferAccess.acquire(buffer)) {
                 return true;
             }
