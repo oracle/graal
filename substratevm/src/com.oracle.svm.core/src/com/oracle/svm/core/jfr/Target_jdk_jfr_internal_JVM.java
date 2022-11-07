@@ -418,8 +418,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void exclude(Thread thread) {
-        Exception e = new Exception();
-        e.printStackTrace();
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
