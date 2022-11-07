@@ -629,7 +629,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     VirtualObjectNode virtual = (VirtualObjectNode) alias;
                     addVirtualAlias(virtual, phi);
                 } else {
-                    aliases.set(phi, null);
+                    aliases.removeKeyIfPresent(phi);
                 }
             }
         }
@@ -941,7 +941,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 }
 
                 for (PhiNode phi : getPhis()) {
-                    aliases.set(phi, null);
+                    aliases.removeKeyIfPresent(phi);
                     if (hasVirtualInputs.isMarked(phi) && phi instanceof ValuePhiNode) {
                         materialized |= processPhi((ValuePhiNode) phi, states);
                     }

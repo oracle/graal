@@ -97,7 +97,7 @@ public class NodeMapTest extends GraphTest {
             map.set(node, 1);
         }
         for (TestNode node : nodes) {
-            map.set(node, null);
+            map.set(node, 32);
         }
         for (int i = 0; i < nodes.length; i += 2) {
             map.set(nodes[i], i);
@@ -107,7 +107,7 @@ public class NodeMapTest extends GraphTest {
             if ((i & 1) == 0) {
                 assertEquals((Integer) i, map.get(nodes[i]));
             } else {
-                assertEquals(null, map.get(nodes[i]));
+                assertEquals(Integer.valueOf(32), map.get(nodes[i]));
             }
         }
     }
@@ -122,8 +122,6 @@ public class NodeMapTest extends GraphTest {
         try {
             map.get(newNode);
             fail("expected " + (Assertions.assertionsEnabled() ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
-        } catch (AssertionError ae) {
-            // thrown when assertions are enabled
         } catch (ArrayIndexOutOfBoundsException e) {
             // thrown when assertions are disabled
         }
@@ -139,8 +137,6 @@ public class NodeMapTest extends GraphTest {
         try {
             map.set(newNode, 1);
             fail("expected " + (Assertions.assertionsEnabled() ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
-        } catch (AssertionError ae) {
-            // thrown when assertions are enabled
         } catch (ArrayIndexOutOfBoundsException e) {
             // thrown when assertions are disabled
         }

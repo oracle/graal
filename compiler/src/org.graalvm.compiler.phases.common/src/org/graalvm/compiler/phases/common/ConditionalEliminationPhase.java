@@ -1095,7 +1095,12 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             while (undoOperations.size() > infoElementsMark) {
                 Node node = undoOperations.pop();
                 if (node.isAlive()) {
-                    map.set(node, map.get(node).getParent());
+                    InfoElement parElement = map.get(node).getParent();
+                    if (parElement != null) {
+                        map.set(node, parElement);
+                    } else {
+                        map.removeKey(node);
+                    }
                 }
             }
 

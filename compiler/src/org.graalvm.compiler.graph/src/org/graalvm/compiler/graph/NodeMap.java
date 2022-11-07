@@ -96,9 +96,11 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     public void set(Node node, T value) {
         check(node);
-        if (!node.isAlive()) {
-            throw new GraalGraphError("this node is not alive: " + node);
-        }
+        checkKeyValuePair(node, value);
+        setInternal(node, value);
+    }
+
+    private void setInternal(Node node, T value) {
         values[getNodeId(node)] = value;
     }
 
@@ -128,11 +130,8 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         return getNodeId(node) >= capacity();
     }
 
-    private boolean check(Node node) {
+    private void check(Node node) {
         GraalError.guarantee(node.graph() == graph, "%s is not part of the graph", node);
-        GraalError.guarantee(!isNew(node), "This node was added to the graph after creating the node map : %s", node);
-        GraalError.guarantee(node.isAlive(), "this node is not alive: ", node);
-        return true;
     }
 
     @Override
@@ -272,8 +271,23 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         }
     }
 
+    private void checkKeyValuePair(Node key, T value) {
+        if (key == null) {
+            // following the specification from EconomicMap null keys are not allowed
+            throw new UnsupportedOperationException("null not supported as key!");
+        }
+        GraalError.guarantee(value != null,
+                        "NodeMap, as opposed to economic map, does not allow null values. Null values are used to mark nodes which have a mapped value. Thus, getKeys(), getEntries() and getValues() cannot support null values. Key=%s",
+                        key);
+    }
+
     @Override
     public T put(Node key, T value) {
+        checkKeyValuePair(key, value);
+        return putInternal(key, value);
+    }
+
+    private T putInternal(Node key, T value) {
         T result = get(key);
         set(key, value);
         return result;
@@ -281,7 +295,16 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public T removeKey(Node key) {
-        return put(key, null);
+        check(key);
+        T result = get(key);
+        setInternal(key, null);
+        return result;
+    }
+
+    public T removeKeyIfPresent(Node key) {
+        T result = get(key);
+        setInternal(key, null);
+        return result;
     }
 
     @Override

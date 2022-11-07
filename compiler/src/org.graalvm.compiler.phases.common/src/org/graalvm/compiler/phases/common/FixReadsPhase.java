@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.ListIterator;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
@@ -86,8 +87,6 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
-
-import java.util.ListIterator;
 
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
@@ -582,7 +581,12 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             while (undoOperations.size() > mark) {
                 Node node = undoOperations.pop();
                 if (node.isAlive()) {
-                    stampMap.set(node, stampMap.get(node).getParent());
+                    StampElement parElement = stampMap.get(node).getParent();
+                    if (parElement != null) {
+                        stampMap.set(node, parElement);
+                    } else {
+                        stampMap.removeKey(node);
+                    }
                 }
             }
         }
