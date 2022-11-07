@@ -391,13 +391,22 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return isStatic == method.isStatic() && name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor);
     }
 
+    private boolean match(Class<?> actualType, Type toMatch) {
+        if (actualType == toMatch) {
+            return true;
+        } else if (toMatch instanceof InvocationPlugins.OptionalLazySymbol) {
+            return actualType.getTypeName().equals(toMatch.getTypeName());
+        }
+        return false;
+    }
+
     public boolean match(Method method) {
         if (isStatic == Modifier.isStatic(method.getModifiers()) && name.equals(method.getName())) {
             Class<?>[] parameterTypes = method.getParameterTypes();
             int offset = isStatic ? 0 : 1;
             if (parameterTypes.length == argumentTypes.length - offset) {
                 for (int i = 0; i < parameterTypes.length; i++) {
-                    if (parameterTypes[i] != argumentTypes[i + offset]) {
+                    if (!match(parameterTypes[i], argumentTypes[i + offset])) {
                         return false;
                     }
                 }
@@ -412,7 +421,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
             Class<?>[] parameterTypes = c.getParameterTypes();
             if (parameterTypes.length == argumentTypes.length - 1) {
                 for (int i = 0; i < parameterTypes.length; i++) {
-                    if (parameterTypes[i] != argumentTypes[i + 1]) {
+                    if (!match(parameterTypes[i], argumentTypes[i + 1])) {
                         return false;
                     }
                 }

@@ -268,6 +268,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     "_electronicCodeBook_decryptAESCrypt", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class);
 
+    public static final HotSpotForeignCallDescriptor GALOIS_COUNTER_MODE_CRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_galoisCounterMode_AESCrypt", int.class,
+                    WordBase.class, int.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class);
+
     public static final HotSpotForeignCallDescriptor CONTINUATION_DO_YIELD = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "_cont_doYield", int.class);
 
     /**

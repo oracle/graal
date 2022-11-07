@@ -324,6 +324,9 @@ public final class UnimplementedGraalIntrinsics {
                                     "java/lang/StrictMath.min(FF)F");
                 }
             }
+            if (config.galoisCounterModeCrypt == 0L) {
+                add(ignore, "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I");
+            }
         }
 
         if (JAVA_SPEC >= 16) {
@@ -359,7 +362,6 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 18) {
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I",
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$VectorPayload;" +
                                             "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$BinaryOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
                             "jdk/internal/vm/vector/VectorSupport.broadcastCoerced(Ljava/lang/Class;Ljava/lang/Class;IJLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$BroadcastOperation;)" +

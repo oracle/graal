@@ -152,12 +152,12 @@ public class InvocationPlugins {
     /**
      * A symbol that is lazily {@linkplain OptionalLazySymbol#resolve() resolved} to a {@link Type}.
      */
-    static class OptionalLazySymbol implements Type {
+    public static class OptionalLazySymbol implements Type {
         private static final Class<?> MASK_NULL = OptionalLazySymbol.class;
         private final String name;
         private Class<?> resolved;
 
-        OptionalLazySymbol(String name) {
+        public OptionalLazySymbol(String name) {
             this.name = name;
             if (IS_BUILDING_NATIVE_IMAGE) {
                 resolve();
