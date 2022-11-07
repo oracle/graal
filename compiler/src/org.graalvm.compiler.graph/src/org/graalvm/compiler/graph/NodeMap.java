@@ -30,6 +30,7 @@ import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.debug.GraalError;
 
 public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
@@ -50,7 +51,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     @Override
     @SuppressWarnings("unchecked")
     public T get(Node node) {
-        assert check(node);
+        check(node);
         return (T) values[getNodeId(node)];
     }
 
@@ -64,7 +65,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         if (isNew(node)) {
             this.values = Arrays.copyOf(values, Math.max(MIN_REALLOC_SIZE, graph.nodeIdCount() * 3 / 2));
         }
-        assert check(node);
+        check(node);
     }
 
     @Override
@@ -94,7 +95,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     }
 
     public void set(Node node, T value) {
-        assert check(node);
+        check(node);
         if (!node.isAlive()) {
             throw new GraalGraphError("this node is not alive: " + node);
         }
@@ -128,9 +129,9 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     }
 
     private boolean check(Node node) {
-        assert node.graph() == graph : String.format("%s is not part of the graph", node);
-        assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
-        assert node.isAlive() : "this node is not alive: " + node;
+        GraalError.guarantee(node.graph() == graph, "%s is not part of the graph", node);
+        GraalError.guarantee(!isNew(node), "This node was added to the graph after creating the node map : %s", node);
+        GraalError.guarantee(node.isAlive(), "this node is not alive: ", node);
         return true;
     }
 
@@ -140,9 +141,9 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     }
 
     /**
-     * Return the next value entry of this node map based on the given {@code currentIndex}. A valid
-     * entry in a node map is one where both the {@code key}, i.e., the node in the {@link Graph} as
-     * well as the {@code value} are not {@code null}.
+     * Return the next value entry of this node map based on {@code currentIndex}. A valid entry in
+     * a node map is one where both the {@code key}, i.e., the node in the {@link Graph} as well as
+     * the {@code value} are not {@code null}.
      */
     private int getNextValidMapEntry(int currentIndex) {
         int nextValidIndex = currentIndex;
@@ -153,7 +154,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     }
 
     private abstract class NodeMapIterator<K> implements Iterator<K> {
-        int index = 0;
+        protected int index = 0;
 
         @Override
         public boolean hasNext() {
@@ -167,14 +168,13 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
         @Override
         public K next() {
-            final int pos = index;
-            final K val = getVal(pos);
+            final K val = getValAtIndex();
             index++;
             forward();
             return val;
         }
 
-        abstract K getVal(int pos);
+        abstract K getValAtIndex();
     }
 
     @Override
@@ -184,8 +184,8 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
             public Iterator<Node> iterator() {
                 return new NodeMapIterator<>() {
                     @Override
-                    Node getVal(int pos) {
-                        return NodeMap.this.getKey(pos);
+                    Node getValAtIndex() {
+                        return NodeMap.this.getKey(index);
                     }
                 };
             }
@@ -202,8 +202,8 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
                     @SuppressWarnings("unchecked")
                     @Override
-                    T getVal(int pos) {
-                        return (T) NodeMap.this.values[pos];
+                    T getValAtIndex() {
+                        return (T) NodeMap.this.values[index];
                     }
                 };
             }
@@ -236,7 +236,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
             @Override
             public void remove() {
-                assert NodeMap.this.values[current] != null;
+                GraalError.guarantee(NodeMap.this.values[current] != null, "Must only return non null values, index=%d", current);
                 NodeMap.this.values[current] = null;
             }
 
