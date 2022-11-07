@@ -51,8 +51,6 @@ import com.oracle.svm.core.util.VMError;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 
-import static com.oracle.svm.core.thread.PlatformThreads.getIsolateThread;
-
 /**
  * This class holds various JFR-specific thread local values.
  *
