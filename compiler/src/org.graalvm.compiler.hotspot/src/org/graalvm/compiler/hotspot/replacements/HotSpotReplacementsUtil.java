@@ -297,9 +297,14 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? NamedLocationIdentity.immutable("JavaThread::_threadObj")
                     : NamedLocationIdentity.mutable("JavaThread::_vthread");
 
+    // TODO mutable? https://github.com/openjdk/jdk/blob/master/src/hotspot/share/opto/library_call.cpp#L938-L941
+    public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
+
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
     public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
+
+    public static final LocationIdentity JAVA_THREAD_EXTENT_LOCAL_CACHE_LOCATION = NamedLocationIdentity.immutable("JavaThread::_extentLocalCache");
 
     @Fold
     public static JavaKind getWordKind() {
@@ -865,6 +870,8 @@ public class HotSpotReplacementsUtil {
      */
     public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
                     : NamedLocationIdentity.mutable("_vthread OopHandle contents");
+
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_EXTENT_LOCAL_CACHE_HANDLE_LOCATION = NamedLocationIdentity.mutable("_extentLocalCache OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {

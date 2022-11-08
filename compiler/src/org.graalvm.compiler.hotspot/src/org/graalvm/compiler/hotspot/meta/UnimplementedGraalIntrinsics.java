@@ -329,6 +329,14 @@ public final class UnimplementedGraalIntrinsics {
             }
         }
 
+        if (JAVA_SPEC >= 19) {
+            if (config.threadExtentLocalCacheOffset == -1L) {
+                add(ignore,
+                                "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
+                                "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V");
+            }
+        }
+
         if (JAVA_SPEC >= 16) {
             add(toBeInvestigated,
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
@@ -405,10 +413,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Long.compress(JJ)J",
                             "java/lang/Long.expand(JJ)J",
                             "java/lang/StringCoding.countPositives([BII)I",
-                            "java/lang/Thread.currentCarrierThread()Ljava/lang/Thread;",
-                            "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
-                            "java/lang/Thread.setCurrentThread(Ljava/lang/Thread;)V",
-                            "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V",
                             "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;" +

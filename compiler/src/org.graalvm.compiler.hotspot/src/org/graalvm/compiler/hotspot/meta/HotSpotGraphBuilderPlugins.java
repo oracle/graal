@@ -36,6 +36,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 
+import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
@@ -48,6 +49,7 @@ import java.util.zip.CRC32;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
@@ -57,6 +59,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
@@ -565,16 +568,88 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
+    private static boolean isAnnotatedByChangesCurrentThread(ResolvedJavaMethod method) {
+        for (Annotation annotation : method.getAnnotations()) {
+            if ("jdk.internal.vm.annotation.ChangesCurrentThread".equals(annotation.annotationType().getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void registerThreadPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, Thread.class, replacements);
         r.register(new InvocationPlugin("currentThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode value = helper.readCurrentThreadObject();
+                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                    ValueNode value = helper.readThreadObject(thread, true);
                     b.push(JavaKind.Object, value);
                 }
                 return true;
+            }
+        });
+        r.register(new InvocationPlugin("currentCarrierThread") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                    ValueNode value = helper.readThreadObject(thread, false);
+                    b.push(JavaKind.Object, value);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 19;
+            }
+        });
+
+        r.register(new InlineOnlyInvocationPlugin("setCurrentThread", Receiver.class, Thread.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
+                GraalError.guarantee(isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    helper.setCurrentThread(thread);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 19;
+            }
+        });
+
+        r.registerConditional(config.threadExtentLocalCacheOffset != -1, new InvocationPlugin("extentLocalCache") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    b.push(JavaKind.Object, helper.readThreadExtentLocalCache());
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 19;
+            }
+        });
+
+        r.registerConditional(config.threadExtentLocalCacheOffset != -1, new InvocationPlugin("setExtentLocalCache", Object[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    helper.setThreadExtentLocalCache(cache);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 19;
             }
         });
     }
