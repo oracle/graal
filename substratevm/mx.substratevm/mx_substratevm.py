@@ -829,6 +829,8 @@ def _debuginfotest(native_image, path, build_only, args):
         native_image(build_args)
 
     # build with and without Isolates and check both work
+    if '--libc=musl' in args:
+        os.environ.update({'debuginfotest_musl' : 'yes'})
 
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
