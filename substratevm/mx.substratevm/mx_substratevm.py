@@ -391,12 +391,15 @@ def svm_gate_body(args, tasks):
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=[GraalTags.truffle_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
-                                        '-H:MaxRuntimeCompileMethods=2000',
-                                        '-H:+TruffleCheckBlackListedMethods'] + args.extra_image_builder_arguments + [
-                                        '--run-args', testlib, '--very-verbose', '--enable-timing']
-                native_unittest(native_unittest_args)
+                if '--static' in args.extra_image_builder_arguments:
+                    mx.warn('NFI unittests use dlopen and thus do not work with statically linked executables')
+                else:
+                    testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
+                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
+                                            '-H:MaxRuntimeCompileMethods=2000',
+                                            '-H:+TruffleCheckBlackListedMethods'] + args.extra_image_builder_arguments + [
+                                            '--run-args', testlib, '--very-verbose', '--enable-timing']
+                    native_unittest(native_unittest_args)
 
     with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
         if t:
