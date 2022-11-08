@@ -230,14 +230,14 @@ public final class JDWP {
 
                 if (context.systemExitImplemented()) {
                     return new CommandResult(reply,
-                            null,
-                            Collections.singletonList(new Callable<Void>() {
-                                @Override
-                                public Void call() {
-                                    context.exit(input.readInt());
-                                    return null;
-                                }
-                            }));
+                                    null,
+                                    Collections.singletonList(new Callable<Void>() {
+                                        @Override
+                                        public Void call() {
+                                            context.exit(input.readInt());
+                                            return null;
+                                        }
+                                    }));
                 } else {
                     reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
                     return new CommandResult(reply);
@@ -2083,12 +2083,12 @@ public final class JDWP {
             public static final int JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT = 0x0020;
 
             public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK = JVMTI_THREAD_STATE_TERMINATED |
-                    JVMTI_THREAD_STATE_ALIVE |
-                    JVMTI_THREAD_STATE_RUNNABLE |
-                    JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
-                    JVMTI_THREAD_STATE_WAITING |
-                    JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
-                    JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
+                            JVMTI_THREAD_STATE_ALIVE |
+                            JVMTI_THREAD_STATE_RUNNABLE |
+                            JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
+                            JVMTI_THREAD_STATE_WAITING |
+                            JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
+                            JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
