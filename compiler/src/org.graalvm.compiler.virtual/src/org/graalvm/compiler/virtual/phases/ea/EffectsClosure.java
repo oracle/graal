@@ -252,11 +252,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             Iterable<? extends Node> nodes = schedule != null ? schedule.getBlockToNodesMap().get(block) : block.getNodes();
             for (Node node : nodes) {
                 // reset the aliases (may be non-null due to iterative loop processing)
-                aliases.removeKeyIfPresent(node);
+                aliases.removeKey(node);
                 if (node instanceof LoopExitNode) {
                     LoopExitNode loopExit = (LoopExitNode) node;
                     for (ProxyNode proxy : loopExit.proxies()) {
-                        aliases.removeKeyIfPresent(proxy);
+                        aliases.removeKey(proxy);
                         changed |= processNode(proxy, state, effects, lastFixedNode) && isSignificantNode(node);
                     }
                     processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));

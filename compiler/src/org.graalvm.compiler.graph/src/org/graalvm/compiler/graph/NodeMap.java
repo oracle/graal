@@ -30,13 +30,36 @@ import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.debug.GraalError;
 
+/**
+ * An {@link EconomicMap} whose keys are {@link Node}s.
+ *
+ * This maps supports {@code null} values such that:
+ *
+ * <pre>
+ *    Node key = ...;
+ *    map.put(key, null);
+ *    assert map.containsKey(key);
+ * </pre>
+ */
 public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     private static final int MIN_REALLOC_SIZE = 16;
 
     protected Object[] values;
+
+    /**
+     * Value representing null values.
+     */
+    private static final Object NULL_VALUE = new Object();
+
+    private static Object maskNullValue(Object value) {
+        return (value == null ? NULL_VALUE : value);
+    }
+
+    private static final Object unmaskNullValue(Object value) {
+        return (value == NULL_VALUE ? null : value);
+    }
 
     public NodeMap(Graph graph) {
         super(graph);
@@ -51,21 +74,21 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     @Override
     @SuppressWarnings("unchecked")
     public T get(Node node) {
-        check(node);
-        return (T) values[getNodeId(node)];
+        checkKey(node);
+        return (T) unmaskNullValue(values[getNodeId(node)]);
     }
 
     @SuppressWarnings("unchecked")
     public T getAndGrow(Node node) {
         checkAndGrow(node);
-        return (T) values[getNodeId(node)];
+        return (T) unmaskNullValue(values[getNodeId(node)]);
     }
 
     private void checkAndGrow(Node node) {
         if (isNew(node)) {
             this.values = Arrays.copyOf(values, Math.max(MIN_REALLOC_SIZE, graph.nodeIdCount() * 3 / 2));
         }
-        check(node);
+        checkKey(node);
     }
 
     @Override
@@ -75,19 +98,9 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public boolean containsKey(Node node) {
-        if (node.graph() == graph()) {
-            return get(node) != null;
-        }
-        return false;
-    }
-
-    public boolean containsValue(Object value) {
-        for (Object o : values) {
-            if (o == value) {
-                return true;
-            }
-        }
-        return false;
+        checkKey(node);
+        int index = getNodeId(node);
+        return index >= 0 && index < values.length && values[index] != null;
     }
 
     public Graph graph() {
@@ -95,13 +108,8 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     }
 
     public void set(Node node, T value) {
-        check(node);
-        checkKeyValuePair(node, value);
-        setInternal(node, value);
-    }
-
-    private void setInternal(Node node, T value) {
-        values[getNodeId(node)] = value;
+        checkKey(node);
+        values[getNodeId(node)] = maskNullValue(value);
     }
 
     public void setAndGrow(Node node, T value) {
@@ -128,10 +136,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     public boolean isNew(Node node) {
         return getNodeId(node) >= capacity();
-    }
-
-    private void check(Node node) {
-        GraalError.guarantee(node.graph() == graph, "%s is not part of the graph", node);
     }
 
     @Override
@@ -202,7 +206,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                     @SuppressWarnings("unchecked")
                     @Override
                     T getValAtIndex() {
-                        return (T) NodeMap.this.values[index];
+                        return (T) unmaskNullValue(NodeMap.this.values[index]);
                     }
                 };
             }
@@ -230,20 +234,22 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
             @SuppressWarnings("unchecked")
             @Override
             public T getValue() {
-                return (T) NodeMap.this.values[current];
+                return (T) unmaskNullValue(NodeMap.this.values[current]);
             }
 
             @Override
             public void remove() {
-                GraalError.guarantee(NodeMap.this.values[current] != null, "Must only return non null values, index=%d", current);
+                if (NodeMap.this.values[current] == null) {
+                    throw new IllegalStateException(String.format("index=%d", current));
+                }
                 NodeMap.this.values[current] = null;
             }
 
             @SuppressWarnings("unchecked")
             @Override
             public T setValue(T newValue) {
-                T oldValue = (T) NodeMap.this.values[current];
-                NodeMap.this.values[current] = newValue;
+                T oldValue = (T) unmaskNullValue(NodeMap.this.values[current]);
+                NodeMap.this.values[current] = maskNullValue(newValue);
                 return oldValue;
             }
         };
@@ -271,39 +277,27 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         }
     }
 
-    private void checkKeyValuePair(Node key, T value) {
+    private void checkKey(Node key) {
         if (key == null) {
             // following the specification from EconomicMap null keys are not allowed
-            throw new UnsupportedOperationException("null not supported as key!");
+            throw new UnsupportedOperationException("key must not be null");
         }
-        GraalError.guarantee(value != null,
-                        "NodeMap, as opposed to economic map, does not allow null values. Null values are used to mark nodes which have a mapped value. Thus, getKeys(), getEntries() and getValues() cannot support null values. Key=%s",
-                        key);
+        if (key.graph() != graph) {
+            throw new UnsupportedOperationException(String.format("key %s must be part of the graph", key));
+        }
     }
 
     @Override
     public T put(Node key, T value) {
-        checkKeyValuePair(key, value);
-        return putInternal(key, value);
-    }
-
-    private T putInternal(Node key, T value) {
         T result = get(key);
-        set(key, value);
+        values[getNodeId(key)] = maskNullValue(value);
         return result;
     }
 
     @Override
     public T removeKey(Node key) {
-        check(key);
         T result = get(key);
-        setInternal(key, null);
-        return result;
-    }
-
-    public T removeKeyIfPresent(Node key) {
-        T result = get(key);
-        setInternal(key, null);
+        values[getNodeId(key)] = null;
         return result;
     }
 
