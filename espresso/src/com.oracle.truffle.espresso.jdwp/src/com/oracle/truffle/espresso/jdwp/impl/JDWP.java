@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -230,14 +230,14 @@ public final class JDWP {
 
                 if (context.systemExitImplemented()) {
                     return new CommandResult(reply,
-                                    null,
-                                    Collections.singletonList(new Callable<Void>() {
-                                        @Override
-                                        public Void call() {
-                                            context.exit(input.readInt());
-                                            return null;
-                                        }
-                                    }));
+                            null,
+                            Collections.singletonList(new Callable<Void>() {
+                                @Override
+                                public Void call() {
+                                    context.exit(input.readInt());
+                                    return null;
+                                }
+                            }));
                 } else {
                     reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
                     return new CommandResult(reply);
@@ -1181,7 +1181,7 @@ public final class JDWP {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result);
+                                writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
@@ -1260,7 +1260,7 @@ public final class JDWP {
                     controller.postJobForThread(job);
                     ThreadJob<?>.JobResult<?> result = job.getResult();
 
-                    writeMethodResult(reply, context, result);
+                    writeMethodResult(reply, context, result, thread, controller);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
@@ -1368,7 +1368,7 @@ public final class JDWP {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result);
+                                writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
@@ -1871,7 +1871,7 @@ public final class JDWP {
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
-                                writeMethodResult(reply, context, result);
+                                writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
@@ -2083,12 +2083,12 @@ public final class JDWP {
             public static final int JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT = 0x0020;
 
             public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK = JVMTI_THREAD_STATE_TERMINATED |
-                            JVMTI_THREAD_STATE_ALIVE |
-                            JVMTI_THREAD_STATE_RUNNABLE |
-                            JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
-                            JVMTI_THREAD_STATE_WAITING |
-                            JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
-                            JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
+                    JVMTI_THREAD_STATE_ALIVE |
+                    JVMTI_THREAD_STATE_RUNNABLE |
+                    JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
+                    JVMTI_THREAD_STATE_WAITING |
+                    JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
+                    JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
@@ -3164,18 +3164,20 @@ public final class JDWP {
         }
     }
 
-    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result) {
+    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result, Object thread, DebuggerController controller) {
         if (result.getException() != null) {
             reply.writeByte(TagConstants.OBJECT);
             reply.writeLong(0);
             reply.writeByte(TagConstants.OBJECT);
             Object guestException = context.getGuestException(result.getException());
             reply.writeLong(context.getIds().getIdAsLong(guestException));
+            controller.getGCPrevention().setActiveWhileSuspended(thread, guestException);
         } else {
             Object value = context.toGuest(result.getResult());
             if (value != null) {
                 byte tag = context.getTag(value);
                 writeValue(tag, value, reply, true, context);
+                controller.getGCPrevention().setActiveWhileSuspended(thread, value);
             } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
