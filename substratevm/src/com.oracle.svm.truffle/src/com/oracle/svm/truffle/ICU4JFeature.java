@@ -48,7 +48,18 @@ public final class ICU4JFeature implements Feature {
         // the image size by ~ 6 MB. Unlike the com.ibm.icu package re-initialization, which is
         // necessary for proper ICU functionality, the removal is just a performance optimization.
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        Charset.availableCharsets().values().stream().filter(ICU4JFeature::isICUCharset).flatMap(ICU4JFeature::charsetNames).map(String::toLowerCase).forEach(charsets::remove);
+        Charset.availableCharsets().values().stream().filter(ICU4JFeature::isICUCharset).flatMap(ICU4JFeature::charsetNames).map(String::toLowerCase).distinct().forEach((String name) -> {
+            Charset c = charsets.get(name);
+            if (c != null && isICUCharset(c)) {
+                charsets.remove(name);
+                // The ICU charset could replace JDK charset because the LocalizationFeature does
+                // not check for duplication. We have to restore the original JDK charset.
+                Charset c2 = Charset.forName(name);
+                if (!isICUCharset(c2)) {
+                    charsets.put(name, c2);
+                }
+            }
+        });
     }
 
     private static boolean isICUCharset(Charset c) {
