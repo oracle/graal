@@ -101,6 +101,8 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
 
     public abstract boolean isForward();
 
+    public abstract boolean isTrivial();
+
     /**
      * Returns {@code true} if this executor may write any new capture group boundaries.
      */

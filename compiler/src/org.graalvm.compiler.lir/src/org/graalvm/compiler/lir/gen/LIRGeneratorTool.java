@@ -357,8 +357,55 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture");
     }
 
+    /**
+     * Supported variants of
+     * {@link #emitArrayIndexOf(Stride, ArrayIndexOfVariant, EnumSet, Value, Value, Value, Value, Value...)}.
+     */
+    enum ArrayIndexOfVariant {
+        /**
+         * Find index {@code i} where for any index {@code j} {@code array[i] == searchValues[j]}.
+         * Supports up to four search values.
+         */
+        matchAny,
+        /**
+         * Find index {@code i} where for any index {@code j}
+         * {@code searchValues[j * 2] <= array[i] && array[i] <= searchValues[j * 2 + 1]}. Supports
+         * up to two ranges.
+         */
+        matchRange,
+        /**
+         * Find index {@code i} where {@code (array[i] | searchValues[1]) == searchValues[0]}.
+         */
+        withMask,
+        /**
+         * Find index {@code i} where
+         * {@code array[i] == searchValues[0] && array[i + 1] == searchValues[1]}.
+         */
+        findTwoConsecutive,
+        /**
+         * Find index {@code i} where
+         * {@code (array[i] | searchValues[2]) == searchValues[0] && (array[i + 1] | searchValues[3]) == searchValues[1]}.
+         */
+        findTwoConsecutiveWithMask,
+        /**
+         * Find index {@code i} where
+         *
+         * <pre>
+         * {@code
+         * byte[] lut = searchValues[0];
+         * int v = array[i] & 0xff;
+         * (lut[v >> 4] & lut[16 + (v & 0xf)]) != 0
+         * }
+         * </pre>
+         *
+         * Note that this variant expects {@code searchValue[0]} to be a <b>direct pointer</b> into
+         * a 32-byte memory region.
+         */
+        table
+    }
+
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+    default Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value array, Value offset, Value length, Value fromIndex, Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }

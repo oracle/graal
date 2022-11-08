@@ -45,117 +45,18 @@ import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.CodePointSetParameter;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
-import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
+import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateNode extends DFAAbstractStateNode {
-
-    /**
-     * This call is used when all except a very small set of code points will loop back to the
-     * current DFA state. The
-     * {@link #execute(TRegexDFAExecutorNode, Object, int, int, Encoding, boolean)} method will
-     * search for the given small set of code points in an optimized, possibly vectorized loop.
-     */
-    public abstract static class IndexOfCall {
-
-        public abstract int execute(TRegexDFAExecutorNode executor, Object input, int preLoopIndex, int maxIndex, Encoding encoding, boolean tString);
-
-        public abstract int encodedLength();
-    }
-
-    public abstract static class IndexOfAnyCall extends IndexOfCall {
-
-        @Override
-        public int encodedLength() {
-            return 1;
-        }
-    }
-
-    /**
-     * Optimized search for a set of up to 4 {@code int} values.
-     */
-    public static final class IndexOfAnyIntCall extends IndexOfAnyCall {
-
-        @CompilationFinal(dimensions = 1) private final int[] ints;
-
-        public IndexOfAnyIntCall(int[] ints) {
-            this.ints = ints;
-        }
-
-        @Override
-        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return executor.getIndexOfNode().execute(input, fromIndex, maxIndex, ints, encoding);
-        }
-
-    }
-
-    /**
-     * Optimized search for a set of up to 4 {@code char} values.
-     */
-    public static final class IndexOfAnyCharCall extends IndexOfAnyCall {
-
-        @CompilationFinal(dimensions = 1) private final char[] chars;
-
-        public IndexOfAnyCharCall(char[] chars) {
-            this.chars = chars;
-        }
-
-        @Override
-        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return executor.getIndexOfNode().execute(input, fromIndex, maxIndex, chars, encoding);
-        }
-
-    }
-
-    /**
-     * Optimized search for a set of up to 4 {@code byte} values.
-     */
-    public static final class IndexOfAnyByteCall extends IndexOfAnyCall {
-
-        @CompilationFinal(dimensions = 1) private final byte[] bytes;
-
-        public IndexOfAnyByteCall(byte[] bytes) {
-            this.bytes = bytes;
-        }
-
-        @Override
-        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return executor.getIndexOfNode().execute(input, fromIndex, maxIndex, bytes, encoding);
-        }
-
-    }
-
-    /**
-     * Optimized search for a substring.
-     */
-    public static final class IndexOfStringCall extends IndexOfCall {
-
-        private final int literalLength;
-        private final InnerLiteral literal;
-
-        public IndexOfStringCall(AbstractString str, AbstractString mask) {
-            this.literalLength = str.encodedLength();
-            this.literal = new InnerLiteral(str, mask, 0);
-        }
-
-        @Override
-        public int execute(TRegexDFAExecutorNode executor, Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
-            return executor.getIndexOfStringNode().execute(input, fromIndex, maxIndex, literal.getLiteralContent(tString), literal.getMaskContent(tString), encoding);
-        }
-
-        @Override
-        public int encodedLength() {
-            return literalLength;
-        }
-    }
 
     private static final byte FLAG_FINAL_STATE = 1;
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
@@ -164,22 +65,22 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     private final byte flags;
     private final short loopTransitionIndex;
-    protected final IndexOfCall indexOfCall;
+    protected final CodePointSetParameter indexOfCallParam;
     private final Matchers matchers;
     private final DFASimpleCG simpleCG;
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.indexOfCall,
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.indexOfCallParam,
                         Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
                         nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG);
     }
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, IndexOfCall indexOfCall, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, CodePointSetParameter indexOfCallParam, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
         this.loopTransitionIndex = loopTransitionIndex;
-        this.indexOfCall = indexOfCall;
+        this.indexOfCallParam = indexOfCallParam;
         this.matchers = matchers;
         this.simpleCG = simpleCG;
     }
@@ -256,10 +157,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
-     * Returns {@code true} if this state has a {@link IndexOfCall}.
+     * Returns {@code true} if this state has a {@link CodePointSetParameter}.
      */
-    boolean canDoIndexOf() {
-        return hasLoopToSelf() && indexOfCall != null;
+    boolean canDoIndexOf(TruffleString.CodeRange codeRange) {
+        CompilerAsserts.partialEvaluationConstant(codeRange);
+        CompilerAsserts.partialEvaluationConstant(codeRange.ordinal());
+        return hasLoopToSelf() && indexOfCallParam != null && indexOfCallParam.isFast(codeRange);
     }
 
     /**
@@ -272,19 +175,20 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called after every call to
-     * {@link IndexOfCall#execute(TRegexDFAExecutorNode, Object, int, int, Encoding, boolean)},
-     * which we call an {@code indexOf}-operation.
+     * {@link InputIndexOfNode#execute(Object, int, int, CodePointSetParameter, Encoding)}, which we
+     * call an {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.
      * @param postLoopIndex the index found by the {@code indexOf}-operation. If the {@code indexOf}
      *            -operation did not find a match, this value is equal to
      *            {@link TRegexDFAExecutorLocals#getMaxIndex()}.
+     * @param codeRange
      */
-    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex) {
+    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
         locals.setIndex(postLoopIndex);
         if (simpleCG != null && locals.getIndex() > preLoopIndex) {
             int curIndex = locals.getIndex();
-            executor.inputSkipReverse(locals);
+            executor.inputSkipReverse(locals, codeRange);
             applySimpleCGTransition(simpleCG.getTransitions()[getLoopToSelf()], executor, locals);
             locals.setIndex(curIndex);
         }

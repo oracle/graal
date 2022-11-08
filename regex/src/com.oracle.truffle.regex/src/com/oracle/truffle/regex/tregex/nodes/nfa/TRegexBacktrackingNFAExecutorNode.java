@@ -216,6 +216,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return isFlagSet(FLAG_FORWARD);
     }
 
+    @Override
+    public boolean isTrivial() {
+        return false;
+    }
+
     /**
      * Should a backreference to an unmatched capture group succeed or fail?
      */
@@ -292,7 +297,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             }
             locals.setLastInnerLiteralIndex(innerLiteralIndex);
             locals.setIndex(innerLiteralIndex);
-            rewindUpTo(locals, locals.getFromIndex(), innerLiteral.getMaxPrefixSize());
+            rewindUpTo(locals, locals.getFromIndex(), innerLiteral.getMaxPrefixSize(), codeRange);
         }
         if (isLoopbackInitialState()) {
             locals.setLastInitialStateIndex(locals.getIndex());
@@ -346,7 +351,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                             // break if we are at the end of the string.
                             break;
                         }
-                        inputSkip(locals);
+                        inputSkip(locals, codeRange);
                         if (innerLiteral != null) {
                             // we can search for the inner literal again, but only if we tried all
                             // offsets between the last inner literal match and maxPrefixSize.
@@ -357,7 +362,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                                 } else {
                                     locals.setLastInnerLiteralIndex(innerLiteralIndex);
                                     locals.setIndex(innerLiteralIndex);
-                                    rewindUpTo(locals, locals.getFromIndex(), innerLiteral.getMaxPrefixSize());
+                                    rewindUpTo(locals, locals.getFromIndex(), innerLiteral.getMaxPrefixSize(), codeRange);
                                 }
                             }
                         } else if (loopbackInitialStateMatcher != null) {
@@ -365,7 +370,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                             // successors.
                             assert isForward();
                             while (injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
-                                if (injectBranchProbability(EXIT_PROBABILITY, loopbackInitialStateMatcher.match(inputReadAndDecode(locals)))) {
+                                if (injectBranchProbability(EXIT_PROBABILITY, loopbackInitialStateMatcher.match(inputReadAndDecode(locals, codeRange)))) {
                                     break;
                                 }
                                 inputAdvance(locals);
@@ -466,7 +471,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         CompilerAsserts.partialEvaluationConstant(successors);
         CompilerAsserts.partialEvaluationConstant(successors.length);
         boolean atEnd = inputAtEnd(locals);
-        int c = atEnd ? 0 : inputReadAndDecode(locals);
+        int c = atEnd ? 0 : inputReadAndDecode(locals, codeRange);
         final int index = locals.getIndex();
         if (curState.isDeterministic()) {
             /*

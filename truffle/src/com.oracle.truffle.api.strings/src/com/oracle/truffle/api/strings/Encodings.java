@@ -95,8 +95,8 @@ final class Encodings {
         }
     }
 
-    private static boolean isUTF8ContinuationByte(AbstractTruffleString a, Object arrayA, int index) {
-        return isUTF8ContinuationByte(readS0(a, arrayA, index));
+    private static boolean isUTF8ContinuationByte(Object arrayA, int offsetA, int lengthA, int index) {
+        return isUTF8ContinuationByte(readS0(arrayA, offsetA, lengthA, index));
     }
 
     @SuppressWarnings("fallthrough")
@@ -169,36 +169,44 @@ final class Encodings {
         return iBytes;
     }
 
-    @SuppressWarnings("fallthrough")
     static int utf8DecodeValid(AbstractTruffleString a, Object arrayA, int i) {
-        int b = readS0(a, arrayA, i);
+        return utf8DecodeValid(arrayA, a.offset(), a.length(), i);
+    }
+
+    @SuppressWarnings("fallthrough")
+    static int utf8DecodeValid(Object arrayA, int offsetA, int lengthA, int i) {
+        int b = readS0(arrayA, offsetA, lengthA, i);
         if (b < 0x80) {
             return b;
         }
         int nBytes = utf8CodePointLength(b);
         int codepoint = b & (0xff >>> nBytes);
         assert 1 < nBytes && nBytes < 5 : nBytes;
-        assert i + nBytes <= a.length();
+        assert i + nBytes <= lengthA;
         int j = i + 1;
         // Checkstyle: stop
         switch (nBytes) {
             case 4:
-                assert isUTF8ContinuationByte(a, arrayA, j);
-                codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
+                assert isUTF8ContinuationByte(arrayA, offsetA, lengthA, j);
+                codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j++) & 0x3f);
             case 3:
-                assert isUTF8ContinuationByte(a, arrayA, j);
-                codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
+                assert isUTF8ContinuationByte(arrayA, offsetA, lengthA, j);
+                codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j++) & 0x3f);
             default:
-                assert isUTF8ContinuationByte(a, arrayA, j);
-                codepoint = codepoint << 6 | (readS0(a, arrayA, j) & 0x3f);
+                assert isUTF8ContinuationByte(arrayA, offsetA, lengthA, j);
+                codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j) & 0x3f);
         }
         // Checkstyle: resume
         return codepoint;
     }
 
-    @SuppressWarnings("fallthrough")
     static int utf8DecodeBroken(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
-        int b = readS0(a, arrayA, i);
+        return utf8DecodeBroken(arrayA, a.offset(), a.length(), i, errorHandling);
+    }
+
+    @SuppressWarnings("fallthrough")
+    static int utf8DecodeBroken(Object arrayA, int offsetA, int lengthA, int i, ErrorHandling errorHandling) {
+        int b = readS0(arrayA, offsetA, lengthA, i);
         if (b < 0x80) {
             return b;
         }
@@ -208,20 +216,20 @@ final class Encodings {
         // Checkstyle: stop
         switch (nBytes) {
             case 4:
-                if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
+                if (j >= lengthA || !isUTF8ContinuationByte(arrayA, offsetA, lengthA, j)) {
                     return invalidCodepointReturnValue(errorHandling);
                 }
-                codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
+                codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j++) & 0x3f);
             case 3:
-                if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
+                if (j >= lengthA || !isUTF8ContinuationByte(arrayA, offsetA, lengthA, j)) {
                     return invalidCodepointReturnValue(errorHandling);
                 }
-                codepoint = codepoint << 6 | (readS0(a, arrayA, j++) & 0x3f);
+                codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j++) & 0x3f);
             case 2:
-                if (j >= a.length() || !isUTF8ContinuationByte(a, arrayA, j)) {
+                if (j >= lengthA || !isUTF8ContinuationByte(arrayA, offsetA, lengthA, j)) {
                     return invalidCodepointReturnValue(errorHandling);
                 }
-                codepoint = codepoint << 6 | (readS0(a, arrayA, j) & 0x3f);
+                codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j) & 0x3f);
                 break;
             default:
                 return invalidCodepointReturnValue(errorHandling);
@@ -349,6 +357,12 @@ final class Encodings {
         return 2;
     }
 
+    static byte[] utf16Encode(int codepoint) {
+        byte[] bytes = new byte[codepoint < 0x10000 ? 2 : 4];
+        utf16Encode(codepoint, bytes, 0);
+        return bytes;
+    }
+
     static int utf16Encode(int codepoint, byte[] bytes, int index) {
         if (codepoint < 0x10000) {
             writeToByteArray(bytes, 1, index, codepoint);
@@ -404,20 +418,28 @@ final class Encodings {
     }
 
     static int utf16DecodeValid(AbstractTruffleString a, Object arrayA, int i) {
-        char c = readS1(a, arrayA, i);
+        return utf16DecodeValid(arrayA, a.offset(), a.length(), i);
+    }
+
+    static int utf16DecodeValid(Object arrayA, int offsetA, int lengthA, int i) {
+        char c = readS1(arrayA, offsetA, lengthA, i);
         if (isUTF16HighSurrogate(c)) {
-            assert (i + 1) < a.length();
-            assert isUTF16LowSurrogate(readS1(a, arrayA, i + 1));
-            return Character.toCodePoint(c, readS1(a, arrayA, i + 1));
+            assert (i + 1) < lengthA;
+            assert isUTF16LowSurrogate(readS1(arrayA, offsetA, lengthA, i + 1));
+            return Character.toCodePoint(c, readS1(arrayA, offsetA, lengthA, i + 1));
         }
         return c;
     }
 
     static int utf16DecodeBroken(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
-        char c = readS1(a, arrayA, i);
+        return utf16DecodeBroken(arrayA, a.offset(), a.length(), i, errorHandling);
+    }
+
+    static int utf16DecodeBroken(Object arrayA, int offsetA, int lengthA, int i, ErrorHandling errorHandling) {
+        char c = readS1(arrayA, offsetA, lengthA, i);
         if (errorHandling == ErrorHandling.BEST_EFFORT) {
-            if (isUTF16HighSurrogate(c) && (i + 1) < a.length()) {
-                char c2 = readS1(a, arrayA, i + 1);
+            if (isUTF16HighSurrogate(c) && (i + 1) < lengthA) {
+                char c2 = readS1(arrayA, offsetA, lengthA, i + 1);
                 if (isUTF16LowSurrogate(c2)) {
                     return Character.toCodePoint(c, c2);
                 }
@@ -425,10 +447,10 @@ final class Encodings {
         } else {
             assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
             if (isUTF16Surrogate(c)) {
-                if (isUTF16LowSurrogate(c) || i + 1 >= a.length()) {
+                if (isUTF16LowSurrogate(c) || i + 1 >= lengthA) {
                     return -1;
                 }
-                char c2 = readS1(a, arrayA, i + 1);
+                char c2 = readS1(arrayA, offsetA, lengthA, i + 1);
                 if (!isUTF16LowSurrogate(c2)) {
                     return -1;
                 }

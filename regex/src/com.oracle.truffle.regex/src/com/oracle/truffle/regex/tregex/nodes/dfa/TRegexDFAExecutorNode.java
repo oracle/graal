@@ -52,9 +52,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.strings.CodePointSetParameter;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
@@ -141,6 +143,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     @Override
     public boolean isForward() {
         return props.isForward();
+    }
+
+    @Override
+    public boolean isTrivial() {
+        return !isSimpleCG() && !isGenericCG() && getNumberOfTransitions() < TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
     }
 
     public boolean isBackward() {
@@ -296,7 +303,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                      */
                     for (int i = 0; i < getPrefixLength(); i++) {
                         if (injectBranchProbability(UNLIKELY_PROBABILITY, locals.getIndex() > 0)) {
-                            inputSkipIntl(locals, false);
+                            inputSkipIntl(locals, false, codeRange);
                         } else {
                             initNextIndex(locals);
                             ip = initialStateSuccessor(locals, curState, successors, i);
@@ -316,7 +323,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     for (int i = 0; i < getPrefixLength(); i++) {
                         assert isForward();
                         if (locals.getIndex() < locals.getFromIndex()) {
-                            inputSkipIntl(locals, true);
+                            inputSkipIntl(locals, true, codeRange);
                         } else {
                             if (injectBranchProbability(LIKELY_PROBABILITY, atBegin)) {
                                 ip = initialStateSuccessor(locals, curState, successors, i);
@@ -353,15 +360,17 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                      */
                     inputAdvance(locals);
                     state.beforeFindSuccessor(locals, this);
-                    if (injectBranchProbability(CONTINUE_PROBABILITY, isForward() && state.canDoIndexOf() && inputHasNext(locals))) {
-                        int indexOfResult = state.indexOfCall.execute(this, locals.getInput(), locals.getIndex(), getMaxIndex(locals), getEncoding(), tString);
+                    if (injectBranchProbability(CONTINUE_PROBABILITY, isForward() && state.canDoIndexOf(codeRange) && inputHasNext(locals))) {
+                        CodePointSetParameter indexOfCallParam = state.indexOfCallParam;
+                        CompilerAsserts.partialEvaluationConstant(indexOfCallParam);
+                        int indexOfResult = getIndexOfNode().execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfCallParam, getEncoding());
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
-                        state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex);
+                        state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex, codeRange);
                         assert locals.getIndex() == postLoopIndex;
                         if (injectBranchProbability(CONTINUE_PROBABILITY, successors.length == 2 && indexOfResult >= 0)) {
                             int successor = (state.getLoopToSelf() + 1) & 1;
                             CompilerAsserts.partialEvaluationConstant(successor);
-                            inputIncNextIndexRaw(locals, state.indexOfCall.encodedLength());
+                            inputIncNextIndexRaw(locals, inputGetCodePointSize(locals, codeRange));
                             ip = execTransition(locals, state, successor);
                             continue outer;
                         }
@@ -382,7 +391,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         break;
                     }
                     if (state.treeTransitionMatching()) {
-                        int c = inputReadAndDecode(locals);
+                        int c = inputReadAndDecode(locals, codeRange);
                         int treeSuccessor = state.getTreeMatcher().checkMatchTree(c);
                         // TODO: this switch loop should be replaced with a PE intrinsic
                         for (int i = 0; i < successors.length; i++) {
@@ -396,7 +405,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     Matchers matchers = state.getSequentialMatchers();
                     CompilerAsserts.partialEvaluationConstant(matchers);
                     if (matchers instanceof SimpleSequentialMatchers) {
-                        final int c = inputReadAndDecode(locals);
+                        final int c = inputReadAndDecode(locals, codeRange);
                         CharMatcher[] cMatchers = ((SimpleSequentialMatchers) matchers).getMatchers();
                         if (cMatchers != null) {
                             for (int i = 0; i < cMatchers.length; i++) {
@@ -500,7 +509,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         /*
                          * UTF-16 interpreted as raw 16-bit values, no decoding
                          */
-                        final int c = inputReadAndDecode(locals);
+                        final int c = inputReadAndDecode(locals, codeRange);
                         CharMatcher[] ascii = ((UTF16RawSequentialMatchers) matchers).getAscii();
                         CharMatcher[] latin1 = ((UTF16RawSequentialMatchers) matchers).getLatin1();
                         CharMatcher[] bmp = ((UTF16RawSequentialMatchers) matchers).getBmp();

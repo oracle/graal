@@ -231,7 +231,7 @@ public class TRegexOptions {
      * Maximum number of {@link TRegexExecutorNode#getNumberOfTransitions() transitions} for a
      * {@link TRegexExecutorNode} to be considered trivial.
      */
-    public static final int TRegexMaxTransitionsInTrivialExecutor = 100;
+    public static final int TRegexMaxTransitionsInTrivialExecutor = 20;
 
     static {
         assert TRegexTraceFinderMaxNumberOfResults <= 254;

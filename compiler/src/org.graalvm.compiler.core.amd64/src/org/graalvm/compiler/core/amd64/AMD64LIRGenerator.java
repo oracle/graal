@@ -862,10 +862,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+    public Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayIndexOfOp.movParamsAndCreate(stride, findTwoConsecutive, withMask, this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures,
+        append(AMD64ArrayIndexOfOp.movParamsAndCreate(stride, variant, this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures,
                         result, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues));
         return result;
     }

@@ -162,8 +162,10 @@ public final class TStringTestUtil {
 
     public static int[] intRange(int start, int length, int stride) {
         int[] ret = new int[length];
-        for (int i = 0; i < length; i += stride) {
-            ret[i] = start + i;
+        int value = start;
+        for (int i = 0; i < length; i++) {
+            ret[i] = value;
+            value += stride;
         }
         return ret;
     }

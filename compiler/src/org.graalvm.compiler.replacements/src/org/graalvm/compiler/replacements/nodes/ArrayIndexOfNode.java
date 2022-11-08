@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.lir.GenerateStub;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -50,6 +51,8 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -95,8 +98,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     public static final NodeClass<ArrayIndexOfNode> TYPE = NodeClass.create(ArrayIndexOfNode.class);
 
     private final Stride stride;
-    private final boolean findTwoConsecutive;
-    private final boolean withMask;
+    private final ArrayIndexOfVariant variant;
 
     @Input private ValueNode arrayPointer;
     @Input private ValueNode arrayOffset;
@@ -105,52 +107,53 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @Input private NodeInputList<ValueNode> searchValues;
 
     public ArrayIndexOfNode(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, findTwoConsecutive, withMask, null, defaultLocationIdentity(arrayKind),
-                        arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(TYPE, stride, variant, null, LocationIdentity.any(), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+    }
+
+    public ArrayIndexOfNode(
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
+                    ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
+        this(TYPE, stride, variant, runtimeCheckedCPUFeatures, LocationIdentity.any(), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     public ArrayIndexOfNode(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
-                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, findTwoConsecutive, withMask, runtimeCheckedCPUFeatures, defaultLocationIdentity(arrayKind),
-                        arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(TYPE, stride, variant, null, NamedLocationIdentity.getArrayLocation(arrayKind), arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     public ArrayIndexOfNode(
                     Stride stride,
-                    boolean findTwoConsecutive,
-                    boolean withMask,
+                    ArrayIndexOfVariant variant,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(TYPE, stride, findTwoConsecutive, withMask, runtimeCheckedCPUFeatures, locationIdentity, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
+        this(TYPE, stride, variant, runtimeCheckedCPUFeatures, locationIdentity, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
     public ArrayIndexOfNode(
                     NodeClass<? extends ArrayIndexOfNode> c,
                     Stride stride,
-                    boolean findTwoConsecutive,
-                    boolean withMask,
+                    ArrayIndexOfVariant variant,
                     EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity,
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
         super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, locationIdentity);
         GraalError.guarantee(stride.value <= 4, "unsupported stride");
-        GraalError.guarantee(!(!withMask && findTwoConsecutive) || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
-        GraalError.guarantee(!(withMask && findTwoConsecutive) || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
-        GraalError.guarantee(!(withMask && !findTwoConsecutive) || searchValues.length == 2, "indexOf with mask requires exactly two search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.matchAny || searchValues.length > 0 && searchValues.length <= 4, "indexOfAny requires 1 - 4 search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.matchRange || searchValues.length == 2 || searchValues.length == 4, "indexOfRange requires exactly two or four search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.withMask || searchValues.length == 2, "indexOf with mask requires exactly two search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.findTwoConsecutive || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.findTwoConsecutiveWithMask || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
         this.stride = stride;
-        this.findTwoConsecutive = findTwoConsecutive;
-        this.withMask = withMask;
+        this.variant = variant;
         this.arrayPointer = arrayPointer;
         this.arrayOffset = arrayOffset;
         this.arrayLength = arrayLength;
@@ -160,7 +163,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
     public static ArrayIndexOfNode createIndexOfSingle(GraphBuilderContext b, JavaKind arrayKind, Stride stride, ValueNode array, ValueNode arrayLength, ValueNode fromIndex, ValueNode searchValue) {
         ValueNode baseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(arrayKind), b.getGraph());
-        return new ArrayIndexOfNode(TYPE, stride, false, false, null, defaultLocationIdentity(arrayKind),
+        return new ArrayIndexOfNode(TYPE, stride, ArrayIndexOfVariant.matchAny, null, defaultLocationIdentity(arrayKind),
                         array, baseOffset, arrayLength, fromIndex, searchValue);
     }
 
@@ -168,12 +171,40 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         return arrayKind == JavaKind.Void ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arrayKind);
     }
 
-    public boolean isFindTwoConsecutive() {
-        return findTwoConsecutive;
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64(Stride stride, ArrayIndexOfVariant variant) {
+        switch (variant) {
+            case matchAny:
+            case withMask:
+            case findTwoConsecutive:
+            case findTwoConsecutiveWithMask:
+                return EnumSet.of(AMD64.CPUFeature.SSE2);
+            case matchRange:
+                if (stride == Stride.S1) {
+                    return EnumSet.of(AMD64.CPUFeature.SSE2);
+                } else {
+                    return amd64FeaturesSSE41();
+                }
+            case table:
+                return amd64FeaturesSSE41();
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
     }
 
-    public boolean isWithMask() {
-        return withMask;
+    public static EnumSet<AMD64.CPUFeature> amd64FeaturesSSE41() {
+        return EnumSet.of(AMD64.CPUFeature.SSE2, AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.SSE4_1);
+    }
+
+    public static EnumSet<AArch64.CPUFeature> aarch64FeaturesNone() {
+        return EnumSet.noneOf(AArch64.CPUFeature.class);
+    }
+
+    public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
+        return EnumSet.noneOf(AArch64.CPUFeature.class);
+    }
+
+    public ArrayIndexOfVariant getVariant() {
+        return variant;
     }
 
     public ValueNode getArrayPointer() {
@@ -226,8 +257,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitArrayIndexOf(
                         stride,
-                        findTwoConsecutive,
-                        withMask,
+                        variant,
                         getRuntimeCheckedCPUFeatures(),
                         gen.operand(arrayPointer),
                         gen.operand(arrayOffset),
@@ -253,6 +283,10 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         }
+        if (variant == ArrayIndexOfVariant.table) {
+            // TODO
+            return this;
+        }
         if (arrayPointer.isJavaConstant() && ((ConstantNode) arrayPointer).getStableDimension() > 0 &&
                         arrayOffset.isJavaConstant() &&
                         arrayLength.isJavaConstant() &&
@@ -277,37 +311,53 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                 valuesConstant[i] = searchValues.get(i).asJavaConstant().asInt();
             }
             if (arrayLengthConstant * stride.value < GraalOptions.StringIndexOfConstantLimit.getValue(tool.getOptions())) {
-                if (findTwoConsecutive) {
-                    assert valuesConstant.length == (withMask ? 4 : 2);
-                    for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
-                        int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
-                        int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));
-                        if (withMask) {
-                            if ((v0 | valuesConstant[2]) == valuesConstant[0] && (v1 | valuesConstant[3]) == valuesConstant[1]) {
-                                return ConstantNode.forInt(i);
-                            }
-                        } else {
-                            if (v0 == valuesConstant[0] && v1 == valuesConstant[1]) {
-                                return ConstantNode.forInt(i);
-                            }
-                        }
-                    }
-                } else {
-                    assert !withMask || valuesConstant.length == 2;
-                    for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
-                        int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
-                        if (withMask) {
-                            if ((value | valuesConstant[1]) == valuesConstant[0]) {
-                                return ConstantNode.forInt(i);
-                            }
-                        } else {
+                switch (variant) {
+                    case matchAny:
+                        for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
                             for (int searchValue : valuesConstant) {
                                 if (value == searchValue) {
                                     return ConstantNode.forInt(i);
                                 }
                             }
                         }
-                    }
+                        break;
+                    case matchRange:
+                        for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            for (int j = 0; j < valuesConstant.length; j += 2) {
+                                if (valuesConstant[j] <= value && value <= valuesConstant[j + 1]) {
+                                    return ConstantNode.forInt(i);
+                                }
+                            }
+                        }
+                        break;
+                    case withMask:
+                        for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
+                            int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            if ((value | valuesConstant[1]) == valuesConstant[0]) {
+                                return ConstantNode.forInt(i);
+                            }
+                        }
+                        break;
+                    case findTwoConsecutive:
+                        for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
+                            int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));
+                            if (v0 == valuesConstant[0] && v1 == valuesConstant[1]) {
+                                return ConstantNode.forInt(i);
+                            }
+                        }
+                        break;
+                    case findTwoConsecutiveWithMask:
+                        for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
+                            int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
+                            int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));
+                            if ((v0 | valuesConstant[2]) == valuesConstant[0] && (v1 | valuesConstant[3]) == valuesConstant[1]) {
+                                return ConstantNode.forInt(i);
+                            }
+                        }
+                        break;
                 }
                 return ConstantNode.forInt(-1);
             }
@@ -325,92 +375,112 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf1S1", parameters = {"Void", "S1", "false", "false"})
-    @GenerateStub(name = "indexOf1S2", parameters = {"Void", "S2", "false", "false"})
-    @GenerateStub(name = "indexOf1S4", parameters = {"Void", "S4", "false", "false"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
+
+    @NodeIntrinsic
+    @GenerateStub(name = "indexOf1S1", parameters = {"S1", "matchAny"})
+    @GenerateStub(name = "indexOf1S2", parameters = {"S2", "matchAny"})
+    @GenerateStub(name = "indexOf1S4", parameters = {"S4", "matchAny"})
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOf(
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf2S1", parameters = {"Void", "S1", "false", "false"})
-    @GenerateStub(name = "indexOf2S2", parameters = {"Void", "S2", "false", "false"})
-    @GenerateStub(name = "indexOf2S4", parameters = {"Void", "S4", "false", "false"})
-    @GenerateStub(name = "indexOfWithMaskS1", parameters = {"Void", "S1", "false", "true"})
-    @GenerateStub(name = "indexOfWithMaskS2", parameters = {"Void", "S2", "false", "true"})
-    @GenerateStub(name = "indexOfWithMaskS4", parameters = {"Void", "S4", "false", "true"})
-    @GenerateStub(name = "indexOfTwoConsecutiveS1", parameters = {"Void", "S1", "true", "false"})
-    @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"Void", "S2", "true", "false"})
-    @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"Void", "S4", "true", "false"})
+    @GenerateStub(name = "indexOf2S1", parameters = {"S1", "matchAny"})
+    @GenerateStub(name = "indexOf2S2", parameters = {"S2", "matchAny"})
+    @GenerateStub(name = "indexOf2S4", parameters = {"S4", "matchAny"})
+    @GenerateStub(name = "indexOfRange1S1", parameters = {"S1", "matchRange"})
+    @GenerateStub(name = "indexOfRange1S2", parameters = {"S2", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRange1S4", parameters = {"S4", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfWithMaskS1", parameters = {"S1", "withMask"})
+    @GenerateStub(name = "indexOfWithMaskS2", parameters = {"S2", "withMask"})
+    @GenerateStub(name = "indexOfWithMaskS4", parameters = {"S4", "withMask"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS1", parameters = {"S1", "findTwoConsecutive"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"S2", "findTwoConsecutive"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"S4", "findTwoConsecutive"})
     public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf3S1", parameters = {"Void", "S1", "false", "false"})
-    @GenerateStub(name = "indexOf3S2", parameters = {"Void", "S2", "false", "false"})
-    @GenerateStub(name = "indexOf3S4", parameters = {"Void", "S4", "false", "false"})
+    @GenerateStub(name = "indexOf3S1", parameters = {"S1", "matchAny"})
+    @GenerateStub(name = "indexOf3S2", parameters = {"S2", "matchAny"})
+    @GenerateStub(name = "indexOf3S4", parameters = {"S4", "matchAny"})
     public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf4S1", parameters = {"Void", "S1", "false", "false"})
-    @GenerateStub(name = "indexOf4S2", parameters = {"Void", "S2", "false", "false"})
-    @GenerateStub(name = "indexOf4S4", parameters = {"Void", "S4", "false", "false"})
-    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"Void", "S1", "true", "true"})
-    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"Void", "S2", "true", "true"})
-    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"Void", "S4", "true", "true"})
+    @GenerateStub(name = "indexOf4S1", parameters = {"S1", "matchAny"})
+    @GenerateStub(name = "indexOf4S2", parameters = {"S2", "matchAny"})
+    @GenerateStub(name = "indexOf4S4", parameters = {"S4", "matchAny"})
+    @GenerateStub(name = "indexOfRange2S1", parameters = {"S1", "matchRange"})
+    @GenerateStub(name = "indexOfRange2S2", parameters = {"S2", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRange2S4", parameters = {"S4", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"S1", "findTwoConsecutiveWithMask"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"S2", "findTwoConsecutiveWithMask"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"S4", "findTwoConsecutiveWithMask"})
     public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
 
     @NodeIntrinsic
     public static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter Stride stride,
-                    @ConstantNodeParameter boolean findTwoConsecutive,
-                    @ConstantNodeParameter boolean withMask,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
+
+    @NodeIntrinsic
+    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    public static native int optimizedArrayIndexOfTable(
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, byte[] tables);
+
+    @NodeIntrinsic
+    public static native int optimizedArrayIndexOfTable(
+                    @ConstantNodeParameter Stride stride,
+                    @ConstantNodeParameter ArrayIndexOfVariant variant,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures,
+                    Object array, long arrayOffset, int arrayLength, int fromIndex, byte[] tables);
 
 }

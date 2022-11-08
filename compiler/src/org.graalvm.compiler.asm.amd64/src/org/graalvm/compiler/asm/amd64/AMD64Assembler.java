@@ -1651,6 +1651,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPMULLD         = new VexRVMOp("VPMULLD",     P_66, M_0F38, WIG, 0x40, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexRVMOp VPMULLQ         = new VexRVMOp("VPMULLQ",     P_66, M_0F38, W1,  0x40, VEXOpAssertion.AVX512DQ_VL,                  EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPSUBUSB        = new VexRVMOp("VPSUBUSB",    P_66, M_0F,   WIG, 0xD8, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPSUBUSW        = new VexRVMOp("VPSUBUSW",    P_66, M_0F,   WIG, 0xD9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBB          = new VexRVMOp("VPSUBB",      P_66, M_0F,   WIG, 0xF8, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBW          = new VexRVMOp("VPSUBW",      P_66, M_0F,   WIG, 0xF9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBD          = new VexRVMOp("VPSUBD",      P_66, M_0F,   WIG, 0xFA, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
@@ -3325,6 +3326,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPACKUSWB xmm1, xmm1, xmm2
 
     public final void packuswb(Register dst, Register src) {
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PACKUSBW requires SSE2");
         assert inRC(XMM, dst) && inRC(XMM, src);
         // Code: VEX.NDS.128.66.0F.WIG 67 /r
         simdPrefix(dst, dst, src, PD, P_0F, false);
@@ -3333,6 +3335,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void packusdw(Register dst, Register src) {
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PACKUSDW requires SSE4.1");
         assert inRC(XMM, dst) && inRC(XMM, src);
         // Code: VEX.128.66.0F38 2B /r
         simdPrefix(dst, dst, src, PD, P_0F38, false);
@@ -3350,7 +3353,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void ptest(Register dst, Register src) {
-        assert supports(CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, PD, P_0F38, false);
         emitByte(0x17);
@@ -3358,7 +3361,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void ptest(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
         assert inRC(XMM, dst);
         simdPrefix(dst, Register.None, src, PD, P_0F38, false);
         emitByte(0x17);
@@ -3411,6 +3414,30 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0x76);
         emitOperandHelper(dst, src, 0);
+    }
+
+    public final void pminub(Register dst, Register src) {
+        GraalError.guarantee(supports(CPUFeature.SSE2), "PMINUB requires SSE2 support");
+        GraalError.guarantee(inRC(XMM, dst) && inRC(XMM, src), "src and dst must be XMM registers");
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0xDA);
+        emitModRM(dst, src);
+    }
+
+    public final void pminuw(Register dst, Register src) {
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PMINUW requires SSE4.1 support");
+        GraalError.guarantee(inRC(XMM, dst) && inRC(XMM, src), "src and dst must be XMM registers");
+        simdPrefix(dst, dst, src, PD, P_0F38, false);
+        emitByte(0x3A);
+        emitModRM(dst, src);
+    }
+
+    public final void pminud(Register dst, Register src) {
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PMINUD requires SSE4.1 support");
+        GraalError.guarantee(inRC(XMM, dst) && inRC(XMM, src), "src and dst must be XMM registers");
+        simdPrefix(dst, dst, src, PD, P_0F38, false);
+        emitByte(0x3B);
+        emitModRM(dst, src);
     }
 
     public final void pcmpgtb(Register dst, Register src) {
@@ -3791,6 +3818,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert inRC(XMM, dst);
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0xD8);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void psubusw(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0xD9);
+        emitModRM(dst, src);
+    }
+
+    public final void psubusw(Register dst, AMD64Address src) {
+        assert inRC(XMM, dst);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0xD9);
         emitOperandHelper(dst, src, 0);
     }
 

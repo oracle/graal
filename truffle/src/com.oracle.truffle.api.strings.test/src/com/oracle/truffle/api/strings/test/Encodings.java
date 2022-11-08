@@ -57,6 +57,13 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 public final class Encodings {
 
+    public static final TruffleString.Encoding[] PRIMARY_ENCODINGS = {
+                    TruffleString.Encoding.US_ASCII,
+                    TruffleString.Encoding.ISO_8859_1,
+                    TruffleString.Encoding.BYTES,
+                    TruffleString.Encoding.UTF_8,
+                    UTF_16,
+                    UTF_32};
     private static final int MAX_J_CODINGS_INDEX_VALUE = 0x7f;
     static final EconomicMap<String, Encoding> J_CODINGS_MAP = createJCodingsMap();
 
@@ -273,7 +280,7 @@ public final class Encodings {
         return ret;
     }
 
-    private static int[] codePointByteIndices(int[] codepoints, Encoding jCoding) {
+    public static int[] codePointByteIndices(int[] codepoints, Encoding jCoding) {
         int[] ret = new int[codepoints.length];
         int length = 0;
         for (int i = 0; i < codepoints.length; i++) {

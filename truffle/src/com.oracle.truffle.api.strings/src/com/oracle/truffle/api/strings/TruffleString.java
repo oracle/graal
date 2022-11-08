@@ -80,9 +80,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -3440,16 +3440,6 @@ public final class TruffleString extends AbstractTruffleString {
             return TStringOps.indexOfAnyByte(this, a, arrayA, fromByteIndex, maxByteIndex, values);
         }
 
-        private static boolean noneIsAscii(Node location, byte[] values) {
-            for (int i = 0; i < values.length; i++) {
-                if (Byte.toUnsignedInt(values[i]) <= 0x7f) {
-                    return false;
-                }
-                TStringConstants.truffleSafePointPoll(location, i + 1);
-            }
-            return true;
-        }
-
         /**
          * Create a new {@link ByteIndexOfAnyByteNode}.
          *
@@ -3506,16 +3496,6 @@ public final class TruffleString extends AbstractTruffleString {
                 return -1;
             }
             return indexOfNode.execute(this, a, toIndexableNode.execute(this, a, a.data()), fromCharIndex, maxCharIndex, values);
-        }
-
-        private static boolean noneInCodeRange(Node location, int codeRange, char[] values) {
-            for (int i = 0; i < values.length; i++) {
-                if (TSCodeRange.isInCodeRange(values[i], codeRange)) {
-                    return false;
-                }
-                TStringConstants.truffleSafePointPoll(location, i + 1);
-            }
-            return true;
         }
 
         /**
@@ -3575,16 +3555,6 @@ public final class TruffleString extends AbstractTruffleString {
             return indexOfNode.execute(this, a, toIndexableNode.execute(this, a, a.data()), fromIntIndex, maxIntIndex, values);
         }
 
-        private static boolean noneInCodeRange(Node location, int codeRange, int[] values) {
-            for (int i = 0; i < values.length; i++) {
-                if (TSCodeRange.isInCodeRange(values[i], codeRange)) {
-                    return false;
-                }
-                TStringConstants.truffleSafePointPoll(location, i + 1);
-            }
-            return true;
-        }
-
         /**
          * Create a new {@link IntIndexOfAnyIntUTF32Node}.
          *
@@ -3602,6 +3572,102 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public static IntIndexOfAnyIntUTF32Node getUncached() {
             return TruffleStringFactory.IntIndexOfAnyIntUTF32NodeGen.getUncached();
+        }
+    }
+
+    private static boolean noneIsAscii(Node location, byte[] values) {
+        for (int i = 0; i < values.length; i++) {
+            if (Byte.toUnsignedInt(values[i]) <= 0x7f) {
+                return false;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return true;
+    }
+
+    private static boolean noneInCodeRange(Node location, int codeRange, char[] values) {
+        for (int i = 0; i < values.length; i++) {
+            if (TSCodeRange.isInCodeRange(values[i], codeRange)) {
+                return false;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return true;
+    }
+
+    private static boolean noneInCodeRange(Node location, int codeRange, int[] values) {
+        for (int i = 0; i < values.length; i++) {
+            if (TSCodeRange.isInCodeRange(values[i], codeRange)) {
+                return false;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return true;
+    }
+
+    /**
+     * Node to find the byte index of the first occurrence of a codepoint present in a given
+     * codepoint set. See {@link #execute(AbstractTruffleString, int, int, CodePointSetParameter)}
+     * for details.
+     *
+     * @since 23.0
+     */
+    public abstract static class ByteIndexOfCodePointSetNode extends AbstractPublicNode {
+
+        ByteIndexOfCodePointSetNode() {
+        }
+
+        /**
+         * Returns the byte index of the first codepoint present in the given
+         * {@link CodePointSetParameter codepoint set}.
+         *
+         * @param a An {@link AbstractTruffleString} whose encoding matches the encoding set in
+         *            {@code codePointSet}.
+         * @param codePointSet The codepoint set to search for. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+         *            constant}.
+         *
+         * @since 23.0
+         */
+        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, CodePointSetParameter codePointSet);
+
+        @Specialization
+        int indexOfRaw(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, CodePointSetParameter codePointSet,
+                        @Cached ToIndexableNode toIndexableNode,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TStringInternalNodes.IndexOfCodePointSetNode indexOfCodePointSetNode) {
+            CompilerAsserts.partialEvaluationConstant(codePointSet);
+            a.checkEncoding(codePointSet.getEncoding());
+            if (a.isEmpty()) {
+                return -1;
+            }
+            int fromIndex = rawIndex(fromByteIndex, codePointSet.getEncoding());
+            int maxIndex = rawIndex(maxByteIndex, codePointSet.getEncoding());
+            a.boundsCheckRaw(fromIndex, maxIndex);
+            if (fromIndex == maxIndex) {
+                return -1;
+            }
+            Object arrayA = toIndexableNode.execute(this, a, a.data());
+            return byteIndex(indexOfCodePointSetNode.execute(this, arrayA, a.offset(), a.length(), a.stride(), fromIndex, maxIndex, getCodeRangeNode.execute(this, a), codePointSet),
+                            codePointSet.getEncoding());
+        }
+
+        /**
+         * Create a new {@link ByteIndexOfCodePointSetNode}.
+         *
+         * @since 23.0
+         */
+        public static ByteIndexOfCodePointSetNode create() {
+            return TruffleStringFactory.ByteIndexOfCodePointSetNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link ByteIndexOfCodePointSetNode}.
+         *
+         * @since 23.0
+         */
+        public static ByteIndexOfCodePointSetNode getUncached() {
+            return TruffleStringFactory.ByteIndexOfCodePointSetNodeGen.getUncached();
         }
     }
 

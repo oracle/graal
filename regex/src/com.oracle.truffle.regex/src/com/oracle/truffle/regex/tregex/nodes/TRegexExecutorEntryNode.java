@@ -42,8 +42,6 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import java.lang.reflect.Field;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -52,12 +50,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.strings.JavaStringUtils;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
-
-import sun.misc.Unsafe;
 
 /**
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
@@ -65,47 +61,6 @@ import sun.misc.Unsafe;
  */
 @ImportStatic(TruffleString.CodeRange.class)
 public abstract class TRegexExecutorEntryNode extends Node {
-
-    private static final sun.misc.Unsafe UNSAFE;
-    private static final long coderFieldOffset;
-
-    static {
-        String javaVersion = System.getProperty("java.specification.version");
-        if (javaVersion != null && javaVersion.compareTo("1.9") < 0) {
-            // UNSAFE is needed for detecting compact strings, which are not implemented prior to
-            // java9
-            UNSAFE = null;
-            coderFieldOffset = 0;
-        } else {
-            UNSAFE = getUnsafe();
-            Field coderField;
-            try {
-                coderField = String.class.getDeclaredField("coder");
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException("failed to get coder field offset", e);
-            }
-            coderFieldOffset = getObjectFieldOffset(coderField);
-        }
-    }
-
-    @SuppressWarnings("deprecation"/* JDK-8277863 */)
-    static long getObjectFieldOffset(Field field) {
-        return UNSAFE.objectFieldOffset(field);
-    }
-
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e1) {
-            try {
-                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafeInstance.setAccessible(true);
-                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-            } catch (Exception e2) {
-                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
-            }
-        }
-    }
 
     private static final class TRegexExecutorRootNode extends RootNode {
 
@@ -183,7 +138,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {
-        if (executor.getNumberOfTransitions() <= TRegexOptions.TRegexMaxTransitionsInTrivialExecutor) {
+        if (getExecutor().isTrivial()) {
             return null;
         } else {
             return DirectCallNode.create(new TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange, isTString).getCallTarget());
@@ -202,6 +157,6 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     static boolean isCompactString(String str) {
-        return UNSAFE != null && UNSAFE.getByte(str, coderFieldOffset) == 0;
+        return JavaStringUtils.isLatin1(str);
     }
 }

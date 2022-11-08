@@ -84,6 +84,10 @@ final class TSCodeRange {
      */
     private static final int CR_UNKNOWN = 7;
 
+    static int valueCount() {
+        return 8;
+    }
+
     private static int maxCodePoint(int codeRange) {
         return codeRange == CR_7BIT ? 0x7f : codeRange == CR_8BIT ? 0xff : codeRange == CR_16BIT ? 0xffff : 0x10ffff;
     }

@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.charset.CharMatchers;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -107,6 +108,11 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
     }
 
     @Override
+    public boolean isTrivial() {
+        return getNumberOfTransitions() < TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
+    }
+
+    @Override
     public boolean writesCaptureGroups() {
         return false;
     }
@@ -122,7 +128,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
     public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         for (int i = 0; i < matchers.length; i++) {
-            if (!inputHasNext(locals) || !matchers[i].match(inputReadAndDecode(locals))) {
+            if (!inputHasNext(locals) || !matchers[i].match(inputReadAndDecode(locals, codeRange))) {
                 return negated;
             }
             inputAdvance(locals);

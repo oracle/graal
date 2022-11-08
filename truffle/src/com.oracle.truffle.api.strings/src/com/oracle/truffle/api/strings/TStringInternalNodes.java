@@ -943,6 +943,39 @@ final class TStringInternalNodes {
         }
     }
 
+    abstract static class IndexOfCodePointSetNode extends AbstractInternalNode {
+
+        static final int POSSIBLE_CODE_RANGE_VALUES = 5;
+        static final int POSSIBLE_STRIDE_VALUES = 3;
+        static final int POSSIBLE_CODE_RANGE_STRIDE_VALUES = POSSIBLE_CODE_RANGE_VALUES * POSSIBLE_STRIDE_VALUES;
+
+        abstract int execute(Node node, Object arrayA, int offsetA, int lengthA, int strideA, int fromIndex, int toIndex, int codeRange, CodePointSetParameter codePointSet);
+
+        @Specialization(guards = {"!isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length == 1"})
+        int stride0Single(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, int codeRange, CodePointSetParameter cps) {
+            return cps.indexOfCalls[0].execute(this, arrayA, offsetA, lengthA, 0, codeRange, fromIndex, toIndex, cps.encoding);
+        }
+
+        @Specialization(guards = {"!isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length > 1", "codeRange == cachedCodeRange"}, limit = "POSSIBLE_CODE_RANGE_VALUES")
+        int stride0(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, @SuppressWarnings("unused") int codeRange, CodePointSetParameter cps,
+                        @Cached(value = "codeRange", allowUncached = true) int cachedCodeRange) {
+            return cps.indexOfCalls[cachedCodeRange].execute(this, arrayA, offsetA, lengthA, 0, cachedCodeRange, fromIndex, toIndex, cps.encoding);
+        }
+
+        @Specialization(guards = {"isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length == 1", "strideA == cachedStride"}, limit = "POSSIBLE_STRIDE_VALUES")
+        int withCompactionSingle(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, int codeRange, CodePointSetParameter cps,
+                        @Cached(value = "strideA", allowUncached = true) int cachedStride) {
+            return cps.indexOfCalls[0].execute(this, arrayA, offsetA, lengthA, cachedStride, codeRange, fromIndex, toIndex, cps.encoding);
+        }
+
+        @Specialization(guards = {"isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length > 1", "codeRange == cachedCodeRange", "strideA == cachedStride"}, limit = "POSSIBLE_CODE_RANGE_STRIDE_VALUES")
+        int utf16(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, @SuppressWarnings("unused") int codeRange, CodePointSetParameter cps,
+                        @Cached("codeRange") int cachedCodeRange,
+                        @Cached(value = "strideA", allowUncached = true) int cachedStride) {
+            return cps.indexOfCalls[cachedCodeRange].execute(this, arrayA, offsetA, lengthA, cachedStride, cachedCodeRange, fromIndex, toIndex, cps.encoding);
+        }
+    }
+
     abstract static class SubstringNode extends AbstractInternalNode {
 
         abstract TruffleString execute(Node node, AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, int fromIndex, int length, boolean lazy);

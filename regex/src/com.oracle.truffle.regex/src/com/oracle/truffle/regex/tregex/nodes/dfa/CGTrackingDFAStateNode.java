@@ -42,6 +42,8 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.strings.CodePointSetParameter;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public class CGTrackingDFAStateNode extends DFAStateNode {
 
@@ -56,7 +58,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     public CGTrackingDFAStateNode(short id,
                     byte flags,
                     short loopTransitionIndex,
-                    IndexOfCall indexOfCall,
+                    CodePointSetParameter indexOfCallParam,
                     short[] successors,
                     Matchers matchers,
                     short[] lastTransitionIndex,
@@ -66,7 +68,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     DFACaptureGroupPartialTransition anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition cgLoopToSelf) {
-        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, null);
+        super(id, flags, loopTransitionIndex, indexOfCallParam, successors, matchers, null);
         this.anchoredFinalStateTransition = anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
         this.lastTransitionIndex = lastTransitionIndex;
@@ -109,12 +111,12 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex) {
+    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
         assert locals.getIndex() == preLoopIndex;
         if (locals.getIndex() < postLoopIndex) {
             successorFound(locals, executor, getLoopToSelf());
             locals.setLastIndex();
-            executor.inputSkip(locals);
+            executor.inputSkip(locals, codeRange);
         }
         int secondIndex = locals.getIndex();
         DFACaptureGroupPartialTransition transition = getCGTransitionToSelf();
@@ -122,19 +124,21 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
             while (locals.getIndex() < postLoopIndex) {
                 transition.apply(executor, locals.getCGData(), locals.getLastIndex());
                 locals.setLastIndex();
-                executor.inputSkip(locals);
+                executor.inputSkip(locals, codeRange);
             }
         } else if (postLoopIndex > preLoopIndex) {
             locals.setIndex(postLoopIndex);
-            executor.inputSkipReverse(locals);
+            executor.inputSkipReverse(locals, codeRange);
             locals.setLastIndex();
             if (secondIndex < postLoopIndex) {
-                executor.inputSkipReverse(locals);
+                executor.inputSkipReverse(locals, codeRange);
                 transition.apply(executor, locals.getCGData(), locals.getIndex());
             }
             locals.setIndex(postLoopIndex);
         }
-        executor.inputIncNextIndexRaw(locals, indexOfCall.encodedLength());
+        if (!executor.inputAtEnd(locals)) {
+            executor.inputIncNextIndexRaw(locals, executor.inputGetCodePointSize(locals, codeRange));
+        }
         if (executor.isSearching()) {
             checkFinalState(locals, executor);
         }

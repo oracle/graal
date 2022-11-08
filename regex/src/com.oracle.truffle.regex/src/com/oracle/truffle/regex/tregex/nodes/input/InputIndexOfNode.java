@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.CodePointSetParameter;
+import com.oracle.truffle.api.strings.JavaStringUtils;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public abstract class InputIndexOfNode extends Node {
@@ -54,30 +54,17 @@ public abstract class InputIndexOfNode extends Node {
         return InputIndexOfNodeGen.create();
     }
 
-    public abstract int execute(Object input, int fromIndex, int maxIndex, Object chars, Encoding encoding);
+    public abstract int execute(Object input, int fromIndex, int maxIndex, CodePointSetParameter cps, Encoding encoding);
 
     @Specialization
-    public int doChars(String input, int fromIndex, int maxIndex, char[] chars, @SuppressWarnings("unused") Encoding encoding) {
-        return ArrayUtils.indexOf(input, fromIndex, maxIndex, chars);
+    public int doString(String input, int fromIndex, int maxIndex, CodePointSetParameter cps, @SuppressWarnings("unused") Encoding encoding,
+                    @Cached JavaStringUtils.CharIndexOfCodePointSetNode indexOfNode) {
+        return indexOfNode.execute(input, fromIndex, maxIndex, cps);
     }
 
     @Specialization
-    public int doTStringBytes(TruffleString input, int fromIndex, int maxIndex, byte[] bytes, Encoding encoding,
-                    @Cached TruffleString.ByteIndexOfAnyByteNode indexOfRawValueNode) {
-        return indexOfRawValueNode.execute(input, fromIndex, maxIndex, bytes, encoding.getTStringEncoding());
-    }
-
-    @Specialization
-    public int doTStringChars(TruffleString input, int fromIndex, int maxIndex, char[] chars, Encoding encoding,
-                    @Cached TruffleString.CharIndexOfAnyCharUTF16Node indexOfRawValueNode) {
-        assert encoding == Encodings.UTF_16 || encoding == Encodings.UTF_16_RAW;
-        return indexOfRawValueNode.execute(input, fromIndex, maxIndex, chars);
-    }
-
-    @Specialization
-    public int doTStringInts(TruffleString input, int fromIndex, int maxIndex, int[] ints, Encoding encoding,
-                    @Cached TruffleString.IntIndexOfAnyIntUTF32Node indexOfRawValueNode) {
-        assert encoding == Encodings.UTF_32;
-        return indexOfRawValueNode.execute(input, fromIndex, maxIndex, ints);
+    public int doTString(TruffleString input, int fromIndex, int maxIndex, CodePointSetParameter cps, @SuppressWarnings("unused") Encoding encoding,
+                    @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfNode) {
+        return indexOfNode.execute(input, fromIndex << encoding.getStride(), maxIndex << encoding.getStride(), cps) >> encoding.getStride();
     }
 }
