@@ -187,7 +187,7 @@ If the [GC statistics](#glossary-garbage-collection) do not show any problems, t
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.
-Increase the number of CPU threads to reduce the time to build the native binary.
+Increase the number of CPU cores to reduce the time to build the native binary.
 
 ## Machine-Readable Build Output
 
