@@ -26,6 +26,7 @@ package com.oracle.svm.graal.stubs;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Set;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
@@ -55,8 +56,8 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
     public static final class StubDescriptor {
 
         private final ForeignCallDescriptor[] foreignCallDescriptors;
-        private final EnumSet<?> minimumRequiredFeatures;
-        private final EnumSet<?> runtimeCheckedCPUFeatures;
+        private final Set<?> minimumRequiredFeatures;
+        private final Set<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
         public StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
@@ -82,7 +83,7 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
             // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
             // as well as a version with the preferred runtime checked features, even if both
             // variants are not supported by the build time feature set. This way, intrinsics
-            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfils the
+            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfills the
             // minimum requirements and doesn't have the preferred AVX2 flag.
             boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || isJITCompilationEnabled && !minimumRequiredFeatures.equals(runtimeCheckedCPUFeatures);
             boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && isJITCompilationEnabled;
