@@ -122,22 +122,22 @@ suite = {
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "digest" : "sha512:0864e4785148fd5a7b9056056316f9ddec14b138fd6b64d15d09fcb7bde5a1240a084f38f1aa96ae6e0b09b1fd7f61f3812297aa8e4407a596e7db6d64036b68",
-      "sourceDigest" : "sha512:7e6096fe14ae9694d0e465e172e7c31b53547492249cd0f63f277c0555391473110ae52269f594d61f101c184d991a21e6479934f6d7757616bfef7dd7398b91",
+      "digest" : "sha512:48130eb346a5bb5bdaff867e5231808a3cd03d1876d8e6b7c501336df6992e912f7c53456dc72b673ad3272f3b54b414343eea8a1118d01d0e517403cab3e324",
+      "sourceDigest" : "sha512:7afc98996ebf44046533abcca1125126ac4c05ad37ceeec35c29d2d29a9eeb06fc4d675d4378b9514238afdc7b73036947e196e350294b27520793a1111ddab3",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "71.1",
+        "version" : "72.1",
       },
     },
     "ICU4J-CHARSET" : {
       "moduleName" : "com.ibm.icu.charset",
-      "digest" : "sha512:0309f5ac75b26ddaf402e88d674b91f7d0a4a285b3c3de665f0f7007e32532c6c9a100dbc03dce302a432ff01ce3f04ec9905a7210327753c61f275d315494af",
-      "sourceDigest" : "sha512:914593320b9d08d5cb63092b7913798466edc53a02fc257c0bd7a47d9be83e73fb283111eb9d002c445d075c3c8a449de6bf3a0c78e868fd8104b8c0c254b3cc",
+      "digest" : "sha512:db3534ebaa54c956bd41f293bdffb691caf48500625286d0dbce2776da19bc1ad7d0108b192e8610db4c0a0ba459b36c4dc3af36b67b4c4c4d55a66315389cdd",
+      "sourceDigest" : "sha512:07b228e82a4aeb246936468bb6e8c00ab1f9426aecc7c9dee78f97fc6ce9ad92492f5342112f8f815a8257ef644f6ffbb8859f2bdeaa8efeb830dbfae78a883f",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j-charset",
-        "version" : "71.1",
+        "version" : "72.1",
       },
     },
 
