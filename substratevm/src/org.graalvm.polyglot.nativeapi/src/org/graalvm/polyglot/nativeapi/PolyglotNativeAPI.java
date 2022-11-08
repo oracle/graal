@@ -30,6 +30,8 @@ import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.Polygl
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_ok;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_pending_exception;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
@@ -41,6 +43,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -97,6 +100,7 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExten
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguage;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguagePointer;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotOutputHandler;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValue;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValuePointer;
@@ -340,6 +344,51 @@ public final class PolyglotNativeAPI {
         Context.Builder contextBuilder = fetchHandle(context_builder);
         contextBuilder.option(CTypeConversion.utf8ToJavaString(key_utf8), CTypeConversion.utf8ToJavaString(value_utf8));
         return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_context_builder_output", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets output handlers for a <code>poly_context_builder</code>.",
+                    "",
+                    "@param context_builder that is modified.",
+                    "@param stdout_handler function used for context_builder output stream. Not used if NULL.",
+                    "@param stderr_handler function used for context_builder error stream. Not used if NULL.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#out-java.io.OutputStream-",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#err-java.io.OutputStream-",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_context_builder_output(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, PolyglotOutputHandler stdout_handler,
+                    PolyglotOutputHandler stderr_handler) {
+        resetErrorState();
+        Context.Builder contextBuilder = fetchHandle(context_builder);
+        if (stdout_handler.isNonNull()) {
+            contextBuilder.out(newOutputStreamFor(stdout_handler));
+        }
+        if (stderr_handler.isNonNull()) {
+            contextBuilder.err(newOutputStreamFor(stderr_handler));
+        }
+        return poly_ok;
+    }
+
+    private static OutputStream newOutputStreamFor(PolyglotOutputHandler outputHandler) {
+        return new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                write(new byte[]{(byte) b});
+            }
+
+            @Override
+            public void write(byte[] b, int off, int len) {
+                Objects.checkFromIndexSize(off, len, b.length);
+                if (len == 0) {
+                    return;
+                }
+                try (var bytes = CTypeConversion.toCBytes(b)) {
+                    outputHandler.invoke(bytes.get().addressOf(off), WordFactory.unsigned(len));
+                }
+            }
+        };
     }
 
     @CEntryPoint(name = "poly_context_builder_allow_all_access", exceptionHandler = ExceptionHandler.class, documentation = {
