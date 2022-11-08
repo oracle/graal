@@ -1126,6 +1126,13 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
+                // make sure the thread is suspended
+                int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
+                if (suspensionCount < 1) {
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
+                    return new CommandResult(reply);
+                }
+
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
                     return new CommandResult(reply);
@@ -1229,6 +1236,13 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
+                // make sure the thread is suspended
+                int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
+                if (suspensionCount < 1) {
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
+                    return new CommandResult(reply);
+                }
+
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
                     LOGGER.warning(() -> "not a valid method");
@@ -1321,6 +1335,13 @@ public final class JDWP {
 
                 Object thread = verifyThread(input.readLong(), reply, context, true);
                 if (thread == null) {
+                    return new CommandResult(reply);
+                }
+
+                // make sure the thread is suspended
+                int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
+                if (suspensionCount < 1) {
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                     return new CommandResult(reply);
                 }
 
@@ -1813,6 +1834,13 @@ public final class JDWP {
                 Object thread = verifyThread(threadId, reply, context, true);
 
                 if (thread == null) {
+                    return new CommandResult(reply);
+                }
+
+                // make sure the thread is suspended
+                int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
+                if (suspensionCount < 1) {
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                     return new CommandResult(reply);
                 }
 
@@ -2886,6 +2914,13 @@ public final class JDWP {
                 CallFrame frame = verifyCallFrame(input.readLong(), reply, controller.getContext());
 
                 if (thread == null || frame == null) {
+                    return new CommandResult(reply);
+                }
+
+                // make sure the thread is suspended
+                int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
+                if (suspensionCount < 1) {
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                     return new CommandResult(reply);
                 }
 
