@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "23.0.0",
-    "mxversion" : "6.9.9",
+    "mxversion" : "6.11.2",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -182,15 +182,15 @@ suite = {
         # and uncomment the corresponding line for the `layout` of `POLYBENCH_BENCHMARKS` in current suite.
         "WARMUP_BENCHMARKS" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
-            "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
+            "digest" : "sha512:3ccf2fde4765561681ee530ee7ff6af823e89f447261e87e155f47e6ef29820ffd0f9ddaa39333893834df9c15463077cf1995b659644a79ab1595fd14ff2091"
         },
         "GRAALPYTHON_PYFLATE_BENCHMARK_RESOURCE" : {
             # just any reasonably sized .tar.gz or .tar.bz2 for running the benchmark
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-linux-amd64.tar.gz"],
-            "sha1" : "3f276219657688958f919110b12f329a080326c1"
+            "digest" : "sha512:72982ca01cce9dfa876687ec7b9627b81e241e6cddc8dedb976a5d06d058a067f83f5c063dc07d7ed19730ffb54af8343eae8ca0cc156353f7b18530eef73c50"
         },
         "ORG_NETBEANS_API_ANNOTATIONS_COMMON" : {
-           "sha1" : "ef10fcaff10adfbedcc6058c965397ac47395ecf",
+           "digest" : "sha512:37e9cee0756a3f84e3e6352ed3d358169855d16cdda2300eb5041219c867abf886db2de41fe79c37f39123eaac310041f9a2e65aa1b9a7e8384528cfbd40de5b",
             "maven" : {
                 "groupId" : "org.netbeans.api",
                 "artifactId" : "org-netbeans-api-annotations-common",
