@@ -341,11 +341,7 @@ def _get_toolchain_tool(name_tool):
     name, tool = name_tool.split(",", 1)
     return _get_toolchain(name).get_toolchain_tool(tool)
 
-def _get_toolchain_cmake(name):
-    return _get_toolchain(name).get_toolchain_cmake()
 
-
-mx_subst.path_substitutions.register_with_arg('toolchainCMakePath', _get_toolchain_cmake)
 mx_subst.path_substitutions.register_with_arg('toolchainGetToolPath', _get_toolchain_tool)
 mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
                                               lambda name: _get_toolchain(name).get_toolchain_subdir())
@@ -439,9 +435,6 @@ class ToolchainConfig(object):
     def _check_tool(self, tool):
         if tool not in self._supported_tools():
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
-
-    def get_toolchain_cmake(self):
-        return os.path.join(self.bootstrap_provider(), 'cmake', 'toolchain.cmake')
 
     def get_toolchain_tool(self, tool):
         if tool in self._supported_tools():

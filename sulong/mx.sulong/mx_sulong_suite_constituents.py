@@ -554,12 +554,10 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
 
         if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
             self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
-        if 'buildDependencies' not in args:
-            args['buildDependencies'] = []
+        args.setdefault('buildDependencies', [])
         if 'sdk:LLVM_TOOLCHAIN' not in args['buildDependencies']:
             args['buildDependencies'].append('sdk:LLVM_TOOLCHAIN')
-        if 'toolchain' not in args:
-            args['toolchain'] = '<toolchainCMakePath:native>'
+        args.setdefault('toolchain', 'sulong:SULONG_BOOTSTRAP_TOOLCHAIN')
         self.buildRef = buildRef
         self.buildSharedObject = buildSharedObject
         self.current_variant = None
