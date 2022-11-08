@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageDebugInfoProvider;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMDIBuilderRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMetadataRef;
@@ -100,11 +99,6 @@ public class LLVMIRBuilder implements AutoCloseable {
         this.context = primary.context;
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
         this.module = primary.module;
-        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
-            this.diBuilder = LLVM.LLVMCreateDIBuilder(this.module);
-            diFilenameToCU = new HashMap<String, LLVMMetadataRef>();
-            diFunctionToSP = new HashMap<String, LLVMMetadataRef>();
-        }
         this.function = null;
         this.primary = false;
         this.helpers = null;
@@ -140,13 +134,13 @@ public class LLVMIRBuilder implements AutoCloseable {
     public void close() {
         LLVM.LLVMDisposeBuilder(builder);
         builder = null;
-        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
-            LLVM.LLVMDIBuilderFinalize(diBuilder);
-            diFilenameToCU.clear();
-            diFunctionToSP.clear();
-            diBuilder = null;
-        }
         if (primary) {
+            if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+                LLVM.LLVMDIBuilderFinalize(diBuilder);
+                diFilenameToCU.clear();
+                diFunctionToSP.clear();
+                diBuilder = null;
+            }
             LLVM.LLVMDisposeModule(module);
             module = null;
             LLVM.LLVMContextDispose(context);
@@ -887,9 +881,9 @@ public class LLVMIRBuilder implements AutoCloseable {
             if (position != null) {
                 DebugContext debugContext = node.getDebug();
                 NativeImageDebugInfoProvider dbgInfoProvider = new NativeImageDebugInfoProvider(debugContext);
-                NativeImageDebugInfoProvider.NativeImageDebugLLVMLocationInfo dbgLocInfo = dbgInfoProvider.new NativeImageDebugLLVMLocationInfo(position.getBCI(), position.getMethod());
+                NativeImageDebugInfoProvider.NativeImageDebugLLVMLocationInfo dbgLocInfo =
+                        dbgInfoProvider.new NativeImageDebugLLVMLocationInfo(position.getBCI(), position.getMethod());
                 int lineNum = dbgLocInfo.line();
-                //dbgLineInfo.computeFullFilePath();
                 String filename = dbgLocInfo.fileName();
 
                 if (filename != "") {
