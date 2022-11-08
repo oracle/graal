@@ -113,7 +113,7 @@ import java.util.HashMap;
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
  * to be passed to an ObjectFile when generation of debug info is enabled.
  */
-class NativeImageDebugInfoProvider implements DebugInfoProvider {
+public class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final DebugContext debugContext;
     private final NativeImageCodeCache codeCache;
     private final NativeImageHeap heap;
@@ -162,6 +162,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         hubType = metaAccess.lookupJavaType(Class.class);
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
+    }
+
+    // Special constructor for debug info supported for LLVM
+    public NativeImageDebugInfoProvider(DebugContext debugContext) {
+        super();
+        this.debugContext = debugContext;
+        this.codeCache = null;
+        this.heap = null;
+        this.allOverrides = null;
     }
 
     private static HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
@@ -917,6 +926,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
+        // Temporary constructor to figure out an alternative solution
+        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod m, boolean LLVMBackend) {
+            super(m);
+            method = promoteAnalysisToHosted(m);
+            this.paramInfo = null;
+            this.thisParamInfo = null;
+        }
+
         private ResolvedJavaMethod promoteAnalysisToHosted(ResolvedJavaMethod m) {
             if (m instanceof AnalysisMethod) {
                 return heap.getUniverse().lookup(m);
@@ -1651,6 +1668,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
+
+    public class NativeImageDebugLLVMLocationInfo extends NativeImageDebugLocationInfo {
+
+        public NativeImageDebugLLVMLocationInfo(int bci, ResolvedJavaMethod method) {
+            super(bci, method);
+        }
+    }
     /**
      * Implementation of the DebugLocationInfo API interface that allows line number and local var
      * info to be passed to an ObjectFile when generation of debug info is enabled.
@@ -1673,6 +1697,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.hi = hi;
             this.callersLocationInfo = callersLocationInfo;
             this.localInfoList = initLocalInfoList(bcpos, framesize);
+        }
+
+        // Debug info constructor for LLVM backend
+        NativeImageDebugLocationInfo(int bci, ResolvedJavaMethod method) {
+            super(method, true);
+            this.bci = bci;
         }
 
         // special constructor for synthetic lcoation info added at start of method

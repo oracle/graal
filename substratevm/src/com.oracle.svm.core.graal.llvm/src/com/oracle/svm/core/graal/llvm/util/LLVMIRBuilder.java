@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.oracle.svm.hosted.image.NativeImage;
+import com.oracle.svm.hosted.image.NativeImageDebugInfoProvider;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMDIBuilderRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMetadataRef;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -881,17 +883,18 @@ public class LLVMIRBuilder implements AutoCloseable {
         if ((LLVM.LLVMGetValueKind(instr) == LLVM.LLVMInstructionValueKind) ||
                 (LLVM.LLVMGetValueKind(instr) == LLVM.LLVMBasicBlockValueKind)
                 || (LLVM.LLVMGetValueKind(instr) == LLVM.LLVMFunctionValueKind)) {
-            if (node.getNodeSourcePosition() != null) {
-                NodeSourcePosition position = node.getNodeSourcePosition();
+            NodeSourcePosition position = node.getNodeSourcePosition();
+            if (position != null) {
                 DebugContext debugContext = node.getDebug();
-                LLVMDebugLineInfo dbgLineInfo = new LLVMDebugLineInfo(debugContext, position);
-                int lineNum = dbgLineInfo.line();
-                dbgLineInfo.computeFullFilePath();
-                String filename = dbgLineInfo.fileName();
+                NativeImageDebugInfoProvider dbgInfoProvider = new NativeImageDebugInfoProvider(debugContext);
+                NativeImageDebugInfoProvider.NativeImageDebugLLVMLocationInfo dbgLocInfo = dbgInfoProvider.new NativeImageDebugLLVMLocationInfo(position.getBCI(), position.getMethod());
+                int lineNum = dbgLocInfo.line();
+                //dbgLineInfo.computeFullFilePath();
+                String filename = dbgLocInfo.fileName();
 
-                if (filename != null) {
-                    String directory = String.valueOf(dbgLineInfo.filePath());
-                    String funcName = dbgLineInfo.methodName();
+                if (filename != "") {
+                    String directory = String.valueOf(dbgLocInfo.filePath());
+                    String funcName = dbgLocInfo.name();
                     /* To add debug location information in the LLVM IR:
                     1. A compile unit needs to be created which acts as a unit of translation, usually a compile unit is
                     associated with a file
@@ -909,6 +912,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                     LLVM.LLVMSetCurrentDebugLocation2(builder, diLocation);
                     LLVM.LLVMSetInstDebugLocation(builder, instr);
                 }
+
             }
         }
     }
