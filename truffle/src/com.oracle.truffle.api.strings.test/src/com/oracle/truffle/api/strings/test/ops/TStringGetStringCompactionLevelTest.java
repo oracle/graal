@@ -67,7 +67,9 @@ public class TStringGetStringCompactionLevelTest extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            int stride = node.execute(a, encoding);
+            TruffleString.CompactionLevel compactionLevel = node.execute(a, encoding);
+            int stride = compactionLevel.getBytes();
+            Assert.assertEquals(stride, 1 << compactionLevel.getLog2());
             if (encoding == TruffleString.Encoding.UTF_32) {
                 Assert.assertTrue(stride == 1 || stride == 2 || stride == 4);
                 if (stride == 1) {

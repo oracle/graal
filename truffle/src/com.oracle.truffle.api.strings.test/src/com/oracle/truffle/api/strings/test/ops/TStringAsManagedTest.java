@@ -77,14 +77,14 @@ public class TStringAsManagedTest extends TStringTestBase {
                     Assert.assertSame(a, b);
                 } else {
                     Assert.assertNotSame(a, b);
-                    TruffleString cached = node.execute(a, true, encoding);
+                    TruffleString cached = node.execute(a, encoding, true);
                     assertBytesEqual(cached, encoding, array);
                     TruffleString uncached = node.execute(a, encoding);
                     assertBytesEqual(uncached, encoding, array);
                     Assert.assertNotSame(cached, uncached);
                     Assert.assertNotSame(b, cached);
                     Assert.assertNotSame(b, uncached);
-                    Assert.assertSame(cached, node.execute(a, true, encoding));
+                    Assert.assertSame(cached, node.execute(a, encoding, true));
                 }
             }
             MutableTruffleString bMutable = nodeMutable.execute(a, encoding);

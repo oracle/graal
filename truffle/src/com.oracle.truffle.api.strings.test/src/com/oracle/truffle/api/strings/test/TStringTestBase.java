@@ -422,7 +422,7 @@ public class TStringTestBase {
         }) {
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
             if ((encoding == UTF_16 || encoding == UTF_32) && string.isImmutable() && string.isManaged()) {
-                test.run(((TruffleString) string).asNativeUncached(PointerObject::create, true, false, encoding), array, codeRange, isValid, encoding, codepoints, byteIndices);
+                test.run(((TruffleString) string).asNativeUncached(PointerObject::create, encoding, true, false), array, codeRange, isValid, encoding, codepoints, byteIndices);
             }
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {

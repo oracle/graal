@@ -498,6 +498,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.AsManagedNode}.
+     *
+     * @since 23.0
+     */
+    @TruffleBoundary
+    public final TruffleString asManagedTruffleStringUncached(TruffleString.Encoding expectedEncoding, boolean cacheResult) {
+        return TruffleString.AsManagedNode.getUncached().execute(this, expectedEncoding, cacheResult);
+    }
+
+    /**
      * Shorthand for calling the uncached version of
      * {@link MutableTruffleString.AsMutableTruffleStringNode}.
      *
@@ -565,7 +575,7 @@ public abstract class AbstractTruffleString {
      * @since 23.0
      */
     @TruffleBoundary
-    public final int getStringCompactionLevelUncached(TruffleString.Encoding expectedEncoding) {
+    public final TruffleString.CompactionLevel getStringCompactionLevelUncached(TruffleString.Encoding expectedEncoding) {
         return TruffleString.GetStringCompactionLevelNode.getUncached().execute(this, expectedEncoding);
     }
 
