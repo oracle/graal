@@ -24,9 +24,8 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static org.graalvm.compiler.core.CompilationWatchDog.Options.CompilationWatchDogStackTraceInterval;
 import static org.graalvm.compiler.core.CompilationWatchDog.Options.CompilationWatchDogStartDelay;
-import static org.graalvm.compiler.core.CompilationWatchDog.Options.CompilationWatchDogStuckCompilationThreshold;
+import static org.graalvm.compiler.core.CompilationWatchDog.Options.CompilationWatchDogVMExitDelay;
 import static org.graalvm.compiler.core.GraalCompilerOptions.InjectedCompilationDelay;
 
 import java.util.ArrayList;
@@ -61,8 +60,7 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
         OptionValues options = new OptionValues(getInitialOptions(),
                         InjectedCompilationDelay, 4,
                         CompilationWatchDogStartDelay, 1,
-                        CompilationWatchDogStackTraceInterval, 1,
-                        CompilationWatchDogStuckCompilationThreshold, 2);
+                        CompilationWatchDogVMExitDelay, 2);
         test(options, "snippet", 42);
     }
 

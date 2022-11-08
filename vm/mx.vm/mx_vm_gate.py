@@ -241,18 +241,17 @@ def _test_libgraal_CompilationTimeout_JIT():
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
-    G = '-Dgraal.'
+    G = '-Dgraal.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
-        threshold = 0 if not vm_can_exit else 2
-        vmargs = [f'{G}CompilationWatchDogStartDelay=1',                # Set compilation timeout to 2 secs
-                  f'{G}CompilationWatchDogStackTraceInterval=1',        # (delay + 1 interval) and
-                  f'{G}InjectedCompilationDelay=4',                     # inject a 4 sec compilation delay
-                   '-Ddebug.graal.CompilationWatchDog=true',                    # help debug failure
-                  f'{G}CompilationWatchDogStuckCompilationThreshold={threshold}',
+        vm_exit_delay = 0 if not vm_can_exit else 2
+        vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
+                  f'{G}InjectedCompilationDelay=4',       # inject a 4 sec compilation delay
+                  f'{G}CompilationWatchDogVMExitDelay={vm_exit_delay}',
                   f'{G}CompilationFailureAction=Print',
                   f'{G}PrintCompilation=false',
-                  f'{G}LogFile={compiler_log_file}']
-    
+                  f'{G}LogFile={compiler_log_file}',
+                   '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
+
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
         exit_code = mx.run(cmd, nonZeroIsFatal=False)
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
@@ -270,29 +269,28 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
-    G = '-Dgraal.'
-    P = '-Dpolyglot.engine.'
+    G = '-Dgraal.' #pylint: disable=invalid-name
+    P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
-        threshold = 0 if not vm_can_exit else 2
-        vmargs = [f'{G}CompilationWatchDogStartDelay=1',                # Set compilation timeout to 2 secs
-                  f'{G}CompilationWatchDogStackTraceInterval=1',        # (delay + 1 interval) and
-                  f'{G}InjectedCompilationDelay=4',                     # inject a 4 sec compilation delay
-                  f'{G}CompilationWatchDogStuckCompilationThreshold={threshold}',
+        vm_exit_delay = 0 if not vm_can_exit else 2
+        vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
+                  f'{G}InjectedCompilationDelay=4',       # inject a 4 sec compilation delay
+                  f'{G}CompilationWatchDogVMExitDelay={vm_exit_delay}',
                   f'{G}CompilationFailureAction=Print',
                   f'{G}ShowConfiguration=info',
                   f'{G}MethodFilter=delay',
                   f'{G}PrintCompilation=false',
+                  f'{G}LogFile={compiler_log_file}',
                   f'{P}AllowExperimentalOptions=true',
                   f'{P}TraceCompilation=false',
                   f'{P}CompileImmediately=true',
                   f'{P}BackgroundCompilation=false',
-                   '-Ddebug.graal.CompilationWatchDog=true',                    # help debug failure
                   f'-Dpolyglot.log.file={compiler_log_file}',
+                   '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
                    '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
-                   '-XX:+UseJVMCINativeLibrary',  # but ensure libgraal is still used by Truffle
-                  f'{G}LogFile={compiler_log_file}']
-    
+                   '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
+
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
         cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]

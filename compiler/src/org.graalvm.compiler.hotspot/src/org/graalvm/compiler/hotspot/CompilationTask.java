@@ -72,8 +72,8 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     @Override
-    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stackTraceCount) {
-        CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stackTraceCount);
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+        CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
         TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
         HotSpotGraalServices.exit(STUCK_COMPILATION_EXIT_CODE, jvmciRuntime);
     }
