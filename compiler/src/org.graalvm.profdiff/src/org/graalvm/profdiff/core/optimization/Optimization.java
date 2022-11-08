@@ -24,13 +24,11 @@
  */
 package org.graalvm.profdiff.core.optimization;
 
-import java.util.List;
-
-import org.graalvm.profdiff.util.Writer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents an immutable optimization (applied graph transformation) in a compilation unit at a
@@ -39,15 +37,10 @@ import org.graalvm.collections.UnmodifiableMapCursor;
  * An example of an optimization is loop peeling of a loop at a particular source position, which is
  * performed by an {@link OptimizationPhase optimization phase} like {@code LoopPeelingPhase}.
  */
-public class Optimization implements OptimizationTreeNode {
+public class Optimization extends OptimizationTreeNode {
     /**
-     * The name of this optimization. Corresponds to the name of the compiler phase or another class
-     * which performed this optimization.
-     */
-    private final String optimizationName;
-
-    /**
-     * The name of the event that occurred, which describes this optimization entry.
+     * The name of the transformation performed by the optimization phase. One optimization phase
+     * can perform several transformations.
      */
     private final String eventName;
 
@@ -74,11 +67,20 @@ public class Optimization implements OptimizationTreeNode {
      */
     private final int cachedHashCode;
 
+    /**
+     * Constructs an optimization.
+     *
+     * @param optimizationName the name of this optimization
+     * @param eventName a more specific description of the optimization
+     * @param position a position of a significant node related to this optimization
+     * @param properties a map of additional properties of this optimization, mapped by property
+     *            name
+     */
     public Optimization(String optimizationName,
                     String eventName,
                     UnmodifiableEconomicMap<String, Integer> position,
                     UnmodifiableEconomicMap<String, Object> properties) {
-        this.optimizationName = optimizationName;
+        super(optimizationName);
         this.eventName = eventName;
         this.position = (position == null) ? EconomicMap.emptyMap() : position;
         this.properties = (properties == null) ? EconomicMap.emptyMap() : properties;
@@ -86,25 +88,9 @@ public class Optimization implements OptimizationTreeNode {
     }
 
     /**
-     * Gets the name of this optimization. Corresponds to the name of the compiler phase or another
-     * class which performed this optimization. Example of an optimization name:
-     * LoopTransformations.
-     *
-     * @return the name of this optimization
+     * Gets the name of the transformation performed by the optimization phase.
      */
-    public String getOptimizationName() {
-        return optimizationName;
-    }
-
-    /**
-     * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it
-     * should return a more specific description of the optimization. Example of an event name:
-     * LoopPeeling.
-     *
-     * @return the name of the event that occurred
-     */
-    @Override
-    public String getName() {
+    public String getEventName() {
         return eventName;
     }
 
@@ -184,7 +170,7 @@ public class Optimization implements OptimizationTreeNode {
      */
     private String toString(boolean bciLongForm) {
         StringBuilder sb = new StringBuilder();
-        sb.append(getOptimizationName()).append(" ").append(getName());
+        sb.append(getName()).append(" ").append(eventName);
         if (!position.isEmpty()) {
             sb.append(" at bci ");
             if (bciLongForm) {
@@ -217,7 +203,7 @@ public class Optimization implements OptimizationTreeNode {
 
     private int calculateHashCode() {
         int result = EconomicMapUtil.hashCode(position);
-        result = 31 * result + optimizationName.hashCode();
+        result = 31 * result + getName().hashCode();
         result = 31 * result + eventName.hashCode();
         result = 31 * result + EconomicMapUtil.hashCode(properties);
         return result;
@@ -234,14 +220,9 @@ public class Optimization implements OptimizationTreeNode {
             return false;
         }
         Optimization other = (Optimization) object;
-        return cachedHashCode == other.cachedHashCode && optimizationName.equals(other.optimizationName) &&
-                        eventName.equals(other.eventName) && EconomicMapUtil.equals(position, other.position) &&
+        return cachedHashCode == other.cachedHashCode && eventName.equals(other.eventName) &&
+                        getName().equals(other.getName()) && EconomicMapUtil.equals(position, other.position) &&
                         EconomicMapUtil.equals(properties, other.properties);
-    }
-
-    @Override
-    public List<OptimizationTreeNode> getChildren() {
-        return List.of();
     }
 
     /**

@@ -22,22 +22,51 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.profdiff.matching.method;
+package org.graalvm.profdiff.matching.tree;
 
-import org.graalvm.profdiff.core.Experiment;
+import org.graalvm.profdiff.core.TreeNode;
 
 /**
- * Creates a matching of methods across two experiments.
+ * Visitor of a delta tree.
+ *
+ * @param <T> the type of the node of the original diffed tree
  */
-public interface MethodMatcher {
+public interface DeltaTreeVisitor<T extends TreeNode<T>> {
     /**
-     * Matches pairs of methods by their signature and then tries to match their respective
-     * compilation units according to a heuristic. Returns an object describing the pairs of matched
-     * methods, matched compilation units and also the list of unmatched compilation units.
-     *
-     * @param experiment1 the first experiment
-     * @param experiment2 the second experiment
-     * @return the description of the computed matching
+     * Notifies the visitor before a delta tree is visited.
      */
-    MethodMatching match(Experiment experiment1, Experiment experiment2);
+    void beforeVisit();
+
+    /**
+     * Notifies the visitor after a delta tree is visited.
+     */
+    void afterVisit();
+
+    /**
+     * Visits a delta node that representing an identity operation.
+     *
+     * @param node a delta node representing an identity operation
+     */
+    void visitIdentity(DeltaTreeNode<T> node);
+
+    /**
+     * Visits a delta node that representing a relabeling operation.
+     *
+     * @param node a delta node representing a relabeling operation
+     */
+    void visitRelabeling(DeltaTreeNode<T> node);
+
+    /**
+     * Visits a delta node that representing a delete operation.
+     *
+     * @param node a delta node representing a delete operation
+     */
+    void visitDeletion(DeltaTreeNode<T> node);
+
+    /**
+     * Visits a delta node that representing an insert operation.
+     *
+     * @param node a delta node representing an insert operation
+     */
+    void visitInsertion(DeltaTreeNode<T> node);
 }

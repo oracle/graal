@@ -254,8 +254,7 @@ public class InliningLog {
         FixedNode replacementSiteInvoke = replacementSite.invoke != null ? replacementSite.invoke.asFixedNodeOrNull() : null;
         site.invoke = replacementSiteInvoke != null && replacementSiteInvoke.isAlive() ? (Invokable) replacements.get(replacementSiteInvoke) : null;
         for (Callsite replacementChild : replacementSite.children) {
-            Callsite child = new Callsite(site, null);
-            site.children.add(child);
+            Callsite child = site.addChild(null);
             copyTree(child, replacementChild, replacements, mapping);
         }
     }
@@ -479,8 +478,7 @@ public class InliningLog {
     public void trackNewCallsite(Invokable invoke) {
         assert !leaves.containsKey(invoke);
         Callsite currentRoot = findCurrentRoot();
-        Callsite callsite = new Callsite(currentRoot, invoke);
-        currentRoot.children.add(callsite);
+        Callsite callsite = currentRoot.addChild(invoke);
         leaves.put(invoke, callsite);
     }
 
@@ -542,5 +540,12 @@ public class InliningLog {
         for (Callsite child : site.children) {
             formatAsTree(child, indent + "  ", builder);
         }
+    }
+
+    /**
+     * Gets the callsite representing the root method.
+     */
+    public Callsite getRootCallsite() {
+        return root;
     }
 }

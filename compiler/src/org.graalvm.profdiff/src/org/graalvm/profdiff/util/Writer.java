@@ -52,6 +52,18 @@ public interface Writer {
     void writeln();
 
     /**
+     * Gets the current indentation level.
+     */
+    int getIndentLevel();
+
+    /**
+     * Sets the current indentation level to the provided value.
+     *
+     * @param newIndentLevel the new indentation level
+     */
+    void setIndentLevel(int newIndentLevel);
+
+    /**
      * Increases the current indentation level by one.
      */
     void increaseIndent();

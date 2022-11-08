@@ -25,12 +25,11 @@
 package org.graalvm.profdiff.parser.experiment;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Optional;
 
+import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 
 /**
@@ -43,6 +42,12 @@ public class ExperimentFilesImpl implements ExperimentFiles {
     private final ExperimentId experimentId;
 
     /**
+     * The kind of compilation of this experiment, i.e., whether it was compiled just-in-time or
+     * ahead-of-time.
+     */
+    private final Experiment.CompilationKind compilationKind;
+
+    /**
      * The path to the directory which contains the optimization logs of this experiment.
      */
     private final String optimizationLogPath;
@@ -53,49 +58,50 @@ public class ExperimentFilesImpl implements ExperimentFiles {
     private final String proftoolOutputPath;
 
     /**
-     * Constructs experiment files from paths to the proftool output and the directory with an
+     * Constructs experiment files from paths with a proftool output and a directory with an
      * optimization log.
      *
      * @param experimentId the ID of this experiment
-     * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson)
-     * @param optimizationLogPath the path to the directory which contains the optimization logs
+     * @param compilationKind the compilation kind of this experiment
+     * @param proftoolOutputPath the file path to the JSON proftool output (mx profjson), can be
+     *            {@code null} if the experiment does not have any associated proftool output
+     * @param optimizationLogPath the path to the directory containing optimization logs
      */
-    public ExperimentFilesImpl(ExperimentId experimentId, String proftoolOutputPath, String optimizationLogPath) {
+    public ExperimentFilesImpl(ExperimentId experimentId, Experiment.CompilationKind compilationKind, String proftoolOutputPath, String optimizationLogPath) {
         this.experimentId = experimentId;
+        this.compilationKind = compilationKind;
         this.optimizationLogPath = optimizationLogPath;
         this.proftoolOutputPath = proftoolOutputPath;
     }
 
     @Override
-    public NamedReader getProftoolOutput() throws FileNotFoundException {
-        return new NamedReader(proftoolOutputPath, new FileReader(proftoolOutputPath));
+    public Optional<FileView> getProftoolOutput() {
+        if (proftoolOutputPath == null) {
+            return Optional.empty();
+        }
+        return Optional.of(FileView.fromFile(new File(proftoolOutputPath)));
     }
 
     /**
-     * Gets the list of readers reading an optimization log. Each reader describes one compiled
-     * method. Individual optimization logs are discovered by listing the files in the provided
-     * {@link #optimizationLogPath}.
+     * Gets an iterable of file views representing the optimization log. Each file view may contain
+     * several JSON-encoded compilation units separated by a {@code '\n'}. Individual files are
+     * discovered by listing the files in the provided {@link #optimizationLogPath}.
      *
-     * The optimization log may sometimes produce an empty file. In that case, the file skipped and
-     * a warning is printed to stderr.
-     *
-     * @return the list of readers each reading an optimization log
+     * @return an iterable of file views representing an optimization log
+     * @throws IOException the optimization log is not a directory
      */
     @Override
-    public List<NamedReader> getOptimizationLogs() throws IOException {
+    public Iterable<FileView> getOptimizationLogs() throws IOException {
         File[] files = new File(optimizationLogPath).listFiles();
         if (files == null) {
             throw new IOException("The provided optimization log path does not denote a directory");
         }
-        List<NamedReader> readers = new ArrayList<>();
-        for (File file : files) {
-            if (file.length() == 0) {
-                System.err.println("Warning: The file " + file.getPath() + " is empty.");
-                continue;
-            }
-            readers.add(new NamedReader(file.getPath(), new FileReader(file)));
-        }
-        return readers;
+        return () -> Arrays.stream(files).map(FileView::fromFile).iterator();
+    }
+
+    @Override
+    public Experiment.CompilationKind getCompilationKind() {
+        return compilationKind;
     }
 
     @Override

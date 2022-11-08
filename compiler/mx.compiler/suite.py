@@ -1876,7 +1876,9 @@ suite = {
     "org.graalvm.profdiff" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.util"],
+      "dependencies" : [
+        "org.graalvm.compiler.nodes",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
     },
@@ -2199,8 +2201,6 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
-      ],
-      "overlaps" : [
         "GRAAL",
       ],
       "maven" : False,

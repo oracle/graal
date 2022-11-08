@@ -24,16 +24,62 @@
  */
 package org.graalvm.profdiff.core;
 
-import java.util.List;
-
-import org.graalvm.profdiff.core.optimization.Optimization;
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.inlining.InliningTree;
+import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents an executed Graal compilation of a method.
+ *
+ * A compilation unit contains holds only its identifiers (compilation ID, root method) and simple
+ * scalar metadata (execution period, hot flag). The most resource-heavy parts, i.e. an
+ * {@link OptimizationTree} and {@link InliningTree}, can be loaded on demand. This design is
+ * necessary, because a whole experiment might not fit in memory.
  */
 public class CompilationUnit {
+    /**
+     * A pair of an {@link OptimizationTree} and {@link InliningTree} belonging to a compilation
+     * unit.
+     */
+    public static class TreePair {
+        private final OptimizationTree optimizationTree;
+
+        private final InliningTree inliningTree;
+
+        public TreePair(OptimizationTree optimizationTree, InliningTree inliningTree) {
+            this.optimizationTree = optimizationTree;
+            this.inliningTree = inliningTree;
+        }
+
+        public InliningTree getInliningTree() {
+            return inliningTree;
+        }
+
+        public OptimizationTree getOptimizationTree() {
+            return optimizationTree;
+        }
+    }
+
+    /**
+     * Loads the {@link OptimizationTree} and the {@link InliningTree} of a compilation unit on
+     * demand.
+     */
+    public interface TreeLoader {
+        /**
+         * Loads and returns a pair of trees associated with a compilation unit.
+         *
+         * @return the loaded pair of trees
+         * @throws ExperimentParserError the trees could not be loaded
+         */
+        TreePair load() throws ExperimentParserError;
+    }
+
+    /**
+     * The root method of this compilation unit.
+     */
+    private final Method method;
+
     /**
      * The compilation ID of this compilation unit as reported in the optimization log. Matches
      * {@code compileId} in the proftool output.
@@ -41,68 +87,32 @@ public class CompilationUnit {
     private final String compilationId;
 
     /**
-     * The full signature of the compiled root method including parameter types as reported in the
-     * optimization log.
-     */
-    private final String compilationMethodName;
-
-    /**
-     * The root optimization phase of this compilation unit, which holds all optimization phases
-     * applied in this compilation.
-     */
-    private final OptimizationPhase rootPhase;
-
-    /**
      * The period of execution as reported by proftool.
      */
     private final long period;
-
-    /**
-     * The experiment to which compilation unit belongs.
-     */
-    private final Experiment experiment;
 
     /**
      * The hot flag of this compilation unit.
      */
     private boolean hot;
 
-    public CompilationUnit(String compilationId,
-                    String compilationMethodName,
-                    OptimizationPhase rootPhase,
-                    long period,
-                    Experiment experiment) {
+    /**
+     * The tree loader associated with this compilation unit.
+     */
+    private final TreeLoader loader;
+
+    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader) {
+        this.method = method;
         this.compilationId = compilationId;
-        this.compilationMethodName = compilationMethodName;
         this.period = period;
-        this.rootPhase = rootPhase;
-        this.experiment = experiment;
+        this.loader = loader;
     }
 
     /**
-     * Gets the experiment to which this compilation unit belongs.
+     * Gets the root method of this compilation unit.
      */
-    public Experiment getExperiment() {
-        return experiment;
-    }
-
-    /**
-     * Creates and returns a summary that specifies the execution time of this compilation unit
-     * relative to the total execution time and relative to the execution time of all graal-compiled
-     * methods.
-     *
-     * Example of a returned string:
-     *
-     * <pre>
-     * 10.05% of Graal execution, 4.71% of total
-     * </pre>
-     *
-     * @return a summary of the relative execution time
-     */
-    public String createExecutionSummary() {
-        String graalPercent = String.format("%.2f", (double) period / experiment.getGraalPeriod() * 100);
-        String totalPercent = String.format("%.2f", (double) period / experiment.getTotalPeriod() * 100);
-        return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
+    public Method getMethod() {
+        return method;
     }
 
     /**
@@ -113,34 +123,6 @@ public class CompilationUnit {
      */
     public String getCompilationId() {
         return compilationId;
-    }
-
-    /**
-     * Gets the full signature of the root method of this compilation unit including parameter types
-     * as reported in the optimization log. Multiple compilation units may share the same
-     * compilation method name, because a method may get compiled several times. It can be used to
-     * identify a group of compilations of a single Java method.
-     *
-     * Example of a returned string:
-     *
-     * <pre>
-     * java.lang.Math.max(int, int)
-     * </pre>
-     *
-     * @return the compilation method name
-     */
-    public String getCompilationMethodName() {
-        return compilationMethodName;
-    }
-
-    /**
-     * Gets the root optimization phase of this compilation unit, which holds all optimization
-     * phases applied in this compilation.
-     *
-     * @return the root optimization phase
-     */
-    public OptimizationPhase getRootPhase() {
-        return rootPhase;
     }
 
     /**
@@ -173,25 +155,56 @@ public class CompilationUnit {
     }
 
     /**
-     * Creates and returns a list of all optimizations performed during the compilation of this
-     * compilation unit, preserving the order.
+     * Loads the {@link OptimizationTree} and the {@link InliningTree} of this compilation units.
      *
-     * @return the list of optimizations
+     * @return a pair of the loaded trees
+     * @throws ExperimentParserError the trees could not be loaded
      */
-    public List<Optimization> getOptimizationsRecursive() {
-        return rootPhase.getOptimizationsRecursive();
+    public TreePair loadTrees() throws ExperimentParserError {
+        return loader.load();
+    }
+
+    /**
+     * Creates and returns a summary that specifies the execution time of this compilation unit
+     * relative to the total execution time and relative to the execution time of all graal-compiled
+     * methods. This is only possible when proftool data is {@link Experiment#isProfileAvailable()
+     * available} to the experiment.
+     *
+     * Example of a returned string:
+     *
+     * <pre>
+     * 10.05% of Graal execution, 4.71% of total
+     * </pre>
+     *
+     * @return a summary of the relative execution time
+     */
+    public String createExecutionSummary() {
+        assert method.getExperiment().isProfileAvailable();
+        String graalPercent = String.format("%.2f", (double) period / method.getExperiment().getGraalPeriod() * 100);
+        String totalPercent = String.format("%.2f", (double) period / method.getExperiment().getTotalPeriod() * 100);
+        return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
     }
 
     /**
      * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
-     * and the optimization tree to the destination writer.
+     * and the optimization and inlining tree to the destination writer. The execution summary is
+     * omitted when proftool data is not {@link Experiment#isProfileAvailable() available} to the
+     * experiment.
      *
      * @param writer the destination writer
      */
-    public void write(Writer writer) {
-        writer.writeln("Compilation " + compilationId + " (" + createExecutionSummary() + ") in experiment " + experiment.getExperimentId());
+    public void write(Writer writer) throws Exception {
+        writer.write("Compilation " + compilationId);
+        if (method.getExperiment().isProfileAvailable()) {
+            writer.write(" (" + createExecutionSummary() + ")");
+        }
+        writer.writeln(" in experiment " + method.getExperiment().getExperimentId());
         writer.increaseIndent();
-        rootPhase.writeRecursive(writer);
+        TreePair treePair = loader.load();
+        treePair.getInliningTree().preprocess(writer.getVerbosityLevel());
+        treePair.getInliningTree().write(writer);
+        treePair.getOptimizationTree().preprocess(writer.getVerbosityLevel());
+        treePair.getOptimizationTree().write(writer);
         writer.decreaseIndent();
     }
 }

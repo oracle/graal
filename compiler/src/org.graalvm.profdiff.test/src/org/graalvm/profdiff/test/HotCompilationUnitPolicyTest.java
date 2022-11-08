@@ -26,25 +26,24 @@ package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.profdiff.core.CompilationUnit;
-import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Experiment;
+import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
-import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.junit.Test;
 
 public class HotCompilationUnitPolicyTest {
     @Test
     public void testHotMethodPolicy() {
-        OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
-        Experiment experiment = new Experiment("1", ExperimentId.ONE, 100, 100);
-        experiment.addCompilationUnit(new CompilationUnit("foo1", "foo", rootPhase, 5, experiment));
-        experiment.addCompilationUnit(new CompilationUnit("foo2", "foo", rootPhase, 35, experiment));
-        experiment.addCompilationUnit(new CompilationUnit("foo3", "foo", rootPhase, 30, experiment));
-        experiment.addCompilationUnit(new CompilationUnit("bar1", "bar", rootPhase, 20, experiment));
-        experiment.addCompilationUnit(new CompilationUnit("baz1", "bar", rootPhase, 10, experiment));
+        Experiment experiment = new Experiment("1", ExperimentId.ONE, Experiment.CompilationKind.JIT, 100, List.of());
+        experiment.addCompilationUnit("foo", "foo1", 6, null);
+        experiment.addCompilationUnit("foo", "foo2", 35, null);
+        experiment.addCompilationUnit("foo", "foo3", 30, null);
+        experiment.addCompilationUnit("bar", "bar1", 20, null);
+        experiment.addCompilationUnit("baz", "baz1", 9, null);
 
         HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
         hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
@@ -53,9 +52,9 @@ public class HotCompilationUnitPolicyTest {
         hotCompilationUnitPolicy.setHotMaxLimit(10);
         hotCompilationUnitPolicy.setHotPercentile(0.9);
 
-        Set<String> hotMethods = Set.of("foo2", "foo3", "bar1");
-        for (CompilationUnit method : experiment.getCompilationUnits()) {
-            assertEquals(hotMethods.contains(method.getCompilationId()), method.isHot());
+        Set<String> hotCompilationUnits = Set.of("foo2", "foo3", "bar1");
+        for (CompilationUnit compilationUnit : experiment.getCompilationUnits()) {
+            assertEquals(hotCompilationUnits.contains(compilationUnit.getCompilationId()), compilationUnit.isHot());
         }
     }
 }
