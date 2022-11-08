@@ -140,7 +140,7 @@ public class AllocExternalSymbolNode extends LLVMNode {
     }
 
     private static LLVMPointer getFromScope(LLVMScopeChain localScope, LLVMScopeChain globalScope,
-                                     LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
+                    LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
         LLVMPointer pointerFromLocal = lookupFromScope(localScope, symbol, context);
         // The default case for active default flag is to search the local scope first.
         if (pointerFromLocal != null && isDefaultFlagActive(rtldFlags)) {
