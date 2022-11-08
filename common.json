@@ -23,8 +23,8 @@
     "labsjdk-ce-19":      {"name": "labsjdk",   "version": "ce-19+36-jvmci-23.0-b01", "platformspecific": true },
     "labsjdk-ce-19Debug": {"name": "labsjdk",   "version": "ce-19+36-jvmci-23.0-b01-debug", "platformspecific": true },
     "labsjdk-ce-19-llvm": {"name": "labsjdk",   "version": "ce-19+36-jvmci-23.0-b01-sulong", "platformspecific": true },
-    "labsjdk-ee-19":      {"name": "labsjdk",   "version": "ee-19.0.1+10-jvmci-23.0-b01", "platformspecific": true },
-    "labsjdk-ee-19Debug": {"name": "labsjdk",   "version": "ee-19.0.1+10-jvmci-23.0-b01-debug", "platformspecific": true },
+    "labsjdk-ee-19":      {"name": "labsjdk",   "version": "ee-19.0.1+10-jvmci-41977.1-b01-20221107143847-ds_GR_41977-master-798a7efecb+697030422a", "platformspecific": true },
+    "labsjdk-ee-19Debug": {"name": "labsjdk",   "version": "ee-19.0.1+10-jvmci-41977.1-b01-20221107143847-ds_GR_41977-master-798a7efecb+697030422a-debug", "platformspecific": true },
     "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.1+10-jvmci-23.0-b01-sulong", "platformspecific": true }
   },
 
