@@ -217,12 +217,45 @@ native-image [options] --module <module>[/<mainclass>] [options]
 
 For more information about how to produce a native executable from a modular Java application, see [Building a HelloWorld Java Module into a Native Executable](guides/build-java-module-app-aot.md).
 
+### Getting Notified When the Build Process Is Done
+
+Depending on the size of your application and the available resources of your build machine, it can take a few minutes to AOT-compile your Java application to a native executable.
+If you are building your project in the background, consider using a command that notifies you when the build process is completed.
+Below, example commands are listed per operating system:
+
+#### Linux
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use Zenity to open an info dialog box with text
+native-image -jar App.jar ... ; zenity --info --text="GraalVM Native Image build completed with exit code $?"
+```
+
+#### macOS
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use Speech Synthesis
+native-image -jar App.jar ... ; say "GraalVM Native Image build completed"
+```
+
+#### Windows
+```bat
+REM Ring the terminal bell (press Ctrl+G to enter ^G)
+native-image.exe -jar App.jar & echo ^G
+
+REM Open an info dialog box with text
+native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
+```
+
 ## Build Overview
 
-There many options you can pass to the `native-image` builder to configure the image build process. Run `native-image --help` to see the full list.
+There many options you can pass to the `native-image` builder to configure the build process. Run `native-image --help` to see the full list.
 The options passed to `native-image` are evaluated left-to-right.
 
-For different image build tweaks and to learn more about build time configuration, see [Native Image Build Configuration](BuildConfiguration.md).
+For different build tweaks and to learn more about build time configuration, see [Native Image Build Configuration](BuildConfiguration.md).
 
 Native Image will output the progress and various statistics during the build. To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
 
