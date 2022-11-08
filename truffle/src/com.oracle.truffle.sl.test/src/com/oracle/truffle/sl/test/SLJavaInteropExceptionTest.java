@@ -165,7 +165,7 @@ public class SLJavaInteropExceptionTest {
                         "function doCall(validator, x) {\n" +
                         "    doMultiCallback(validator, x - 1);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build()) {
+        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value doMultiCallback = context.getBindings(SLLanguage.ID).getMember("doMultiCallback");
             int numCalbacks = 3;
@@ -201,7 +201,7 @@ public class SLJavaInteropExceptionTest {
                         "function doCall(validator, x) {\n" +
                         "    doMultiCallback(validator, x - 1);\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build()) {
+        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value doMultiCallback = context.getBindings(SLLanguage.ID).getMember("doMultiCallback");
             int numCalbacks = 3;
@@ -270,7 +270,7 @@ public class SLJavaInteropExceptionTest {
                         "function test(validator) {\n" +
                         "  return validator." + javaMethod + "(new());\n" +
                         "}";
-        try (Context context = Context.newBuilder(SLLanguage.ID).allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowMutableDefaultMappings(true).build()).build()) {
+        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
             Value test = context.getBindings(SLLanguage.ID).getMember("test");
             test.execute(new Validator());

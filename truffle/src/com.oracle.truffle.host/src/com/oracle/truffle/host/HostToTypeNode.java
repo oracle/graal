@@ -61,6 +61,8 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.strings.TruffleString;
+
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
@@ -387,10 +389,10 @@ abstract class HostToTypeNode extends Node {
         } else if (targetType == Object.class) {
             obj = convertToObject(hostContext, value, interop);
         } else if (targetType == List.class) {
-            if (!hostContext.isMutableObjectMappingAllowed()) {
-                return null;
-            }
             if (interop.hasArrayElements(value)) {
+                if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.ARRAY_TO_JAVA_LIST)) {
+                    return null;
+                }
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = hostContext.language.access.toList(hostContext.internalContext, value, implementsFunction, elementType.clazz, elementType.type);
@@ -398,9 +400,6 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Map.class) {
-            if (!hostContext.isMutableObjectMappingAllowed()) {
-                return null;
-            }
             TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
             TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
             boolean hasHashEntries = interop.hasHashEntries(value);
@@ -409,14 +408,23 @@ abstract class HostToTypeNode extends Node {
             }
             boolean hasSize = (Number.class.isAssignableFrom(keyType.clazz)) && interop.hasArrayElements(value);
             boolean hasKeys = (keyType.clazz == Object.class || keyType.clazz == String.class) && interop.hasMembers(value);
-            if (hasKeys || hasSize || hasHashEntries) {
+            if (hasKeys || hasSize) {
+                if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.MEMBERS_TO_JAVA_MAP)) {
+                    return null;
+                }
+                boolean implementsFunction = shouldImplementFunction(value, interop);
+                obj = hostContext.language.access.toMap(hostContext.internalContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
+            } else if (hasHashEntries) {
+                if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.HASH_TO_JAVA_MAP)) {
+                    return null;
+                }
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 obj = hostContext.language.access.toMap(hostContext.internalContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have members, array elements or hash entries.");
             }
         } else if (targetType == Map.Entry.class) {
-            if (!hostContext.isMutableObjectMappingAllowed()) {
+            if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.MEMBERS_TO_JAVA_MAP) && !hostContext.getMutableTargetMappings().contains(MutableTargetMapping.HASH_TO_JAVA_MAP)) {
                 return null;
             }
             if (interop.hasArrayElements(value)) {
@@ -536,7 +544,7 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be an exception.");
             }
         } else if (targetType == Iterable.class) {
-            if (!hostContext.isMutableObjectMappingAllowed()) {
+            if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.ITERABLE_TO_JAVA_ITERABLE)) {
                 return null;
             }
             if (interop.hasIterator(value)) {
@@ -549,7 +557,7 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have an iterator.");
             }
         } else if (targetType == Iterator.class) {
-            if (!hostContext.isMutableObjectMappingAllowed()) {
+            if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.ITERATOR_TO_JAVA_ITERATOR)) {
                 return null;
             }
             if (interop.isIterator(value)) {
@@ -563,8 +571,14 @@ abstract class HostToTypeNode extends Node {
             }
         } else if (allowsImplementation && HostInteropReflect.isAbstractType(targetType)) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
+                if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.EXECUTABLE_TO_JAVA_INTERFACE)) {
+                    return null;
+                }
                 obj = hostContext.language.access.toFunctionProxy(hostContext.internalContext, targetType, value);
             } else if (interop.hasMembers(value)) {
+                if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.MEMBERS_TO_JAVA_INTERFACE)) {
+                    return null;
+                }
                 if (targetType.isInterface()) {
                     obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
                 } else {

@@ -13,6 +13,8 @@
   ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ConverterProxy"],
   ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ProxiedPoint"],
   ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ProxiedPoint2"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$HostMembers"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$FuncInterface"],
   ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$MarkedFunctional"],
   ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$MarkedInterface"],
   ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$UnmarkedInterface"],

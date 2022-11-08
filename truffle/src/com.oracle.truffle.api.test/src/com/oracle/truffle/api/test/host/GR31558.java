@@ -94,7 +94,6 @@ public class GR31558 extends AbstractPolyglotTest {
                         allowArrayAccess(true).//
                         allowIterableAccess(true).//
                         allowIteratorAccess(true).//
-                        allowMutableDefaultMappings(true).//
                         allowImplementationsAnnotatedBy(FunctionalInterface.class);
         Context.Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowHostAccess(hostAccessBuilder.build());

@@ -51,6 +51,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -88,7 +90,7 @@ final class HostContext {
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
     private boolean hostLookupAllowed;
-    private boolean mutableObjectMappingAllowed;
+    private EconomicSet<MutableTargetMapping> mutableTargetMappings;
     final TruffleLanguage.Env env;
     final AbstractHostAccess access;
 
@@ -118,7 +120,7 @@ final class HostContext {
      * preinitialization.
      */
     @SuppressWarnings("hiding")
-    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, boolean mutableObjectMappingAllowed) {
+    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, MutableTargetMapping... mutableTargetMappings) {
         if (classloader != null && this.classFilter != null || this.hostClassLoadingAllowed || this.hostLookupAllowed) {
             throw new AssertionError("must not be used during context preinitialization");
         }
@@ -127,7 +129,14 @@ final class HostContext {
         this.classFilter = clFilter;
         this.hostClassLoadingAllowed = hostCLAllowed;
         this.hostLookupAllowed = hostLookupAllowed;
-        this.mutableObjectMappingAllowed = mutableObjectMappingAllowed;
+        if (mutableTargetMappings != null) {
+            this.mutableTargetMappings = EconomicSet.create(mutableTargetMappings.length);
+            for (MutableTargetMapping m : mutableTargetMappings) {
+                this.mutableTargetMappings.add(m);
+            }
+        } else {
+            this.mutableTargetMappings = EconomicSet.create(0);
+        }
     }
 
     public HostClassCache getHostClassCache() {
@@ -264,8 +273,8 @@ final class HostContext {
         }
     }
 
-    boolean isMutableObjectMappingAllowed() {
-        return mutableObjectMappingAllowed;
+    EconomicSet<MutableTargetMapping> getMutableTargetMappings() {
+        return mutableTargetMappings;
     }
 
     void addToHostClasspath(TruffleFile classpathEntry) {

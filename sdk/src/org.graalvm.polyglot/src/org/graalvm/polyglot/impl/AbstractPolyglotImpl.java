@@ -76,6 +76,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -254,7 +255,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void engineClosed(Engine engine);
 
-        public abstract boolean isMutableDefaultMappingsEnabled(HostAccess access);
+        public abstract MutableTargetMapping[] getMutableTargetMappings(HostAccess access);
 
     }
 

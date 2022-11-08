@@ -63,8 +63,6 @@ final class HostInteropErrors {
         String reason;
         if (HostToTypeNode.isPrimitiveTarget(targetType)) {
             reason = "Invalid or lossy primitive coercion.";
-        } else if (!context.isMutableObjectMappingAllowed()) {
-            reason = "Unsupported target type - mutable target types disabled.";
         } else {
             reason = "Unsupported target type.";
         }
