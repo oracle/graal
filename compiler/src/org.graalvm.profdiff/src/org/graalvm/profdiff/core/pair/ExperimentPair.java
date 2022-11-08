@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
@@ -131,13 +132,15 @@ public class ExperimentPair {
                     if (CollectionsUtil.anyMatch(nodePaths.getValues(), otherPath -> otherPath != pathToNode && pathToNode.matches(otherPath))) {
                         return;
                     }
-                    // check that the method is not inlined in at least one hot compilation unit of
-                    // the other experiment
+                    // check that the method is either not hot in the other experiment or not
+                    // inlined in at least one hot compilation unit of the other experiment
                     boolean notInlinedInAtLeastOneCompilationUnit = false;
+                    boolean hasHotCompilationUnit = false;
                     for (CompilationUnit otherCompilationUnit : source.getMethodOrCreate(method.getMethodName()).getHotCompilationUnits()) {
                         if (otherCompilationUnit instanceof CompilationFragment) {
                             continue;
                         }
+                        hasHotCompilationUnit = true;
                         try {
                             List<InliningTreeNode> otherNodes = new ArrayList<>();
                             otherCompilationUnit.loadTrees().getInliningTree().getRoot().forEach(otherNode -> {
@@ -155,7 +158,7 @@ public class ExperimentPair {
                             throw new RuntimeException(e);
                         }
                     }
-                    if (!notInlinedInAtLeastOneCompilationUnit) {
+                    if (!notInlinedInAtLeastOneCompilationUnit && hasHotCompilationUnit) {
                         return;
                     }
                     destination.getMethodOrCreate(node.getName()).addCompilationFragment(compilationUnit, pathToNode);

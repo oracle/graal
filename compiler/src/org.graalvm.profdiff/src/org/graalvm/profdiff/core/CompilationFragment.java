@@ -28,6 +28,7 @@ import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.profdiff.util.StdoutWriter;
 
 public class CompilationFragment extends CompilationUnit {
 

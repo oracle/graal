@@ -99,7 +99,7 @@ public enum VerbosityLevel {
      * @param printOptimizationTree optimization tree should be printed for each hot compilation
      * @param diffCompilations compilations should be matched and diffed
      * @param bciLongForm byte code indices should be printed in the long form
-     * @param sortInliningTree he nodes of each inlining tree should be sorted
+     * @param sortInliningTree the nodes of each inlining tree should be sorted
      * @param sortUnorderedPhases phases where the order of optimizations is not important should be
      *            sorted
      * @param removeVeryDetailedPhases phases that perform a lot of optimizations with little

@@ -45,7 +45,7 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
     /**
      * A phrase introducing the reasons for an inlining decision in an experiment.
      */
-    public static final String REASONING_IN_EXPERIMENT = "  |_ reasoning in experiment ";
+    public static final String REASONING_IN_EXPERIMENT = "|_ reasoning in experiment ";
 
     public InliningDeltaTreeWriterVisitor(Writer writer) {
         super(writer);
@@ -55,23 +55,34 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
     public void visitRelabeling(DeltaTreeNode<InliningTreeNode> node) {
         adjustIndentLevel(node);
         writer.write(EditScript.RELABEL_PREFIX);
-        writer.write("(");
-        writer.write(node.getLeft().isPositive() ? INLINED : NOT_INLINED);
-        writer.write(" -> ");
-        writer.write(node.getRight().isPositive() ? INLINED : NOT_INLINED);
-        writer.write(") ");
-        writelnNameBCI(node.getLeft());
-        writeReasoning(node.getLeft(), ExperimentId.ONE);
-        writeReasoning(node.getRight(), ExperimentId.TWO);
-    }
-
-    private void writelnNameBCI(InliningTreeNode node) {
-        if (node.getName() == null) {
+        if (node.getLeft().isPositive() != node.getRight().isPositive()) {
+            writer.write("(");
+            writer.write(node.getLeft().isPositive() ? INLINED : NOT_INLINED);
+            writer.write(" -> ");
+            writer.write(node.getRight().isPositive() ? INLINED : NOT_INLINED);
+            writer.write(") ");
+        } else if (!node.getLeft().isPositive()) {
+            writer.write(InliningTreeNode.NOT_INLINED_PREFIX);
+        }
+        if (node.getLeft().getName() == null) {
             writer.write(InliningTreeNode.UNKNOWN_NAME);
         } else {
-            writer.write(node.getName());
+            writer.write(node.getLeft().getName());
         }
-        writer.writeln(InliningTreeNode.AT_BCI + node.getBCI());
+        writer.write(InliningTreeNode.AT_BCI);
+        if (node.getLeft().getBCI() != node.getRight().getBCI()) {
+            writer.write("(");
+            writer.write(Integer.toString(node.getLeft().getBCI()));
+            writer.write(" -> ");
+            writer.write(Integer.toString(node.getRight().getBCI()));
+            writer.writeln(") ");
+        } else {
+            writer.writeln(Integer.toString(node.getLeft().getBCI()));
+        }
+        if (node.getLeft().isPositive() != node.getRight().isPositive()) {
+            writeReasoning(node.getLeft(), ExperimentId.ONE);
+            writeReasoning(node.getRight(), ExperimentId.TWO);
+        }
     }
 
     private void writeReasoning(InliningTreeNode node, ExperimentId experimentId) {

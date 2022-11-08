@@ -41,6 +41,7 @@ import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.OptimizationContextTreeEditPolicy;
+import org.graalvm.profdiff.matching.tree.OptimizationContextTreeWriterVisitor;
 import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
 import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
 import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
@@ -138,8 +139,10 @@ public class ExperimentMatcher {
                 inliningDeltaTree.pruneIdentities();
             }
             inliningDeltaTree.expand();
+            writer.increaseIndent();
             InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
             inliningDeltaTree.accept(inliningDeltaTreeWriter);
+            writer.decreaseIndent();
         } else {
             writer.writeln("Inlining trees are not available");
         }
@@ -158,13 +161,15 @@ public class ExperimentMatcher {
             optimizationDeltaTree.pruneIdentities();
         }
         optimizationDeltaTree.expand();
+        writer.increaseIndent();
         DeltaTreeWriterVisitor<OptimizationTreeNode> optimizationDeltaTreeWriter = new DeltaTreeWriterVisitor<>(writer);
         optimizationDeltaTree.accept(optimizationDeltaTreeWriter);
+        writer.decreaseIndent();
     }
 
     private void createOptimizationContextTreeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
         if (treePair1.getInliningTree().getRoot() == null || treePair2.getInliningTree().getRoot() == null) {
-            throw new RuntimeException("Cannot create an optimization context tree, because an inlining tree is missing.");
+            throw new RuntimeException("Cannot create an optimization-context tree, because an inlining tree is missing.");
         }
         treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());
         treePair2.getInliningTree().preprocess(writer.getVerbosityLevel());
@@ -178,7 +183,7 @@ public class ExperimentMatcher {
             deltaTree.pruneIdentities();
         }
         deltaTree.expand();
-        DeltaTreeWriterVisitor<OptimizationContextTreeNode> deltaTreeWriter = new DeltaTreeWriterVisitor<>(writer);
-        deltaTree.accept(deltaTreeWriter);
+        OptimizationContextTreeWriterVisitor optimizationContextTreeWriterVisitor = new OptimizationContextTreeWriterVisitor(writer);
+        deltaTree.accept(optimizationContextTreeWriterVisitor);
     }
 }

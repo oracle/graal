@@ -148,24 +148,25 @@ public class InliningTree {
         return true;
     }
 
-    public InliningTreeNode getNodeAt(InliningPath path) {
-        InliningTreeNode node = null;
-        List<InliningTreeNode> children = List.of(root);
-        nextPathNode: for (InliningPath.PathElement element : path.elements()) {
-            for (InliningTreeNode child : children) {
-                if (element.matches(child.pathElement())) {
-                    node = child;
-                    children = node.getChildren();
-                    continue nextPathNode;
+    private InliningTreeNode getNodeAt(InliningTreeNode node, InliningPath path, int pathIndex) {
+        if (pathIndex >= path.size()) {
+            return node;
+        }
+        InliningPath.PathElement element = path.get(pathIndex);
+        List<InliningTreeNode> children = node == null ? List.of(root) : node.getChildren();
+        for (InliningTreeNode child : children) {
+            if (element.matches(child.pathElement())) {
+                InliningTreeNode result = getNodeAt(child, path, pathIndex + 1);
+                if (result != null) {
+                    return result;
                 }
             }
-            return null;
         }
-        return node;
+        return null;
     }
 
     public InliningTree cloneSubtreeAt(InliningPath path) {
-        InliningTreeNode rootNode = getNodeAt(path);
+        InliningTreeNode rootNode = getNodeAt(null, path, 0);
         if (rootNode == null) {
             return new InliningTree(null);
         }

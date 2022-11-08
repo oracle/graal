@@ -411,8 +411,9 @@ def find_fragments():
         for each hot compilation unit CU of the method M:
             for each inlined method I in CU:
                 if (1) the path to I in CU is unique
-                   (2) and there exists a hot compilation unit of M in the other experiment
-                                        where I is not inlined:
+                   (2) and there is not any hot compilation unit of M in the other experiment
+                           or there exists a hot compilation unit of M in the other experiment
+                                           where I is not inlined:
                    create a fragment from CU rooted in I
 ```
 
