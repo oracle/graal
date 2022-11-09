@@ -101,17 +101,17 @@ suite = {
       "os_arch" : {
         "linux" : {
           "amd64" : {
-            "sha1": "bbec782ba0864d71fe49ffbba85fbb1b1f8fb734",
+            "digest": "sha512:c005f55b7935f09302a37cda478101ed540f065de7a61e095f92d4fbc9bbfd9d1ffc8c342a1738466799af1213ac8e61f68efd6936c6a061c15529fca8414418",
             "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-amd64_linux.tar.gz"],
           },
           "aarch64" : {
-            "sha1" : "91acc0b24ae5fe9b13d1d313c851b7b308b66aa6",
+            "digest" : "sha512:75d9c41cc3861a021a38f78992c018713c3a06adaa2b343a62fb048596f080d26e4583cafc95cbf3747f9637b22c8156353a6557c6738cf0e68f671b549f31e3",
             "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-arm64_linux.tar.gz"],
           }
         },
         "windows" : {
           "amd64" : {
-            "sha1": "7db7a58c4edd9f772f1d9dda77ec18adc6b8ce78",
+            "digest": "sha512:228c1a8ce0a2a4d1b3b3cc1cf216c4c1f9d5ab53f351eb7e9f1a46c7c0b940002e8954b120275d50ef8728077274caba08d54d6f48668ff71978604d00d6ddc2",
             "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-win64.zip"],
           }
         },
@@ -177,21 +177,21 @@ suite = {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "4cd45eff8e914189dd8bebcfaf46271c412c57fa",
+            "digest" : "sha512:7cdc72501a03c148b3f36aff06363cea786b207507b04af3973130f01e60870e6677d8efa788be80086f033908997d664331da47e220f8cdba98e78d1892f1c1",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "bf95d0cb96d29d061e2106f221f9535d38d37daf",
+            "digest" : "sha512:758cac0af84c3aed95e1e24c9102eb0b487de0d17d1d8c0c479de56b8ef6eb8321a4d94c94d7cb71fb369bddd2633d981a1071af7e028fb06957be5cde4f6ca4",
           },
           "riscv64": {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-riscv64.tar.gz"],
-            "sha1" : "4a75da563e277f5d222778f2b814b8e5f7e82609",
+            "digest" : "sha512:70b4c5b95dc3e2e311e94df94dc032587a766429c554871a7ec13402edb1f6de1657d6b4e95c5fbb24c7957d75e4f9421158f15d08d3811e0f6d9820367ecf30",
           },
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "61960f183a08436c16652c6bc8b0de67468899fb",
+            "digest" : "sha512:e97360157167d1edead2afaa2728cf5470b4c56f42d35e2bbf8cab9f5510801532681bd0cf96df43d37d69c72573b44f1788c1931f538275833d05b21b886c73",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
@@ -201,7 +201,7 @@ suite = {
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "sha1" : "3e4cae36505ba566a983b3beacdb3523ccbf114e",
+            "digest" : "sha512:53554500d1dac665118f91ad7243b4dfc4bca2c8e2ae41543dba6c57f6964c273c40e6d132c1fe42612bcdd4ce8957bf1884d8ad4db68925ebe6e4b0473652e6",
           }
         },
         "<others>": {
