@@ -880,9 +880,8 @@ public class LLVMIRBuilder implements AutoCloseable {
             NodeSourcePosition position = node.getNodeSourcePosition();
             if (position != null) {
                 DebugContext debugContext = node.getDebug();
-                NativeImageDebugInfoProvider dbgInfoProvider = new NativeImageDebugInfoProvider(debugContext);
-                NativeImageDebugInfoProvider.NativeImageDebugLLVMLocationInfo dbgLocInfo =
-                        dbgInfoProvider.new NativeImageDebugLLVMLocationInfo(position.getBCI(), position.getMethod());
+                NativeImageDebugInfoProvider.NativeImageDebugLLVMLocationInfo dbgLocInfo = new
+                        NativeImageDebugInfoProvider.NativeImageDebugLLVMLocationInfo(debugContext, position.getBCI(), position.getMethod());
                 int lineNum = dbgLocInfo.line();
                 String filename = dbgLocInfo.fileName();
 

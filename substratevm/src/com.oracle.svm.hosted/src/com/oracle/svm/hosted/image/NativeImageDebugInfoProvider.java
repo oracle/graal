@@ -164,8 +164,8 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
 
-    // Special constructor for debug info supported for LLVM
-    public NativeImageDebugInfoProvider(DebugContext debugContext) {
+    // Special constructor for LLVM debug info support
+    private NativeImageDebugInfoProvider(DebugContext debugContext) {
         super();
         this.debugContext = debugContext;
         this.codeCache = null;
@@ -926,7 +926,8 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        // Temporary constructor to figure out an alternative solution
+        // Constructor for LLVM debug info (temporary). Cannot use the default constructor because not sure what
+        // `createParamInfo()` and `isPseudoObjectType()` do
         NativeImageDebugBaseMethodInfo(ResolvedJavaMethod m, boolean LLVMBackend) {
             super(m);
             method = promoteAnalysisToHosted(m);
@@ -1668,11 +1669,11 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
+    
+    public static class NativeImageDebugLLVMLocationInfo extends NativeImageDebugLocationInfo {
 
-    public class NativeImageDebugLLVMLocationInfo extends NativeImageDebugLocationInfo {
-
-        public NativeImageDebugLLVMLocationInfo(int bci, ResolvedJavaMethod method) {
-            super(bci, method);
+        public NativeImageDebugLLVMLocationInfo(DebugContext debugContext, int bci, ResolvedJavaMethod method) {
+            new NativeImageDebugInfoProvider(debugContext).super(bci, method);
         }
     }
     /**
