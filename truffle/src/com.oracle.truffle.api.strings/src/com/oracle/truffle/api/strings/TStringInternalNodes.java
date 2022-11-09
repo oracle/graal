@@ -195,9 +195,6 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Compact1Profile,
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
-            if (byteLength == 0) {
-                return encoding.getEmpty();
-            }
             final int offset;
             final int length;
             final int stride;
@@ -344,9 +341,6 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
-            if (byteLength == 0) {
-                return encoding.getEmpty();
-            }
             final int length;
             final int stride;
             final int codePointLength;
@@ -1340,16 +1334,20 @@ final class TStringInternalNodes {
         abstract long execute(AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding, int knownCodeRange);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "is7Bit(knownCodeRange)")
+        @Specialization(guards = "length == 0")
+        long empty(AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding, int knownCodeRange) {
+            return StringAttributes.create(length, TSCodeRange.getAsciiCodeRange(encoding));
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"is7Bit(knownCodeRange)", "length > 0"})
         long ascii(AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding, int knownCodeRange) {
-            assert length > 0;
             return StringAttributes.create(length, TSCodeRange.get7Bit());
         }
 
-        @Specialization(guards = "!is7Bit(knownCodeRange)")
+        @Specialization(guards = {"!is7Bit(knownCodeRange)", "length > 0"})
         long notAscii(AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding, int knownCodeRange,
                         @Cached CalcStringAttributesInnerNode calcNode) {
-            assert length > 0;
             return calcNode.execute(a, array, offset, length, stride, encoding, knownCodeRange);
         }
 

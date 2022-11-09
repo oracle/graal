@@ -231,11 +231,6 @@ public final class TruffleString extends AbstractTruffleString {
 
     private static boolean attrsAreCorrect(Object bytes, Encoding encoding, int offset, int length, int codePointLength, int codeRange, int stride) {
         CompilerAsserts.neverPartOfCompilation();
-        if (length == 0) {
-            int length0CodeRange = is7BitCompatible(encoding) ? TSCodeRange.get7Bit()
-                            : JCodings.getInstance().isSingleByte(encoding.jCoding) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte();
-            return TStringOps.byteLength(bytes) == 0 && offset == 0 && codePointLength == 0 && codeRange == length0CodeRange && stride == 0;
-        }
         int knownCodeRange = TSCodeRange.getUnknown();
         if (isUTF16Or32(encoding) && stride == 0) {
             knownCodeRange = TSCodeRange.get8Bit();

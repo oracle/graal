@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.jmh;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -47,27 +49,87 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.regex.tregex.test.TRegexTestDummyLanguage;
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class DFAGenBenchmark extends BenchmarkBase {
+public class TRegexVSJavaBenchmarks extends BenchmarkBase {
+
+    private static final class ParameterSet {
+        private final String name;
+        private final String regex;
+        private final String flags;
+        private final String input;
+
+        private ParameterSet(String name, String regex, String flags, String input) {
+            this.name = name;
+            this.regex = regex;
+            this.flags = flags;
+            this.input = input;
+        }
+    }
+
+    // Checkstyle: stop
+    private static final String names = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
+    // Checkstyle: resume
+
+    private static final Map<String, ParameterSet> benchmarks = createMap(new ParameterSet[]{
+                    new ParameterSet("ignoreCase", "Julian", "i", names),
+                    new ParameterSet("URL", "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?", "", "https://lafo.ssw.uni-linz.ac.at/?computer=15"),
+    });
+
+    private static Map<String, ParameterSet> createMap(ParameterSet[] parameterSets) {
+        HashMap<String, ParameterSet> ret = new HashMap<>();
+        for (ParameterSet p : parameterSets) {
+            ret.put(p.name, p);
+        }
+        return ret;
+    }
 
     @State(Scope.Benchmark)
     public static class BenchState {
-        String reURL = "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?";
-        String input = "https://lafo.ssw.uni-linz.ac.at/?computer=15";
-        Pattern javaPattern = Pattern.compile(reURL);
+
+        @Param({"ignoreCase", "URL"}) String benchName;
         Context context;
+        Pattern javaPattern;
         Value tregexPattern;
+        String input;
 
         public BenchState() {
-            context = Context.newBuilder().build();
+        }
+
+        @Setup
+        public void setUp() {
+            context = Context.newBuilder(TRegexTestDummyLanguage.ID).build();
             context.enter();
-            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, '/' + reURL + '/');
+            ParameterSet p = benchmarks.get(benchName);
+            javaPattern = Pattern.compile(p.regex, toJavaFlags(p.flags));
+            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, '/' + p.regex + '/' + p.flags);
+            input = p.input;
+        }
+
+        private int toJavaFlags(String flags) {
+            int javaFlags = 0;
+            for (int i = 0; i < flags.length(); i++) {
+                javaFlags |= toJavaFlag(flags.charAt(i));
+            }
+            return javaFlags;
+        }
+
+        private static int toJavaFlag(char c) {
+            switch (c) {
+                case 'i':
+                    return Pattern.CASE_INSENSITIVE;
+                case 'm':
+                    return Pattern.MULTILINE;
+                default:
+                    throw new UnsupportedOperationException("unknown flag " + c);
+            }
         }
 
         @TearDown

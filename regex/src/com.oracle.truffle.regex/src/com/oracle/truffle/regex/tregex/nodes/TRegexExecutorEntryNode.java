@@ -86,8 +86,13 @@ public abstract class TRegexExecutorEntryNode extends Node {
             } catch (NoSuchFieldException e) {
                 throw new RuntimeException("failed to get coder field offset", e);
             }
-            coderFieldOffset = UNSAFE.objectFieldOffset(coderField);
+            coderFieldOffset = getObjectFieldOffset(coderField);
         }
+    }
+
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
+    static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     private static Unsafe getUnsafe() {
