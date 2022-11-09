@@ -218,7 +218,6 @@ GraalTags = Tags([
     'build',
     'benchmarktest',
     "nativeimagehelp",
-    'muslcbuild',
     'hellomodule',
     'condconfig',
     'truffle_unittests',
@@ -232,11 +231,6 @@ def vm_executable_path(executable, config=None):
     if mx.get_os() == 'windows':
         executable += '.cmd'  # links are `.cmd` on windows
     return join(_vm_home(config), 'bin', executable)
-
-
-def run_musl_basic_tests():
-    if is_musl_supported():
-        helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
 
 
 @contextmanager
@@ -400,11 +394,6 @@ def svm_gate_body(args, tasks):
                                             '-H:+TruffleCheckBlackListedMethods'] + args.extra_image_builder_arguments + [
                                             '--run-args', testlib, '--very-verbose', '--enable-timing']
                     native_unittest(native_unittest_args)
-
-    with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                run_musl_basic_tests()
 
     with Task('Check mx native-image --help', tasks, tags=[GraalTags.nativeimagehelp]) as t:
         if t:
