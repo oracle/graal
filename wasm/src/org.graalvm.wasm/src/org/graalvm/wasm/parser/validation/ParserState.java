@@ -411,12 +411,16 @@ public class ParserState {
         bytecode.addImmediateInstruction(instruction, immediateValue);
     }
 
-    public void addRelativeImmediateInstruction(int instruction, int immediateValue) {
-        bytecode.addImmediateInstruction(instruction, instruction + 1, immediateValue);
+    public void addSignedImmediateInstruction(int instruction, int immediateValue) {
+        bytecode.addSignedImmediateInstruction(instruction, instruction + 1, immediateValue);
     }
 
-    public void addRelativeImmediateInstruction(int instruction, long immediateValue) {
-        bytecode.addImmediateInstruction(instruction, instruction + 1, immediateValue);
+    public void addUnsignedImmediateInstruction(int instruction, int immediateValue) {
+        bytecode.addUnsignedImmediateInstruction(instruction, instruction + 1, immediateValue);
+    }
+
+    public void addSignedImmediateInstruction(int instruction, long immediateValue) {
+        bytecode.addSignedImmediateInstruction(instruction, instruction + 1, immediateValue);
     }
 
     /**

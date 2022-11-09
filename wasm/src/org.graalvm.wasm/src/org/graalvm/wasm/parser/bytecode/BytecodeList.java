@@ -70,21 +70,15 @@ public class BytecodeList {
         }
     }
 
-    private int numberOfBytes(int value) {
-        int number = 0;
-        int currentValue = value;
-        while (currentValue != 0) {
-            number++;
-            currentValue = currentValue >> 8;
-        }
-        return number;
-    }
-
-    private boolean fitsIntoByte(int value) {
+    private boolean fitsIntoSignedByte(int value) {
         return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
     }
 
-    private boolean fitsIntoByte(long value) {
+    private boolean fitsIntoUnsignedByte(int value) {
+        return value <= 255;
+    }
+
+    private boolean fitsIntoSignedByte(long value) {
         return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
     }
 
@@ -100,96 +94,27 @@ public class BytecodeList {
         return results <= 31;
     }
 
-    private int addLabel(int label, int results, int stack) {
+    private int addLabel(int label, int results, int stackSize) {
         add1(Bytecode.SKIP_LABEL);
-        if (isLabelType0(results, stack)) {
-            add1(3);
-            final int location = bytecode.size();
-            add1(label);
-            add1(stack << 3 | results << 2);
-            return location;
-        }
-        if (isLabelType1(results)) {
-            final int location;
-            if (fitsIntoByte(stack)) {
-                add1(4);
-                location = bytecode.size();
-                add1(label);
-                add1(results << 3 | 0b001);
-                add1(stack);
-            } else {
-                add1(7);
-                location = bytecode.size();
-                add1(label);
-                add1(results << 3 | 0b101);
-                add4(stack);
-            }
-            return location;
-        }
-        final int location;
-        if (fitsIntoByte(stack)) {
-            if (fitsIntoByte(results)) {
-                add1(5);
-                location = bytecode.size();
-                add1(label);
-                add1(0b0000_0010);
-                add1(results);
-                add1(stack);
-            } else {
-                add1(8);
-                location = bytecode.size();
-                add1(label);
-                add1(0b0000_1010);
-                add4(results);
-                add1(stack);
-            }
-        } else {
-            if(fitsIntoByte(results)) {
-                add1(8);
-                location = bytecode.size();
-                add1(label);
-                add1(0b0000_0110);
-                add1(results);
-                add4(stack);
-            } else {
-                add1(11);
-                location = bytecode.size();
-                add1(label);
-                add1(0b0000_1110);
-                add4(results);
-                add4(stack);
-            }
-        }
+        add1(10);
+        final int location = bytecode.size();
+        add1(label);
+        add4(results);
+        add4(stackSize);
         return location;
     }
 
-    public int addPrimitiveLabel(int results, int stack) {
-        return addLabel(Bytecode.LABEL, results, stack);
+    public int addPrimitiveLabel(int results, int stackSize) {
+        return addLabel(Bytecode.LABEL, results, stackSize);
     }
 
-    public int addReferenceLabel(int results, int stack) {
-        return addLabel(Bytecode.LABEL_REF, results, stack);
-    }
-
-    public int addUnknownLabel(int results, int stack) {
-        return addLabel(Bytecode.LABEL_UNKNOWN, results, stack);
-    }
-
-    public int addPrimitiveLoopLabel(int results, int stack) {
-        return addLabel(Bytecode.LOOP_LABEL, results, stack);
-    }
-
-    public int addReferenceLoopLabel(int results, int stack) {
-        return addLabel(Bytecode.LOOP_LABEL_REF, results, stack);
-    }
-
-    public int addUnknownLoopLabel(int results, int stack) {
-        return addLabel(Bytecode.LOOP_LABEL_UNKNOWN, results, stack);
+    public int addPrimitiveLoopLabel(int results, int stackSize) {
+        return addLabel(Bytecode.LOOP_LABEL, results, stackSize);
     }
 
     public void addBranch(int offset) {
         final int relativeOffset = offset - (bytecode.size() + 1);
-        if (fitsIntoByte(relativeOffset)) {
+        if (fitsIntoSignedByte(relativeOffset)) {
             add1(Bytecode.BR_I8);
             add1(relativeOffset);
         } else {
@@ -207,7 +132,7 @@ public class BytecodeList {
 
     public void addBranchIf(int offset) {
         final int relativeOffset = offset - (bytecode.size() + 1);
-        if (fitsIntoByte(relativeOffset)) {
+        if (fitsIntoSignedByte(relativeOffset)) {
             add1(Bytecode.BR_IF_I8);
             // target
             add1(relativeOffset);
@@ -233,7 +158,7 @@ public class BytecodeList {
     }
 
     public void addBranchTable(int size) {
-        if (fitsIntoByte(size)) {
+        if (fitsIntoSignedByte(size)) {
             add1(Bytecode.BR_TABLE_I8);
             add1(size);
             // profile
@@ -268,7 +193,7 @@ public class BytecodeList {
     }
 
     public void addCall(int nodeIndex, int functionIndex) {
-        if (fitsIntoByte(nodeIndex) && fitsIntoByte(functionIndex)) {
+        if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(functionIndex)) {
             add1(Bytecode.CALL_I8);
             add1(nodeIndex);
             add1(functionIndex);
@@ -280,7 +205,7 @@ public class BytecodeList {
     }
 
     public void addIndirectCall(int nodeIndex, int typeIndex, int tableIndex) {
-        if (fitsIntoByte(nodeIndex) && fitsIntoByte(typeIndex) && fitsIntoByte(tableIndex)) {
+        if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
             add1(Bytecode.CALL_INDIRECT_I8);
             add1(nodeIndex);
             add1(typeIndex);
@@ -307,8 +232,8 @@ public class BytecodeList {
         add8(value);
     }
 
-    public void addImmediateInstruction(int i8, int i32, int value) {
-        if (fitsIntoByte(value)) {
+    public void addSignedImmediateInstruction(int i8, int i32, int value) {
+        if (fitsIntoSignedByte(value)) {
             add1(i8);
             add1(value);
         } else {
@@ -317,8 +242,18 @@ public class BytecodeList {
         }
     }
 
-    public void addImmediateInstruction(int i8, int i64, long value) {
-        if (fitsIntoByte(value)) {
+    public void addUnsignedImmediateInstruction(int i8, int i32, int value) {
+        if (fitsIntoUnsignedByte(value)) {
+            add1(i8);
+            add1(value);
+        } else {
+            add1(i32);
+            add4(value);
+        }
+    }
+
+    public void addSignedImmediateInstruction(int i8, int i64, long value) {
+        if (fitsIntoSignedByte(value)) {
             add1(i8);
             add1(value);
         } else {

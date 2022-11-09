@@ -69,6 +69,9 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(BytecodeList bytecode) {
+        if(branchTargets.size() == 0) {
+            return;
+        }
         final int location = bytecode.addPrimitiveLabel(resultTypeLength(), initialStackSize());
         for (int branchLocation : branchTargets.toArray()) {
             bytecode.patchLocation(branchLocation, location);

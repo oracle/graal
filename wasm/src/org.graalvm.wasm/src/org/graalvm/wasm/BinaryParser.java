@@ -663,7 +663,6 @@ public class BinaryParser extends BinaryStreamParser {
                     assertTrue(WasmType.isNumberType(t1) && WasmType.isNumberType(t2), Failure.TYPE_MISMATCH);
                     assertTrue(t1 == t2 || t1 == WasmType.UNKNOWN_TYPE || t2 == WasmType.UNKNOWN_TYPE, Failure.TYPE_MISMATCH);
                     state.push(t1 == WasmType.UNKNOWN_TYPE ? t2 : t1);
-                    break;
                     state.addInstruction(Bytecode.SELECT);
                     break;
                 }
@@ -690,9 +689,9 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte localType = locals[localIndex];
                     state.push(localType);
                     if (WasmType.isNumberType(localType)) {
-                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_GET_I8, localIndex);
+                        state.addUnsignedImmediateInstruction(Bytecode.LOCAL_GET_I8, localIndex);
                     } else {
-                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_GET_REF_I8, localIndex);
+                        state.addUnsignedImmediateInstruction(Bytecode.LOCAL_GET_REF_I8, localIndex);
                     }
                     break;
                 }
@@ -703,9 +702,9 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte localType = locals[localIndex];
                     state.popChecked(localType);
                     if (WasmType.isNumberType(localType)) {
-                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_SET_I8, localIndex);
+                        state.addUnsignedImmediateInstruction(Bytecode.LOCAL_SET_I8, localIndex);
                     } else {
-                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_SET_REF_I8, localIndex);
+                        state.addUnsignedImmediateInstruction(Bytecode.LOCAL_SET_REF_I8, localIndex);
                     }
                     break;
                 }
@@ -717,16 +716,16 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(localType);
                     state.push(localType);
                     if (WasmType.isNumberType(localType)) {
-                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_TEE_I8, localIndex);
+                        state.addUnsignedImmediateInstruction(Bytecode.LOCAL_TEE_I8, localIndex);
                     } else {
-                        state.addRelativeImmediateInstruction(Bytecode.LOCAL_TEE_REF_I8, localIndex);
+                        state.addUnsignedImmediateInstruction(Bytecode.LOCAL_TEE_REF_I8, localIndex);
                     }
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
                     final int index = readGlobalIndex();
                     state.push(module.symbolTable().globalValueType(index));
-                    state.addRelativeImmediateInstruction(Bytecode.GLOBAL_GET_I8, index);
+                    state.addUnsignedImmediateInstruction(Bytecode.GLOBAL_GET_I8, index);
                     break;
                 }
                 case Instructions.GLOBAL_SET: {
@@ -735,7 +734,7 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(module.symbolTable().globalMutability(index), GlobalModifier.MUTABLE,
                                     "Immutable globals cannot be set: " + index, Failure.IMMUTABLE_GLOBAL_WRITE);
                     state.popChecked(module.symbolTable().globalValueType(index));
-                    state.addRelativeImmediateInstruction(Bytecode.GLOBAL_SET_I8, index);
+                    state.addUnsignedImmediateInstruction(Bytecode.GLOBAL_SET_I8, index);
                     break;
                 }
                 case Instructions.TABLE_GET: {
@@ -757,73 +756,73 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.F32_LOAD:
-                    state.addRelativeImmediateInstruction(Bytecode.F32_LOAD_I8, load(state, F32_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.F32_LOAD_I8, load(state, F32_TYPE, 32));
                     break;
                 case Instructions.F64_LOAD:
-                    state.addRelativeImmediateInstruction(Bytecode.F64_LOAD_I8, load(state, F64_TYPE, 64));
+                    state.addUnsignedImmediateInstruction(Bytecode.F64_LOAD_I8, load(state, F64_TYPE, 64));
                     break;
                 case Instructions.I32_LOAD:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD_I8, load(state, I32_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_LOAD_I8, load(state, I32_TYPE, 32));
                     break;
                 case Instructions.I32_LOAD8_S:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD8_S_I8, load(state, I32_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_LOAD8_S_I8, load(state, I32_TYPE, 8));
                     break;
                 case Instructions.I32_LOAD8_U:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD8_U_I8, load(state, I32_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_LOAD8_U_I8, load(state, I32_TYPE, 8));
                     break;
                 case Instructions.I32_LOAD16_S:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD16_S_I8, load(state, I32_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_LOAD16_S_I8, load(state, I32_TYPE, 16));
                     break;
                 case Instructions.I32_LOAD16_U:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_LOAD16_U_I8, load(state, I32_TYPE, 16));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_LOAD16_U_I8, load(state, I32_TYPE, 16));
                     break;
                 case Instructions.I64_LOAD:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD_I8, load(state, I64_TYPE, 64));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD_I8, load(state, I64_TYPE, 64));
                     break;
                 case Instructions.I64_LOAD8_S:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD8_S_I8, load(state, I64_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD8_S_I8, load(state, I64_TYPE, 8));
                     break;
                 case Instructions.I64_LOAD8_U:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD8_U_I8, load(state, I64_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD8_U_I8, load(state, I64_TYPE, 8));
                     break;
                 case Instructions.I64_LOAD16_S:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD16_S_I8, load(state, I64_TYPE, 16));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD16_S_I8, load(state, I64_TYPE, 16));
                     break;
                 case Instructions.I64_LOAD16_U:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD16_U_I8, load(state, I64_TYPE, 16));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD16_U_I8, load(state, I64_TYPE, 16));
                     break;
                 case Instructions.I64_LOAD32_S:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD32_S_I8, load(state, I64_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD32_S_I8, load(state, I64_TYPE, 32));
                     break;
                 case Instructions.I64_LOAD32_U:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_LOAD32_U_I8, load(state, I64_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_LOAD32_U_I8, load(state, I64_TYPE, 32));
                     break;
                 case Instructions.F32_STORE:
-                    state.addRelativeImmediateInstruction(Bytecode.F32_STORE_I8, store(state, F32_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.F32_STORE_I8, store(state, F32_TYPE, 32));
                     break;
                 case Instructions.F64_STORE:
-                    state.addRelativeImmediateInstruction(Bytecode.F64_STORE_I8, store(state, F64_TYPE, 64));
+                    state.addUnsignedImmediateInstruction(Bytecode.F64_STORE_I8, store(state, F64_TYPE, 64));
                     break;
                 case Instructions.I32_STORE:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_STORE_8_I8, store(state, I32_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_STORE_I8, store(state, I32_TYPE, 32));
                     break;
                 case Instructions.I32_STORE_8:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_STORE_8_I8, store(state, I32_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_STORE_8_I8, store(state, I32_TYPE, 8));
                     break;
                 case Instructions.I32_STORE_16:
-                    state.addRelativeImmediateInstruction(Bytecode.I32_STORE_16_I8, store(state, I32_TYPE, 16));
+                    state.addUnsignedImmediateInstruction(Bytecode.I32_STORE_16_I8, store(state, I32_TYPE, 16));
                     break;
                 case Instructions.I64_STORE:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_I8, store(state, I64_TYPE, 64));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_STORE_I8, store(state, I64_TYPE, 64));
                     break;
                 case Instructions.I64_STORE_8:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_8_I8, store(state, I64_TYPE, 8));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_STORE_8_I8, store(state, I64_TYPE, 8));
                     break;
                 case Instructions.I64_STORE_16:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_16_I8, store(state, I64_TYPE, 16));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_STORE_16_I8, store(state, I64_TYPE, 16));
                     break;
                 case Instructions.I64_STORE_32:
-                    state.addRelativeImmediateInstruction(Bytecode.I64_STORE_32_I8, store(state, I64_TYPE, 32));
+                    state.addUnsignedImmediateInstruction(Bytecode.I64_STORE_32_I8, store(state, I64_TYPE, 32));
                     break;
                 case Instructions.MEMORY_SIZE: {
                     final int flag = read1();
@@ -878,13 +877,13 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.I32_CONST: {
                 final int value = readSignedInt32();
                 state.push(I32_TYPE);
-                state.addRelativeImmediateInstruction(Bytecode.I32_CONST_I8, value);
+                state.addSignedImmediateInstruction(Bytecode.I32_CONST_I8, value);
                 break;
             }
             case Instructions.I64_CONST: {
                 final long value = readSignedInt64();
                 state.push(I64_TYPE);
-                state.addRelativeImmediateInstruction(Bytecode.I64_CONST_I8, value);
+                state.addSignedImmediateInstruction(Bytecode.I64_CONST_I8, value);
                 break;
             }
             case Instructions.F32_CONST: {

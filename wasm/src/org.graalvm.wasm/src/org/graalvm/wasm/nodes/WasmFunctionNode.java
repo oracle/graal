@@ -40,10 +40,11 @@
  */
 package org.graalvm.wasm.nodes;
 
-import static org.graalvm.wasm.BinaryStreamParser.rawPeek1;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeek2;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeek4;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeek8;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI8;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
@@ -252,8 +253,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         int opcode = UNREACHABLE;
         loop: while (offset < functionEndOffset) {
-            byte byteOpcode = BinaryStreamParser.rawPeek1(bytecode, offset);
-            opcode = byteOpcode & 0xFF;
+            opcode = rawPeekU8(bytecode, offset);
             offset++;
             CompilerAsserts.partialEvaluationConstant(offset);
             switch (opcode) {
@@ -272,101 +272,23 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     unwindStack(frame, stackPointer, numLocals, codeEntry.resultCount());
                     return RETURN_VALUE;
                 case Bytecode.SKIP_LABEL:
-                    final byte skipBytes = BinaryStreamParser.rawPeek1(bytecode, offset);
+                    final int skipBytes = rawPeekU8(bytecode, offset);
                     offset += skipBytes;
                     break;
                 case Bytecode.LABEL: {
-                    final byte descriptor = BinaryStreamParser.rawPeek1(bytecode, offset);
-                    final int indicator = descriptor & 0x03;
-                    final int firstValue = (descriptor & 0x04) >>> 2;
-                    final int secondValue = (descriptor >>> 3);
-                    final int resultCount;
-                    final int stackSize;
-                    CompilerAsserts.partialEvaluationConstant(indicator);
-                    switch (indicator) {
-                        case 0b00:
-                            resultCount = firstValue;
-                            stackSize = secondValue;
-                            offset++;
-                            break;
-                        case 0b01:
-                            resultCount = secondValue;
-                            if (firstValue == 0) {
-                                stackSize = rawPeek1(bytecode, offset);
-                                offset++;
-                            } else {
-                                stackSize = rawPeek4(bytecode, offset);
-                                offset += 4;
-                            }
-                            break;
-                        case 0b10:
-                            if (secondValue == 0) {
-                                resultCount = rawPeek1(bytecode, offset);
-                                offset++;
-                            } else {
-                                resultCount = rawPeek4(bytecode, offset);
-                                offset += 4;
-                            }
-                            if (firstValue == 0) {
-                                stackSize = rawPeek1(bytecode, offset);
-                                offset++;
-                            } else {
-                                stackSize = rawPeek4(bytecode, offset);
-                                offset += 4;
-                            }
-                            break;
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
-                    unwindStack(frame, stackPointer, stackSize, resultCount);
-                    stackPointer = numLocals + stackSize;
+                    final int results = rawPeekI32(bytecode, offset);
+                    final int stackSize = numLocals + rawPeekI32(bytecode, offset + 4);
+                    offset += 8;
+                    unwindStack(frame, stackPointer, stackSize, results);
+                    stackPointer = stackSize + results;
                     break;
                 }
                 case Bytecode.LOOP_LABEL: {
-                    final byte descriptor = BinaryStreamParser.rawPeek1(bytecode, offset);
-                    offset++;
-                    final int indicator = descriptor & 0x03;
-                    final int firstValue = (descriptor & 0x04) >>> 2;
-                    final int secondValue = (descriptor >>> 3);
-                    final int resultCount;
-                    final int stackSize;
-                    CompilerAsserts.partialEvaluationConstant(indicator);
-                    switch (indicator) {
-                        case 0b00:
-                            resultCount = firstValue;
-                            stackSize = secondValue;
-                            break;
-                        case 0b01:
-                            resultCount = secondValue;
-                            if (firstValue == 0) {
-                                stackSize = rawPeek1(bytecode, offset);
-                                offset++;
-                            } else {
-                                stackSize = rawPeek4(bytecode, offset);
-                                offset += 4;
-                            }
-                            break;
-                        case 0b10:
-                            if (secondValue == 0) {
-                                resultCount = rawPeek1(bytecode, offset);
-                                offset++;
-                            } else {
-                                resultCount = rawPeek4(bytecode, offset);
-                                offset += 4;
-                            }
-                            if (firstValue == 0) {
-                                stackSize = rawPeek1(bytecode, offset);
-                                offset++;
-                            } else {
-                                stackSize = rawPeek4(bytecode, offset);
-                                offset += 4;
-                            }
-                            break;
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
-                    unwindStack(frame, stackPointer, stackSize, resultCount);
-                    stackPointer = numLocals + stackSize;
+                    final int results = rawPeekI32(bytecode, offset);
+                    final int stackSize = numLocals + rawPeekI32(bytecode, offset + 4);
+                    offset += 8;
+                    unwindStack(frame, stackPointer, stackSize, results);
+                    stackPointer = stackSize + results;
                     if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                         LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                         backEdgeCounter.count = 0;
@@ -383,18 +305,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.BR_I8: {
-                    final int offsetDelta = rawPeek1(bytecode, offset);
+                    final int offsetDelta = rawPeekI8(bytecode, offset);
                     offset += offsetDelta;
                     break;
                 }
                 case Bytecode.BR_I32: {
-                    final int offsetDelta = rawPeek4(bytecode, offset);
+                    final int offsetDelta = rawPeekI32(bytecode, offset);
                     offset += offsetDelta;
                     break;
                 }
                 case Bytecode.BR_IF_I8: {
                     stackPointer--;
-                    final int offsetDelta = rawPeek1(bytecode, offset);
+                    final int offsetDelta = rawPeekI8(bytecode, offset);
                     if (profileCondition(bytecode, offset + 1, popBoolean(frame, stackPointer))) {
                         offset += offsetDelta;
                     } else {
@@ -404,7 +326,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case Bytecode.BR_IF_I32: {
                     stackPointer--;
-                    final int offsetDelta = rawPeek4(bytecode, offset);
+                    final int offsetDelta = rawPeekI32(bytecode, offset);
                     if (profileCondition(bytecode, offset + 4, popBoolean(frame, stackPointer))) {
                         offset += offsetDelta;
                     } else {
@@ -419,7 +341,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.BR_TABLE_I8: {
                     stackPointer--;
                     int index = popInt(frame, stackPointer);
-                    final int size = rawPeek1(bytecode, offset);
+                    final int size = rawPeekU8(bytecode, offset);
                     if (index < 0 || index >= size) {
                         // If unsigned index is larger or equal to the table size use the
                         // default (last) index.
@@ -429,7 +351,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     if (CompilerDirectives.inInterpreter()) {
                         final int indexOffset = offset + 3 + index * 6;
                         updateBranchTableProfile(bytecode, offset + 1, indexOffset + 4);
-                        final int offsetDelta = rawPeek4(bytecode, indexOffset);
+                        final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                         offset = indexOffset + offsetDelta;
                         break;
                     } else {
@@ -439,7 +361,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         for (int i = 0; i < size; i++) {
                             final int indexOffset = offset + 3 + i * 6;
                             if (profileBranchTable(bytecode, offset + 1, indexOffset + 4, i == index)) {
-                                final int offsetDelta = rawPeek4(bytecode, indexOffset);
+                                final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                                 offset = indexOffset + offsetDelta;
                                 continue loop;
                             }
@@ -451,7 +373,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.BR_TABLE_I32: {
                     stackPointer--;
                     int index = popInt(frame, stackPointer);
-                    final int size = rawPeek4(bytecode, offset);
+                    final int size = rawPeekI32(bytecode, offset);
                     if (index < 0 || index >= size) {
                         // If unsigned index is larger or equal to the table size use the
                         // default (last) index.
@@ -461,7 +383,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     if (CompilerDirectives.inInterpreter()) {
                         final int indexOffset = offset + 6 + index * 6;
                         updateBranchTableProfile(bytecode, offset + 1, indexOffset + 4);
-                        final int offsetDelta = rawPeek4(bytecode, indexOffset);
+                        final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                         offset = indexOffset + offsetDelta;
                         break;
                     } else {
@@ -471,7 +393,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         for (int i = 0; i < size; i++) {
                             final int indexOffset = offset + 6 + i * 6;
                             if (profileBranchTable(bytecode, offset + 1, indexOffset + 4, i == index)) {
-                                final int offsetDelta = rawPeek4(bytecode, indexOffset);
+                                final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                                 offset = indexOffset + offsetDelta;
                                 continue loop;
                             }
@@ -481,8 +403,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Should not reach here");
                 }
                 case Bytecode.CALL_I8: {
-                    final int callNodeIndex = rawPeek1(bytecode, offset);
-                    final int functionIndex = rawPeek1(bytecode, offset + 1);
+                    final int callNodeIndex = rawPeekU8(bytecode, offset);
+                    final int functionIndex = rawPeekU8(bytecode, offset + 1);
                     offset += 2;
 
                     WasmFunction function = instance.symbolTable().function(functionIndex);
@@ -533,8 +455,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
                 }
                 case Bytecode.CALL_I32: {
-                    final int callNodeIndex = rawPeek4(bytecode, offset);
-                    final int functionIndex = rawPeek4(bytecode, offset + 1);
+                    final int callNodeIndex = rawPeekI32(bytecode, offset);
+                    final int functionIndex = rawPeekI32(bytecode, offset + 1);
                     offset += 8;
 
                     WasmFunction function = instance.symbolTable().function(functionIndex);
@@ -648,6 +570,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }
                     }
+                    offset += 5;
 
                     // Invoke the resolved function.
                     int paramCount = instance.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
@@ -720,6 +643,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     }
                 }
+                case Bytecode.CALL_INDIRECT_I32: {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Call_indirect_i32");
+                }
                 case Bytecode.DROP: {
                     stackPointer--;
                     dropPrimitive(frame, stackPointer);
@@ -751,14 +678,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.LOCAL_GET_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     local_get(frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case Bytecode.LOCAL_GET_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     local_get(frame, stackPointer, index);
                     stackPointer++;
@@ -779,14 +706,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.LOCAL_SET_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     stackPointer--;
                     local_set(frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.LOCAL_SET_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     stackPointer--;
                     local_set(frame, stackPointer, index);
@@ -807,13 +734,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.LOCAL_TEE_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     local_tee(frame, stackPointer - 1, index);
                     break;
                 }
                 case Bytecode.LOCAL_TEE_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     local_tee(frame, stackPointer - 1, index);
                     break;
@@ -831,35 +758,35 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.GLOBAL_GET_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     global_get(context, frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case Bytecode.GLOBAL_GET_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     global_get(context, frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case Bytecode.GLOBAL_SET_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     stackPointer--;
                     global_set(context, frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.GLOBAL_SET_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     stackPointer--;
                     global_set(context, frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.I32_LOAD_I8: {
-                    final int memOffset = rawPeek1(bytecode, offset);
+                    final int memOffset = rawPeekU8(bytecode, offset);
                     offset++;
 
                     int baseAddress = popInt(frame, stackPointer - 1);
@@ -870,7 +797,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.I32_LOAD_I32: {
-                    final int memOffset = rawPeek4(bytecode, offset);
+                    final int memOffset = rawPeekI32(bytecode, offset);
                     offset++;
 
                     int baseAddress = popInt(frame, stackPointer - 1);
@@ -893,7 +820,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.I64_LOAD16_U_I8:
                 case Bytecode.I64_LOAD32_S_I8:
                 case Bytecode.I64_LOAD32_U_I8: {
-                    final int memOffset = rawPeek1(bytecode, offset);
+                    final int memOffset = rawPeekU8(bytecode, offset);
                     offset++;
 
                     load(memory, frame, stackPointer - 1, opcode, memOffset);
@@ -912,7 +839,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.I64_LOAD16_U_I32:
                 case Bytecode.I64_LOAD32_S_I32:
                 case Bytecode.I64_LOAD32_U_I32: {
-                    final int memOffset = rawPeek4(bytecode, offset);
+                    final int memOffset = rawPeekI32(bytecode, offset);
                     offset += 4;
 
                     load(memory, frame, stackPointer - 1, opcode, memOffset);
@@ -927,7 +854,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.I64_STORE_8_I8:
                 case Bytecode.I64_STORE_16_I8:
                 case Bytecode.I64_STORE_32_I8: {
-                    final int memOffset = rawPeek1(bytecode, offset);
+                    final int memOffset = rawPeekU8(bytecode, offset);
                     offset++;
 
                     store(memory, frame, stackPointer, opcode, memOffset);
@@ -944,7 +871,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.I64_STORE_8_I32:
                 case Bytecode.I64_STORE_16_I32:
                 case Bytecode.I64_STORE_32_I32: {
-                    final int memOffset = rawPeek4(bytecode, offset);
+                    final int memOffset = rawPeekI32(bytecode, offset);
                     offset += 4;
 
                     store(memory, frame, stackPointer, opcode, memOffset);
@@ -971,7 +898,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.I32_CONST_I8: {
-                    final int value = rawPeek1(bytecode, offset);
+                    final int value = rawPeekI8(bytecode, offset);
                     offset++;
 
                     pushInt(frame, stackPointer, value);
@@ -979,7 +906,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.I32_CONST_I32: {
-                    final int value = rawPeek4(bytecode, offset);
+                    final int value = rawPeekI32(bytecode, offset);
                     offset += 4;
 
                     pushInt(frame, stackPointer, value);
@@ -987,7 +914,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.I64_CONST_I8: {
-                    final long value = rawPeek1(bytecode, offset);
+                    final long value = rawPeekI8(bytecode, offset);
                     offset++;
                     // endregion
                     pushLong(frame, stackPointer, value);
@@ -995,7 +922,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.I64_CONST_I64: {
-                    final long value = rawPeek8(bytecode, offset);
+                    final long value = rawPeekI64(bytecode, offset);
                     offset += 8;
                     // endregion
                     pushLong(frame, stackPointer, value);
@@ -1275,7 +1202,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer--;
                     break;
                 case Bytecode.F32_CONST: {
-                    float value = Float.intBitsToFloat(rawPeek4(bytecode, offset));
+                    float value = Float.intBitsToFloat(rawPeekI32(bytecode, offset));
                     offset += 4;
                     pushFloat(frame, stackPointer, value);
                     stackPointer++;
@@ -1331,7 +1258,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer--;
                     break;
                 case Bytecode.F64_CONST: {
-                    double value = Double.longBitsToDouble(BinaryStreamParser.rawPeek8(bytecode, offset));
+                    double value = Double.longBitsToDouble(BinaryStreamParser.rawPeekI64(bytecode, offset));
                     offset += 8;
                     pushDouble(frame, stackPointer, value);
                     stackPointer++;
@@ -2990,32 +2917,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static long unsignedIntConstantAndLength(byte[] data, int offset) {
-        // This is an optimized version of the read which returns both the constant
-        // and its length within one 64-bit value.
-        return BinaryStreamParser.rawPeekUnsignedInt32AndLength(data, offset);
-    }
-
-    private static long signedIntConstantAndLength(byte[] data, int offset) {
-        // This is an optimized version of the read which returns both the constant
-        // and its length within one 64-bit value.
-        return BinaryStreamParser.rawPeekSignedInt32AndLength(data, offset);
-    }
-
-    private static long signedLongConstant(byte[] data, int offset) {
-        return BinaryStreamParser.peekSignedInt64(data, offset, false);
-    }
-
-    private static int offsetDelta(byte[] data, int offset) {
-        return BinaryStreamParser.peekLeb128Length(data, offset);
-    }
-
     private static final int MAX_PROFILE_VALUE = 0x0000_00ff;
     private static final int MAX_TABLE_PROFILE_VALUE = 0x0000_ffff;
 
     private static boolean profileCondition(byte[] data, final int profileOffset, boolean condition) {
-        int t = data[profileOffset] & 0xFF;
-        int f = data[profileOffset + 1] & 0xFF;
+        int t = rawPeekU8(data, profileOffset);
+        int f = rawPeekU8(data, profileOffset + 1);
         boolean val = condition;
         if (val) {
             if (!CompilerDirectives.inInterpreter()) {
@@ -3056,26 +2963,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static void updateBranchTableProfile(byte[] data, final int counterOffset, final int profileOffset) {
         assert CompilerDirectives.inInterpreter();
-        int counter = rawPeek2(data, counterOffset);
+        int counter = rawPeekU16(data, counterOffset);
         if (counter < MAX_TABLE_PROFILE_VALUE) {
-            final byte lowerCounter = (byte) (counter + 1);
-            data[counterOffset] = lowerCounter;
-            if (lowerCounter == 0) {
-                data[counterOffset + 1]++;
-            }
-            final int profileCounter = rawPeek2(data, profileOffset);
-            final byte lowerProfileCounter = (byte) (profileCounter + 1);
-            data[profileOffset] = lowerProfileCounter;
-            if (lowerProfileCounter == 0) {
-                data[profileOffset + 1]++;
-            }
+            BinaryStreamParser.writeU16(data, counterOffset, counter + 1);
+            BinaryStreamParser.writeU16(data, profileOffset, rawPeekU16(data, profileOffset) + 1);
         }
     }
 
     private static boolean profileBranchTable(byte[] data, final int counterOffset, final int profileOffset, boolean condition) {
         assert !CompilerDirectives.inInterpreter();
-        int t = rawPeek2(data, profileOffset);
-        int sum = rawPeek2(data, counterOffset);
+        int t = rawPeekU16(data, profileOffset);
+        int sum = rawPeekU16(data, counterOffset);
         boolean val = condition;
         if (val) {
             if (t == 0) {
