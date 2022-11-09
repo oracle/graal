@@ -98,7 +98,9 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCCM
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCMP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCMPZERO;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCSEL;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTAS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTDS;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTMS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTSD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTZS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FDIV;
@@ -995,6 +997,10 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
         FCVTDS(0x00028000),
         FCVTSD(0x00020000),
+
+        FCVTAS(0x00040000),
+
+        FCVTMS(0x00100000),
 
         FCVTZS(0x00180000),
         SCVTF(0x00020000),
@@ -3394,6 +3400,34 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /* Convert to Integer (5.7.4.2) */
+
+    /**
+     * C7.2.71 Floating-point Convert to Signed integer, rounding to nearest with ties to Away.
+     *
+     * @param dstSize size of integer register. 32 or 64.
+     * @param srcSize size of floating point register. 32 or 64.
+     * @param dst general purpose register. May not be null, the zero-register or the stackpointer.
+     * @param src floating point register. May not be null.
+     */
+    public void fcvtas(int dstSize, int srcSize, Register dst, Register src) {
+        assert verifySizesAndRegistersRF(dstSize, srcSize, dst, src);
+
+        fcvtCpuFpuInstruction(FCVTAS, dst, src, generalFromSize(dstSize), floatFromSize(srcSize));
+    }
+
+    /**
+     * C7.2.76 Floating-point Convert to Signed integer, rounding toward Minus infinity.
+     *
+     * @param dstSize size of integer register. 32 or 64.
+     * @param srcSize size of floating point register. 32 or 64.
+     * @param dst general purpose register. May not be null, the zero-register or the stackpointer.
+     * @param src floating point register. May not be null.
+     */
+    public void fcvtms(int dstSize, int srcSize, Register dst, Register src) {
+        assert verifySizesAndRegistersRF(dstSize, srcSize, dst, src);
+
+        fcvtCpuFpuInstruction(FCVTMS, dst, src, generalFromSize(dstSize), floatFromSize(srcSize));
+    }
 
     /**
      * C7.2.92 Floating-point Convert to Signed integer, rounding toward Zero.

@@ -57,6 +57,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
+import org.graalvm.compiler.lir.aarch64.AArch64RoundFloatToIntegerOp;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
@@ -650,5 +651,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
 
         return emitUnary(op, value);
+    }
+
+    @Override
+    public Value emitRoundFloatToInteger(Value value) {
+        PlatformKind valuePlatformKind = value.getPlatformKind();
+        GraalError.guarantee(valuePlatformKind == AArch64Kind.SINGLE || valuePlatformKind == AArch64Kind.DOUBLE, "Unsupported type");
+        Variable result = getLIRGen().newVariable(LIRKind.value(value.getPlatformKind() == AArch64Kind.SINGLE ? AArch64Kind.DWORD : AArch64Kind.QWORD));
+        getLIRGen().append(new AArch64RoundFloatToIntegerOp(getLIRGen(), result, asAllocatable(value)));
+        return result;
     }
 }

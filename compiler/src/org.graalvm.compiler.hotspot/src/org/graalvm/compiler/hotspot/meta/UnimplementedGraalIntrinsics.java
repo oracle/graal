@@ -406,6 +406,7 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 19) {
             add(toBeInvestigated,
+                            // isInfinite are riscv only atm
                             "java/lang/Double.isInfinite(D)Z",
                             "java/lang/Float.isInfinite(F)Z",
                             "java/lang/Integer.compress(II)I",
@@ -428,12 +429,6 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.storeMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;" +
                                             "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$StoreVectorMaskedOperation;)V",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
-
-            if (arch instanceof AArch64) {
-                add(toBeInvestigated,
-                                "java/lang/Math.round(D)J",
-                                "java/lang/Math.round(F)I");
-            }
         }
 
         if (JAVA_SPEC >= 20) {
