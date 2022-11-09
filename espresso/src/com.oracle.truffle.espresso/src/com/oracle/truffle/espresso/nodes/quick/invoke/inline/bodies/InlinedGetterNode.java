@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -32,17 +30,19 @@ import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class InlinedGetterNode extends InlinedFieldAccessNode {
+class InlinedGetterNode extends InlinedFieldAccessNode {
 
-    InlinedGetterNode(Method.MethodVersion method) {
-        super(false, method);
+    @Child AbstractGetFieldNode getFieldNode;
+
+    InlinedGetterNode(Method.MethodVersion method, char fieldCpi) {
+        super(method, fieldCpi);
+        this.getFieldNode = AbstractGetFieldNode.create(field);
     }
 
-    @Specialization
-    public void executeCached(VirtualFrame frame, InlinedFrameAccess frameAccess,
-                    @Cached("getInlinedField(frameAccess.inlinedMethod())") Field cachedField,
-                    @Cached("create(cachedField)") AbstractGetFieldNode getFieldNode) {
-        StaticObject receiver = getReceiver(frame, cachedField, frameAccess.top());
+    @Override
+    public void execute(VirtualFrame frame, InlinedFrameAccess frameAccess) {
+        assert !field.needsReResolution(); // Should have been guaranteed before calling.
+        StaticObject receiver = getReceiver(frame, field, frameAccess.top());
         getFieldNode.getField(frame, frameAccess.getBytecodeNode(), receiver, frameAccess.resultAt(), frameAccess.statementIndex());
     }
 

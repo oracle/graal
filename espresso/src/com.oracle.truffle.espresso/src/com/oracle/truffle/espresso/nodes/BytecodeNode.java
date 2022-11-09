@@ -2087,6 +2087,27 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     /**
+     * Atomically replaces a quick node with another one.
+     */
+    public int replaceQuickAt(VirtualFrame frame, int opcode, int curBCI, BaseQuickNode old, BaseQuickNode replacement) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert Bytecodes.isInvoke(opcode);
+        BaseQuickNode invoke = atomic(() -> {
+            assert bs.currentBC(curBCI) == QUICK;
+            char nodeIndex = readCPI(curBCI);
+            BaseQuickNode currentQuick = nodes[nodeIndex];
+            if (currentQuick != old) {
+                // Another thread might have already replaced our node at this point.
+                return currentQuick;
+            }
+            nodes[nodeIndex] = currentQuick.replace(replacement);
+            return replacement;
+        });
+        // Perform the call outside of the lock.
+        return invoke.execute(frame);
+    }
+
+    /**
      * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
      * happening on this node.
      */

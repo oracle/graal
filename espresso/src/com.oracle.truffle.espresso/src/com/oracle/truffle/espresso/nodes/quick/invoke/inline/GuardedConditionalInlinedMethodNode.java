@@ -31,23 +31,30 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
 
 public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode {
-    @Child protected InvokeQuickNode fallbackNode;
+    private final ConditionalInlinedMethodNode.Recipes recipes;
+
+    @Child InvokeQuickNode fallbackNode;
     private final InlinedMethodPredicate condition;
     private final InlinedMethodPredicate guard;
 
-    public GuardedConditionalInlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body,
+    public GuardedConditionalInlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex,
+                    ConditionalInlinedMethodNode.Recipes recipes,
                     InlinedMethodPredicate condition, InlinedMethodPredicate guard) {
-        super(inlinedMethod, top, opcode, callerBCI, statementIndex, body);
-        this.fallbackNode = insert(getFallback(inlinedMethod, top, callerBCI, opcode));
+        super(inlinedMethod, top, opcode, callerBCI, statementIndex, null);
+        this.fallbackNode = insert(getFallback(inlinedMethod.getMethod(), top, callerBCI, opcode));
         this.condition = condition;
         this.guard = guard;
+        this.recipes = recipes;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
         if (guard.isValid(getContext(), method, frame, this)) {
             if (condition.isValid(getContext(), method, frame, this)) {
-                return super.execute(frame);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                InlinedMethodNode replacement = getDefinitiveNode(recipes, guard, inlinedMethod(), top, opcode, getCallerBCI(), statementIndex);
+                return getBytecodeNode().replaceQuickAt(frame, opcode, getCallerBCI(), this,
+                                replacement);
             } else {
                 return fallbackNode.execute(frame);
             }
@@ -55,5 +62,17 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
             CompilerDirectives.transferToInterpreterAndInvalidate();
             return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());
         }
+    }
+
+    public static InlinedMethodNode getDefinitiveNode(ConditionalInlinedMethodNode.Recipes recipes, InlinedMethodPredicate oldGuard,
+                    Method.MethodVersion method, int top, int opcode, int callerBci, int statementIndex) {
+        BodyNode newBody = recipes.cookBody();
+        InlinedMethodPredicate cookedGuard = recipes.cookGuard();
+        InlinedMethodPredicate newGuard = cookedGuard == null
+                        ? oldGuard
+                        : (ctx, m, f, node) -> cookedGuard.isValid(ctx, m, f, node) && oldGuard.isValid(ctx, m, f, node);
+        InlinedMethodNode replacement;
+        replacement = new GuardedInlinedMethodNode(method, top, opcode, callerBci, statementIndex, newBody, newGuard);
+        return replacement;
     }
 }

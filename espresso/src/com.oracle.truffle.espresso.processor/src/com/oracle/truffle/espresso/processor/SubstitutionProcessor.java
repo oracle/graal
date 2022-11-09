@@ -669,7 +669,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 case "boolean":
                 case "char":
                 case "short":
-                    doCast = true;
+                    doCast = true; // fall through
                 case "int":
                     popMethod = "popInt";
                     break;

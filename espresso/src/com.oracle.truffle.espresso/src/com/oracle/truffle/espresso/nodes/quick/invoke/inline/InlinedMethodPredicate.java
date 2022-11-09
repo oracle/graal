@@ -44,4 +44,5 @@ public interface InlinedMethodPredicate {
             return context.getClassHierarchyOracle().isLeafMethod(version).isValid();
         }
     };
+
 }

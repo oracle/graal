@@ -31,6 +31,10 @@ public final class GuardedInlinedMethodNode extends InlinedMethodNode {
     private final InlinedMethodPredicate guard;
 
     public GuardedInlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
+        this(inlinedMethod.getMethodVersion(), top, opcode, callerBCI, statementIndex, body, guard);
+    }
+
+    public GuardedInlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
         super(inlinedMethod, top, opcode, callerBCI, statementIndex, body);
         this.guard = guard;
     }

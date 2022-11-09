@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -32,18 +30,21 @@ import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class InlinedSetterNode extends InlinedFieldAccessNode {
+class InlinedSetterNode extends InlinedFieldAccessNode {
 
-    InlinedSetterNode(Method.MethodVersion method) {
-        super(true, method);
+    @Child AbstractSetFieldNode setFieldNode;
+    private final int slotCount;
+
+    InlinedSetterNode(Method.MethodVersion method, char fieldCpi) {
+        super(method, fieldCpi);
+        this.setFieldNode = insert(AbstractSetFieldNode.create(field));
+        this.slotCount = field.getKind().getSlotCount();
     }
 
-    @Specialization
-    public void executeCached(VirtualFrame frame, InlinedFrameAccess frameAccess,
-                    @Cached("getInlinedField(frameAccess.inlinedMethod())") Field cachedField,
-                    @Cached("cachedField.getKind().getSlotCount()") int slotCount,
-                    @Cached("create(cachedField)") AbstractSetFieldNode setFieldNode) {
-        StaticObject receiver = getReceiver(frame, cachedField, frameAccess.top(), slotCount);
+    @Override
+    public void execute(VirtualFrame frame, InlinedFrameAccess frameAccess) {
+        assert !field.needsReResolution(); // Should have been guaranteed before calling.
+        StaticObject receiver = getReceiver(frame, field, frameAccess.top(), slotCount);
         setFieldNode.setField(frame, frameAccess.getBytecodeNode(), receiver, frameAccess.top(), frameAccess.statementIndex());
     }
 

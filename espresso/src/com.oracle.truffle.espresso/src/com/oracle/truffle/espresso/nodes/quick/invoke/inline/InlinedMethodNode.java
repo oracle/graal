@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -43,9 +45,41 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies.InlinedSubst
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
+/**
+ * A node that performs bytecode-level inlining of a method, removing the overhead of an entire
+ * invoke.
+ * <p>
+ * Due to skipping the callee's frame, Bytecode-level inlining can only be correct if:
+ * <ul>
+ * <li>No exception arises during the callee's execution.</li>
+ * <li>The callee does not perform any invoke.</li>
+ * <li>There is no instrumentation in place for neither the caller nor callee.</li>
+ * </ul>
+ * <p>
+ * The body of the callee should be inspected to prevent bytecode-level inlining of a method that
+ * itself invokes.
+ * <p>
+ * This node will rewrite itself to a generic invoke when instrumentation happens (see
+ * {@link #revertToGeneric(BytecodeNode)} and
+ * {@link BytecodeNode#materializeInstrumentableNodes(Set)}).
+ * <p>
+ * Various methods of ensuring no exception arises from the callee are available:
+ * <ul>
+ * <li>{@link ConditionalInlinedMethodNode}: Uses the generic version of the invoke until a given
+ * condition becomes {@code true}, at which point it will rewrite itself as the inlined version. Use
+ * case includes waiting for pool constants to resolve before performing bytecode-level
+ * inlining.</li>
+ * <li>{@link GuardedInlinedMethodNode}: Performs bytecode-level inlining, but reverts to a generic
+ * invoke if the given guard fails. Use case includes guarding against a {@code finalizable}
+ * receiver for the {@code j.l.Object.<init>} substitution.</li>
+ * <li>{@link GuardedConditionalInlinedMethodNode}: Combines both options. Waits until a condition
+ * becomes true before bytecode-level inline, but will also revert to generic if the guard
+ * fails.</li>
+ * </ul>
+ */
 public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAccess {
 
-    public static abstract class BodyNode extends EspressoNode {
+    public abstract static class BodyNode extends EspressoNode {
         public abstract void execute(VirtualFrame frame, InlinedFrameAccess frameAccess);
     }
 
@@ -78,6 +112,10 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
     }
 
     public InlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body) {
+        this(inlinedMethod.getMethodVersion(), top, opcode, callerBCI, statementIndex, body);
+    }
+
+    public InlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body) {
         super(inlinedMethod, top, callerBCI);
         this.opcode = opcode;
         this.statementIndex = statementIndex;
@@ -203,8 +241,8 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         @Child private ProbeNode probeNode;
 
         DummyInstrumentationWrapper(DummyInstrumentation delegateNode, ProbeNode probeNode) {
-            this.delegateNode = delegateNode;
-            this.probeNode = probeNode;
+            this.delegateNode = insert(delegateNode);
+            this.probeNode = insert(probeNode);
         }
 
         @Override
