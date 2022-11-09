@@ -103,7 +103,7 @@ public class DeadlockWatchdog implements Closeable {
             }
 
             try {
-                Thread.sleep(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)));
+                Thread.sleep(Math.max(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)), 1));
             } catch (InterruptedException e) {
                 /* Nothing to do, when close() was called then we will exit the loop. */
             }
