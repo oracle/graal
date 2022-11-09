@@ -272,6 +272,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     unwindStack(frame, stackPointer, numLocals, codeEntry.resultCount());
                     return RETURN_VALUE;
                 case Bytecode.SKIP_LABEL:
+                    offset += 2;
+                    break;
+                case Bytecode.SKIP_LABEL_I8:
                     final int skipBytes = rawPeekU8(bytecode, offset);
                     offset += skipBytes;
                     break;

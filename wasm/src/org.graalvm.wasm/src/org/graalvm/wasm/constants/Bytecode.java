@@ -7,13 +7,10 @@ public class Bytecode {
 
     public static final int SKIP_LABEL = 0x03;
 
-    public static final int LABEL = 0x04;
-    public static final int LABEL_REF = 0x05;
-    public static final int LABEL_UNKNOWN = 0x06;
+    public static final int SKIP_LABEL_I8 = 0x04;
+    public static final int LABEL = 0x05;
 
     public static final int LOOP_LABEL = 0x07;
-    public static final int LOOP_LABEL_REF = 0x08;
-    public static final int LOOP_LABEL_UNKNOWN = 0x09;
 
     public static final int BR_I8 = 0x0A;
     public static final int BR_I32 = 0x0B;

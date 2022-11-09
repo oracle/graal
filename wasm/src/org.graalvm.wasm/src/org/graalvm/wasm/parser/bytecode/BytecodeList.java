@@ -59,22 +59,26 @@ public class BytecodeList {
     }
 
     public int addLabel(int results, int stack) {
-        add1(Bytecode.SKIP_LABEL);
-        final int skipLocation = bytecode.size();
-        final byte skipBytes;
-        add1(0);
-        final int location = bytecode.size();
-        add1(Bytecode.LABEL);
+        final int location;
         if (results <= 1 && stack <= 15) {
+            add1(Bytecode.SKIP_LABEL);
+            location = bytecode.size();
+            add1(Bytecode.LABEL);
             add1(results << 7 | stack);
-            skipBytes = 3;
         } else if (results <= 15 && fitsIntoUnsignedByte(stack)) {
+            add1(Bytecode.SKIP_LABEL_I8);
+            add1(4);
+            location = bytecode.size();
+            add1(Bytecode.LABEL);
             add1(0x40 | results);
             add1(stack);
-            skipBytes = 4;
         } else {
             final boolean resultFitsIntoByte = fitsIntoUnsignedByte(results);
             final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            add1(Bytecode.SKIP_LABEL_I8);
+            add1(3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
+            location = bytecode.size();
+            add1(Bytecode.LABEL);
             add1(0xC0 | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
             if (resultFitsIntoByte) {
                 add1(results);
@@ -86,33 +90,30 @@ public class BytecodeList {
             } else {
                 add4(stack);
             }
-            skipBytes = (byte) (3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
         }
-        bytecode.set(skipLocation, skipBytes);
         return location;
     }
 
     public int addLoopLabel(int stack) {
-        add1(Bytecode.SKIP_LABEL);
-        final int skipLocation = bytecode.size();
-        final byte skipBytes;
-        add1(0);
-        final int location = bytecode.size();
-        add1(Bytecode.LOOP_LABEL);
+        final int location;
         if (stack <= 31) {
+            add1(Bytecode.SKIP_LABEL);
+            location = bytecode.size();
+            add1(Bytecode.LOOP_LABEL);
             add1(stack);
-            skipBytes = 3;
         } else {
             final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            add1(Bytecode.SKIP_LABEL_I8);
+            add1(3 + (stackFitsIntoByte ? 1 : 4));
+            location = bytecode.size();
+            add1(Bytecode.LOOP_LABEL);
             add1(0x80 | (stackFitsIntoByte ? 0 : 0x01));
             if (stackFitsIntoByte) {
                 add1(stack);
             } else {
                 add4(stack);
             }
-            skipBytes = (byte) (3 + (stackFitsIntoByte ? 1 : 4));
         }
-        bytecode.set(skipLocation, skipBytes);
         return location;
     }
 
