@@ -196,7 +196,7 @@ class WindowsParkEvent extends ParkEvent {
      * set and reset operations. They can be waited on until they become set or a timeout occurs,
      * spurious wakeups cannot occur.
      */
-    private final WinBase.HANDLE eventHandle;
+    private WinBase.HANDLE eventHandle;
 
     WindowsParkEvent() {
         /* Create an auto-reset event. */
@@ -263,13 +263,25 @@ class WindowsParkEvent extends ParkEvent {
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void release() {
+        WinBase.CloseHandle(eventHandle);
+        eventHandle = WinBase.INVALID_HANDLE_VALUE();
+    }
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 @Platforms(Platform.WINDOWS.class)
 class WindowsParkEventFactory implements ParkEventFactory {
     @Override
-    public ParkEvent create() {
+    public ParkEvent acquire() {
         return new WindowsParkEvent();
+    }
+
+    @Override
+    public boolean usesParkEventList() {
+        return false;
     }
 }
