@@ -885,7 +885,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 int lineNum = dbgLocInfo.line();
                 String filename = dbgLocInfo.fileName();
 
-                if (filename != "") {
+                if (!filename.equals("")) {
                     String directory = String.valueOf(dbgLocInfo.filePath());
                     String funcName = dbgLocInfo.name();
                     /* To add debug location information in the LLVM IR:

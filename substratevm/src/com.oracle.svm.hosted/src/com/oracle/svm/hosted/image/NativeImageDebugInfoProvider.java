@@ -928,7 +928,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         // Constructor for LLVM debug info (temporary). Cannot use the default constructor because not sure what
         // `createParamInfo()` and `isPseudoObjectType()` do
-        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod m, boolean LLVMBackend) {
+        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod m, boolean llvmBackend) {
             super(m);
             method = promoteAnalysisToHosted(m);
             this.paramInfo = null;
@@ -1669,7 +1669,6 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    
     public static class NativeImageDebugLLVMLocationInfo extends NativeImageDebugLocationInfo {
 
         public NativeImageDebugLLVMLocationInfo(DebugContext debugContext, int bci, ResolvedJavaMethod method) {
