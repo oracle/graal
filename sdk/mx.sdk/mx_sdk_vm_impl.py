@@ -774,7 +774,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 installable_component_lists.setdefault(_component.installable_id, []).append(_component)
 
         graalvm_dists.difference_update(component_dists)
-        _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], _component, with_sources=True)
+        _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], with_sources=True)
 
         installer = get_component('gu', stage1=stage1)
         if installer:
