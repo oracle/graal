@@ -144,6 +144,13 @@
     }
   },
 
+  no_profile_info:: {
+    platform+:: "-no-profile-info",
+    environment+: {
+      "JVM_CONFIG"+: "-no-profile-info",
+    }
+  },
+
   avx2_mode:: {
     platform+:: "-avx2",
     environment+: {
