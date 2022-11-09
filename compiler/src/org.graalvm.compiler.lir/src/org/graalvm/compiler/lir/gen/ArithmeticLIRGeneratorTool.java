@@ -175,6 +175,16 @@ public interface ArithmeticLIRGeneratorTool {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
+    @SuppressWarnings("unused")
+    default Value emitIntegerCompress(Value value, Value mask) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitIntegerExpand(Value value, Value mask) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     enum RoundingMode {
         NEAREST(0),
         DOWN(1),

@@ -1433,6 +1433,30 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    @Override
+    public Value emitIntegerCompress(Value value, Value mask) {
+        Variable result = getLIRGen().newVariable(value.getValueKind());
+        if (value.getPlatformKind() == AMD64Kind.QWORD) {
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PEXT, AVXSize.QWORD, result, asAllocatable(value), asAllocatable(mask)));
+        } else {
+            GraalError.guarantee(value.getPlatformKind() == AMD64Kind.DWORD, "Unsupported value kind");
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PEXT, AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
+        }
+        return result;
+    }
+
+    @Override
+    public Value emitIntegerExpand(Value value, Value mask) {
+        Variable result = getLIRGen().newVariable(value.getValueKind());
+        if (value.getPlatformKind() == AMD64Kind.QWORD) {
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, AVXSize.QWORD, result, asAllocatable(value), asAllocatable(mask)));
+        } else {
+            GraalError.guarantee(value.getPlatformKind() == AMD64Kind.DWORD, "Unsupported value kind");
+            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
+        }
+        return result;
+    }
+
     public boolean supportAVX() {
         TargetDescription target = getLIRGen().target();
         return ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);

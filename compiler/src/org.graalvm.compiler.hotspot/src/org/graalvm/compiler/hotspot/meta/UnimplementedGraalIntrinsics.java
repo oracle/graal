@@ -409,10 +409,6 @@ public final class UnimplementedGraalIntrinsics {
                             // isInfinite are riscv only atm
                             "java/lang/Double.isInfinite(D)Z",
                             "java/lang/Float.isInfinite(F)Z",
-                            "java/lang/Integer.compress(II)I",
-                            "java/lang/Integer.expand(II)I",
-                            "java/lang/Long.compress(JJ)J",
-                            "java/lang/Long.expand(JJ)J",
                             "java/lang/StringCoding.countPositives([BII)I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V",
@@ -429,6 +425,15 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.storeMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;" +
                                             "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$StoreVectorMaskedOperation;)V",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
+
+            if (arch instanceof AArch64) {
+                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8283892
+                add(toBeInvestigated,
+                                "java/lang/Integer.compress(II)I",
+                                "java/lang/Integer.expand(II)I",
+                                "java/lang/Long.compress(JJ)J",
+                                "java/lang/Long.expand(JJ)J");
+            }
         }
 
         if (JAVA_SPEC >= 20) {

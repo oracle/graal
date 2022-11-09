@@ -712,6 +712,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.compiler.jtt",
       ],
       "requiresConcealed" : {
         "java.base" : [
