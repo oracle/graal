@@ -27,10 +27,15 @@ package com.oracle.svm.core.thread;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.util.TimeUtils;
 
 /**
- * Each thread has several of these on which to wait. Instances are usually expensive objects
- * because they encapsulate native resources. Therefore, lazy initialization is used, see
+ * Per-thread blocking support. An instance is owned by at most one thread at a time for blocking
+ * itself from scheduling ("parking") by calling {@link #park}. Any other thread may call
+ * {@link #unpark} to unblock the owner thread (or make its next attempt to park return instantly).
+ *
+ * Each thread may own several of these for parking. Instances are usually expensive objects because
+ * they encapsulate native resources. Therefore, lazy initialization is used, see
  * {@link ThreadData}.
  */
 public abstract class ParkEvent {
@@ -45,18 +50,44 @@ public abstract class ParkEvent {
     protected ParkEvent() {
     }
 
-    /**
-     * Resets a pending {@link #unpark()} at the time of the call.
-     */
+    /** Reset a pending {@link #unpark()} at the time of the call. */
     protected abstract void reset();
 
-    /* cond_wait. */
+    /** {@link #park} indefinitely: {@code park(false, 0);}. */
     protected abstract void condWait();
 
-    /** cond_timedwait, similar to {@link #condWait} but with a timeout in nanoseconds. */
+    /** {@link #park} with a delay in nanoseconds: {@code if(delay > 0) park(false, delay);}. */
     protected abstract void condTimedWait(long delayNanos);
 
-    /** Notify anyone waiting on this event. */
+    /**
+     * Block the calling thread (which must be the owner of this instance) from being scheduled
+     * until another thread calls {@link #unpark},
+     * <ul>
+     * <li>{@code !isAbsolute && time == 0}: indefinitely.</li>
+     * <li>{@code !isAbsolute && time > 0}: until {@code time} nanoseconds elapse.</li>
+     * <li>{@code isAbsolute && time > 0}: until a deadline of {@code time} milliseconds from the
+     * Epoch passes (see {@link System#currentTimeMillis()}.</li>
+     * <li>otherwise: return instantly without parking.</li>
+     * </ul>
+     * May also return spuriously instead (for no apparent reason).
+     */
+    protected void park(boolean isAbsolute, long time) {
+        if (!isAbsolute && time == 0) {
+            condWait();
+        } else if (time > 0) {
+            condTimedWait(TimeUtils.delayNanos(isAbsolute, time));
+        }
+    }
+
+    /** Try consuming an unpark without blocking. */
+    protected boolean tryFastPark() {
+        return false;
+    }
+
+    /**
+     * Unblock the owner thread if it parks on this object, or make its next attempt to park on this
+     * object return immediately.
+     */
     protected abstract void unpark();
 
     static ParkEvent acquire(boolean isSleepEvent) {

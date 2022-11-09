@@ -63,7 +63,7 @@ public class PthreadConditionUtils {
         return Pthread.pthread_cond_init(cond, attr);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void getAbsoluteTimeNanos(timespec result) {
         /*
          * We need the real-time clock to compute absolute deadlines when a conditional wait should
@@ -89,7 +89,7 @@ public class PthreadConditionUtils {
     }
 
     /** Turn a delay in nanoseconds into a deadline in a Time.timespec. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void delayNanosToDeadlineTimespec(long delayNanos, Time.timespec result) {
         timespec currentTimespec = StackValue.get(timespec.class);
         getAbsoluteTimeNanos(currentTimespec);

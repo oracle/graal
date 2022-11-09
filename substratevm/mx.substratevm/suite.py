@@ -428,6 +428,9 @@ suite = {
                 "com.oracle.svm.core.graal.aarch64",
             ],
             "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc",
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                 ],
