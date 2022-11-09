@@ -1,8 +1,8 @@
 {
-  local common = import "../../../common.jsonnet",
-  local bench_common = import "../../../bench-common.libsonnet",
-  local config = import "../../../repo-configuration.libsonnet",
-  local ci_resources = import "../../../ci-resources.libsonnet",
+  local common = import "../../../ci/common.jsonnet",
+  local bench_common = import "../../../ci/bench-common.libsonnet",
+  local config = import "../../../ci/repo-configuration.libsonnet",
+  local ci_resources = import "../../../ci/ci-resources.libsonnet",
 
   enable_profiling:: {
     environment+: {

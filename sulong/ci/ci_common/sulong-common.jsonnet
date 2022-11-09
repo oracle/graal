@@ -1,7 +1,7 @@
 # File is formatted with
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
-local common = import "../../../common.jsonnet";
-local composable = (import "../../../common-utils.libsonnet").composable;
+local common = import "../../../ci/common.jsonnet";
+local composable = (import "../../../ci/common-utils.libsonnet").composable;
 local sulong_deps = composable((import "../../../common.json").sulong.deps);
 
 {

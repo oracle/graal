@@ -1,6 +1,6 @@
 {
-  local c = (import '../../../common.jsonnet'),
-  local bc = (import '../../../bench-common.libsonnet'),
+  local c = (import '../../../ci/common.jsonnet'),
+  local bc = (import '../../../ci/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
   local bench = (import 'benchmark-suites.libsonnet'),
   local hw = bc.bench_hw,

@@ -1,12 +1,12 @@
-local composable = (import '../../../common-utils.libsonnet').composable;
+local composable = (import '../../../ci/common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
-local graal_common = import '../../../common.jsonnet';
-local repo_config = import '../../../repo-configuration.libsonnet';
+local graal_common = import '../../../ci/common.jsonnet';
+local repo_config = import '../../../ci/repo-configuration.libsonnet';
 local common_json = composable(import '../../../common.json');
 local devkits = common_json.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
-local utils = import '../../../common-utils.libsonnet';
+local utils = import '../../../ci/common-utils.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),

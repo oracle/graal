@@ -1,7 +1,7 @@
 local composable = (import "common-utils.libsonnet").composable;
 
-local mx_version = (import "common.json").mx_version;
-local common_json = composable(import "common.json");
+local mx_version = (import "../common.json").mx_version;
+local common_json = composable(import "../common.json");
 local repo_config = import 'repo-configuration.libsonnet';
 local jdks = common_json.jdks;
 local deps = common_json.deps;
@@ -51,7 +51,7 @@ local add_jdk_version(name) =
 
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
-    ci_resources:: (import "ci-resources.libsonnet"),
+    ci_resources:: (import "ci/ci-resources.libsonnet"),
   },
 
   // Job frequencies

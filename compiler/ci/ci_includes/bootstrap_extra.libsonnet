@@ -1,6 +1,6 @@
 # Bootstrap tasks specific to Graal CE
 {
-  local c = import '../../../common.jsonnet',
+  local c = import '../../../ci/common.jsonnet',
   local g = import '../ci_common/gate.jsonnet',
 
   # See definition of `gates` local variable in ../ci_common/gate.jsonnet

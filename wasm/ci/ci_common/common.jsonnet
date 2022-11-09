@@ -6,9 +6,9 @@ local graal_suite_root = root_ci.graal_suite_root;
 
 {
   local mx = (import "../../../common.json").mx_version,
-  local common = (import "../../../common.jsonnet"),
+  local common = (import "../../../ci/common.jsonnet"),
   local common_json = (import "../../../common.json"),
-  local utils = (import "../../../common-utils.libsonnet"),
+  local utils = (import "../../../ci/common-utils.libsonnet"),
 
   devkits: utils.composable(common_json.devkits),
 

@@ -3,7 +3,7 @@ local supported_oss_names = r.supported_oss_names;
 local supported_archs_names = r.supported_archs_names;
 local supported_jdks_names = r.supported_jdks_names;
 
-local std_get = (import "../../common-utils.libsonnet").std_get;
+local std_get = (import "../../ci/common-utils.libsonnet").std_get;
 {
   //
   local CONFIG_KEY = "<build-config>",

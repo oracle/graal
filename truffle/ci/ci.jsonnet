@@ -1,9 +1,9 @@
 {
   local common_json = import '../../common.json',
-  local common = import '../../common.jsonnet',
-  local bench_hw = (import '../../bench-common.libsonnet').bench_hw,
-  local composable = (import '../../common-utils.libsonnet').composable,
-  local top_level_ci = (import '../../common-utils.libsonnet').top_level_ci,
+  local common = import '../../ci/common.jsonnet',
+  local bench_hw = (import '../../ci/bench-common.libsonnet').bench_hw,
+  local composable = (import '../../ci/common-utils.libsonnet').composable,
+  local top_level_ci = (import '../../ci/common-utils.libsonnet').top_level_ci,
   local devkits = composable(common_json.devkits),
 
   local darwin_amd64 = common.darwin_amd64,

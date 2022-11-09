@@ -1,7 +1,7 @@
 {
   local common_json = (import '../../../common.json'),
-  local c = (import '../../../common.jsonnet'),
-  local bc = (import '../../../bench-common.libsonnet'),
+  local c = (import '../../../ci/common.jsonnet'),
+  local bc = (import '../../../ci/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
 
   local _suite_key(a) = a['suite'],
