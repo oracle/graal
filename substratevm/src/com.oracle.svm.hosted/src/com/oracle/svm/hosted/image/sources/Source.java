@@ -96,9 +96,9 @@ class Source {
         return (isMissing() ? null : path);
     }
 
-    public synchronized void updateStatus(CacheStatus status) {
+    public synchronized void updateStatus(CacheStatus s) {
         /* state changes must be synchronized and must wake up *all* waiting threads */
-        this.status = status;
+        this.status = s;
         notifyAll();
     }
 
@@ -125,7 +125,7 @@ class Source {
     synchronized boolean shouldCache() {
         if (isUnknown()) {
             // first caller to reach here can promote status to CACHING
-            // and return to try to popuate the cache
+            // and return to try to populate the cache
             updateStatus(CacheStatus.CACHING);
             return true;
         } else {

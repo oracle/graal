@@ -379,7 +379,7 @@ public class SourceCache {
      * @param subPath the subpath to extend it with
      * @return the extended path
      */
-    private Path extendPath(Path root, Path subPath) {
+    private static Path extendPath(Path root, Path subPath) {
         String filePathString = subPath.toString();
         String fileSeparator = subPath.getFileSystem().getSeparator();
         String newSeparator = root.getFileSystem().getSeparator();
