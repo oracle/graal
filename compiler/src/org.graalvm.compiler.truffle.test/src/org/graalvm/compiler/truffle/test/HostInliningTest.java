@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -49,6 +50,9 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -68,6 +72,7 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -124,6 +129,8 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testInliningCutoff");
         runTest("testNonDirectCalls");
         runTest("testConstantFolding");
+        runTest("testDirectIntrinsics");
+        runTest("testIndirectIntrinsics");
     }
 
     @SuppressWarnings("try")
@@ -154,12 +161,49 @@ public class HostInliningTest extends GraalCompilerTest {
             new TruffleHostInliningPhase(canonicalizer).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);
+            ExpectSameGraph sameGraph = method.getAnnotation(ExpectSameGraph.class);
+
+            if (sameGraph != null) {
+                ResolvedJavaMethod compareMethod = getResolvedJavaMethod(sameGraph.value());
+                StructuredGraph compareGraph = parseForCompile(compareMethod, options);
+                assertEquals(compareGraph, graph);
+            }
+
             assertInvokesFound(graph, notInlined != null ? notInlined.value() : null);
+
         } catch (Throwable e) {
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "error graph");
             throw new AssertionError("Error validating graph " + graph, e);
         }
 
+    }
+
+    @Override
+    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+        super.registerInvocationPlugins(invocationPlugins);
+        invocationPlugins.register(HostInliningTest.class, new InvocationPlugin("intrinsic") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(42)));
+                return true;
+            }
+        });
+
+        invocationPlugins.register(B_extends_A.class, new InvocationPlugin("intrinsic", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(20)));
+                return true;
+            }
+        });
+
+        invocationPlugins.register(C_extends_A.class, new InvocationPlugin("intrinsic", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(22)));
+                return true;
+            }
+        });
     }
 
     static void assertInvokesFound(StructuredGraph graph, String[] notInlined) {
@@ -371,6 +415,8 @@ public class HostInliningTest extends GraalCompilerTest {
 
     interface A {
         int foo();
+
+        int intrinsic();
     }
 
     static final class B_extends_A implements A {
@@ -378,12 +424,24 @@ public class HostInliningTest extends GraalCompilerTest {
         public int foo() {
             return 1;
         }
+
+        @Override
+        public int intrinsic() {
+            // will return 20 through intrinsic
+            return 19;
+        }
     }
 
     static final class C_extends_A implements A {
         @Override
         public int foo() {
             return 2;
+        }
+
+        @Override
+        public int intrinsic() {
+            // will return 22 through intrinsic
+            return 18;
         }
     }
 
@@ -731,6 +789,43 @@ public class HostInliningTest extends GraalCompilerTest {
                 break;
         }
         return value;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectSameGraph("constant42")
+    @SuppressWarnings("unused")
+    static int testDirectIntrinsics(int value) {
+        return intrinsic();
+    }
+
+    static int constant42(@SuppressWarnings("unused") int value) {
+        return 42;
+    }
+
+    static int intrinsic() {
+        // will return 42 through intrinsic
+        return 41;
+    }
+
+    static final A value0 = new B_extends_A();
+    static final A value1 = new C_extends_A();
+
+    @BytecodeInterpreterSwitch
+    @ExpectSameGraph("constant42")
+    static int testIndirectIntrinsics(@SuppressWarnings("unused") int value) {
+        int ret = testIndirectIntrinsicsImpl(value0);
+        ret += testIndirectIntrinsicsImpl(value1);
+        return ret;
+    }
+
+    static int testIndirectIntrinsicsImpl(A a) {
+        return a.intrinsic(); // inlined and intrinsic
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @interface ExpectSameGraph {
+        String value();
     }
 
     @Retention(RetentionPolicy.RUNTIME)
