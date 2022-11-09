@@ -2,7 +2,6 @@ package org.graalvm.wasm.parser.bytecode;
 
 import org.graalvm.wasm.collection.ByteArrayList;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.constants.Bytecode;
 
 public class BytecodeList {
@@ -25,12 +24,6 @@ public class BytecodeList {
         bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
     }
 
-    private void add3(int value) {
-        bytecode.add((byte) (value & 0x0000_00FF));
-        bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
-        bytecode.add((byte) ((value >>> 16) & 0x0000_00FF));
-    }
-
     private void add4(int value) {
         bytecode.add((byte) (value & 0x0000_00FF));
         bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
@@ -49,27 +42,6 @@ public class BytecodeList {
         bytecode.add((byte) ((value >>> 56) & 0x0000_00FF));
     }
 
-    private void addVariable(int value, int size) {
-        switch (size) {
-            case 0:
-                break;
-            case 1:
-                add1(value);
-                break;
-            case 2:
-                add2(value);
-                break;
-            case 3:
-                add3(value);
-                break;
-            case 4:
-                add4(value);
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
     private boolean fitsIntoSignedByte(int value) {
         return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
     }
@@ -86,30 +58,62 @@ public class BytecodeList {
         add1(instruction);
     }
 
-    private boolean isLabelType0(int results, int stack) {
-        return results <= 1 && stack <= 31;
-    }
-
-    private boolean isLabelType1(int results) {
-        return results <= 31;
-    }
-
-    private int addLabel(int label, int results, int stackSize) {
+    public int addLabel(int results, int stack) {
         add1(Bytecode.SKIP_LABEL);
-        add1(10);
+        final int skipLocation = bytecode.size();
+        final byte skipBytes;
+        add1(0);
         final int location = bytecode.size();
-        add1(label);
-        add4(results);
-        add4(stackSize);
+        add1(Bytecode.LABEL);
+        if (results <= 1 && stack <= 15) {
+            add1(results << 7 | stack);
+            skipBytes = 3;
+        } else if (results <= 15 && fitsIntoUnsignedByte(stack)) {
+            add1(0x40 | results);
+            add1(stack);
+            skipBytes = 4;
+        } else {
+            final boolean resultFitsIntoByte = fitsIntoUnsignedByte(results);
+            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            add1(0xC0 | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
+            if (resultFitsIntoByte) {
+                add1(results);
+            } else {
+                add4(results);
+            }
+            if (stackFitsIntoByte) {
+                add1(stack);
+            } else {
+                add4(stack);
+            }
+            skipBytes = (byte) (3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
+        }
+        bytecode.set(skipLocation, skipBytes);
         return location;
     }
 
-    public int addPrimitiveLabel(int results, int stackSize) {
-        return addLabel(Bytecode.LABEL, results, stackSize);
-    }
-
-    public int addPrimitiveLoopLabel(int results, int stackSize) {
-        return addLabel(Bytecode.LOOP_LABEL, results, stackSize);
+    public int addLoopLabel(int stack) {
+        add1(Bytecode.SKIP_LABEL);
+        final int skipLocation = bytecode.size();
+        final byte skipBytes;
+        add1(0);
+        final int location = bytecode.size();
+        add1(Bytecode.LOOP_LABEL);
+        if (stack <= 31) {
+            add1(stack);
+            skipBytes = 3;
+        } else {
+            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            add1(0x80 | (stackFitsIntoByte ? 0 : 0x01));
+            if (stackFitsIntoByte) {
+                add1(stack);
+            } else {
+                add4(stack);
+            }
+            skipBytes = (byte) (3 + (stackFitsIntoByte ? 1 : 4));
+        }
+        bytecode.set(skipLocation, skipBytes);
+        return location;
     }
 
     public void addBranch(int offset) {

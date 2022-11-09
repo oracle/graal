@@ -284,7 +284,7 @@ public class ParserState {
      * @param resultTypes The result types of the loop that was entered.
      */
     public void enterLoop(byte[] paramTypes, byte[] resultTypes) {
-        final int label = bytecode.addPrimitiveLoopLabel(resultTypes.length, valueStack.size());
+        final int label = bytecode.addLoopLabel(valueStack.size() + paramTypes.length);
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
         controlStack.push(frame);
         pushAll(paramTypes);

@@ -276,19 +276,56 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += skipBytes;
                     break;
                 case Bytecode.LABEL: {
-                    final int results = rawPeekI32(bytecode, offset);
-                    final int stackSize = numLocals + rawPeekI32(bytecode, offset + 4);
-                    offset += 8;
-                    unwindStack(frame, stackPointer, stackSize, results);
-                    stackPointer = stackSize + results;
+                    final int value = rawPeekU8(bytecode, offset);
+                    offset++;
+                    final int results;
+                    final int stackSize;
+                    if ((value & 0x40) == 0) {
+                        results = (value >>> 7);
+                        stackSize = (value & 0x0F);
+                    } else {
+                        if ((value & 0x80) == 0) {
+                            results = (value & 0x0F);
+                            stackSize = rawPeekU8(bytecode, offset);
+                            offset++;
+                        } else {
+                            if ((value & 0x04) == 0) {
+                                results = rawPeekU8(bytecode, offset);
+                                offset++;
+                            } else {
+                                results = rawPeekI32(bytecode, offset);
+                                offset += 4;
+                            }
+                            if ((value & 0x01) == 0) {
+                                stackSize = rawPeekU8(bytecode, offset);
+                                offset++;
+                            } else {
+                                stackSize = rawPeekI32(bytecode, offset);
+                                offset += 4;
+                            }
+                        }
+                    }
+                    unwindStack(frame, stackPointer, stackSize + numLocals, results);
+                    stackPointer = stackSize + numLocals + results;
                     break;
                 }
                 case Bytecode.LOOP_LABEL: {
-                    final int results = rawPeekI32(bytecode, offset);
-                    final int stackSize = numLocals + rawPeekI32(bytecode, offset + 4);
-                    offset += 8;
-                    unwindStack(frame, stackPointer, stackSize, results);
-                    stackPointer = stackSize + results;
+                    final int value = rawPeekU8(bytecode, offset);
+                    offset++;
+                    final int stackSize;
+                    if ((value & 0x80) == 0) {
+                        stackSize = (value & 0x1F);
+                    } else {
+                        if ((value & 0x01) == 0) {
+                            stackSize = rawPeekU8(bytecode, offset);
+                            offset++;
+                        } else {
+                            stackSize = rawPeekI32(bytecode, offset);
+                            offset += 4;
+                        }
+                    }
+                    unwindStack(frame, stackPointer, stackSize + numLocals, 0);
+                    stackPointer = stackSize + numLocals;
                     if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                         LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                         backEdgeCounter.count = 0;
