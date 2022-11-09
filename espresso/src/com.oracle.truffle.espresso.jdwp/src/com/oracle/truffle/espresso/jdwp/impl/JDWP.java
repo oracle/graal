@@ -3206,13 +3206,17 @@ public final class JDWP {
             reply.writeByte(TagConstants.OBJECT);
             Object guestException = context.getGuestException(result.getException());
             reply.writeLong(context.getIds().getIdAsLong(guestException));
-            controller.getGCPrevention().setActiveWhileSuspended(thread, guestException);
+            if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
+                controller.getGCPrevention().setActiveWhileSuspended(thread, guestException);
+            }
         } else {
             Object value = context.toGuest(result.getResult());
             if (value != null) {
                 byte tag = context.getTag(value);
                 writeValue(tag, value, reply, true, context);
-                controller.getGCPrevention().setActiveWhileSuspended(thread, value);
+                if (controller.getThreadSuspension().getSuspensionCount(thread) > 0) {
+                    controller.getGCPrevention().setActiveWhileSuspended(thread, value);
+                }
             } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
