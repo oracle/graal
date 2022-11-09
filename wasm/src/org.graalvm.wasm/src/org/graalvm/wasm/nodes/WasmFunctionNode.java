@@ -798,7 +798,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case Bytecode.I32_LOAD_I32: {
                     final int memOffset = rawPeekI32(bytecode, offset);
-                    offset++;
+                    offset += 4;
 
                     int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
@@ -1560,10 +1560,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             }
             case Bytecode.I64_LOAD16_S_I8:
             case Bytecode.I64_LOAD16_S_I32: {
-                    final long value = memory.load_i64_16s(this, address);
-                    pushLong(frame, stackPointer, value);
-                    break;
-                }
+                final long value = memory.load_i64_16s(this, address);
+                pushLong(frame, stackPointer, value);
+                break;
+            }
             case Bytecode.I64_LOAD16_U_I8:
             case Bytecode.I64_LOAD16_U_I32: {
                 final long value = memory.load_i64_16u(this, address);
