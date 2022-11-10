@@ -234,6 +234,7 @@ class ExternalTestSuiteMixin(object):  # pylint: disable=too-many-ancestors
             for f in files:
                 absPath = os.path.join(path, f)
                 relPath = os.path.relpath(absPath, root)
+                relPath = relPath.replace('\\', '/') if mx.is_windows() else relPath
                 _, ext = os.path.splitext(relPath)
                 if ext in self.fileExts and relPath not in exclude_files and not _match_pattern(relPath):
                     _tests.append(relPath)
