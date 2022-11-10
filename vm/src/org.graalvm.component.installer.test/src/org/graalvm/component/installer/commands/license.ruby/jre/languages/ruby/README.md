@@ -46,7 +46,7 @@ TruffleRuby is actively tested on these systems:
 
 * Ubuntu 16.04 LTS
 * Fedora 26
-* macOS 10.12
+* macOS 10.13
 
 You need to [install LLVM](doc/user/installing-llvm.md) to build and run C
 extensions and [`libssl`](doc/user/installing-libssl.md) to use `openssl`. You

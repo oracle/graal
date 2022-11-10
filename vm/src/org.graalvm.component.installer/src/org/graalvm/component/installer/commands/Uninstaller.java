@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.SystemUtils;
@@ -51,7 +50,6 @@ public class Uninstaller {
     private boolean dryRun;
     private boolean ignoreFailedDeletions;
     private Path installPath;
-    private boolean rebuildPolyglot;
 
     private final Set<String> directoriesToDelete = new HashSet<>();
 
@@ -67,10 +65,6 @@ public class Uninstaller {
         if (!isDryRun()) {
             registry.removeComponent(componentInfo);
         }
-    }
-
-    public boolean isRebuildPolyglot() {
-        return rebuildPolyglot;
     }
 
     void uninstallContent() throws IOException {
@@ -121,12 +115,6 @@ public class Uninstaller {
                 }
             }
         }
-
-        rebuildPolyglot = componentInfo.isPolyglotRebuild() ||
-                        componentInfo.getPaths().stream().filter(p -> !p.endsWith("/") && p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
-                                        .findAny()
-                                        .isPresent();
-
     }
 
     public boolean isIgnoreFailedDeletions() {

@@ -111,7 +111,7 @@ public class ListInstalledCommand extends QueryCommandBase {
                 expressions.add(accepted);
             }
         }
-        if (process()) {
+        if (process() || isJson()) {
             printComponents();
         }
         return 0;
