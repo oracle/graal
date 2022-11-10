@@ -128,6 +128,10 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         this.bytecode = bytecode;
     }
 
+    public int bytecodeLength() {
+        return bytecode != null ? bytecode.length : 0;
+    }
+
     public boolean isBuiltin() {
         return data == null;
     }
@@ -165,12 +169,17 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return codeEntries;
     }
 
-    public void removeCodeEntries() {
-        codeEntries = null;
+    public void removeCodeEntryCallNodes() {
+        if (codeEntries == null) {
+            return;
+        }
+        for (CodeEntry entry : codeEntries) {
+            entry.setCallNodes(null);
+        }
     }
 
-    public boolean hasCodeEntries() {
-        return codeEntries != null;
+    public boolean hasCodeEntryCallNodes() {
+        return (codeEntries == null) || (codeEntries[0].hasCallNodes());
     }
 
     public boolean hasCodeSection() {

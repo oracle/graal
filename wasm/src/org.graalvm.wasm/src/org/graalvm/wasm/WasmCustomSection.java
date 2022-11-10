@@ -48,19 +48,12 @@ public class WasmCustomSection {
      * Name of the custom section.
      */
     private final String name;
-    /**
-     * Position of the custom section in module's data.
-     */
-    private final int offset;
-    /**
-     * Length of the custom section.
-     */
-    private final int length;
 
-    public WasmCustomSection(String name, int offset, int length) {
+    private final byte[] data;
+
+    public WasmCustomSection(String name, byte[] data) {
         this.name = name;
-        this.offset = offset;
-        this.length = length;
+        this.data = data;
     }
 
     /**
@@ -72,22 +65,8 @@ public class WasmCustomSection {
         return name;
     }
 
-    /**
-     * Returns the position of the custom section in module's data.
-     * 
-     * @return position of the custom section in module's data.
-     */
-    public int getOffset() {
-        return offset;
-    }
-
-    /**
-     * Returns the length of the custom section.
-     * 
-     * @return length of the custom section.
-     */
-    public int getLength() {
-        return length;
+    public byte[] getData() {
+        return data;
     }
 
 }

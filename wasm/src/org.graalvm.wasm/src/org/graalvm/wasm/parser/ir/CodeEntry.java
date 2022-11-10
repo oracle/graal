@@ -50,7 +50,7 @@ public class CodeEntry {
     private final int functionIndex;
     private final int maxStackSize;
     private final byte[] localTypes;
-    private final List<CallNode> callNodes;
+    private List<CallNode> callNodes;
     private final int startOffset;
     private final int endOffset;
     private final byte[] resultTypes;
@@ -91,5 +91,13 @@ public class CodeEntry {
 
     public byte[] getResultTypes() {
         return resultTypes;
+    }
+
+    public void setCallNodes(List<CallNode> callNodes) {
+        this.callNodes = callNodes;
+    }
+
+    public boolean hasCallNodes() {
+        return callNodes != null;
     }
 }

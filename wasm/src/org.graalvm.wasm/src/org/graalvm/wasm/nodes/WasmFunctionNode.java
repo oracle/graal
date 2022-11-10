@@ -262,15 +262,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     throw WasmException.create(Failure.UNREACHABLE, this);
                 case Bytecode.NOP:
                     break;
-                case Bytecode.RETURN:
+                case Bytecode.RETURN: {
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution to resume after the instruction that invoked
                     // the current frame.
                     if (backEdgeCounter.count > 0) {
                         LoopNode.reportLoopCount(this, backEdgeCounter.count);
                     }
-                    unwindStack(frame, stackPointer, numLocals, codeEntry.resultCount());
+                    final int resultCount = codeEntry.resultCount();
+                    unwindStack(frame, stackPointer, numLocals, resultCount);
+                    dropStack(frame, stackPointer, numLocals + resultCount);
                     return RETURN_VALUE;
+                }
                 case Bytecode.SKIP_LABEL:
                     offset += 2;
                     break;
@@ -281,22 +284,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.LABEL: {
                     final int value = rawPeekU8(bytecode, offset);
                     offset++;
-                    final int results;
+                    final int resultCount;
                     final int stackSize;
                     if ((value & 0x40) == 0) {
-                        results = (value >>> 7);
+                        resultCount = (value >>> 7);
                         stackSize = (value & 0x0F);
                     } else {
                         if ((value & 0x80) == 0) {
-                            results = (value & 0x0F);
+                            resultCount = (value & 0x0F);
                             stackSize = rawPeekU8(bytecode, offset);
                             offset++;
                         } else {
                             if ((value & 0x04) == 0) {
-                                results = rawPeekU8(bytecode, offset);
+                                resultCount = rawPeekU8(bytecode, offset);
                                 offset++;
                             } else {
-                                results = rawPeekI32(bytecode, offset);
+                                resultCount = rawPeekI32(bytecode, offset);
                                 offset += 4;
                             }
                             if ((value & 0x01) == 0) {
@@ -308,8 +311,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                         }
                     }
-                    unwindStack(frame, stackPointer, stackSize + numLocals, results);
-                    stackPointer = stackSize + numLocals + results;
+                    final int returnType = (value & 0x60);
+                    final int targetStackPointer = stackSize + numLocals;
+                    if (returnType == 0x20) {
+                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
+                    } else if (returnType == 0x40) {
+                        unwindReferenceStack(frame, stackPointer, targetStackPointer, resultCount);
+                    } else if (returnType == 0x60) {
+                        unwindStack(frame, stackPointer, targetStackPointer, resultCount);
+                    }
+                    dropStack(frame, stackPointer, targetStackPointer + resultCount);
+                    stackPointer = targetStackPointer + resultCount;
                     break;
                 }
                 case Bytecode.LOOP_LABEL: {
@@ -327,8 +339,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 4;
                         }
                     }
-                    unwindStack(frame, stackPointer, stackSize + numLocals, 0);
-                    stackPointer = stackSize + numLocals;
+                    final int targetStackPoint = stackSize + numLocals;
+                    dropStack(frame, stackPointer, targetStackPoint);
+                    stackPointer = targetStackPoint;
                     if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                         LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                         backEdgeCounter.count = 0;
@@ -699,7 +712,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case Bytecode.SELECT: {
                     if (popBoolean(frame, stackPointer - 1)) {
-                        dropPrimitive(frame, stackPointer - 2);
+                        drop(frame, stackPointer - 2);
                     } else {
                         WasmFrame.copyPrimitive(frame, stackPointer - 2, stackPointer - 3);
                         dropPrimitive(frame, stackPointer - 2);
@@ -2946,6 +2959,27 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param targetResultCount The result value count of the target block.
      */
     @ExplodeLoop
+    private static void unwindPrimitiveStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(targetResultCount);
+        for (int i = 0; i < targetResultCount; ++i) {
+            WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        }
+    }
+
+    @ExplodeLoop
+    private static void unwindReferenceStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(targetResultCount);
+        for (int i = 0; i < targetResultCount; ++i) {
+            WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        }
+        for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+            drop(frame, i);
+        }
+    }
+
+    @ExplodeLoop
     private static void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
@@ -2953,6 +2987,15 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
         }
         for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+            drop(frame, i);
+        }
+    }
+
+    @ExplodeLoop
+    private static void dropStack(VirtualFrame frame, int stackPointer, int targetStackPointer) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(targetStackPointer);
+        for (int i = targetStackPointer; i < stackPointer; ++i) {
             drop(frame, i);
         }
     }

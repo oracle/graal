@@ -998,8 +998,8 @@ public abstract class SymbolTable {
         return exportedMemoryNames;
     }
 
-    void allocateCustomSection(String name, int offset, int length) {
-        customSections.add(new WasmCustomSection(name, offset, length));
+    void allocateCustomSection(String name, byte[] sectionData) {
+        customSections.add(new WasmCustomSection(name, sectionData));
     }
 
     public List<WasmCustomSection> customSections() {

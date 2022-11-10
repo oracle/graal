@@ -178,14 +178,14 @@ public final class WasmContext {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
         // Reread code sections if module is instantiated multiple times
-        if (module.hasCodeSection() && !module.hasCodeEntries()) {
+        if (!module.hasCodeEntryCallNodes()) {
             final BinaryParser reader = new BinaryParser(module, this);
-            reader.readCodeEntries();
+            reader.readCodeEntryCallNodes();
         }
         final WasmInstantiator translator = new WasmInstantiator(language);
         final WasmInstance instance = translator.createInstance(this, module);
         // Remove code entries from module to reduce memory footprint at runtime
-        module.removeCodeEntries();
+        module.removeCodeEntryCallNodes();
         this.register(instance);
         return instance;
     }

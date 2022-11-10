@@ -69,7 +69,7 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(BytecodeList bytecode) {
-        if(branchTargets.size() == 0) {
+        if (branchTargets.size() == 0) {
             return;
         }
         final int location = bytecode.addLabel(resultTypeLength(), initialStackSize());

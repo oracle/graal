@@ -51,6 +51,7 @@ public abstract class ControlFrame {
     private final byte[] resultTypes;
     private final int initialStackSize;
     private boolean unreachable;
+
     /**
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.

@@ -537,6 +537,24 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testInstantiateModuleWithCallTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("exportTwice", "(func (nop)) (func (export \"a\") (call 0))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            wasm.moduleInstantiate(module, importObject);
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            final Object func = WebAssembly.instanceExport(instance, "a");
+            try {
+                InteropLibrary.getUncached(func).execute(func);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);

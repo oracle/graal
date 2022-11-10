@@ -87,7 +87,7 @@ public class WasmInstantiator {
     @TruffleBoundary
     public WasmInstance createInstance(WasmContext context, WasmModule module) {
         WasmInstance instance = new WasmInstance(context, module);
-        int binarySize = instance.module().bytecode().length;
+        int binarySize = instance.module().bytecodeLength();
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
         if (binarySize < asyncParsingBinarySize) {
             instantiateCodeEntries(context, instance);
