@@ -74,6 +74,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.Resources;
@@ -81,7 +82,6 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
@@ -94,6 +94,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -117,6 +118,7 @@ public class ProgressReporter {
 
     private final ProgressReporterJsonHelper jsonHelper;
     private final DirectPrinter linePrinter = new DirectPrinter();
+    private final StringBuilder buildOutputLog = new StringBuilder();
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
     private final LinkStrategy linkStrategy;
@@ -595,19 +597,28 @@ public class ProgressReporter {
                         .a(String.format("%9s for %s more object types", Utils.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
     }
 
-    public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
+    public void printEpilog(String imageName, NativeImageGenerator generator, FeatureHandler featureHandler, ImageClassLoader classLoader, Throwable error, OptionValues parsedHostedOptions) {
+        executor.shutdown();
+
+        if (error != null) {
+            Path errorReportPath = NativeImageOptions.getErrorFilePath();
+            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath, p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, error), false);
+            BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
+        }
+
+        if (imageName == null || generator == null) {
+            printErrorMessage(error);
+            return;
+        }
+
         l().printLineSeparator();
         printResourceStatistics();
 
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
-        createArtifacts(imageName, generator, parsedHostedOptions, wasSuccessfulBuild);
-        Map<ArtifactType, List<Path>> artifacts = generator.getBuildArtifacts();
-        if (!artifacts.isEmpty()) {
-            l().printLineSeparator();
-            printArtifacts(artifacts);
-        }
+        createAdditionalArtifacts(imageName, generator, error, parsedHostedOptions);
+        printArtifacts(generator.getBuildArtifacts());
 
         l().printHeadlineSeparator();
 
@@ -617,14 +628,38 @@ public class ProgressReporter {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
-        executor.shutdown();
+        l().a(error == null ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(error == null ? "in" : "after").a(" ").a(timeStats).a(".").println();
+
+        printErrorMessage(error);
     }
 
-    private void createArtifacts(String imageName, NativeImageGenerator generator, OptionValues parsedHostedOptions, boolean wasSuccessfulBuild) {
+    private void printErrorMessage(Throwable error) {
+        if (error == null) {
+            return;
+        }
+        l().println();
+        l().redBold().a("The build process encountered an unexpected error:").reset().println();
+        if (NativeImageOptions.ReportExceptionStackTraces.getValue()) {
+            l().dim().println();
+            error.printStackTrace(builderIO.getOut());
+            l().reset().println();
+        } else {
+            l().println();
+            l().dim().a("> %s", error).reset().println();
+            l().println();
+            l().a("Please inspect the generated error report at:").println();
+            l().link(NativeImageOptions.getErrorFilePath()).println();
+            l().println();
+            l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
+            var supportURL = ImageSingletons.lookup(VM.class).supportURL;
+            l().link(supportURL, supportURL).println();
+        }
+    }
+
+    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, Throwable error, OptionValues parsedHostedOptions) {
         BuildArtifacts artifacts = BuildArtifacts.singleton();
-        if (jsonHelper != null && wasSuccessfulBuild) {
+        if (error == null && jsonHelper != null) {
             artifacts.add(ArtifactType.BUILD_INFO, jsonHelper.printToFile());
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
@@ -634,6 +669,10 @@ public class ProgressReporter {
     }
 
     private void printArtifacts(Map<ArtifactType, List<Path>> artifacts) {
+        if (artifacts.isEmpty()) {
+            return;
+        }
+        l().printLineSeparator();
         l().yellowBold().a("Produced artifacts:").reset().println();
         // Use TreeMap to sort paths alphabetically.
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
@@ -857,14 +896,17 @@ public class ProgressReporter {
 
     private void print(char text) {
         builderIO.getOut().print(text);
+        buildOutputLog.append(text);
     }
 
     private void print(String text) {
         builderIO.getOut().print(text);
+        buildOutputLog.append(text);
     }
 
     private void println() {
         builderIO.getOut().println();
+        buildOutputLog.append(System.lineSeparator());
     }
 
     /*
@@ -1361,16 +1403,18 @@ public class ProgressReporter {
         }
     }
 
-    private static class ANSI {
+    public static class ANSI {
         static final String ESCAPE = "\033";
         static final String RESET = ESCAPE + "[0m";
         static final String BOLD = ESCAPE + "[1m";
         static final String DIM = ESCAPE + "[2m";
+        static final String STRIP_COLORS = "\033\\[[;\\d]*m";
 
         static final String LINK_START = ESCAPE + "]8;;";
         static final String LINK_TEXT = ESCAPE + "\\";
         static final String LINK_END = LINK_START + LINK_TEXT;
         static final String LINK_FORMAT = LINK_START + "%s" + LINK_TEXT + "%s" + LINK_END;
+        static final String STRIP_LINKS = "\033]8;;https://\\S+\033\\\\([^\033]*)\033]8;;\033\\\\";
 
         static final String BLUE = ESCAPE + "[0;34m";
 
@@ -1378,6 +1422,11 @@ public class ProgressReporter {
         static final String YELLOW_BOLD = ESCAPE + "[1;33m";
         static final String BLUE_BOLD = ESCAPE + "[1;34m";
         static final String MAGENTA_BOLD = ESCAPE + "[1;35m";
+
+        /* Strip all ANSI codes emitted by this class. */
+        public static String strip(String string) {
+            return string.replaceAll(STRIP_COLORS, "").replaceAll(STRIP_LINKS, "$1");
+        }
     }
 }
 

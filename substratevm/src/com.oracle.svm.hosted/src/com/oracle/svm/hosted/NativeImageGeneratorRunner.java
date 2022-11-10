@@ -287,6 +287,7 @@ public class NativeImageGeneratorRunner {
         ForkJoinPool compilationExecutor = null;
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
+        Throwable vmError = null;
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
@@ -452,20 +453,18 @@ public class NativeImageGeneratorRunner {
             }
             return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
-            NativeImageGeneratorRunner.reportFatalError(e);
+            vmError = e;
             return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
-            if (imageName != null && generator != null) {
-                reportEpilog(imageName, reporter, wasSuccessfulBuild, parsedHostedOptions);
-            }
+            reportEpilog(imageName, reporter, classLoader, vmError, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
     }
 
-    protected void reportEpilog(String imageName, ProgressReporter reporter, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
-        reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, Throwable vmError, OptionValues parsedHostedOptions) {
+        reporter.printEpilog(imageName, generator, generator.featureHandler, classLoader, vmError, parsedHostedOptions);
     }
 
     protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
