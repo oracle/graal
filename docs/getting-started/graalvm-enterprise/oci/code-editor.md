@@ -59,8 +59,7 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
     git init graalvmee-java-hello-world
     ```
     ```shell
-     cd graalvmee-java-hello-world
-
+    cd graalvmee-java-hello-world
     ```
     ```shell
     git remote add origin https://github.com/oracle-devrel/oci-code-editor-samples.git
