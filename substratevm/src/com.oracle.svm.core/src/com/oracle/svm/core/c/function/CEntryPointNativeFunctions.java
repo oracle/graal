@@ -116,7 +116,7 @@ public final class CEntryPointNativeFunctions {
                     "attached to the passed isolate or if another error occurs, returns NULL."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static IsolateThread getCurrentThread(Isolate isolate) {
-        int status = CEntryPointActions.enterIsolate(isolate);
+        int status = CEntryPointActions.enterByIsolate(isolate);
         if (status != 0) {
             return WordFactory.nullPointer();
         }
