@@ -23,7 +23,9 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 public abstract class JavaSubstitution extends SubstitutionProfiler {
@@ -83,7 +85,11 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
 
     public abstract Object invoke(Object[] args);
 
-    public abstract Object invokeInlined(VirtualFrame frame, int top);
+    @SuppressWarnings("unused")
+    public Object invokeInlined(VirtualFrame frame, int top) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("invokeInlined should not be reachable for non-inlinable substitutions.");
+    }
 
     @Override
     public boolean canSplit() {

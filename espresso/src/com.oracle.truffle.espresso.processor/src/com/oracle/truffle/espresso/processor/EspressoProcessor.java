@@ -178,6 +178,21 @@ public abstract class EspressoProcessor extends BaseProcessor {
     abstract ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     /**
+     * Additional hook called after
+     * {@link #generateFactoryConstructor(ClassBuilder, String, String, List, SubstitutionHelper)},
+     * which allows processors to add additional methods to the generated factory.
+     * <p>
+     * By default, adds the {@code isTrivial} method.
+     */
+    @SuppressWarnings("unused")
+    protected ClassBuilder generateAdditionalFactoryMethods(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+        if (isTrivial(helper.getTarget(), helper.getImplAnnotation())) {
+            factoryBuilder.withMethod(generateIsTrivial(helper));
+        }
+        return factoryBuilder;
+    }
+
+    /**
      * Generates the builder that corresponds to the code of the invoke method for the current
      * substitutor. Care must be taken to correctly unwrap and cast the given arguments (given in an
      * Object[]) so that they correspond to the substituted method's signature. Furthermore, all
@@ -617,12 +632,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal()) //
                         .withSuperClass(substitutor + "." + FACTORY);
         generateFactoryConstructor(factory, substitutorName, targetMethodName, parameterTypeName, helper);
-        if (isTrivial(helper.getTarget(), helper.getImplAnnotation())) {
-            factory.withMethod(generateIsTrivial(helper));
-        }
-        if (hasGuard(helper.getTarget(), helper.getImplAnnotation())) {
-            factory.withMethod(generateGuard(helper, className));
-        }
+        generateAdditionalFactoryMethods(factory, className, targetMethodName, parameterTypeName, helper);
         factory.withMethod(new MethodBuilder(CREATE) //
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
@@ -655,20 +665,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return constructor;
     }
 
-    private static boolean isTrivial(Element element, TypeElement implAnnotation) {
+    protected static boolean isTrivial(Element element, TypeElement implAnnotation) {
         AnnotationMirror mirror = getAnnotation(element, implAnnotation);
         try {
             Boolean value = getAnnotationValue(mirror, "isTrivial", Boolean.class);
-            return value != null && value;
-        } catch (NoSuchElementException e) {
-            return false;
-        }
-    }
-
-    private static boolean hasGuard(Element element, TypeElement implAnnotation) {
-        AnnotationMirror mirror = getAnnotation(element, implAnnotation);
-        try {
-            Boolean value = getAnnotationValue(mirror, "hasGuard", Boolean.class);
             return value != null && value;
         } catch (NoSuchElementException e) {
             return false;
@@ -685,18 +685,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withReturnType("boolean") //
                         .addBodyLine("return ", isTrivial(helper.getTarget(), helper.getImplAnnotation()), ';');
         return isTrivialMethod;
-    }
-
-    /**
-     * Generates guard getter.
-     */
-    private static MethodBuilder generateGuard(SubstitutionHelper helper, String targetClassName) {
-        MethodBuilder guardMethod = new MethodBuilder(GUARD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withReturnType("Object") //
-                        .addBodyLine("return ", targetClassName, ".", helper.getTarget().getSimpleName(), "Guard", ';');
-        return guardMethod;
     }
 
     static boolean injectLanguage(StringBuilder str, boolean first) {

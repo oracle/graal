@@ -55,7 +55,8 @@ public final class Target_java_lang_Object {
                         return StaticObject.isNull(receiver) || !Init.hasFinalizer(receiver);
                     };
 
-    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true, hasGuard = true)
+    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
+    @InlineInBytecode(guard = "InitGuard")
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
