@@ -100,7 +100,7 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
 
         };
 
-        CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, longCompilationHandler);
+        CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler);
         try (CompilationWatchDog watchScope = watch) {
             return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, options);
         } finally {

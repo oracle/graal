@@ -67,7 +67,7 @@ import jdk.vm.ci.services.Services;
  * while waiting to be run. A problematic compilation will eventually be watched as the executor
  * effectively sorts its tasks in the order they are received.
  */
-public class CompilationWatchDog implements Runnable, AutoCloseable {
+public final class CompilationWatchDog implements Runnable, AutoCloseable {
 
     /**
      * An object whose {@link #toString()} method returns the current thread's name along with a
@@ -180,20 +180,37 @@ public class CompilationWatchDog implements Runnable, AutoCloseable {
 
     private StackTraceElement[] lastStackTrace;
 
+    private final ScheduledExecutorService singleShotExecutor;
+
     CompilationWatchDog(CompilationIdentifier compilation, Thread watchedThread, int delay, int vmExitDelay,
-                    EventHandler eventHandler) {
+                    boolean singleShotExecutor, EventHandler eventHandler) {
         this.compilation = compilation;
         this.watchedThread = watchedThread;
         this.vmExitDelay = vmExitDelay;
         this.eventHandler = eventHandler == null ? EventHandler.DEFAULT : eventHandler;
         trace("started compiling %s", compilation);
-        this.task = schedule(this, delay);
+        if (singleShotExecutor) {
+            this.singleShotExecutor = createExecutor();
+            this.task = this.singleShotExecutor.schedule(this, delay, TimeUnit.SECONDS);
+        } else {
+            this.singleShotExecutor = null;
+            this.task = schedule(this, delay);
+        }
     }
 
     private void stopCompilation() {
         trace("stopped compiling %s", compilation);
         this.compilation = null;
         this.task.cancel(true);
+        if (singleShotExecutor != null) {
+            singleShotExecutor.shutdownNow();
+            while (!singleShotExecutor.isTerminated()) {
+                try {
+                    singleShotExecutor.awaitTermination(1, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
     }
 
     /**
@@ -307,6 +324,8 @@ public class CompilationWatchDog implements Runnable, AutoCloseable {
      * Opens a scope for watching a compilation.
      *
      * @param compilation identifies the compilation being watched
+     * @param singleShotExecutor if true, then a dedicated executor is created for this task and it
+     *            is shutdown once the compilation ends
      * @param eventHandler notified of events like a compilation running long running or getting
      *            stuck. If {@code null}, {@link EventHandler#DEFAULT} is used.
      * @return {@code null} if the compilation watch dog is disabled otherwise a new
@@ -314,7 +333,7 @@ public class CompilationWatchDog implements Runnable, AutoCloseable {
      *         {@code try}-with-resources statement whose scope is the whole compilation so that
      *         leaving the scope will cause {@link #close()} to be called.
      */
-    public static CompilationWatchDog watch(CompilationIdentifier compilation, OptionValues options, EventHandler eventHandler) {
+    public static CompilationWatchDog watch(CompilationIdentifier compilation, OptionValues options, boolean singleShotExecutor, EventHandler eventHandler) {
         int delay = Options.CompilationWatchDogStartDelay.getValue(options);
         if (Services.IS_BUILDING_NATIVE_IMAGE && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
             // Disable watch dog by default when building a native image
@@ -324,7 +343,7 @@ public class CompilationWatchDog implements Runnable, AutoCloseable {
             Thread watchedThread = Thread.currentThread();
             int vmExitDelay = Options.CompilationWatchDogVMExitDelay.getValue(options);
             CompilationWatchDog watchDog = new CompilationWatchDog(compilation, watchedThread, delay,
-                            vmExitDelay, eventHandler);
+                            vmExitDelay, singleShotExecutor, eventHandler);
             return watchDog;
         }
         return null;

@@ -741,7 +741,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         @SuppressWarnings("try")
         @Override
         protected Void performCompilation(DebugContext debug) {
-            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), TruffleCompilerImpl.this)) {
+            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this)) {
                 compileAST(this, debug);
                 return null;
             }
