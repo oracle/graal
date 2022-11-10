@@ -672,7 +672,7 @@ final class EngineAccessor extends Accessor {
             } else {
                 throw shouldNotReachHere();
             }
-            return polyglotContext.engine.inContextPreInitialization;
+            return polyglotContext.engine.inEnginePreInitialization && polyglotContext.parent == null;
         }
 
         @Override
@@ -1088,7 +1088,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isHostException(Object languageContext, Throwable exception) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostException(exception);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostException is supported and returns false
+            // because languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostException(exception);
         }
 
         @Override
@@ -1346,19 +1350,31 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isHostFunction(Object languageContext, Object obj) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostFunction(obj);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostFunction is supported and returns false
+            // because languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostFunction(obj);
         }
 
         @Override
         public boolean isHostObject(Object languageContext, Object obj) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostObject(obj);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostObject is supported and returns false because
+            // languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostObject(obj);
         }
 
         @Override
         public boolean isHostSymbol(Object languageContext, Object obj) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostSymbol(obj);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostSymbol is supported and returns false because
+            // languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostSymbol(obj);
         }
 
         @Override

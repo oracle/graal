@@ -228,7 +228,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     @CompilationFinal PolyglotLanguage hostLanguage;    // effectively final after engine patching
     @CompilationFinal AbstractHostLanguageService host; // effectively final after engine patching
 
-    boolean inContextPreInitialization; // effectively final
+    boolean inEnginePreInitialization; // effectively final after engine pre-initialization
 
     final boolean hostLanguageOnly;
 
@@ -1375,7 +1375,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void preInitialize() {
         synchronized (this.lock) {
-            inContextPreInitialization = true;
+            inEnginePreInitialization = true;
             try {
                 if (isSharingEnabled(null)) {
                     for (PolyglotSharingLayer layer : sharedLayers) {
@@ -1411,7 +1411,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, preinitConfig, null, preinitLanguages, true));
                 }
             } finally {
-                inContextPreInitialization = false;
+                inEnginePreInitialization = false;
             }
         }
     }

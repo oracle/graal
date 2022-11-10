@@ -687,7 +687,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             // The host language in the image execution time may differ from host language in the
             // image build time. We have to postpone the creation and initialization of the host
             // language context until the patching.
-            assert engine.inContextPreInitialization : "PreInitContextHostLanguage can be used only during context pre-initialization";
+            assert engine.inEnginePreInitialization : "PreInitContextHostLanguage can be used only during context pre-initialization";
         } else {
             hostContext.ensureCreated(hostLanguage);
             hostContext.ensureInitialized(null);
@@ -3313,6 +3313,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
             return context;
         } finally {
+
             for (PolyglotLanguage language : engine.languages) {
                 if (language != null) {
                     language.clearOptionValues();

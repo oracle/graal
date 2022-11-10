@@ -136,7 +136,7 @@ final class PolyglotSharingLayer {
         assert Thread.holdsLock(engine.lock);
         assert !isClaimed() : "already claimed";
         assert sharableLayer == null || (sharableLayer.isClaimed() && sharableLayer.getContextPolicy() != ContextPolicy.EXCLUSIVE);
-        assert hostLanguage != null || engine.inContextPreInitialization;
+        assert hostLanguage != null || engine.inEnginePreInitialization;
 
         Shared s = sharableLayer != null ? sharableLayer.shared : null;
 
