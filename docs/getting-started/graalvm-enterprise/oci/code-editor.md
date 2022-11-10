@@ -39,7 +39,7 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
     You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
 
 3. Confirm the values of the environment variables `JAVA_HOME` and `PATH`, and the version of `java`, the `native-image` generator:
-    ```sheLL
+    ```shell
     echo $JAVA_HOME
     ```
     ```shell
@@ -56,28 +56,26 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
 1. Clone a demo repository and open it in OCI Code Editor. To achieve this, run the following commands one by one:
 
     ```shell
-    git init graalvmee-spring-native-image
+    git init graalvmee-java-hello-world
     ```
     ```shell
-    cd graalvmee-spring-native-image
+     cd graalvmee-java-hello-world
 
     ```
     ```shell
-    git remote add origin https://github.com/graalvm/graalvm-demos.git
+    git remote add origin https://github.com/oracle-devrel/oci-code-editor-samples.git
     ```
-
     ```shell
     git config core.sparsecheckout true
     ```
     ```shell
-    echo "spring-native-image/*">>.git/info/sparse-checkout
+    echo "java-samples/graalvmee-java-hello-world/*">>.git/info/sparse-checkout
     ```
     ```shell
-    git pull --depth=1 origin master
+    git pull --depth=1 origin main
     ```
-
     ```shell
-    cd spring-native-image
+    cd java-samples/graalvmee-java-hello-world/
     ```
     
     You can now view/change the sample code in code editor.
@@ -92,19 +90,9 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
 3. Run the JAR:
 
     ```shell
-    java -jar ./target/benchmark-jibber-0.0.1-SNAPSHOT.jar &
+    java -jar target/my-app-1.0-SNAPSHOT.jar 
     ```
-4. Test the app JAR.
-
-   ```shell
-   curl http://localhost:8080/jibber
-    ``` 
-    You should see some nonsense verse printed.
-5.  Bring the running app JAR in the foreground:
-    ```shell
-    fg
-    ```
-6.  Once the app is running in the foreground, press CTRL+C to stop it.
+    It prints out “Hello World!”.
 
 ## Step 4: Build and Run a Native Executable
 
@@ -115,27 +103,15 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 1. Build a native executable using the `native` Maven profile. The quick build mode is enabled for this run: notice the `<buildArg>-Ob</buildArg>` option in plugin's configuration in _pom.xml_.
 
     ```shell
-    mvn -Pnative native:compile
+    mvn clean -Pnative -DskipTests package
     ```
-    This will create a binary executable target/benchmark-jibber.
+    This will generate a native executable for Linux in the target directory, named my-app.
 
 2. Run the app native executable in the background:
 
     ```shell
-   ./target/benchmark-jibber &
+    ./target/my-app
     ```
-3. Test the app native executable:
-
-    ```shell
-    curl http://localhost:8080/jibber
-    ```
-    Again, it should generate a random nonsense verse.
-
-4.  Bring the running app native executable in the foreground:
-    ```shell
-    fg
-    ```
-5.  Once the app is running in the foreground, press CTRL+C to stop it.  
 
 ### Quick Build Mode Disabled
 
@@ -146,12 +122,13 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
     ```
 2. Build a native executable again:
 
-    
+    ```shell
     mvn clean -Pnative -DskipTests package
     ```
     This will generate a native executable, _my-app_, in the _target_ directory, replacing the previous one. You have probably noticed how the quick build mode reduce the time required to generate a native executable, making it easier to use Native Image in a typical development cycle (compile, test, and debug). However, the size of a generated executable gets larger and peak performance worse. The quick build mode is recommended for development purposes only. 
 
 3. Run the native executable:
+
     ```shell
     ./target/my-app
     ```
