@@ -28,7 +28,7 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.c.CHeader.Header;
+import org.graalvm.nativeimage.c.CHeader.Header;
 
 public class PolyglotAPIHeader implements Header {
     @Override
