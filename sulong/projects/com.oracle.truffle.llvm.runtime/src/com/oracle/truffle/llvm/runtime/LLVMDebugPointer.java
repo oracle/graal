@@ -36,6 +36,10 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen.LLVM
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen.LLVMI64OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen.LLVMI8OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen.LLVMPointerOffsetLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen.LLVMI16OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen.LLVMI32OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -104,6 +108,38 @@ public final class LLVMDebugPointer {
 
     public long readI64(long offset) throws UnexpectedResultException {
         return LLVMI64OffsetLoadNodeGen.getUncached().executeWithTarget(pointer, offset);
+    }
+
+    public void writeI8(long offset, byte value) {
+        LLVMI8OffsetStoreNodeGen.getUncached().executeWithTarget(pointer, offset, value);
+    }
+
+    public void writeI8(byte value) {
+        writeI8(0, value);
+    }
+
+    public void writeI16(long offset, short value) {
+        LLVMI16OffsetStoreNodeGen.getUncached().executeWithTarget(pointer, offset, value);
+    }
+
+    public void writeI16(short value) {
+        writeI16(0, value);
+    }
+
+    public void writeI32(long offset, int value) {
+        LLVMI32OffsetStoreNodeGen.getUncached().executeWithTarget(pointer, offset, value);
+    }
+
+    public void writeI32(int value) {
+        writeI32(0, value);
+    }
+
+    public void writeI64(long offset, long value) {
+        LLVMI64OffsetStoreNodeGen.getUncached().executeWithTarget(pointer, offset, value);
+    }
+
+    public void writeI64(long value) {
+        writeI64(0, value);
     }
 
     public LLVMPointer readPointer() {
