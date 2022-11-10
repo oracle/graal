@@ -29,7 +29,7 @@ GraalVM Enterprise JDK 17 and Native Image are preinstalled in Cloud Shell, so y
     ```shell
     csruntimectl java list
     ```
-    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, OpenJDK for Java 11, and OpenJDK for Java 8. The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, Oracle JDK for Java 11, and Oracle JDK for Java 8. The JDK marked with an asterisk is the current JDK.
 
 2. Select GraalVM JDK for Java 17 as the current JDK:
 
