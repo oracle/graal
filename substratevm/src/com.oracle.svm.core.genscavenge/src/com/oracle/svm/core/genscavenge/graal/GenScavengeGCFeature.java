@@ -155,7 +155,7 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static PerfDataHolder createPerfData() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialOrParallelGC()) {
             return new SerialGCPerfData();
         } else {
             assert SubstrateOptions.UseEpsilonGC.getValue();

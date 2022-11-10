@@ -339,6 +339,11 @@ public class SubstrateOptions {
     };
 
     @Fold
+    public static boolean useSerialOrParallelGC() {
+        return UseSerialGC.getValue() || UseParallelGC.getValue();
+    }
+
+    @Fold
     public static boolean useGraalCeGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue() || UseEpsilonGC.getValue();
     }
