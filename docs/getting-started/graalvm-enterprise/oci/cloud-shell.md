@@ -35,7 +35,7 @@ Cloud Shell has several pre-installed JDKs, including GraalVM Enterprise JDK.
 
 4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
 
-    ```sheLL
+    ```shell
     echo $JAVA_HOME
     ```
     ```shell
