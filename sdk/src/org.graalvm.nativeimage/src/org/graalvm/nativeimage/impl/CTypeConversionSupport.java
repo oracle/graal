@@ -50,11 +50,11 @@ import org.graalvm.word.UnsignedWord;
 
 public interface CTypeConversionSupport {
 
-    UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize);
+    CCharPointerHolder toCString(CharSequence javaString);
 
     UnsignedWord toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize);
 
-    CCharPointerHolder toCString(CharSequence javaString);
+    UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize);
 
     String toJavaString(CCharPointer cString);
 
