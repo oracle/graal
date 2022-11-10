@@ -26,7 +26,6 @@ Getting GraalVM Enterprise installed and ready-to-go should take a few minutes.
 Choose your operating system and proceed to the installation steps for your specific platform:
 
 * [Linux](installation-linux.md)
-* [Linux ARM64](installation-linux-aarch64.md)
 * [Oracle Linux](oci/compute-instances.md)
 * [macOS](installation-macos.md)
 * [Windows](installation-windows.md)
@@ -83,6 +82,7 @@ For more information on the GraalVM compiler, go to [Compiler](../../reference-m
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
 ### JavaScript and Node.js
+
 GraalVM Enterprise can execute plain JavaScript code, both in REPL mode and by executing script files directly:
 ```shell
 js
@@ -268,11 +268,7 @@ More details can be found in the [WebAssembly reference manual](../../reference-
 
 ## Native Image
 
-<<<<<<< HEAD
-With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and a smaller footprint for your application.
-=======
 With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
->>>>>>> 7c86aa8c43a (Native image > native executable)
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image

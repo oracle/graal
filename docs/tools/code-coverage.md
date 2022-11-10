@@ -222,7 +222,6 @@ $JAVA_HOME/bin/npm install express
 ```
 
 3. Launch Visual Studio Code and install a code coverage plugin that supports _lcov_.
-The [Code Coverage Highlighter](https://marketplace.visualstudio.com/items?itemName=brainfit.vscode-coverage-highlighter) is used for this example, but other plugins should work similarly.
 
 4. Run the _nodeapp.js_ file with coverage enabled and configured:
 ```shell
