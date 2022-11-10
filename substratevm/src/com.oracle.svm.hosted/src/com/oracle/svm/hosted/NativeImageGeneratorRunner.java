@@ -283,6 +283,7 @@ public class NativeImageGeneratorRunner {
         ForkJoinPool compilationExecutor = null;
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
+        Throwable vmError = null;
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
@@ -455,12 +456,10 @@ public class NativeImageGeneratorRunner {
             }
             return 1;
         } catch (Throwable e) {
-            NativeImageGeneratorRunner.reportFatalError(e);
+            vmError = e;
             return 1;
         } finally {
-            if (imageName != null && generator != null) {
-                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
-            }
+            reporter.printEpilog(imageName, generator, classLoader, vmError, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }

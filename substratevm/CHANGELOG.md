@@ -9,6 +9,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-41674) Class instanceOf and isAssignableFrom checks do need to make the checked type reachable.
 * (GR-41100) Add support for `-XX:HeapDumpPath` to control where heap dumps are created.
 * (GR-42148) Adjust build output to report types (primitives, classes, interfaces, and arrays) instead of classes and revise the output schema of `-H:BuildOutputJSONFile`.
+* (GR-41912) The builder now generated reports for internal errors, which users can share when creating issues. By default, error reports follow the `svm_err_<timestamp>_pid<pid>.md` pattern and are created in the working directory. Use `-H:ErrorFile` to adjust the path or filename.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.

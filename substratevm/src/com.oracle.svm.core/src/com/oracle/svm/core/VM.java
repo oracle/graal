@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,9 +33,11 @@ import com.oracle.svm.core.util.VMError;
 public final class VM {
 
     public final String version;
+    public final String supportURL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public VM(String config) {
+    public VM(String config, String supportURL) {
+        this.supportURL = supportURL;
         String versionStr = System.getProperty("org.graalvm.version");
         VMError.guarantee(versionStr != null);
         versionStr = "GraalVM " + versionStr;

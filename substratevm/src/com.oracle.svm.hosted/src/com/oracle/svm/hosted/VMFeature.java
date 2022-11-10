@@ -59,7 +59,7 @@ public class VMFeature implements InternalFeature {
 
     protected VM createVMSingletonValue() {
         String config = System.getProperty("org.graalvm.config", "CE");
-        return new VM(config);
+        return new VM(config, "https://graalvm.org/native-image/bug-report/");
     }
 
     @Override
