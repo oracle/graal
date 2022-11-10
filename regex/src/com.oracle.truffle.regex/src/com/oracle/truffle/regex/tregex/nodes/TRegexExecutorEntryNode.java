@@ -138,12 +138,12 @@ public abstract class TRegexExecutorEntryNode extends Node {
     private final RegexLanguage language;
     @Child TRegexExecutorBaseNode executor;
 
-    public TRegexExecutorEntryNode(RegexLanguage language, TRegexExecutorNode executor) {
+    public TRegexExecutorEntryNode(RegexLanguage language, TRegexExecutorBaseNode executor) {
         this.language = language;
         this.executor = executor;
     }
 
-    public static TRegexExecutorEntryNode create(RegexLanguage language, TRegexExecutorNode executor) {
+    public static TRegexExecutorEntryNode create(RegexLanguage language, TRegexExecutorBaseNode executor) {
         if (executor == null) {
             return null;
         }
