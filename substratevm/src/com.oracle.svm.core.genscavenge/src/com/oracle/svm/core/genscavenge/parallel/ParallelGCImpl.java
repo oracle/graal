@@ -27,8 +27,9 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
@@ -45,7 +46,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -239,8 +241,10 @@ public class ParallelGCImpl extends ParallelGC {
     }
 }
 
-@AutomaticFeature
-class ParallelGCFeature implements Feature {
+@Platforms(Platform.HOSTED_ONLY.class)
+@AutomaticallyRegisteredFeature()
+@SuppressWarnings("unused")
+class ParallelGCFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
