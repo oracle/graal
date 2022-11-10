@@ -54,8 +54,10 @@ import jdk.vm.ci.services.Services;
  * period between reports is doubled each time (i.e., at 1, 2, 4, 8 seconds etc).
  *
  * If {@code D ==} {@link Options#CompilationWatchDogVMExitDelay} and {@code D != 0} and the
- * compilation appears to be stuck for {@code D} seconds (i.e., identical stack traces are seen for
- * {@code D} seconds), the VM exits.
+ * compilation appears to make no progress for {@code D} seconds (i.e., identical stack traces are
+ * seen for {@code D} seconds), it is {@linkplain EventHandler#onStuckCompilation reported} as
+ * stuck. It is expected most watch dog event handlers will exit the VM in this case. For this
+ * reason, the default value is 0 as VM exiting needs to be an opt-in behavior.
  *
  * The executor used to schedule and run the tasks uses a single thread that will terminate when
  * compilation goes idle. The latter is important to also allow destroying a libgraal isolate when
