@@ -284,7 +284,7 @@ public class ParserState {
      * @param resultTypes The result types of the loop that was entered.
      */
     public void enterLoop(byte[] paramTypes, byte[] resultTypes) {
-        final int label = bytecode.addLoopLabel(valueStack.size() + paramTypes.length);
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonTypeDescriptor(paramTypes));
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -403,12 +403,20 @@ public class ParserState {
         bytecode.addCall(nodeIndex, functionIndex);
     }
 
+    public void addMiscFlag() {
+        bytecode.addInstruction(Bytecode.MISC);
+    }
+
     public void addImmediateInstruction(int instruction, int immediateValue) {
         bytecode.addImmediateInstruction(instruction, immediateValue);
     }
 
     public void addImmediateInstruction(int instruction, long immediateValue) {
         bytecode.addImmediateInstruction(instruction, immediateValue);
+    }
+
+    public void addImmediateInstruction(int instruction, int immediateValue1, int immediateValue2) {
+        bytecode.addImmediateInstruction(instruction, immediateValue1, immediateValue2);
     }
 
     public void addSignedImmediateInstruction(int instruction, int immediateValue) {

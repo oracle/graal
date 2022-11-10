@@ -72,7 +72,7 @@ class BlockFrame extends ControlFrame {
         if (branchTargets.size() == 0) {
             return;
         }
-        final int location = bytecode.addLabel(resultTypeLength(), initialStackSize());
+        final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
         for (int branchLocation : branchTargets.toArray()) {
             bytecode.patchLocation(branchLocation, location);
         }

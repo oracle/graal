@@ -47,7 +47,7 @@ public class BytecodeList {
     }
 
     private boolean fitsIntoUnsignedByte(int value) {
-        return value <= 255;
+        return Integer.compareUnsigned(value, 255) <= 0;
     }
 
     private boolean fitsIntoSignedByte(long value) {
@@ -58,19 +58,19 @@ public class BytecodeList {
         add1(instruction);
     }
 
-    public int addLabel(int results, int stack) {
+    public int addLabel(int results, int stack, int resultType) {
         final int location;
         if (results <= 1 && stack <= 15) {
             add1(Bytecode.SKIP_LABEL);
             location = bytecode.size();
             add1(Bytecode.LABEL);
-            add1(results << 7 | stack);
+            add1(results << 7 | resultType | stack);
         } else if (results <= 15 && fitsIntoUnsignedByte(stack)) {
             add1(Bytecode.SKIP_LABEL_I8);
             add1(4);
             location = bytecode.size();
             add1(Bytecode.LABEL);
-            add1(0x40 | results);
+            add1(0x40 | resultType | results);
             add1(stack);
         } else {
             final boolean resultFitsIntoByte = fitsIntoUnsignedByte(results);
@@ -79,7 +79,7 @@ public class BytecodeList {
             add1(3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
             location = bytecode.size();
             add1(Bytecode.LABEL);
-            add1(0xC0 | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
+            add1(0xC0 | resultType | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
             if (resultFitsIntoByte) {
                 add1(results);
             } else {
@@ -94,20 +94,33 @@ public class BytecodeList {
         return location;
     }
 
-    public int addLoopLabel(int stack) {
+    public int addLoopLabel(int results, int stack, int resultType) {
         final int location;
-        if (stack <= 31) {
+        if (results <= 1 && stack <= 15) {
             add1(Bytecode.SKIP_LABEL);
             location = bytecode.size();
             add1(Bytecode.LOOP_LABEL);
-            add1(stack);
-        } else {
-            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            add1(results << 7 | resultType | stack);
+        } else if (results <= 15 && fitsIntoUnsignedByte(stack)) {
             add1(Bytecode.SKIP_LABEL_I8);
-            add1(3 + (stackFitsIntoByte ? 1 : 4));
+            add1(4);
             location = bytecode.size();
             add1(Bytecode.LOOP_LABEL);
-            add1(0x80 | (stackFitsIntoByte ? 0 : 0x01));
+            add1(0x40 | resultType | results);
+            add1(stack);
+        } else {
+            final boolean resultFitsIntoByte = fitsIntoUnsignedByte(results);
+            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            add1(Bytecode.SKIP_LABEL_I8);
+            add1(3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
+            location = bytecode.size();
+            add1(Bytecode.LOOP_LABEL);
+            add1(0xC0 | resultType | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
+            if (resultFitsIntoByte) {
+                add1(results);
+            } else {
+                add4(results);
+            }
             if (stackFitsIntoByte) {
                 add1(stack);
             } else {
@@ -235,6 +248,12 @@ public class BytecodeList {
     public void addImmediateInstruction(int instruction, long value) {
         add1(instruction);
         add8(value);
+    }
+
+    public void addImmediateInstruction(int instruction, int value1, int value2) {
+        add1(instruction);
+        add4(value1);
+        add4(value2);
     }
 
     public void addSignedImmediateInstruction(int i8, int i32, int value) {

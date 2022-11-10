@@ -179,7 +179,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     }
 
     public boolean hasCodeEntryCallNodes() {
-        return (codeEntries == null) || (codeEntries[0].hasCallNodes());
+        return (codeEntries == null) || (codeEntries.length == 0) || (codeEntries[0].hasCallNodes());
     }
 
     public boolean hasCodeSection() {

@@ -71,7 +71,6 @@ import java.util.Objects;
 
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
-import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -89,9 +88,6 @@ import org.graalvm.wasm.parser.bytecode.BytecodeList;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ExceptionType;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
@@ -646,7 +642,7 @@ public class BinaryParser extends BinaryStreamParser {
                         callResultTypes[i] = module.functionTypeResultTypeAt(expectedFunctionTypeIndex, i);
                     }
                     state.pushAll(callResultTypes);
-                    state.addIndirectCall(callNodes.size(), expectedFunctionTypeIndex, 0);
+                    state.addIndirectCall(callNodes.size(), expectedFunctionTypeIndex, tableIndex);
                     callNodes.add(new CallNode());
                     break;
                 }
@@ -745,7 +741,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte elementType = module.tableElementType(index);
                     state.popChecked(I32_TYPE);
                     state.push(elementType);
-                    state.addInstruction(Bytecode.TABLE_GET);
+                    state.addImmediateInstruction(Bytecode.TABLE_GET, index);
                     break;
                 }
                 case Instructions.TABLE_SET: {
@@ -754,7 +750,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final byte elementType = module.tableElementType(index);
                     state.popChecked(elementType);
                     state.popChecked(I32_TYPE);
-                    state.addInstruction(Bytecode.TABLE_SET);
+                    state.addImmediateInstruction(Bytecode.TABLE_SET, index);
                     break;
                 }
                 case Instructions.F32_LOAD:
@@ -1152,7 +1148,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.addInstruction(opcode + 0x1B);
                 break;
             case Instructions.MISC:
-                int miscOpcode = read1() & 0xFF;
+                int miscOpcode = readUnsignedInt32();
                 switch (miscOpcode) {
                     case Instructions.I32_TRUNC_SAT_F32_S:
                     case Instructions.I32_TRUNC_SAT_F32_U:
@@ -1191,10 +1187,12 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         if (module.memoryHasIndexType64() && memory64) {
                             state.popChecked(I64_TYPE);
-                            state.addInstruction(Bytecode.MEMORY64_INIT);
+                            state.addMiscFlag();
+                            state.addImmediateInstruction(Bytecode.MEMORY64_INIT, dataIndex);
                         } else {
                             state.popChecked(I32_TYPE);
-                            state.addInstruction(Bytecode.MEMORY_INIT);
+                            state.addMiscFlag();
+                            state.addImmediateInstruction(Bytecode.MEMORY_INIT, dataIndex);
                         }
                         break;
                     }
@@ -1202,7 +1200,8 @@ public class BinaryParser extends BinaryStreamParser {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
                         module.checkDataSegmentIndex(dataIndex);
-                        state.addInstruction(Bytecode.DATA_DROP);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.DATA_DROP, dataIndex);
                         break;
                     }
                     case Instructions.MEMORY_COPY: {
@@ -1213,11 +1212,13 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
+                            state.addMiscFlag();
                             state.addInstruction(Bytecode.MEMORY64_COPY);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
+                            state.addMiscFlag();
                             state.addInstruction(Bytecode.MEMORY_COPY);
                         }
                         break;
@@ -1229,11 +1230,13 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I64_TYPE);
+                            state.addMiscFlag();
                             state.addInstruction(Bytecode.MEMORY64_FILL);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
+                            state.addMiscFlag();
                             state.addInstruction(Bytecode.MEMORY_FILL);
                         }
                         break;
@@ -1248,14 +1251,16 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
-                        state.addInstruction(Bytecode.TABLE_INIT);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.TABLE_INIT, elementIndex, tableIndex);
                         break;
                     }
                     case Instructions.ELEM_DROP: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int elementIndex = readUnsignedInt32();
                         module.checkElemIndex(elementIndex);
-                        state.addInstruction(Bytecode.ELEM_DROP);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.ELEM_DROP, elementIndex);
                         break;
                     }
                     case Instructions.TABLE_COPY:
@@ -1268,13 +1273,15 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
-                        state.addInstruction(Bytecode.TABLE_COPY);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.TABLE_COPY, sourceTableIndex, destinationTableIndex);
                         break;
                     case Instructions.TABLE_SIZE: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readTableIndex();
+                        final int tableIndex = readTableIndex();
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.TABLE_SIZE);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.TABLE_SIZE, tableIndex);
                         break;
                     }
                     case Instructions.TABLE_GROW: {
@@ -1284,7 +1291,8 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(elementType);
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.TABLE_GROW);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.TABLE_GROW, tableIndex);
                         break;
                     }
                     case Instructions.TABLE_FILL: {
@@ -1294,7 +1302,8 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(elementType);
                         state.popChecked(I32_TYPE);
-                        state.addInstruction(Bytecode.TABLE_FILL);
+                        state.addMiscFlag();
+                        state.addImmediateInstruction(Bytecode.TABLE_FILL, tableIndex);
                         break;
                     }
                     default:
@@ -1320,17 +1329,20 @@ public class BinaryParser extends BinaryStreamParser {
                 checkBulkMemoryAndRefTypesSupport(opcode);
                 final byte type = readRefType();
                 state.push(type);
+                state.addInstruction(Bytecode.REF_NULL);
                 break;
             case Instructions.REF_IS_NULL:
                 checkBulkMemoryAndRefTypesSupport(opcode);
                 state.popReferenceTypeChecked();
                 state.push(I32_TYPE);
+                state.addInstruction(Bytecode.REF_IS_NULL);
                 break;
             case Instructions.REF_FUNC:
                 checkBulkMemoryAndRefTypesSupport(opcode);
                 final int functionIndex = readDeclaredFunctionIndex();
                 module.checkFunctionReference(functionIndex);
                 state.push(FUNCREF_TYPE);
+                state.addImmediateInstruction(Bytecode.REF_FUNC, functionIndex);
                 break;
             default:
                 fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);

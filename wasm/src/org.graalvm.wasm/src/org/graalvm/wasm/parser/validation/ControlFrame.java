@@ -41,6 +41,7 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.bytecode.BytecodeList;
 
 /**
@@ -49,6 +50,8 @@ import org.graalvm.wasm.parser.bytecode.BytecodeList;
 public abstract class ControlFrame {
     private final byte[] paramTypes;
     private final byte[] resultTypes;
+
+    private final int commonResultType;
     private final int initialStackSize;
     private boolean unreachable;
 
@@ -63,6 +66,7 @@ public abstract class ControlFrame {
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
+        commonResultType = WasmType.getCommonTypeDescriptor(resultTypes);
     }
 
     /**
@@ -105,6 +109,10 @@ public abstract class ControlFrame {
 
     protected int resultTypeLength() {
         return resultTypes.length;
+    }
+
+    protected int commonResultType() {
+        return commonResultType;
     }
 
     int initialStackSize() {

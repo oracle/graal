@@ -269,8 +269,8 @@ public class Bytecode {
     public static final int I64_TRUNC_SAT_F64_S = 0xE9;
     public static final int I64_TRUNC_SAT_F64_U = 0xEA;
 
-    public static final int TABLE_SET = 0xEB;
-    public static final int TABLE_GET = 0xEC;
+    public static final int TABLE_GET = 0xEB;
+    public static final int TABLE_SET = 0xEC;
 
     public static final int MISC = 0xFC;
 

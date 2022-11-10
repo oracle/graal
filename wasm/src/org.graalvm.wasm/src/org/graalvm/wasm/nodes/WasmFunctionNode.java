@@ -49,8 +49,6 @@ import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
 import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
-import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
-import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
@@ -311,13 +309,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                         }
                     }
-                    final int returnType = (value & 0x60);
+                    final int returnType = (value & 0x30);
                     final int targetStackPointer = stackSize + numLocals;
-                    if (returnType == 0x20) {
+                    if (returnType == 0x10) {
                         unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
-                    } else if (returnType == 0x40) {
+                    } else if (returnType == 0x20) {
                         unwindReferenceStack(frame, stackPointer, targetStackPointer, resultCount);
-                    } else if (returnType == 0x60) {
+                    } else if (returnType == 0x30) {
                         unwindStack(frame, stackPointer, targetStackPointer, resultCount);
                     }
                     dropStack(frame, stackPointer, targetStackPointer + resultCount);
@@ -327,21 +325,44 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.LOOP_LABEL: {
                     final int value = rawPeekU8(bytecode, offset);
                     offset++;
+                    final int resultCount;
                     final int stackSize;
-                    if ((value & 0x80) == 0) {
-                        stackSize = (value & 0x1F);
+                    if ((value & 0x40) == 0) {
+                        resultCount = (value >>> 7);
+                        stackSize = (value & 0x0F);
                     } else {
-                        if ((value & 0x01) == 0) {
+                        if ((value & 0x80) == 0) {
+                            resultCount = (value & 0x0F);
                             stackSize = rawPeekU8(bytecode, offset);
                             offset++;
                         } else {
-                            stackSize = rawPeekI32(bytecode, offset);
-                            offset += 4;
+                            if ((value & 0x04) == 0) {
+                                resultCount = rawPeekU8(bytecode, offset);
+                                offset++;
+                            } else {
+                                resultCount = rawPeekI32(bytecode, offset);
+                                offset += 4;
+                            }
+                            if ((value & 0x01) == 0) {
+                                stackSize = rawPeekU8(bytecode, offset);
+                                offset++;
+                            } else {
+                                stackSize = rawPeekI32(bytecode, offset);
+                                offset += 4;
+                            }
                         }
                     }
-                    final int targetStackPoint = stackSize + numLocals;
-                    dropStack(frame, stackPointer, targetStackPoint);
-                    stackPointer = targetStackPoint;
+                    final int returnType = (value & 0x30);
+                    final int targetStackPointer = stackSize + numLocals;
+                    if (returnType == 0x10) {
+                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
+                    } else if (returnType == 0x20) {
+                        unwindReferenceStack(frame, stackPointer, targetStackPointer, resultCount);
+                    } else if (returnType == 0x30) {
+                        unwindStack(frame, stackPointer, targetStackPointer, resultCount);
+                    }
+                    dropStack(frame, stackPointer, targetStackPointer + resultCount);
+                    stackPointer = targetStackPointer + resultCount;
                     if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                         LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                         backEdgeCounter.count = 0;
@@ -435,7 +456,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                     if (CompilerDirectives.inInterpreter()) {
                         final int indexOffset = offset + 6 + index * 6;
-                        updateBranchTableProfile(bytecode, offset + 1, indexOffset + 4);
+                        updateBranchTableProfile(bytecode, offset + 4, indexOffset + 4);
                         final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                         offset = indexOffset + offsetDelta;
                         break;
@@ -565,15 +586,29 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     }
                 }
-                case Bytecode.CALL_INDIRECT_I8: {
+                case Bytecode.CALL_INDIRECT_I8:
+                case Bytecode.CALL_INDIRECT_I32: {
                     // Extract the function object.
                     stackPointer--;
                     final SymbolTable symtab = instance.symbolTable();
 
-                    final int callNodeIndex = rawPeek1(bytecode, offset);
-                    final int expectedFunctionTypeIndex = rawPeek1(bytecode, offset + 1);
-                    final int tableIndex = rawPeek1(bytecode, offset + 2);
-
+                    final int callNodeIndex;
+                    final int expectedFunctionTypeIndex;
+                    final int tableIndex;
+                    final int profileOffset;
+                    if (opcode == Bytecode.CALL_INDIRECT_I8) {
+                        callNodeIndex = rawPeekU8(bytecode, offset);
+                        expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
+                        tableIndex = rawPeekU8(bytecode, offset + 2);
+                        profileOffset = offset + 3;
+                        offset += 5;
+                    } else {
+                        callNodeIndex = rawPeekI32(bytecode, offset);
+                        expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
+                        tableIndex = rawPeekI32(bytecode, offset + 8);
+                        profileOffset = offset + 12;
+                        offset += 14;
+                    }
                     final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
                     final Object[] elements = table.elements();
                     final int elementIndex = popInt(frame, stackPointer);
@@ -607,7 +642,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Validate that the function type matches the expected type.
                     final boolean functionFromCurrentContext = functionInstanceContext == context;
 
-                    if (profileCondition(bytecode, offset + 3, functionFromCurrentContext)) {
+                    if (profileCondition(bytecode, profileOffset, functionFromCurrentContext)) {
                         // We can do a quick equivalence-class check.
                         if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                             enterErrorBranch();
@@ -623,7 +658,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }
                     }
-                    offset += 5;
 
                     // Invoke the resolved function.
                     int paramCount = instance.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
@@ -696,10 +730,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     }
                 }
-                case Bytecode.CALL_INDIRECT_I32: {
-                    enterErrorBranch();
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Call_indirect_i32");
-                }
                 case Bytecode.DROP: {
                     stackPointer--;
                     dropPrimitive(frame, stackPointer);
@@ -745,14 +775,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.LOCAL_GET_REF_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     local_get_ref(frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case Bytecode.LOCAL_GET_REF_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     local_get_ref(frame, stackPointer, index);
                     stackPointer++;
@@ -773,14 +803,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.LOCAL_SET_REF_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     stackPointer--;
                     local_set_ref(frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.LOCAL_SET_REF_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     stackPointer--;
                     local_set_ref(frame, stackPointer, index);
@@ -799,13 +829,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.LOCAL_TEE_REF_I8: {
-                    final int index = rawPeek1(bytecode, offset);
+                    final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     local_tee_ref(frame, stackPointer - 1, index);
                     break;
                 }
                 case Bytecode.LOCAL_TEE_REF_I32: {
-                    final int index = rawPeek4(bytecode, offset);
+                    final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     local_tee_ref(frame, stackPointer - 1, index);
                     break;
@@ -1456,6 +1486,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.I64_EXTEND32_S:
                     i64_extend32_s(frame, stackPointer);
                     break;
+                case Bytecode.REF_NULL:
+                    pushReference(frame, stackPointer, WasmConstant.NULL);
+                    stackPointer++;
+                    break;
+                case Bytecode.REF_IS_NULL:
+                    final Object refType = popReference(frame, stackPointer - 1);
+                    pushInt(frame, stackPointer - 1, refType == WasmConstant.NULL ? 1 : 0);
+                    break;
+                case Bytecode.REF_FUNC:
+                    final int functionIndex = rawPeekI32(bytecode, offset);
+                    final WasmFunction function = instance.module().function(functionIndex);
+                    final WasmFunctionInstance functionInstance = instance.functionInstance(function);
+                    pushReference(frame, stackPointer, functionInstance);
+                    stackPointer++;
+                    offset += 4;
+                    break;
                 case Bytecode.I32_TRUNC_SAT_F32_S:
                     i32_trunc_sat_f32_s(frame, stackPointer);
                     break;
@@ -1480,6 +1526,120 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.I64_TRUNC_SAT_F64_U:
                     i64_trunc_sat_f64_u(frame, stackPointer);
                     break;
+                case Bytecode.TABLE_GET: {
+                    final int tableIndex = rawPeekI32(bytecode, offset);
+                    table_get(context, frame, stackPointer, tableIndex);
+                    offset += 4;
+                    break;
+                }
+                case Bytecode.TABLE_SET: {
+                    final int tableIndex = rawPeekI32(bytecode, offset);
+                    table_set(context, frame, stackPointer, tableIndex);
+                    stackPointer -= 2;
+                    offset += 4;
+                    break;
+                }
+                case Bytecode.MISC: {
+                    final int miscOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    CompilerAsserts.partialEvaluationConstant(miscOpcode);
+                    switch (miscOpcode) {
+                        case Bytecode.MEMORY_INIT: {
+                            final int dataIndex = rawPeekI32(bytecode, offset);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_init(n, src, dst, dataIndex);
+                            stackPointer -= 3;
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.DATA_DROP: {
+                            final int dataIndex = rawPeekI32(bytecode, offset);
+                            instance.dropDataInstance(dataIndex);
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.MEMORY_COPY: {
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_copy(n, src, dst);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case Bytecode.MEMORY_FILL: {
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_fill(n, src, dst);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case Bytecode.TABLE_INIT: {
+                            final int elementIndex = rawPeekI32(bytecode, offset);
+                            final int tableIndex = rawPeekI32(bytecode, offset + 4);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            table_init(context, n, src, dst, tableIndex, elementIndex);
+                            stackPointer -= 3;
+                            offset += 8;
+                            break;
+                        }
+                        case Bytecode.ELEM_DROP: {
+                            final int elementIndex = rawPeekI32(bytecode, offset);
+                            instance.dropElemInstance(elementIndex);
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.TABLE_COPY: {
+                            final int srcIndex = rawPeekI32(bytecode, offset);
+                            final int dstIndex = rawPeekI32(bytecode, offset + 4);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            table_copy(context, n, src, dst, srcIndex, dstIndex);
+                            stackPointer -= 3;
+                            offset += 8;
+                            break;
+                        }
+                        case Bytecode.TABLE_GROW: {
+                            final int tableIndex = rawPeekI32(bytecode, offset);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final Object val = popReference(frame, stackPointer - 2);
+
+                            final int res = table_grow(context, n, val, tableIndex);
+                            pushInt(frame, stackPointer - 2, res);
+                            stackPointer--;
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.TABLE_SIZE: {
+                            final int tableIndex = rawPeekI32(bytecode, offset);
+                            table_size(context, frame, stackPointer, tableIndex);
+                            stackPointer++;
+                            break;
+                        }
+                        case Bytecode.TABLE_FILL: {
+                            final int tableIndex = rawPeekI32(bytecode, offset);
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final Object val = popReference(frame, stackPointer - 2);
+                            final int i = popInt(frame, stackPointer - 3);
+                            table_fill(context, n, val, i, tableIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
+                }
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
