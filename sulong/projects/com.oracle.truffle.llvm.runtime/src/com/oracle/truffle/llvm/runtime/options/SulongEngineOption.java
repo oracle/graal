@@ -39,6 +39,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -46,7 +47,11 @@ import java.util.List;
 
 public final class SulongEngineOption {
 
-    public static final String OPTION_ARRAY_SEPARATOR = ":";
+    public static boolean isWindows() {
+        return System.getProperty("os.name").startsWith("Windows");
+    }
+
+    public static final String OPTION_ARRAY_SEPARATOR = File.pathSeparator;
 
     // @formatter:off
     @Option(name = "llvm.stackSize",
@@ -62,7 +67,7 @@ public final class SulongEngineOption {
             category = OptionCategory.USER,
             stability = OptionStability.STABLE,
             help = "A list of paths where Sulong will search for relative libraries. " +
-                   "Paths are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.",
+                   "Paths are delimited by the system path separator.",
             usageSyntax = "<path>")
     public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
 
@@ -153,7 +158,7 @@ public final class SulongEngineOption {
             stability = OptionStability.STABLE,
             help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " +
                    "Files with a relative path will be looked up relative to llvm.libraryPath. " +
-                   "Libraries are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.",
+                   "Libraries are delimited by the system path separator.",
             usageSyntax = "<library>,<library>,...")
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
 
