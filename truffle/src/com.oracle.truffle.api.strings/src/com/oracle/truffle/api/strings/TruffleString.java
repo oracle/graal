@@ -5841,6 +5841,8 @@ public final class TruffleString extends AbstractTruffleString {
     @GenerateUncached
     public abstract static class AsNativeNode extends Node {
 
+        private static final int NULL_TERMINATION_BYTES = 4;
+
         AsNativeNode() {
         }
 
@@ -5903,7 +5905,7 @@ public final class TruffleString extends AbstractTruffleString {
             int length = a.length();
             int stride = useCompaction ? Stride.fromCodeRange(a.codeRange(), encoding) : encoding.naturalStride;
             int byteSize = length << stride;
-            Object buffer = allocator.allocate(byteSize + 4);
+            Object buffer = allocator.allocate(byteSize + NULL_TERMINATION_BYTES);
             NativePointer nativePointer = NativePointer.create(this, buffer, interopLibrary);
             Object arrayA = toIndexableNode.execute(a, a.data());
             int offsetA = a.offset();
@@ -5918,14 +5920,22 @@ public final class TruffleString extends AbstractTruffleString {
                     TStringOps.arraycopyWithStride(this, arrayA, offsetA, 0, 0, nativePointer, 0, 0, 0, byteSize);
                 }
             }
-            // zero-terminate the string with four zero bytes, to make absolutely sure any
-            // native code expecting zero-terminated strings can deal with the buffer
+            // Zero-terminate the string with four zero bytes, to make absolutely sure any
+            // native code expecting zero-terminated strings can deal with the buffer.
+            // This is to avoid potential problems with UTF-32 encoded strings, where native code
+            // may not read single bytes but 32-bit values.
+            checkIntSize();
             TStringUnsafe.putIntNative(nativePointer.pointer, byteSize, 0);
             TruffleString nativeString = TruffleString.createFromArray(nativePointer, 0, length, stride, encoding, a.codePointLength(), a.codeRange(), !cacheResult);
             if (cacheResult) {
                 a.cacheInsert(nativeString);
             }
             return nativeString;
+        }
+
+        @SuppressWarnings("all")
+        private static void checkIntSize() {
+            assert Integer.BYTES == NULL_TERMINATION_BYTES;
         }
 
         /**
