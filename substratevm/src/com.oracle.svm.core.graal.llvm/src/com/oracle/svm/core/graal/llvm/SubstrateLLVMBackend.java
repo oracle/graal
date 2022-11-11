@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;

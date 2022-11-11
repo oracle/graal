@@ -82,7 +82,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         this.context = LLVM.LLVMContextCreate();
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
         this.module = LLVM.LLVMModuleCreateWithNameInContext(name, context);
-        if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+        if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
             String dbgInfoFlagName = "Debug Info Version";
             LLVMValueRef dbgInfoVal = LLVM.LLVMConstInt(LLVM.LLVMInt32TypeInContext(context), LLVM.LLVMDebugMetadataVersion(), 0);
             LLVM.LLVMAddModuleFlag(this.module, LLVM.LLVMModuleFlagBehaviorWarning, dbgInfoFlagName,
@@ -135,7 +135,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMDisposeBuilder(builder);
         builder = null;
         if (primary) {
-            if (LLVMOptions.IncludeLLVMSourceDebugInfo.getValue()) {
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
                 LLVM.LLVMDIBuilderFinalize(diBuilder);
                 diFilenameToCU.clear();
                 diFunctionToSP.clear();
