@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.polyglot.PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
+import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.LANGUAGE_CONTEXT_OFFSET;
+import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.computeLanguageIndexFromStaticIndex;
+
 import java.util.AbstractList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -387,7 +391,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
 
         protected RuntimeException wrapHostError(Throwable t) {
             assert !config.engine.host.isHostException(t);
-            throw config.engine.host.toHostException(null, t);
+            throw config.engine.host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), t);
         }
 
         @TruffleBoundary(allowInlining = true)
