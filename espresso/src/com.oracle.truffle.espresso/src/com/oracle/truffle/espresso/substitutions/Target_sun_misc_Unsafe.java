@@ -742,7 +742,7 @@ public final class Target_sun_misc_Unsafe {
         return -1; // unobtainable
     }
 
-    static abstract class GetFieldFromIndexNode extends EspressoNode {
+    abstract static class GetFieldFromIndexNode extends EspressoNode {
         static final int LIMIT = 3;
 
         abstract Field execute(StaticObject holder, long slot);
@@ -766,7 +766,7 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    static abstract class UnsafeAccessNode extends SubstitutionNode {
+    abstract static class UnsafeAccessNode extends SubstitutionNode {
         protected static boolean isNullOrArray(StaticObject object) {
             return StaticObject.isNull(object) || object.isArray(); // order matters
         }
@@ -878,7 +878,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, methodName = "putByte")
     @InlineInBytecode
-    public static abstract class PutByteWithBase extends UnsafeAccessNode {
+    public abstract static class PutByteWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -899,7 +899,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class, methodName = "putObject")
     @InlineInBytecode
-    public static abstract class PutObjectWithBase extends UnsafeAccessNode {
+    public abstract static class PutObjectWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
@@ -922,7 +922,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putBoolean")
     @InlineInBytecode
-    public static abstract class PutBooleanWithBase extends UnsafeAccessNode {
+    public abstract static class PutBooleanWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -943,7 +943,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putChar")
     @InlineInBytecode
-    public static abstract class PutCharWithBase extends UnsafeAccessNode {
+    public abstract static class PutCharWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -964,7 +964,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putShort")
     @InlineInBytecode
-    public static abstract class PutShortWithBase extends UnsafeAccessNode {
+    public abstract static class PutShortWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -985,7 +985,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putInt")
     @InlineInBytecode
-    public static abstract class PutIntWithBase extends UnsafeAccessNode {
+    public abstract static class PutIntWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1006,7 +1006,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putFloat")
     @InlineInBytecode
-    public static abstract class PutFloatWithBase extends UnsafeAccessNode {
+    public abstract static class PutFloatWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1027,7 +1027,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putDouble")
     @InlineInBytecode
-    public static abstract class PutDoubleWithBase extends UnsafeAccessNode {
+    public abstract static class PutDoubleWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1048,7 +1048,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putLong")
     @InlineInBytecode
-    public static abstract class PutLongWithBase extends UnsafeAccessNode {
+    public abstract static class PutLongWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1073,7 +1073,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     @InlineInBytecode
-    public static abstract class PutOrderedInt extends UnsafeAccessNode {
+    public abstract static class PutOrderedInt extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1094,7 +1094,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     @InlineInBytecode
-    public static abstract class PutOrderedLong extends UnsafeAccessNode {
+    public abstract static class PutOrderedLong extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1115,7 +1115,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     @InlineInBytecode
-    public static abstract class PutOrderedObject extends UnsafeAccessNode {
+    public abstract static class PutOrderedObject extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
@@ -1149,7 +1149,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, methodName = "getByte")
     @InlineInBytecode
-    public static abstract class GetByteWithBase extends UnsafeAccessNode {
+    public abstract static class GetByteWithBase extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1173,7 +1173,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class, methodName = "getObject")
     @InlineInBytecode
-    public static abstract class GetObjectWithBase extends UnsafeAccessNode {
+    public abstract static class GetObjectWithBase extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1198,7 +1198,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getBoolean")
     @InlineInBytecode
-    public static abstract class GetBooleanWithBase extends UnsafeAccessNode {
+    public abstract static class GetBooleanWithBase extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1222,7 +1222,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getChar")
     @InlineInBytecode
-    public static abstract class GetCharWithBase extends UnsafeAccessNode {
+    public abstract static class GetCharWithBase extends UnsafeAccessNode {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1246,7 +1246,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getShort")
     @InlineInBytecode
-    public static abstract class GetShortWithBase extends UnsafeAccessNode {
+    public abstract static class GetShortWithBase extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1270,7 +1270,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getInt")
     @InlineInBytecode
-    public static abstract class GetIntWithBase extends UnsafeAccessNode {
+    public abstract static class GetIntWithBase extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1294,7 +1294,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getFloat")
     @InlineInBytecode
-    public static abstract class GetFloatWithBase extends UnsafeAccessNode {
+    public abstract static class GetFloatWithBase extends UnsafeAccessNode {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1318,7 +1318,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getDouble")
     @InlineInBytecode
-    public static abstract class GetDoubleWithBase extends UnsafeAccessNode {
+    public abstract static class GetDoubleWithBase extends UnsafeAccessNode {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1342,7 +1342,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getLong")
     @InlineInBytecode
-    public static abstract class GetLongWithBase extends UnsafeAccessNode {
+    public abstract static class GetLongWithBase extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1370,7 +1370,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getByteVolatile")
     @InlineInBytecode
-    public static abstract class GetByteVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetByteVolatileWithBase extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1394,7 +1394,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class, methodName = "getObjectVolatile")
     @InlineInBytecode
-    public static abstract class GetObjectVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetObjectVolatileWithBase extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1419,7 +1419,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getBooleanVolatile")
     @InlineInBytecode
-    public static abstract class GetBooleanVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetBooleanVolatileWithBase extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1443,7 +1443,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getCharVolatile")
     @InlineInBytecode
-    public static abstract class GetCharVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetCharVolatileWithBase extends UnsafeAccessNode {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1467,7 +1467,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getShortVolatile")
     @InlineInBytecode
-    public static abstract class GetShortVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetShortVolatileWithBase extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1491,7 +1491,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getIntVolatile")
     @InlineInBytecode
-    public static abstract class GetIntVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetIntVolatileWithBase extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1515,7 +1515,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getFloatVolatile")
     @InlineInBytecode
-    public static abstract class GetFloatVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetFloatVolatileWithBase extends UnsafeAccessNode {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1539,7 +1539,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getDoubleVolatile")
     @InlineInBytecode
-    public static abstract class GetDoubleVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetDoubleVolatileWithBase extends UnsafeAccessNode {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1563,7 +1563,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "getLongVolatile")
     @InlineInBytecode
-    public static abstract class GetLongVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class GetLongVolatileWithBase extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1673,7 +1673,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putByteVolatile")
     @InlineInBytecode
-    public static abstract class PutByteVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutByteVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1694,7 +1694,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class, methodName = "putObjectVolatile")
     @InlineInBytecode
-    public static abstract class PutObjectVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutObjectVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
@@ -1717,7 +1717,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putBooleanVolatile")
     @InlineInBytecode
-    public static abstract class PutBooleanVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutBooleanVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1738,7 +1738,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putCharVolatile")
     @InlineInBytecode
-    public static abstract class PutCharVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutCharVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1759,7 +1759,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putShortVolatile")
     @InlineInBytecode
-    public static abstract class PutShortVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutShortVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1780,7 +1780,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putIntVolatile")
     @InlineInBytecode
-    public static abstract class PutIntVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutIntVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1801,7 +1801,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putFloatVolatile")
     @InlineInBytecode
-    public static abstract class PutFloatVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutFloatVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1822,7 +1822,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putDoubleVolatile")
     @InlineInBytecode
-    public static abstract class PutDoubleVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutDoubleVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1843,7 +1843,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, methodName = "putLongVolatile")
     @InlineInBytecode
-    public static abstract class PutLongVolatileWithBase extends UnsafeAccessNode {
+    public abstract static class PutLongVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
         @Specialization(guards = "isNullOrArray(holder)")
@@ -1867,7 +1867,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     @InlineInBytecode
-    public static abstract class CompareAndSwapObject extends UnsafeAccessNode {
+    public abstract static class CompareAndSwapObject extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
@@ -1891,7 +1891,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     @InlineInBytecode
-    public static abstract class CompareAndSwapInt extends UnsafeAccessNode {
+    public abstract static class CompareAndSwapInt extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
@@ -1923,7 +1923,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     @InlineInBytecode
-    public static abstract class CompareAndSwapLong extends UnsafeAccessNode {
+    public abstract static class CompareAndSwapLong extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after);
 
@@ -1970,7 +1970,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     @InlineInBytecode
-    public static abstract class CompareAndExchangeObject extends UnsafeAccessNode {
+    public abstract static class CompareAndExchangeObject extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
@@ -2000,7 +2000,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     @InlineInBytecode
-    public static abstract class CompareAndExchangeInt extends UnsafeAccessNode {
+    public abstract static class CompareAndExchangeInt extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
@@ -2032,7 +2032,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static abstract class CompareAndExchangeByte extends UnsafeAccessNode {
+    public abstract static class CompareAndExchangeByte extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         byte before, byte after);
 
@@ -2064,7 +2064,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static abstract class CompareAndExchangeShort extends UnsafeAccessNode {
+    public abstract static class CompareAndExchangeShort extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         short before, short after);
 
@@ -2096,7 +2096,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    public static abstract class CompareAndExchangeLong extends UnsafeAccessNode {
+    public abstract static class CompareAndExchangeLong extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after);
 
@@ -2168,7 +2168,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     @InlineInBytecode
-    public static abstract class GetAndSetObject extends UnsafeAccessNode {
+    public abstract static class GetAndSetObject extends UnsafeAccessNode {
         abstract @JavaType(Unsafe.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
@@ -2192,7 +2192,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     @InlineInBytecode
-    static abstract class CompareAndSetObject extends UnsafeAccessNode {
+    abstract static class CompareAndSetObject extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
@@ -2206,7 +2206,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     @InlineInBytecode
-    static abstract class CompareAndSetInt extends UnsafeAccessNode {
+    abstract static class CompareAndSetInt extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
@@ -2220,7 +2220,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true)
     @InlineInBytecode
-    static abstract class CompareAndSetLong extends UnsafeAccessNode {
+    abstract static class CompareAndSetLong extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after);
 
