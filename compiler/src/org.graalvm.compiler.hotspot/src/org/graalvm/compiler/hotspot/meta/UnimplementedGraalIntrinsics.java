@@ -33,8 +33,10 @@ import java.util.TreeSet;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
+import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -211,7 +213,7 @@ public final class UnimplementedGraalIntrinsics {
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I");
         }
 
-        if (!GHASHPlugin.isSupported(arch)) {
+        if (!GHASHProcessBlocksNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
         }
@@ -237,14 +239,18 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         // AES intrinsics
-        if (!AESCryptPlugin.isSupported(arch)) {
+        if (!AESNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V");
+        }
+
+        if (!CounterModeAESNode.isSupported(arch)) {
+            add(ignore,
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
         }
 
-        if (!config.useAESIntrinsics) {
+        if (!CipherBlockChainingAESNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");

@@ -44,6 +44,8 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = NodeCycles.CYCLES_128, size = NodeSize.SIZE_128)
@@ -51,6 +53,14 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<GHASHProcessBlocksNode> TYPE = NodeClass.create(GHASHProcessBlocksNode.class);
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Long)};
+
+    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("ghashProcessBlocks",
+                    void.class,
+                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, int.class},
+                    false,
+                    KILLED_LOCATIONS,
+                    false,
+                    false);
 
     @Input protected ValueNode state;
     @Input protected ValueNode hashSubkey;
@@ -91,6 +101,15 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         return EnumSet.of(AArch64.CPUFeature.PMULL);
     }
 
+    public static boolean isSupported(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
+        } else if (arch instanceof AArch64) {
+            return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
+        }
+        return false;
+    }
+
     @NodeIntrinsic
     @GenerateStub(name = "ghashProcessBlocks", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
     public static native void apply(Pointer state,
@@ -107,7 +126,7 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS;
+        return STUB;
     }
 
     @Override

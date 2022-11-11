@@ -24,13 +24,9 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
-
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -38,8 +34,10 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
@@ -49,33 +47,25 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Encrypt or decrypt operation using the AES cipher. See {@code com.sun.crypto.provider.AESCrypt}.
+ * Encrypt or decrypt operation using the CipherBlockChaining AES cipher. See
+ * {@code com.sun.crypto.provider.CipherBlockChaining}.
  */
-@NodeInfo(allowedUsageTypes = {InputType.Memory}, nameTemplate = "AES#{p#cryptMode/s}", cycles = NodeCycles.CYCLES_64, size = NodeSize.SIZE_64)
-public class AESNode extends MemoryKillStubIntrinsicNode {
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, nameTemplate = "CBCAES#{p#cryptMode/s}", cycles = NodeCycles.CYCLES_1024, size = NodeSize.SIZE_64)
+public class CipherBlockChainingAESNode extends MemoryKillStubIntrinsicNode {
 
-    public enum CryptMode {
-        ENCRYPT,
-        DECRYPT;
-
-        public boolean isEncrypt() {
-            return this == ENCRYPT;
-        }
-    }
-
-    public static final NodeClass<AESNode> TYPE = NodeClass.create(AESNode.class);
+    public static final NodeClass<CipherBlockChainingAESNode> TYPE = NodeClass.create(CipherBlockChainingAESNode.class);
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
 
-    public static final ForeignCallDescriptor STUB_ENCRYPT = new ForeignCallDescriptor("aesEncrypt",
-                    void.class,
-                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class},
+    public static final ForeignCallDescriptor STUB_ENCRYPT = new ForeignCallDescriptor("cbcAESEncrypt",
+                    int.class,
+                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class},
                     false,
                     KILLED_LOCATIONS,
                     false,
                     false);
-    public static final ForeignCallDescriptor STUB_DECRYPT = new ForeignCallDescriptor("aesDecrypt",
-                    void.class,
-                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class},
+    public static final ForeignCallDescriptor STUB_DECRYPT = new ForeignCallDescriptor("cbcAESDecrypt",
+                    int.class,
+                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class},
                     false,
                     KILLED_LOCATIONS,
                     false,
@@ -91,33 +81,43 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     @Input protected ValueNode from;
     @Input protected ValueNode to;
     @Input protected ValueNode key;
+    @Input protected ValueNode r;
+    @Input protected ValueNode len;
 
-    public AESNode(ValueNode from,
+    public CipherBlockChainingAESNode(ValueNode from,
                     ValueNode to,
                     ValueNode key,
+                    ValueNode r,
+                    ValueNode len,
                     CryptMode cryptMode) {
         this(from,
                         to,
                         key,
+                        r,
+                        len,
                         cryptMode,
                         null);
     }
 
-    public AESNode(ValueNode from,
+    public CipherBlockChainingAESNode(ValueNode from,
                     ValueNode to,
                     ValueNode key,
+                    ValueNode r,
+                    ValueNode len,
                     CryptMode cryptMode,
                     EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
+        super(TYPE, len.stamp(NodeView.DEFAULT), runtimeCheckedCPUFeatures, LocationIdentity.any());
         this.from = from;
         this.to = to;
         this.key = key;
+        this.r = r;
+        this.len = len;
         this.cryptMode = cryptMode;
     }
 
     @Override
     public ValueNode[] getForeignCallArguments() {
-        return new ValueNode[]{from, to, key};
+        return new ValueNode[]{from, to, key, r, len};
     }
 
     @Override
@@ -126,11 +126,11 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     }
 
     public static EnumSet<?> minFeaturesAMD64() {
-        return EnumSet.of(AVX, AES);
+        return AESNode.minFeaturesAMD64();
     }
 
     public static EnumSet<?> minFeaturesAARCH64() {
-        return EnumSet.of(AArch64.CPUFeature.AES);
+        return AESNode.minFeaturesAARCH64();
     }
 
     public static boolean isSupported(Architecture arch) {
@@ -143,17 +143,21 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "aesEncrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", parameters = {"ENCRYPT"})
-    @GenerateStub(name = "aesDecrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", parameters = {"DECRYPT"})
-    public static native void apply(Pointer from,
+    @GenerateStub(name = "cbcAESEncrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", parameters = {"ENCRYPT"})
+    @GenerateStub(name = "cbcAESDecrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", parameters = {"DECRYPT"})
+    public static native int apply(Pointer from,
                     Pointer to,
                     Pointer key,
+                    Pointer r,
+                    int len,
                     @ConstantNodeParameter CryptMode cryptMode);
 
     @NodeIntrinsic
-    public static native void apply(Pointer from,
+    public static native int apply(Pointer from,
                     Pointer to,
                     Pointer key,
+                    Pointer r,
+                    int len,
                     @ConstantNodeParameter CryptMode cryptMode,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
@@ -165,9 +169,9 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         if (cryptMode.isEncrypt()) {
-            gen.getLIRGeneratorTool().emitAESEncrypt(gen.operand(from), gen.operand(to), gen.operand(key));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitCBCAESEncrypt(gen.operand(from), gen.operand(to), gen.operand(key), gen.operand(r), gen.operand(len)));
         } else {
-            gen.getLIRGeneratorTool().emitAESDecrypt(gen.operand(from), gen.operand(to), gen.operand(key));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitCBCAESDecrypt(gen.operand(from), gen.operand(to), gen.operand(key), gen.operand(r), gen.operand(len)));
         }
     }
 }

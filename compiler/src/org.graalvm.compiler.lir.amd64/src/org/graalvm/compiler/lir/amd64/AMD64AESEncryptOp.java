@@ -36,12 +36,14 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -100,16 +102,25 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
             // @formatter:on
     });
 
-    public static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
+    static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
         VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, xmmShufMask);
     }
 
+    static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, CompilationResultBuilder crb, ArrayDataPointerConstant keyShuffleMask) {
+        masm.movdqu(xmmDst, new AMD64Address(key, offset));
+        VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, recordExternalAddress(crb, keyShuffleMask));
+    }
+
+    static Register asXMMRegister(int index) {
+        return AMD64.xmmRegistersSSE[index];
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        assert fromValue.getPlatformKind().equals(AMD64Kind.QWORD) : fromValue;
-        assert toValue.getPlatformKind().equals(AMD64Kind.QWORD) : toValue;
-        assert keyValue.getPlatformKind().equals(AMD64Kind.QWORD) : keyValue;
+        GraalError.guarantee(fromValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
+        GraalError.guarantee(toValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid toValue kind: %s", toValue);
+        GraalError.guarantee(keyValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
 
         Label labelDoLast = new Label();
 
