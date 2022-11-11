@@ -59,9 +59,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 2748,
-          lineEnd   = 2809,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 2792,
+          lineEnd   = 2853,
+          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "8ada7fcdb170eda06a7852fc90450193b2a0f7a0")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
           lineStart = 6087,

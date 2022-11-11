@@ -58,19 +58,19 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4333,
-          lineEnd   = 4371,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 4342,
+          lineEnd   = 4380,
+          commit    = "4a300818fe7a47932c5b762ccd3b948815a31974",
           sha1      = "b7579c8da82c51fb00317be26f7fa7d4ed1db927")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 2982,
-          lineEnd   = 2991,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 2964,
+          lineEnd   = 2973,
+          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "123de736fb13a15ffa6864d86b0e9d52123248a0")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 3179,
-          lineEnd   = 3489,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 3161,
+          lineEnd   = 3471,
+          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "e398a3781e3492a5625200e04ce934d022d3b2dc")
 // @formatter:on
 public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstruction {
