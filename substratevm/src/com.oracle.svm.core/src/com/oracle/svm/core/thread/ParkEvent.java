@@ -24,12 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Each thread has several of these on which to wait. Instances are usually expensive objects
@@ -39,35 +36,12 @@ import com.oracle.svm.core.util.VMError;
 public abstract class ParkEvent {
 
     public interface ParkEventFactory {
-        default ParkEvent acquire() {
-            return create();
-        }
-
-        /** For legacy code that does not implement {@link #acquire}. */
-        default ParkEvent create() {
-            throw VMError.shouldNotReachHere("Must implement acquire().");
-        }
-
-        /**
-         * For legacy code. This should be an implementation detail of {@link #acquire} and
-         * {@link ParkEvent#release}.
-         */
-        default boolean usesParkEventList() {
-            return true;
-        }
+        ParkEvent acquire();
     }
 
     /** Currently required by legacy code. */
     protected boolean isSleepEvent;
 
-    /**
-     * A cons-cell for putting this ParkEvent on the free list. This must be (a) allocated
-     * beforehand because I need it when I can not allocate, (b) must not be reused, to avoid an ABA
-     * problem.
-     */
-    private ParkEventConsCell consCell;
-
-    /** Constructor for subclasses. */
     protected ParkEvent() {
     }
 
@@ -85,116 +59,13 @@ public abstract class ParkEvent {
     /** Notify anyone waiting on this event. */
     protected abstract void unpark();
 
-    /** Use up the cons-cell for this ParkEvent. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    ParkEventConsCell consumeConsCell() {
-        assert consCell != null : "Consuming null cons cell.";
-        ParkEventConsCell result = consCell;
-        consCell = null;
-        return result;
-    }
-
-    /** Acquire a ParkEvent, either by allocating or reusing a previously released event. */
     static ParkEvent acquire(boolean isSleepEvent) {
         ParkEventFactory factory = ImageSingletons.lookup(ParkEventFactory.class);
-        if (!factory.usesParkEventList()) {
-            return factory.acquire();
-        }
-
-        ParkEvent result = ParkEventList.getSingleton().pop();
-        if (result == null) {
-            result = factory.acquire();
-        }
-
-        /* Assign a *new* cons-cell for this ParkEvent. */
-        result.consCell = new ParkEventConsCell(result);
-        result.isSleepEvent = isSleepEvent;
-        result.reset();
-        return result;
+        ParkEvent event = factory.acquire();
+        event.isSleepEvent = isSleepEvent;
+        return event;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void release() {
-        assert ImageSingletons.lookup(ParkEventFactory.class).usesParkEventList();
-        ParkEventList.getSingleton().push(this);
-    }
-}
-
-/**
- * A free-list of ParkEvents.
- *
- * Since ParkEvents have to be immortal, they are not garbage collected. Instead, they are put back
- * on a free-list. To avoid ABA problems with multi-threaded pops from the list, I make up a new
- * cons-cell for each push to the list.
- */
-final class ParkEventList {
-
-    private static final ParkEventList SINGLETON = new ParkEventList();
-
-    @Fold
-    public static ParkEventList getSingleton() {
-        return SINGLETON;
-    }
-
-    /** The free-list of ParkEvents. */
-    private final AtomicReference<ParkEventConsCell> freeList;
-
-    /** Private constructor: Only the singleton instance. */
-    private ParkEventList() {
-        freeList = new AtomicReference<>(null);
-    }
-
-    /** Push an element on to the free-list. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void push(ParkEvent element) {
-        ParkEventConsCell sampleHead;
-        /* Use up the cons-cell for each attempted push to avoid the ABA problem on pops. */
-        ParkEventConsCell nextHead = element.consumeConsCell();
-        do {
-            sampleHead = freeList.get();
-            nextHead.setNext(sampleHead);
-        } while (!freeList.compareAndSet(sampleHead, nextHead));
-    }
-
-    /** Return the head of the free-list, or null. */
-    public ParkEvent pop() {
-        ParkEventConsCell sampleHead;
-        ParkEventConsCell sampleNext;
-        do {
-            sampleHead = freeList.get();
-            if (sampleHead == null) {
-                return null;
-            }
-            sampleNext = sampleHead.getNext();
-        } while (!freeList.compareAndSet(sampleHead, sampleNext));
-        return sampleHead.getElement();
-    }
-}
-
-/** A cons-cell for the free-list. */
-final class ParkEventConsCell {
-
-    /** Immutable state. */
-    private final ParkEvent element;
-    /** Mutable state, but only until the cons-cell is on the list. */
-    private ParkEventConsCell next;
-
-    /** Constructor. */
-    ParkEventConsCell(ParkEvent element) {
-        this.element = element;
-        this.next = null;
-    }
-
-    protected ParkEvent getElement() {
-        return element;
-    }
-
-    protected ParkEventConsCell getNext() {
-        return next;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setNext(ParkEventConsCell next) {
-        this.next = next;
-    }
+    protected abstract void release();
 }

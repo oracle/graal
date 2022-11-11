@@ -279,9 +279,4 @@ class WindowsParkEventFactory implements ParkEventFactory {
     public ParkEvent acquire() {
         return new WindowsParkEvent();
     }
-
-    @Override
-    public boolean usesParkEventList() {
-        return false;
-    }
 }

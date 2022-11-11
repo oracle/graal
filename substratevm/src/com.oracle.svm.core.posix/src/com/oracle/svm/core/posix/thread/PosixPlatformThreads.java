@@ -400,9 +400,4 @@ class PosixParkEventFactory implements ParkEventFactory {
     public ParkEvent acquire() {
         return new PosixParkEvent();
     }
-
-    @Override
-    public boolean usesParkEventList() {
-        return false;
-    }
 }
